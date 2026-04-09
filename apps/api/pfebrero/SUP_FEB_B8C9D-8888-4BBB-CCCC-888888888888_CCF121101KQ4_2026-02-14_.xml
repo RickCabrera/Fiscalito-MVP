@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Serie="C" Folio="29150001" Fecha="2026-02-14T11:30:00" Sello="SELLO_SIMULADO_SUP" FormaPago="04" NoCertificado="00001000000513792190" Certificado="CERT_SIMULADO" SubTotal="1850.00" Descuento="0.00" Moneda="MXN" Total="1850.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PUE" LugarExpedicion="11000" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="CCF121101KQ4" Nombre="COMERCIAL CITY FRESKO" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="50112005" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="JAMON YORK PENARANDA 400 GRS" ValorUnitario="89.50" Importe="89.50" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="89.50" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50112009" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="TOCINO AHUMADO FUD 400 GRS" ValorUnitario="95.00" Importe="95.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="95.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50181901" Cantidad="5.0" ClaveUnidad="H87" Unidad="pza" Descripcion="BOLILLO" ValorUnitario="2.50" Importe="12.50" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="12.50" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50131702" Cantidad="3.0" ClaveUnidad="H87" Unidad="pza" Descripcion="LECHE BORDEN 1 LT" ValorUnitario="32.50" Importe="97.50" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="97.50" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50301700" Cantidad="1.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="PLATANO TABASCO" ValorUnitario="29.90" Importe="29.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="29.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50406500" Cantidad="1.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="JITOMATE SALADET ESPECIAL" ValorUnitario="45.90" Importe="45.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="45.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="51142131" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="CELEBREX VIATRIS 200MG 10 CAPS" ValorUnitario="450.00" Importe="450.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="450.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="14111704" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="PAPEL REGIO 12 ROLLOS" ValorUnitario="135.00" Importe="135.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="135.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50151513" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="ACEITE MAZOLA 765 ML" ValorUnitario="75.90" Importe="75.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="75.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="12161902" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="DETERGENTE MAS COLOR 4.65 LT" ValorUnitario="189.00" Importe="189.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="189.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="30.24" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50111500" Cantidad="1.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="PECHUGA DE POLLO" ValorUnitario="159.90" Importe="159.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="159.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50221300" Cantidad="2.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="TORTILLA DE MAIZ 1 KG" ValorUnitario="23.00" Importe="46.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="46.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="47131805" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="LIMPIADOR FABULOSO 2 LT" ValorUnitario="65.90" Importe="65.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="65.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="10.54" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50171700" Cantidad="1.0" ClaveUnidad="H87" Unidad="pza" Descripcion="SALSA VALENTINA 370 ML" ValorUnitario="18.90" Importe="18.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="18.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50304500" Cantidad="1.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="AGUACATE HASS" ValorUnitario="89.00" Importe="89.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="89.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50304100" Cantidad="0.5" ClaveUnidad="KGM" Unidad="kg" Descripcion="LIMON AGRIO CON SEMILLA" ValorUnitario="59.80" Importe="29.90" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="29.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50301500" Cantidad="1.0" ClaveUnidad="KGM" Unidad="kg" Descripcion="MANZANA ROYAL GALA" ValorUnitario="69.00" Importe="69.00" Descuento="0.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="69.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="40.78">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="1595.10" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+      <cfdi:Traslado Base="254.90" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="40.78" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="B8C9D0E1-8888-4BBB-CCCC-888888888888" FechaTimbrado="2026-02-14T11:31:00" RfcProvCertif="LSO1306189R5" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000719545303" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

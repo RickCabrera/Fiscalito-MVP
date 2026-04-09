@@ -1,0 +1,65 @@
+graph TB
+    subgraph Cliente["🖥️ Cliente (Browser)"]
+        subgraph ReactApp["React 19 + Vite + TypeScript"]
+            Router["React Router v7"]
+
+            subgraph Contexts["Context Providers"]
+                AuthCtx["AuthContext<br/>(user, signIn, signUp,<br/>signInWithGoogle, signOut)"]
+                ProfileCtx["ProfileContext<br/>(profile, setProfile,<br/>isOnboardingComplete)"]
+            end
+
+            subgraph Pages["Pages"]
+                Landing["LandingPage"]
+                Login["LoginPage"]
+                Onboarding["OnboardingWizard"]
+                Dashboard["DashboardPage"]
+                Marketplace["MarketplacePage"]
+                ServiceDetail["ServiceDetailPage"]
+                Fiscalito["FiscalitoServicePage"]
+                Historial["HistorialPage"]
+                Profile["ProfilePage"]
+                Admin["AdminPage"]
+            end
+
+            subgraph Services["Services Layer"]
+                FiscalAPI["fiscalAgentApi.ts"]
+                HistorialSvc["declaracionesHistory.ts"]
+                CFDIParser["cfdiParser.ts"]
+                PDFExport["pdfExport*.ts"]
+                VoiceChat["voiceChatService.ts"]
+                StoreSvc["storeServices.ts"]
+                ContribProfiles["contributorProfiles.ts"]
+            end
+        end
+    end
+
+    subgraph Firebase["☁️ Firebase"]
+        FireAuth["Firebase Auth<br/>(Email + Google)"]
+        Firestore["Firestore<br/>users/{uid}<br/>users/{uid}/declaraciones"]
+    end
+
+    subgraph Backend["⚙️ Fiscal Agent API (FastAPI)"]
+        HealthEP["/health"]
+        PreDecEP["/api/v1/pre-declaracion"]
+        AnualEP["/api/v1/pre-declaracion-anual"]
+        DeducEP["/api/v1/deducciones-personales"]
+        CalEP["/api/v1/calendario"]
+        CompEP["/api/v1/comparar-regimenes"]
+        DIOTEP["/api/v1/diot"]
+        RetEP["/api/v1/retenciones-terceros"]
+        MultiEP["/api/v1/multi-periodo"]
+        EstadoEP["/api/v1/estado-cuenta"]
+    end
+
+    subgraph ExternalAPIs["🌐 APIs Externas"]
+        OpenAI["OpenAI API<br/>(Whisper + GPT-4o-mini + TTS)"]
+    end
+
+    AuthCtx -->|"Auth state"| FireAuth
+    ProfileCtx -->|"CRUD perfil"| Firestore
+    HistorialSvc -->|"CRUD declaraciones"| Firestore
+    FiscalAPI -->|"REST calls"| Backend
+    VoiceChat -->|"Transcribe + Chat + TTS"| OpenAI
+    Router --> Pages
+    Pages --> Services
+    Pages --> Contexts

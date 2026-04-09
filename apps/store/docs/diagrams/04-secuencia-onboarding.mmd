@@ -1,0 +1,45 @@
+sequenceDiagram
+    actor U as Usuario
+    participant LP as LoginPage
+    participant AC as AuthContext
+    participant FA as Firebase Auth
+    participant OW as OnboardingWizard
+    participant PC as ProfileContext
+    participant FS as Firestore
+
+    U->>LP: Ingresa email + password
+    LP->>AC: signUp(email, password)
+    AC->>FA: createUserWithEmailAndPassword()
+    FA-->>AC: User credential
+    AC-->>LP: user !== null
+
+    LP->>LP: Redirige a /app
+    Note over LP: ProtectedRoute detecta<br/>onboarding incompleto
+    LP->>OW: Redirige a /app/onboarding
+
+    rect rgb(30, 20, 40)
+        Note over OW: Paso 1: Tipo de Contribuyente
+        U->>OW: Selecciona tipo (ej: independiente)
+    end
+
+    rect rgb(30, 20, 40)
+        Note over OW: Paso 2: Datos Fiscales
+        U->>OW: Ingresa RFC + selecciona régimen
+    end
+
+    rect rgb(30, 20, 40)
+        Note over OW: Paso 3: Datos Personales
+        U->>OW: Nombre, teléfono, actividad, CP
+    end
+
+    rect rgb(30, 20, 40)
+        Note over OW: Paso 4: Confirmación
+        U->>OW: Click "Comenzar"
+    end
+
+    OW->>PC: setProfile({ ...allData, onboardingComplete: true })
+    PC->>FS: setDoc(users/{uid}, profileData, merge)
+    FS-->>PC: OK
+    PC-->>OW: Perfil guardado
+
+    OW->>OW: Redirige a /app (Dashboard)

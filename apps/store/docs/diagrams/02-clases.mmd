@@ -1,0 +1,200 @@
+classDiagram
+    direction TB
+
+    class PerfilContribuyente {
+        +String rfc
+        +String regimen
+        +String nombre
+        +String tipo_persona
+        +String actividad_economica
+        +String periodicidad
+        +Boolean tiene_empleados
+        +Boolean retenedor_iva
+        +String fecha_inicio_actividades
+        +String contributor_type
+    }
+
+    class CFDI {
+        +String uuid
+        +String fecha
+        +String tipo: I|E|T|P
+        +String rfc_emisor
+        +String rfc_receptor
+        +Number subtotal
+        +Number total
+        +Number iva_trasladado
+        +Number iva_retenido
+        +Number isr_retenido
+        +Number descuento
+        +String uso_cfdi
+        +String descripcion
+        +String metodo_pago
+        +String uuid_relacionado
+        +Number monto_pago
+        +String clave_prod_serv
+    }
+
+    class DesgloseFiscal {
+        +Number total_ingresos_facturados
+        +Number total_ingresos_gravados
+        +Number cantidad_facturas_ingreso
+        +Number total_egresos
+        +Number total_deducciones_autorizadas
+        +Number cantidad_facturas_egreso
+        +Number base_isr
+        +Number tasa_isr
+        +Number isr_causado
+        +Number isr_retenido
+        +Number isr_a_pagar
+        +Number iva_trasladado_cobrado
+        +Number iva_trasladado_pagado
+        +Number iva_retenido
+        +Number iva_a_pagar
+        +Number pagos_provisionales_anteriores
+        +Number total_a_pagar
+    }
+
+    class PreDeclaracionRequest {
+        +PerfilContribuyente contribuyente
+        +CFDI[] facturas
+        +Number periodo_year
+        +Number periodo_month
+        +Number periodo_bimestre
+        +Boolean incluir_explicacion
+        +Number pagos_provisionales_anteriores
+        +Number predial_pagado
+    }
+
+    class PreDeclaracionResponse {
+        +Boolean exito
+        +String tipo_declaracion
+        +String periodo
+        +String regimen
+        +DesgloseFiscal desglose
+        +String explicacion
+        +String[] advertencias
+        +String[] recomendaciones
+    }
+
+    class UserProfile {
+        +ContributorType contributorType
+        +String rfc
+        +String regimen
+        +String nombre
+        +String actividad
+        +String cp
+        +String telefono
+        +String nombreNegocio
+        +String numEmpleados
+        +Boolean onboardingComplete
+    }
+
+    class ContributorProfile {
+        +ContributorType id
+        +String label
+        +String description
+        +String icon
+        +String[] allowedRegimens
+        +String[] obligations
+        +String[] applicableServices
+        +String[] extraFields
+    }
+
+    class DeclaracionRecord {
+        +String id
+        +HistorialCategoria categoria
+        +String tipo
+        +String periodo
+        +String regimen
+        +Timestamp fecha_calculo
+        +DesgloseFiscal desglose
+        +String explicacion
+        +String[] advertencias
+        +String[] recomendaciones
+        +Number facturas_count
+        +DIOTProveedor[] proveedores
+        +RetencionTercero[] terceros
+        +PeriodoResultado[] resultados
+        +AcumuladoMultiPeriodo acumulado
+        +Object estado_cuenta
+    }
+
+    class DashboardStats {
+        +Number totalDeclaraciones
+        +Number declaracionesEsteMes
+        +Number ultimoISR
+        +Number ultimoIVA
+        +Number ultimoTotal
+        +Number saldoFavorAcumulado
+        +Number promedioMensual
+    }
+
+    class StoreService {
+        +String id
+        +String name
+        +String tagline
+        +String description
+        +String icon
+        +String status: active|coming_soon|beta
+        +String[] features
+        +String category: fiscal|laboral|contable
+        +ContributorType[] appliesTo
+        +String apiEndpoint
+    }
+
+    class DIOTProveedor {
+        +String rfc
+        +String nombre
+        +Number total_operaciones
+        +Number iva_pagado
+        +Number cantidad_facturas
+    }
+
+    class RetencionTercero {
+        +String rfc
+        +String nombre
+        +Number total_pagado
+        +Number isr_retenido
+        +Number iva_retenido
+        +Number cantidad_facturas
+    }
+
+    class ObligacionFiscal {
+        +String nombre
+        +String descripcion
+        +String fecha_limite
+        +String periodicidad
+        +Boolean completada
+    }
+
+    class DeduccionDetalle {
+        +String concepto
+        +Number monto_solicitado
+        +Number tope_aplicable
+        +Number monto_aceptado
+    }
+
+    class PeriodoResultado {
+        +String periodo
+        +DesgloseFiscal desglose
+    }
+
+    class AcumuladoMultiPeriodo {
+        +Number total_isr_pagado
+        +Number total_iva_pagado
+        +Number total_general_pagado
+        +Number promedio_mensual
+        +String tendencia
+    }
+
+    PreDeclaracionRequest --> PerfilContribuyente
+    PreDeclaracionRequest --> CFDI
+    PreDeclaracionResponse --> DesgloseFiscal
+    DeclaracionRecord --> DesgloseFiscal
+    DeclaracionRecord --> DIOTProveedor
+    DeclaracionRecord --> RetencionTercero
+    DeclaracionRecord --> PeriodoResultado
+    DeclaracionRecord --> AcumuladoMultiPeriodo
+    PeriodoResultado --> DesgloseFiscal
+    UserProfile --> ContributorProfile : "maps to"
+    StoreService --> ContributorProfile : "appliesTo"

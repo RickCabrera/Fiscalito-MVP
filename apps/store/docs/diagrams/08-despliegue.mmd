@@ -1,0 +1,36 @@
+graph TB
+    subgraph UserDevice["🖥️ Dispositivo del Usuario"]
+        Browser["Navegador Web<br/>(Chrome/Firefox/Safari)"]
+    end
+
+    subgraph Hosting["🌐 Hosting (por definir)"]
+        SPA["React SPA<br/>(Build estático)<br/>Vite + TypeScript"]
+    end
+
+    subgraph FirebaseCloud["☁️ Google Cloud / Firebase"]
+        FBAuth["Firebase Authentication<br/>• Email/Password<br/>• Google OAuth"]
+        FBStore["Cloud Firestore<br/>• users/{uid}<br/>• users/{uid}/declaraciones"]
+    end
+
+    subgraph BackendServer["⚙️ Servidor Backend"]
+        FiscalAgent["Fiscal Agent API<br/>FastAPI / Python<br/>localhost:8000 | Cloud Run"]
+        LLM["LLM Engine<br/>(OpenAI / Anthropic)<br/>Explicaciones fiscales"]
+    end
+
+    subgraph OpenAICloud["🤖 OpenAI API"]
+        Whisper["Whisper<br/>(Speech-to-Text)"]
+        GPT["GPT-4o-mini<br/>(Chat fiscal)"]
+        TTS["Text-to-Speech"]
+    end
+
+    Browser <-->|"HTTPS"| SPA
+    SPA <-->|"Firebase SDK"| FBAuth
+    SPA <-->|"Firebase SDK"| FBStore
+    SPA <-->|"REST API<br/>JSON"| FiscalAgent
+    SPA <-->|"REST API"| OpenAICloud
+    FiscalAgent <-->|"API calls"| LLM
+
+    style UserDevice fill:#080409,stroke:#492153,color:#e8e4ec
+    style FirebaseCloud fill:#0f0a12,stroke:#355654,color:#e8e4ec
+    style BackendServer fill:#0f0a12,stroke:#492153,color:#e8e4ec
+    style OpenAICloud fill:#0f0a12,stroke:#355654,color:#e8e4ec

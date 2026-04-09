@@ -1,0 +1,56 @@
+erDiagram
+    USER ||--o{ DECLARACION : "tiene"
+    USER {
+        string uid PK
+        string contributorType "asalariado|independiente|arrendamiento|plataformas|pyme"
+        string rfc
+        string regimen "605|606|612|625|626|621"
+        string nombre
+        string actividad
+        string cp
+        string telefono
+        string nombreNegocio "solo PYME"
+        string numEmpleados "solo PYME"
+        boolean onboardingComplete
+        timestamp updatedAt
+    }
+
+    DECLARACION {
+        string id PK
+        string categoria "predeclaracion|diot|retenciones|multiperiodo|estado_cuenta|deducciones"
+        string tipo "monthly|bimonthly|annual"
+        string periodo "Enero 2025"
+        string regimen
+        timestamp fecha_calculo
+        number facturas_count
+        object desglose "DesgloseFiscal (pre-declaraciones)"
+        string explicacion "Explicación IA"
+        array advertencias
+        array recomendaciones
+        array proveedores "DIOTProveedor[] (solo DIOT)"
+        array terceros "RetencionTercero[] (solo retenciones)"
+        array resultados "PeriodoResultado[] (solo multi)"
+        object acumulado "AcumuladoMultiPeriodo (solo multi)"
+        object estado_cuenta "solo estado de cuenta"
+    }
+
+    CONTRIBUTOR_PROFILE {
+        string id PK "tipo contribuyente"
+        string label
+        string description
+        array allowedRegimens
+        array obligations
+        array applicableServices
+    }
+
+    STORE_SERVICE {
+        string id PK
+        string name
+        string status "active|coming_soon|beta"
+        string category "fiscal|laboral|contable"
+        array appliesTo "ContributorType[]"
+        string apiEndpoint
+    }
+
+    USER }o--|| CONTRIBUTOR_PROFILE : "es tipo"
+    CONTRIBUTOR_PROFILE }o--o{ STORE_SERVICE : "tiene acceso a"

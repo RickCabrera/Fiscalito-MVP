@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Folio="3" Fecha="2026-02-16T19:30:00" Sello="SELLO_SIMULADO_ARR" FormaPago="03" NoCertificado="00001000000702806916" Certificado="CERT_SIMULADO" SubTotal="50180.00" Moneda="MXN" Total="50180.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PUE" LugarExpedicion="11000" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="NIGE780321TK2" Nombre="EDUARDO NIETO DEL RIO GUTIERREZ" RegimenFiscal="606" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="80131500" Cantidad="1.00" ClaveUnidad="E48" Unidad="Unidad de servicio" Descripcion="ARRENDAMIENTO INMUEBLE 0226" ValorUnitario="50180" Importe="50180.000000" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="50180.000000" Impuesto="002" TipoFactor="Exento" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+      <cfdi:CuentaPredial Numero="035125250122" />
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos>
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="50180.00" Impuesto="002" TipoFactor="Exento" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="C3D4E5F6-3333-4CCC-DDDD-333333333333" FechaTimbrado="2026-02-16T19:31:00" RfcProvCertif="SAT970701NN3" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000705250068" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

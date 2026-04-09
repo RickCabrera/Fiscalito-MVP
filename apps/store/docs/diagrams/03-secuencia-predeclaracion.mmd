@@ -1,0 +1,42 @@
+sequenceDiagram
+    actor U as Usuario
+    participant UI as FiscalitoServicePage<br/>(PreDeclaracionTab)
+    participant XML as cfdiParser
+    participant API as fiscalAgentApi
+    participant FA as Fiscal Agent API<br/>(FastAPI)
+    participant HS as declaracionesHistory
+    participant FS as Firestore
+    participant PDF as pdfExport
+
+    U->>UI: Selecciona año y mes
+    U->>UI: Arrastra archivos XML (CFDI)
+    UI->>XML: parseMultipleCFDI(files)
+    XML->>XML: readFileAsText() por cada archivo
+    XML->>XML: parseCFDIFromXML() por cada XML
+    XML-->>UI: { success: CFDI[], errors: [] }
+    UI->>UI: Muestra facturas parseadas (ingresos/egresos)
+
+    U->>UI: Click "Calcular Pre-Declaración"
+    UI->>UI: Construye PreDeclaracionRequest<br/>(contribuyente desde ProfileContext)
+    UI->>API: calcularPreDeclaracion(request)
+    API->>FA: POST /api/v1/pre-declaracion
+    FA->>FA: Clasifica CFDIs, calcula ISR/IVA
+    FA->>FA: Genera explicación con LLM
+    FA-->>API: PreDeclaracionResponse
+    API-->>UI: PreDeclaracionResponse
+
+    alt exito == true
+        UI->>UI: Muestra ResultadoDeclaracion<br/>(desglose + explicación IA)
+        UI->>HS: guardarDeclaracion(uid, data)
+        HS->>FS: setDoc(users/{uid}/declaraciones/{id})
+        FS-->>HS: OK
+        HS-->>UI: docId
+
+        opt Usuario exporta PDF
+            U->>UI: Click "Exportar PDF"
+            UI->>PDF: exportarDeclaracionPDF(data)
+            PDF-->>U: Descarga archivo PDF
+        end
+    else exito == false
+        UI->>UI: Muestra error/advertencias
+    end

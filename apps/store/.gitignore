@@ -1,0 +1,7 @@
+node_modules
+dist
+XML CCPEV
+XML PF
+.env
+.env.local
+.env.production

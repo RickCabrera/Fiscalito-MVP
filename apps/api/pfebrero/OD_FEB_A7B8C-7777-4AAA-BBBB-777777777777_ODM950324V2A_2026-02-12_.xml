@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Fecha="2026-02-12T13:15:00" Sello="SELLO_SIMULADO_OD" FormaPago="04" NoCertificado="00001000000702806916" Certificado="CERT_SIMULADO" SubTotal="800.00" Moneda="MXN" Total="928.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PUE" LugarExpedicion="11000" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="ODM950324V2A" Nombre="OFFICE DEPOT DE MEXICO" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="44121700" Cantidad="2.00" ClaveUnidad="H87" Unidad="Pieza" Descripcion="RESMA PAPEL BOND CARTA 500 HOJAS" ValorUnitario="200.00" Importe="400.000000" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="400.000000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="64.000000" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="44121600" Cantidad="1.00" ClaveUnidad="H87" Unidad="Pieza" Descripcion="CARTUCHO TONER HP 26A NEGRO" ValorUnitario="400.00" Importe="400.000000" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="400.000000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="64.000000" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="128.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="800.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="128.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="A7B8C9D0-7777-4AAA-BBBB-777777777777" FechaTimbrado="2026-02-12T13:16:00" RfcProvCertif="SAT970701NN3" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000705250068" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

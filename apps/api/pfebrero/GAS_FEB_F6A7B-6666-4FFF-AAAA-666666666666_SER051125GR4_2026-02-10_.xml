@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Fecha="2026-02-10T08:45:00" Sello="SELLO_SIMULADO_GAS" FormaPago="04" NoCertificado="00001000000702806916" Certificado="CERT_SIMULADO" SubTotal="2500.00" Moneda="MXN" Total="2900.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PUE" LugarExpedicion="91700" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="SER051125GR4" Nombre="SERVICIO ESTACION REFORMA SA DE CV" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="15101500" Cantidad="100.00" ClaveUnidad="LTR" Unidad="Litro" Descripcion="GASOLINA PREMIUM" ValorUnitario="25.00" Importe="2500.000000" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="2500.000000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="400.000000" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="400.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="2500.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="400.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="F6A7B8C9-6666-4FFF-AAAA-666666666666" FechaTimbrado="2026-02-10T08:46:00" RfcProvCertif="SAT970701NN3" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000705250068" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

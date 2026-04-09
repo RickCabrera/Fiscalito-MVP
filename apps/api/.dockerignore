@@ -1,0 +1,14 @@
+.env
+.env.*
+__pycache__
+*.pyc
+.pytest_cache
+tests/
+.git
+.github/
+.claude/
+.venv
+node_modules
+knowledge_base/
+XML *
+*.md

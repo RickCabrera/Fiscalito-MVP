@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Fecha="2026-02-01T08:12:29" Sello="SELLO_SIMULADO_SOL" FormaPago="99" NoCertificado="00001000000720929115" Certificado="CERT_SIMULADO" SubTotal="4542.99" Moneda="MXN" Total="5269.87" TipoCambio="1" TipoDeComprobante="I" Exportacion="01" MetodoPago="PPD" LugarExpedicion="06170" Serie="F" Folio="2161427199912298776" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="BMS170308GT7" Nombre="BRIGHT MEXICO SOLAR HOLDINGS II" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="26111607" Cantidad="1" ClaveUnidad="MON" Descripcion="Suscripcion Solar Bright (106/156)" ValorUnitario="4542.99" Importe="4542.99" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="4542.99" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="726.88" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="726.88">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="4542.99" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="726.88" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="D0E1F2A3-AAAA-4DDD-EEEE-AAAAAAAAAAAA" FechaTimbrado="2026-02-01T08:13:21" RfcProvCertif="SNF171020F3A" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000518812364" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

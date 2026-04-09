@@ -1,0 +1,79 @@
+graph TB
+    subgraph Actores
+        Asal["👤 Asalariado<br/>(Régimen 605)"]
+        Indep["👤 Independiente<br/>(RESICO 626 / Emp. 612)"]
+        Arrend["👤 Arrendamiento<br/>(Régimen 606)"]
+        Plat["👤 Plataformas<br/>(Régimen 625)"]
+        PYME["👤 PYME<br/>(612/626/621)"]
+        Admin["🔧 Admin"]
+    end
+
+    subgraph Auth["Autenticación"]
+        UC1["Registrarse<br/>(Email/Google)"]
+        UC2["Iniciar Sesión"]
+        UC3["Completar Onboarding<br/>(4 pasos)"]
+    end
+
+    subgraph Comunes["Casos de Uso Comunes"]
+        UC4["Ver Dashboard<br/>con estadísticas"]
+        UC5["Ver Marketplace<br/>de servicios"]
+        UC6["Editar Perfil<br/>de contribuyente"]
+        UC7["Ver Historial<br/>de declaraciones"]
+        UC8["Exportar PDF"]
+        UC9["Chat por Voz<br/>(Fiscalito AI)"]
+    end
+
+    subgraph FiscalitoUC["Fiscalito — Servicios Fiscales"]
+        UC10["Calcular<br/>Pre-Declaración<br/>ISR/IVA"]
+        UC11["Ver Calendario<br/>de Obligaciones"]
+        UC12["Comparar Régimenes<br/>(RESICO vs Emp.)"]
+        UC13["Generar DIOT<br/>(Proveedores)"]
+        UC14["Calcular Retenciones<br/>a Terceros"]
+        UC15["Análisis<br/>Multi-Periodo"]
+        UC16["Estado de Cuenta<br/>y Proyección Anual"]
+        UC17["Calcular Deducciones<br/>Personales"]
+    end
+
+    subgraph AdminUC["Administración"]
+        UC18["Gestionar Servicios"]
+        UC19["Gestionar Usuarios"]
+    end
+
+    %% Todos los usuarios
+    Asal --> UC1 & UC2 & UC3
+    Indep --> UC1 & UC2 & UC3
+    Arrend --> UC1 & UC2 & UC3
+    Plat --> UC1 & UC2 & UC3
+    PYME --> UC1 & UC2 & UC3
+
+    Asal --> UC4 & UC5 & UC6 & UC7 & UC8 & UC9
+    Indep --> UC4 & UC5 & UC6 & UC7 & UC8 & UC9
+    Arrend --> UC4 & UC5 & UC6 & UC7 & UC8 & UC9
+    Plat --> UC4 & UC5 & UC6 & UC7 & UC8 & UC9
+    PYME --> UC4 & UC5 & UC6 & UC7 & UC8 & UC9
+
+    %% Asalariado: solo deducciones y calendario
+    Asal --> UC17 & UC11
+
+    %% Independiente: declaración, calendario, comparar, estado + según régimen
+    Indep --> UC10 & UC11 & UC12 & UC16
+    Indep -.->|"Solo Empresarial<br/>(612)"| UC13 & UC14 & UC15
+
+    %% Arrendamiento
+    Arrend --> UC10 & UC11 & UC12 & UC15 & UC16
+
+    %% Plataformas
+    Plat --> UC10 & UC11 & UC16
+
+    %% PYME: todos los tabs
+    PYME --> UC10 & UC11 & UC12 & UC13 & UC14 & UC15 & UC16 & UC17
+
+    %% Admin
+    Admin --> UC18 & UC19
+
+    %% Dependencias
+    UC10 -.->|"include"| UC8
+    UC13 -.->|"include"| UC8
+    UC14 -.->|"include"| UC8
+    UC15 -.->|"include"| UC8
+    UC16 -.->|"include"| UC8

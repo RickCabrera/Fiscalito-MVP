@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cfdi:Comprobante xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Fecha="2026-02-18T17:30:00" Sello="SELLO_SIMULADO_EST" FormaPago="04" NoCertificado="00001000000702806916" Certificado="CERT_SIMULADO" SubTotal="431.03" Moneda="MXN" Total="500.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PUE" LugarExpedicion="91700" xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cfdi:Emisor Rfc="OEB1003295C9" Nombre="OPERADORA DE ESTACIONAMIENTOS BICENTENARIO" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUILLERMO ROBERTO CANTU DURAN" DomicilioFiscalReceptor="91709" RegimenFiscalReceptor="612" UsoCFDI="G03" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="78111807" Cantidad="1.00" ClaveUnidad="E48" Unidad="Unidad de servicio" Descripcion="HORAS DE ESTACIONAMIENTO EN LA VIA PUBLICA" ValorUnitario="431.03" Importe="431.030000" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="431.030000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="68.970000" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="68.97">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="431.03" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="68.97" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="F2A3B4C5-CCCC-4FFF-AAAA-CCCCCCCCCCCC" FechaTimbrado="2026-02-18T17:31:00" RfcProvCertif="SAT970701NN3" SelloCFD="SELLO_SIMULADO" NoCertificadoSAT="00001000000705250068" SelloSAT="SELLO_SAT_SIMULADO" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

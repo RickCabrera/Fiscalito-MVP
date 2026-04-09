@@ -1,0 +1,50 @@
+stateDiagram-v2
+    [*] --> NoRegistrado
+
+    NoRegistrado --> Registrando: Click Registrarse
+    Registrando --> Autenticado: Firebase Auth OK
+    Registrando --> NoRegistrado: Error auth
+
+    NoRegistrado --> Autenticado: Login exitoso
+
+    Autenticado --> Onboarding: onboardingComplete == false
+    Autenticado --> Activo: onboardingComplete == true
+
+    state Onboarding {
+        [*] --> Paso1_TipoContribuyente
+        Paso1_TipoContribuyente --> Paso2_DatosFiscales: Selecciona tipo
+        Paso2_DatosFiscales --> Paso3_DatosPersonales: RFC + Régimen
+        Paso3_DatosPersonales --> Paso4_Confirmacion: Nombre + datos
+        Paso4_Confirmacion --> [*]: Guardar en Firestore
+    }
+
+    Onboarding --> Activo: onboardingComplete = true
+
+    state Activo {
+        [*] --> Dashboard
+        Dashboard --> Marketplace: Explorar servicios
+        Dashboard --> Historial: Ver declaraciones
+        Dashboard --> Perfil: Editar datos
+
+        Marketplace --> FiscalitoService: Usar Fiscalito
+
+        state FiscalitoService {
+            [*] --> SeleccionTab
+            SeleccionTab --> SubiendoXML: Tab con facturas
+            SeleccionTab --> ConfigurandoParams: Tab sin facturas
+            SubiendoXML --> Calculando: Enviar a API
+            ConfigurandoParams --> Calculando: Enviar a API
+            Calculando --> MostrandoResultado: Éxito
+            Calculando --> MostrandoError: Fallo
+            MostrandoResultado --> ExportandoPDF: Exportar
+            MostrandoResultado --> GuardandoHistorial: Auto-guardado
+            MostrandoResultado --> SeleccionTab: Nueva consulta
+            MostrandoError --> SeleccionTab: Reintentar
+        }
+
+        FiscalitoService --> Dashboard: Volver
+        Historial --> Dashboard: Volver
+        Perfil --> Dashboard: Volver
+    }
+
+    Activo --> NoRegistrado: Sign Out

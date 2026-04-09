@@ -1,0 +1,65 @@
+graph TB
+    subgraph src["📁 src/"]
+        main["main.tsx<br/>(Entry + Router + Providers)"]
+
+        subgraph styles["📁 styles/"]
+            globalCSS["global.css<br/>(Variables CSS + Tema)"]
+        end
+
+        subgraph context["📁 context/"]
+            AuthContext["AuthContext.tsx<br/>(Firebase Auth)"]
+            ProfileContext["ProfileContext.tsx<br/>(Perfil Firestore)"]
+        end
+
+        subgraph pages["📁 pages/"]
+            p1["LandingPage.tsx"]
+            p2["LoginPage.tsx"]
+            p3["OnboardingWizard.tsx"]
+            p4["DashboardPage.tsx"]
+            p5["MarketplacePage.tsx"]
+            p6["ServiceDetailPage.tsx"]
+            p7["FiscalitoServicePage.tsx"]
+            p8["HistorialPage.tsx"]
+            p9["ProfilePage.tsx"]
+            p10["AdminPage.tsx"]
+        end
+
+        subgraph components["📁 components/"]
+            AppLayout["AppLayout.tsx<br/>(Sidebar + Layout)"]
+            ProtectedRoute["ProtectedRoute.tsx"]
+            subgraph fiscalitoComp["📁 fiscalito/"]
+                f1["PreDeclaracionTab"]
+                f2["XMLUploader"]
+                f3["PeriodSelector"]
+                f4["ResultadoDeclaracion"]
+                f5["CalendarioTab"]
+                f6["CompararRegimenTab"]
+                f7["DIOTTab"]
+                f8["RetencionesTab"]
+                f9["MultiPeriodoTab"]
+                f10["EstadoCuentaTab"]
+                f11["DeduccionesPersonalesTab"]
+            end
+        end
+
+        subgraph services["📁 services/"]
+            s1["firebase.ts<br/>(Init Firebase)"]
+            s2["fiscalAgentApi.ts<br/>(10 endpoints)"]
+            s3["cfdiParser.ts<br/>(XML → CFDI)"]
+            s4["declaracionesHistory.ts<br/>(CRUD Firestore)"]
+            s5["storeServices.ts<br/>(Catálogo servicios)"]
+            s6["contributorProfiles.ts<br/>(5 tipos contribuyente)"]
+            s7["voiceChatService.ts<br/>(Whisper + GPT)"]
+            s8["pdfExport*.ts<br/>(5 exportadores)"]
+        end
+    end
+
+    main --> context
+    main --> pages
+    pages --> components
+    pages --> services
+    components --> services
+    context --> services
+    AuthContext --> s1
+    ProfileContext --> s1
+    s4 --> s1

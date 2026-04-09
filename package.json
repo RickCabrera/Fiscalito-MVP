@@ -1,0 +1,5 @@
+{
+  "name": "fiscalito-mvp",
+  "private": true,
+  "workspaces": ["apps/*"]
+}
