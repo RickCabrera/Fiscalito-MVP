@@ -1,6 +1,6 @@
 /** Página principal del servicio Fiscalito — interfaz para usar el servicio */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
@@ -88,26 +88,25 @@ export default function FiscalitoServicePage() {
   const tabs = ALL_TABS.filter(t => allowedTabIds.includes(t.id));
   const defaultTab = allowedTabIds[0];
 
-  const initialTab = (tabParam && TAB_PARAM_MAP[tabParam] && allowedTabIds.includes(TAB_PARAM_MAP[tabParam]))
-    ? TAB_PARAM_MAP[tabParam]
-    : defaultTab;
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // Tab activo derivado de la URL: ?tab=xxx es la fuente de verdad.
+  // Así, reload o deep-link siempre restauran el tab correcto.
+  const activeTab: Tab = useMemo(() => {
+    if (tabParam) {
+      const mapped = TAB_PARAM_MAP[tabParam];
+      if (mapped && allowedTabIds.includes(mapped)) return mapped;
+    }
+    return defaultTab;
+  }, [tabParam, allowedTabIds, defaultTab]);
 
-  // Sync tab when URL query param changes (e.g. voice chat navigation),
-  // then clear the query param so it doesn't keep overriding manual clicks.
+  // Limpia el query param si trae un tab inválido o no permitido por el
+  // perfil actual (ej. cambio de perfil que deshabilita el tab en uso).
   useEffect(() => {
-    if (tabParam && TAB_PARAM_MAP[tabParam] && allowedTabIds.includes(TAB_PARAM_MAP[tabParam])) {
-      setActiveTab(TAB_PARAM_MAP[tabParam]);
+    if (!tabParam) return;
+    const mapped = TAB_PARAM_MAP[tabParam];
+    if (!mapped || !allowedTabIds.includes(mapped)) {
       setSearchParams({}, { replace: true });
     }
   }, [tabParam, allowedTabIds, setSearchParams]);
-
-  // Reset to default tab if current tab is no longer allowed (profile change)
-  useEffect(() => {
-    if (!allowedTabIds.includes(activeTab)) {
-      setActiveTab(defaultTab);
-    }
-  }, [allowedTabIds, activeTab, defaultTab]);
 
   return (
     <div className="page-container">
@@ -148,7 +147,7 @@ export default function FiscalitoServicePage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setSearchParams({ tab: tab.id }, { replace: true })}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 'var(--radius-full)',
