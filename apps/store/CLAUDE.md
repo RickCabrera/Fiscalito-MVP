@@ -76,6 +76,7 @@ NUNCA usar colores fuera de esta paleta. NUNCA usar fondos blancos o claros. Es 
 fiscalito-store-app/
 ├── .env                        # Firebase keys + Fiscal Agent URL (NO subir a git)
 ├── .env.example                # Template sin valores reales
+├── firebase.json               # Hosting config (public: dist, SPA rewrites, headers de cache)
 ├── index.html
 ├── package.json
 ├── vite.config.ts
@@ -89,14 +90,20 @@ fiscalito-store-app/
 │   │   ├── AuthContext.tsx      # Firebase Auth provider + hooks (signIn, signUp, signInWithGoogle, signOut)
 │   │   └── ProfileContext.tsx   # Perfil de contribuyente + sync con Firestore
 │   ├── components/
-│   │   ├── AppLayout.tsx        # Sidebar + layout para rutas protegidas
+│   │   ├── AppLayout.tsx        # Sidebar + layout + guards (authLoading, user, onboarding)
 │   │   ├── ProtectedRoute.tsx   # Guard de autenticacion
-│   │   ├── FiscalitoVoiceChat.tsx # Boton flotante + panel de chat de voz (STT/Chat/TTS)
+│   │   ├── FiscalitoVoiceChat.tsx # Wrapper delgado — boton flotante + panel (usa voice/)
+│   │   ├── common/              # ErrorAlert, SuccessNotice
+│   │   ├── historial/           # HistorialCard, HistorialFilters, ExpandedDetail
+│   │   ├── onboarding/          # Step{Tipo,DatosFiscales,DatosPersonales,Confirmar} + WizardProgress + styles.ts
+│   │   ├── voice/               # useVoiceChat (hook: STT/Chat/TTS + VAD) + VoiceChatUI
 │   │   └── fiscalito/           # Tabs del servicio Fiscalito
 │   │       ├── PreDeclaracionTab.tsx      # Upload XML + calculo pre-declaracion
 │   │       ├── XMLUploader.tsx            # Drag & drop de archivos XML CFDI
 │   │       ├── PeriodSelector.tsx         # Selector de año + mes/bimestre
 │   │       ├── ResultadoDeclaracion.tsx   # Resultado con desglose + explicacion IA + export PDF
+│   │       ├── DeduccionesResult.tsx      # Resultado de deducciones personales
+│   │       ├── FacturaTable.tsx           # Tabla de facturas compartida entre tabs
 │   │       ├── CalendarioTab.tsx          # Calendario de obligaciones fiscales
 │   │       ├── CompararRegimenTab.tsx     # Comparador RESICO vs Empresarial
 │   │       ├── DIOTTab.tsx                # Generacion de DIOT
@@ -115,19 +122,23 @@ fiscalito-store-app/
 │   │   ├── HistorialPage.tsx        # Historial de declaraciones con filtros y export PDF
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
-│   └── services/
-│       ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
-│       ├── storeServices.ts         # Catalogo de servicios del marketplace
-│       ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente
-│       ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
-│       ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
-│       ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
-│       ├── pdfExport.ts             # PDF de pre-declaracion
-│       ├── pdfExportDIOT.ts         # PDF de DIOT
-│       ├── pdfExportRetenciones.ts  # PDF de retenciones
-│       ├── pdfExportMulti.ts        # PDF multi-periodo
-│       ├── pdfExportEstado.ts       # PDF estado de cuenta
-│       └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
+│   ├── services/
+│   │   ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
+│   │   ├── storeServices.ts         # Catalogo de servicios del marketplace
+│   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente
+│   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
+│   │   ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
+│   │   ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
+│   │   ├── pdfExport.ts             # PDF de pre-declaracion
+│   │   ├── pdfExportDIOT.ts         # PDF de DIOT
+│   │   ├── pdfExportRetenciones.ts  # PDF de retenciones
+│   │   ├── pdfExportMulti.ts        # PDF multi-periodo
+│   │   ├── pdfExportEstado.ts       # PDF estado de cuenta
+│   │   ├── pdfUtils.ts              # Helpers compartidos para exports PDF (colores, tablas)
+│   │   └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
+│   └── utils/
+│       ├── format.ts                # fmtMoney y helpers de formateo
+│       └── styles.ts                # Objetos de estilo inline compartidos (tablas, badges)
 ```
 
 ## RUTAS
@@ -169,6 +180,14 @@ Despues de registrarse, el usuario pasa por un wizard de 4 pasos en `OnboardingW
 
 El wizard guarda en Firestore y se puede editar despues en ProfilePage.
 
+## INVARIANTES DE CONTEXTOS Y GUARDS
+
+- **ProfileContext espera a AuthContext**: mientras `useAuth().loading === true`, `ProfileContext` mantiene `loading=true` y no dispara la carga de Firestore. Nunca devolver `DEFAULT_PROFILE` con `loading=false` antes de que auth resuelva — provoca navegaciones erróneas al onboarding.
+- **Orden de guards en `AppLayout`**: (1) `authLoading || profileLoading` → Loader; (2) `!user` → `<Navigate to="/login" replace />`; (3) `!isOnboardingComplete()` → `<Navigate to="/app/onboarding" replace />`; (4) render normal.
+- **Guards en `OnboardingWizard`**: Loader durante cualquier loading → `/login` si `!user` → `/app` si `isOnboardingComplete()`. El wizard se auto-redirige; no asume que fue alcanzable solo post-registro.
+- **Tab activo de `FiscalitoServicePage` derivado de URL**: el tab es `useMemo` sobre `?tab=` de `searchParams`, NO `useState`. Los clicks usan `setSearchParams({ tab: id }, { replace: true })`. No existe `setActiveTab`.
+- **Checklist para agregar un tab nuevo a Fiscalito**: (1) el tipo `Tab`, (2) `ALL_TABS`, (3) `getTabsForProfile` si aplica a algún perfil, (4) `TAB_PARAM_MAP` si el slug externo difiere del id interno.
+
 ## FISCAL AGENT API (backend, proyecto separado)
 
 URL: `http://localhost:8000` (dev) o variable `VITE_FISCAL_AGENT_URL`
@@ -188,6 +207,7 @@ Docs: `http://localhost:8000/docs` (Swagger)
 | POST | `/api/v1/retenciones-terceros` | Retenciones a terceros |
 | POST | `/api/v1/multi-periodo` | Analisis multi-mes/periodo |
 | POST | `/api/v1/estado-cuenta` | Estado de cuenta y proyeccion anual |
+| POST | `/api/v1/agente/predeclaracion` | Agente conversacional (tool use) — lee perfil, historial y calcula |
 
 ### Esquema de request (pre-declaracion):
 ```json
@@ -325,7 +345,7 @@ estado_cuenta: object (para estado de cuenta)
 - ✅ Chat de voz con IA (Whisper STT → GPT-4o-mini → TTS-1) — boton flotante en toda la app via AppLayout
 
 **Pendiente:**
-- ⏳ Deploy a produccion (Cloud Run / Firebase Hosting)
+- ⏳ Deploy inicial a producción. Firebase Hosting configurado (`firebase.json` con `public: dist`, SPA rewrites y headers de caché inmutable); falta correr `firebase deploy`.
 
 ## COMANDOS
 

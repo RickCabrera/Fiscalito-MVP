@@ -5,7 +5,7 @@
 **Tipo**: Microservicio backend — motor de inteligencia fiscal
 **Parte de**: Ecosistema Fiscalito Store (hackaton Genius Arena 2026 - Track Capital One)
 **Autor principal**: Ricardo Cabrera
-**Estado**: MVP funcional con 78 tests pasando, 9 endpoints operativos
+**Estado**: MVP funcional con 93 tests pasando, 11 endpoints operativos
 
 ## PROPÓSITO
 
@@ -35,12 +35,17 @@ El Fiscal Agent API es el "cerebro contable" del ecosistema Fiscalito. Es un mic
 fiscal-agent-api/
 ├── .env                        # API keys (NO subir a git)
 ├── .env.example                # Template
+├── .dockerignore
+├── Dockerfile                  # Container para Cloud Run
 ├── pyproject.toml              # Dependencias y metadata
 ├── README.md
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI app + CORS + 8 routers registrados
-│   ├── config.py               # Settings desde .env
+│   ├── main.py                 # FastAPI app + CORS + 9 routers + RequestLoggingMiddleware + FiscalAgentError handler
+│   ├── config.py               # Settings desde .env (LLM_PROVIDER, API keys, CORS_ORIGINS)
+│   ├── constants.py            # NOMBRES_MESES/BIMESTRES/REGIMEN, TOPE_RESICO_ANUAL, REGIMENES_ACUMULATIVOS
+│   ├── exceptions.py           # FiscalAgentError + FiscalValidationError (422) + FiscalCalculationError (500)
+│   ├── logging_config.py       # JSONFormatter + setup_logging (logs estructurados Cloud Run)
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── health.py           # GET /health
@@ -50,7 +55,8 @@ fiscal-agent-api/
 │   │   ├── diot.py             # POST diot
 │   │   ├── retenciones.py      # POST retenciones-terceros
 │   │   ├── multi_periodo.py    # POST multi-periodo
-│   │   └── estado_cuenta.py    # POST estado-cuenta
+│   │   ├── estado_cuenta.py    # POST estado-cuenta
+│   │   └── agente.py           # POST agente/predeclaracion (tool use Anthropic/OpenAI)
 │   ├── schemas/
 │   │   ├── __init__.py
 │   │   ├── fiscal.py           # PerfilContribuyente, CFDI, enums, ContributorType
@@ -61,7 +67,8 @@ fiscal-agent-api/
 │   │   ├── diot.py             # DIOTRequest/Response, ProveedorDIOT
 │   │   ├── retenciones.py      # RetencionesRequest/Response, TerceroRetencion
 │   │   ├── estado_cuenta.py    # EstadoCuentaRequest/Response
-│   │   └── multi_periodo.py    # MultiPeriodoRequest/Response, AcumuladoMultiPeriodo
+│   │   ├── multi_periodo.py    # MultiPeriodoRequest/Response, AcumuladoMultiPeriodo
+│   │   └── agente.py           # AgentePreDeclaracionRequest/Response
 │   ├── fiscal_engine/
 │   │   ├── __init__.py
 │   │   ├── tablas_isr.py       # Tablas ISR México 2026 (RESICO + Art. 96 + Art. 152)
@@ -76,8 +83,10 @@ fiscal-agent-api/
 │   │   └── multi_periodo.py    # Cálculo de múltiples periodos con acumulado
 │   └── services/
 │       ├── __init__.py
+│       ├── agent_tools.py      # TOOLS_ANTHROPIC/OPENAI + RequestContext + ejecutar_tool
 │       └── llm_service.py      # Explicaciones LLM (OpenAI / Anthropic / fallback)
 ├── knowledge_base/             # Referencia fiscal: tablas ISR, regímenes, DIOT, calendario 2026, RMF
+│   ├── README.md
 │   ├── 00_fuentes_consulta.md
 │   ├── 01_valores_referencia.md
 │   ├── 02_isr_tablas_tarifas.md
@@ -95,12 +104,13 @@ fiscal-agent-api/
 │   └── 14_cfdi_clasificacion.md
 └── tests/
     ├── __init__.py
-    ├── test_calculadora.py         # 59 tests en 20 clases (motor principal)
-    ├── test_caso_real_enero2026.py  # 9 tests — caso real CADG enero 2026
-    └── test_clasificador_gastos.py  # 10 tests — clasificador de gastos
+    ├── conftest.py                  # Fixtures compartidas
+    ├── test_calculadora.py          # Motor principal (clasificación, ISR/IVA, flujo efectivo, regímenes)
+    ├── test_caso_real_enero2026.py  # Caso real CADG620317EE0 enero 2026
+    └── test_clasificador_gastos.py  # Clasificador de gastos deducibles
 ```
 
-## ENDPOINTS ACTUALES (9 endpoints)
+## ENDPOINTS ACTUALES (11 endpoints)
 
 ### GET /health
 Retorna estado del servicio (`status`, `service`, `version`).
@@ -153,6 +163,13 @@ Cálculo de múltiples periodos a la vez.
 Estado de cuenta fiscal acumulado del ejercicio.
 - Recibe: PerfilContribuyente + facturas[] + periodo_year
 - Calcula: totales acumulados, ISR anual estimado, proyección anual, advertencias
+
+### POST /api/v1/agente/predeclaracion
+Agente conversacional con tool use. Provider (Anthropic `claude-haiku-4-5-20251001` / OpenAI `gpt-4o-mini`) según `LLM_PROVIDER`.
+- Recibe: mensaje del usuario + PerfilContribuyente + facturas[] + historial[] + periodo
+- Herramientas: `leer_perfil_contribuyente`, `obtener_predeclaraciones`, `crear_predeclaracion`
+- Loop agéntico máx 10 iteraciones. Tools definidas en `services/agent_tools.py`.
+- Retorna: texto + `predeclaracion` calculada (si se invocó la herramienta) + `herramientas_usadas`
 
 ## SCHEMAS ACTUALES (CONTRATO)
 
@@ -274,35 +291,9 @@ monto_pago: float | None = None     # Monto pagado (solo tipo P)
 - `_fallback_explicacion()` — resumen estático cuando el LLM no está disponible
 - Providers: OpenAI (`gpt-4o-mini` default) o Anthropic (`claude-haiku-4-5-20251001` default)
 
-## TESTS (78/78 pasando)
+## TESTS
 
-### test_calculadora.py (59 tests, 20 clases)
-- `TestClasificarFacturas` (2): clasificación por RFC, case insensitive
-- `TestISRResico` (4): rangos 1%, 1.1%, 2.5%, cero ingresos
-- `TestISRGeneral` (2): cálculo básico mensual, anual
-- `TestDeclaracionCompleta` (4): RESICO mensual, empresarial mensual, IVA, sin facturas
-- `TestDeduccionesPersonales` (4): bajo tope, tope 5 UMAs, tope 15%, tope colegiaturas
-- `TestDeduccionCiega` (3): ciega conviene con pocos gastos, real conviene con muchos, ciega incluye predial
-- `TestPlataformas` (5): ingresos bajos retenciones definitivas, ingresos altos declaración normal, filtra gastos personales, pago definitivo no calcula IVA, no definitivo sí calcula IVA
-- `TestCalendario` (3): asalariado solo anual, independiente RESICO 13 obligaciones (12 mensuales + 1 anual), ajuste fecha por RFC
-- `TestArrendamientoRecomendaciones` (1): régimen 606 nunca recibe recomendación RESICO
-- `TestArrendamientoISR` (3): tasa efectiva arrendamiento, tasa cero con base cero, tabla acumulativa Art. 116/106
-- `TestComparador` (3): RESICO conviene, empresarial conviene, tope RESICO excedido
-- `TestDIOT` (2): agrupa por proveedor, solo incluye egresos
-- `TestRetenciones` (2): agrupa retenciones por tercero, sin retenciones lista vacía
-- `TestMultiPeriodo` (2): separa y calcula por mes, acumulado suma correctamente
-- `TestEstadoCuenta` (3): acumulados suman correctamente, RESICO cerca del tope genera advertencia, excluye PPD sin complemento
-- `TestTablaAcumulada` (2): tabla acumulada meses=1 equivale a base, meses=2 duplica límites/cuotas
-- `TestPagosProvisionalesArt106` (4): ISR mensual base $8,825.80, ISR acumulado 2 meses, resta pagos anteriores, no genera ISR negativo
-- `TestFlujoEfectivo` (5): PUE se acumula, PPD no se acumula, PPD+complemento se acumula, pago parcial proporcional, gasto PPD sin complemento no deducible
-- `TestCasoRealCADG` (1): caso real CADG620317EE0 enero 2026 — PUE/PPD mixto, base $17,120.80, ISR $1,782.87
-- `TestIVAAcreditable` (4): IVA usa valor XML con descuento (no recalcula), PPD sin complemento no acreditable, RESICO IVA no acredita gastos personales, RESICO ISR no cambia con clasificador
-
-### test_caso_real_enero2026.py (9 tests, 1 clase)
-- `TestCasoRealEnero2026` (9): validación completa caso CADG620317EE0 — ingresos, deducciones efectivas, base ISR, ISR causado, IVA cobrado, IVA acreditable, IVA retenido, IVA saldo a favor, total a pagar
-
-### test_clasificador_gastos.py (10 tests, 1 clase)
-- `TestClasificadorGastos` (10): alimentos no deducible/sí para restaurantero, contador deducible, medicinas/colchón no deducible, estacionamiento/energía deducible, sin clave beneficio duda, división gris, caso real comisionista
+**93/93 pasando** (`pytest -q` desde `apps/api/`). `tests/conftest.py` expone fixtures compartidas. Toda lógica de cálculo nueva debe venir con tests.
 
 ## PERFILES DE CONTRIBUYENTE
 
@@ -357,11 +348,13 @@ El sistema soporta 5 tipos de contribuyente (enum `ContributorType`). El tipo af
 - Docstrings en español en clases y funciones públicas
 - Tests para toda lógica de cálculo nueva
 - Correr `pytest tests/ -v` después de cada cambio
+- Lanzar `FiscalAgentError` / `FiscalValidationError` (422) / `FiscalCalculationError` (500) desde el dominio — NO usar `HTTPException` dentro del engine; el handler global en `main.py` las serializa a `{exito: false, error: ...}`
+- Reusar constantes de `app/constants.py` (`NOMBRES_REGIMEN`, `TOPE_RESICO_ANUAL`, `REGIMENES_ACUMULATIVOS`, etc.) en vez de redefinir literales
 - Mantener el motor determinístico (tablas codificadas, no LLM para cálculos)
 
 ### NUNCA:
 - Usar el LLM para calcular ISR/IVA (solo para explicaciones)
 - Hardcodear API keys
 - Guardar datos del usuario (stateless)
-- Romper los 78 tests existentes
+- Romper los 93 tests existentes
 - Cambiar las tablas ISR sin fuente oficial
