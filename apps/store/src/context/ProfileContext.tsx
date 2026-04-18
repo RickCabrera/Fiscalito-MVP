@@ -97,7 +97,7 @@ async function migrateLegacyLocalStorage(uid: string): Promise<UserProfile | nul
 }
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfileState] = useState<UserProfile>({ ...DEFAULT_PROFILE });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +106,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setProfileState({ ...DEFAULT_PROFILE });
     setError(null);
+
+    // Si AuthContext aún no resuelve onAuthStateChanged, seguimos en loading.
+    // Evita devolver DEFAULT_PROFILE con loading=false y disparar navegación
+    // errónea al onboarding para un usuario realmente autenticado.
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
 
     if (!user) {
       setLoading(false);
@@ -147,7 +155,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, authLoading]);
 
   const setProfile = useCallback(async (data: Partial<UserProfile>) => {
     if (!user) return;

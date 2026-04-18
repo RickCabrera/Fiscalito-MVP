@@ -1,11 +1,12 @@
 /** Wizard de onboarding post-registro — orquesta los 4 pasos de configuracion del perfil */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { getProfileByType } from '../services/contributorProfiles';
 import type { ContributorType } from '../services/contributorProfiles';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader } from 'lucide-react';
 
 import WizardProgress from '../components/onboarding/WizardProgress';
 import StepTipo from '../components/onboarding/StepTipo';
@@ -15,7 +16,8 @@ import StepConfirmar from '../components/onboarding/StepConfirmar';
 
 export default function OnboardingWizard() {
   const navigate = useNavigate();
-  const { setProfile } = useProfile();
+  const { user, loading: authLoading } = useAuth();
+  const { setProfile, loading: profileLoading, isOnboardingComplete } = useProfile();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +60,22 @@ export default function OnboardingWizard() {
       setSaving(false);
     }
   };
+
+  if (authLoading || profileLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <Loader size={28} className="spin" color="var(--teal-light)" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isOnboardingComplete()) {
+    return <Navigate to="/app" replace />;
+  }
 
   return (
     <div style={{

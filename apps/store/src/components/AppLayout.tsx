@@ -5,16 +5,20 @@ import { LayoutDashboard, History, Scale, User, LogOut, Loader } from 'lucide-re
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 
 export default function AppLayout() {
-  const { user, signOut } = useAuth();
-  const { isOnboardingComplete, loading } = useProfile();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { isOnboardingComplete, loading: profileLoading } = useProfile();
   const navigate = useNavigate();
 
-  if (loading) {
+  if (authLoading || profileLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <Loader size={28} className="spin" color="var(--teal-light)" />
       </div>
     );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
   if (!isOnboardingComplete()) {
