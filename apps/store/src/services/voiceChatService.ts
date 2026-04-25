@@ -7,9 +7,31 @@ const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
 // ── Tipos ──
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
 }
+
+/**
+ * Resultado de sendMessageWithTools — discriminado por `type`.
+ * `text`: el LLM respondió con texto final, no quiere usar tools.
+ * `tool_calls`: el LLM pide ejecutar una o más tools antes de responder.
+ */
+export type AgentTurnResponse =
+  | { type: 'text'; text: string }
+  | {
+      type: 'tool_calls';
+      toolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }>;
+      /** Mensaje crudo del assistant para empujarlo al historial antes de los tool_results. */
+      rawAssistantMessage: {
+        role: 'assistant';
+        content: string | null;
+        tool_calls: Array<{
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        }>;
+      };
+    };
 
 // ── Estado interno de grabación y reproducción ──
 
@@ -97,6 +119,85 @@ export async function sendMessage(
     if (e instanceof Error && e.message.startsWith('Chat error')) throw e;
     throw new Error('No se pudo obtener respuesta del asistente.');
   }
+}
+
+/**
+ * Llama al chat completion API con un schema de tools.
+ *
+ * El historial `messages` ya debe incluir el system prompt como primer
+ * mensaje; este servicio NO lo agrega (el agentLoop ya lo construye).
+ *
+ * Devuelve un AgentTurnResponse discriminado:
+ *  - { type: 'text', text } si el LLM respondió con texto final.
+ *  - { type: 'tool_calls', toolCalls, rawAssistantMessage } si pide tools.
+ */
+export async function sendMessageWithTools(
+  messages: ChatMessage[],
+  tools: ReadonlyArray<unknown>,
+): Promise<AgentTurnResponse> {
+  let res: Response;
+  try {
+    res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        tools,
+        tool_choice: 'auto',
+        max_tokens: 500,
+        temperature: 0.3, // más determinístico para tool calling
+        parallel_tool_calls: false, // simplifica el loop: una tool a la vez
+      }),
+    });
+  } catch (e) {
+    throw new Error(
+      'No se pudo contactar al asistente. ' +
+      (e instanceof Error ? e.message : String(e)),
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Chat error (${res.status}): ${body}`);
+  }
+
+  const data = await res.json();
+  const choice = data.choices?.[0];
+  const message = choice?.message;
+  if (!message) throw new Error('Respuesta del asistente vacía.');
+
+  const toolCallsRaw = message.tool_calls;
+  if (Array.isArray(toolCallsRaw) && toolCallsRaw.length > 0) {
+    const toolCalls = toolCallsRaw.map((tc: any) => {
+      let parsedArgs: Record<string, unknown> = {};
+      try {
+        parsedArgs = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {};
+      } catch {
+        parsedArgs = {};
+      }
+      return {
+        id: tc.id as string,
+        name: tc.function?.name as string,
+        args: parsedArgs,
+      };
+    });
+
+    return {
+      type: 'tool_calls',
+      toolCalls,
+      rawAssistantMessage: {
+        role: 'assistant',
+        content: message.content ?? null,
+        tool_calls: toolCallsRaw,
+      },
+    };
+  }
+
+  return { type: 'text', text: message.content ?? '' };
 }
 
 // ── 3. TEXT TO SPEECH ──

@@ -7,9 +7,10 @@ import { useAuth } from '../../context/AuthContext';
 import { obtenerHistorial } from '../../services/declaracionesHistory';
 import {
   startRecording, stopRecording, transcribeAudio,
-  sendMessage, speakText, stopSpeaking,
+  speakText, stopSpeaking,
   detectSilence, type ChatMessage,
 } from '../../services/voiceChatService';
+import { runAgentLoop } from '../../agent/agentLoop';
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -23,31 +24,6 @@ export interface BubbleMsg {
 function fmtMoney(n: number): string {
   return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
-
-const NAV_INSTRUCTIONS = `
-NAVEGACION OBLIGATORIA: Cuando el usuario pida ver, ir, entrar, navegar, mostrar o acceder a cualquier seccion, DEBES incluir el comando de navegacion en tu respuesta SIN FALTA. Los comandos son:
-
-Secciones principales:
-[NAVEGAR:/app] -> Dashboard principal
-[NAVEGAR:/app/historial] -> Historial de declaraciones
-[NAVEGAR:/app/store] -> Marketplace
-[NAVEGAR:/app/store/fiscalito/use] -> Fiscalito (vista general)
-[NAVEGAR:/app/profile] -> Perfil del usuario
-
-Tabs internos de Fiscalito:
-[NAVEGAR:/app/store/fiscalito/use?tab=predeclaracion] -> Pre-declaraciones ISR/IVA
-[NAVEGAR:/app/store/fiscalito/use?tab=calendario] -> Calendario fiscal
-[NAVEGAR:/app/store/fiscalito/use?tab=comparar] -> Comparar regimenes (RESICO vs Empresarial)
-[NAVEGAR:/app/store/fiscalito/use?tab=diot] -> DIOT (operaciones con terceros)
-[NAVEGAR:/app/store/fiscalito/use?tab=retenciones] -> Retenciones a terceros
-[NAVEGAR:/app/store/fiscalito/use?tab=multiperiodo] -> Multi-periodo (analisis de varios meses)
-[NAVEGAR:/app/store/fiscalito/use?tab=estado-cuenta] -> Estado de cuenta fiscal anual
-
-Ejemplo correcto: 'Te llevo al calendario fiscal. [NAVEGAR:/app/store/fiscalito/use?tab=calendario] Aqui puedes ver tus obligaciones.'
-Ejemplo INCORRECTO: 'Te muestro el calendario fiscal con tus obligaciones.' (sin comando = no navega)
-
-SIEMPRE incluye el comando [NAVEGAR:] cuando el usuario mencione cualquier seccion o funcionalidad.
-Cuando presentes el proyecto Fiscalito, hazlo con entusiasmo para los jurados del hackaton Genius Arena 2026 y navega entre secciones para mostrarlo.`;
 
 // Whisper hallucinations: phrases it produces when there's no real speech (silence, noise)
 const WHISPER_NOISE_PHRASES = new Set([
@@ -64,17 +40,6 @@ function isNoiseTranscription(text: string): boolean {
   const trimmed = text.trim();
   if (trimmed.length < 3) return true;
   return WHISPER_NOISE_PHRASES.has(trimmed.toLowerCase());
-}
-
-function extractNavCommands(text: string): { clean: string; routes: string[] } {
-  const regex = /\[NAVEGAR:(\/[^\]]+)\]/g;
-  const routes: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    routes.push(match[1]);
-  }
-  const clean = text.replace(regex, '').replace(/ {2,}/g, ' ').trim();
-  return { clean, routes };
 }
 
 async function buildHistorialResumen(uid: string): Promise<string> {
@@ -145,39 +110,33 @@ export function useVoiceChat() {
     })();
   }, [open, ready, user?.uid, profile.nombre]);
 
-  // Process a user message (text) through LLM + optional TTS
+  // Process a user message (text) through the agent loop + optional TTS.
+  // Las refs vivas (profileRef, historialRef, chatHistoryRef) se leen en el
+  // llamado, no en el closure de React, para respetar el voice loop continuo.
   const processUserMessage = useCallback(async (text: string, speakResponse: boolean): Promise<void> => {
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
-    const newHistory: ChatMessage[] = [...chatHistoryRef.current, { role: 'user', content: text }];
-    chatHistoryRef.current = newHistory;
-    setChatHistory(newHistory);
 
     setVoiceState('processing');
     try {
-      const reply = await sendMessage(
-        newHistory,
-        profileRef.current,
-        historialRef.current + NAV_INSTRUCTIONS,
-      );
-
-      const { clean, routes } = extractNavCommands(reply);
-      setMessages((prev) => [...prev, { role: 'assistant', content: clean }]);
-      const updatedHistory: ChatMessage[] = [...chatHistoryRef.current, { role: 'assistant', content: clean }];
-      chatHistoryRef.current = updatedHistory;
-      setChatHistory(updatedHistory);
-
-      routes.forEach((route, i) => {
-        if (i === 0) navigate(route);
-        else setTimeout(() => navigate(route), i * 3000);
+      const { reply, newHistory } = await runAgentLoop({
+        history: chatHistoryRef.current,
+        userMessage: text,
+        profile: profileRef.current,
+        historialResumen: historialRef.current,
+        navigate,
       });
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      chatHistoryRef.current = newHistory;
+      setChatHistory(newHistory);
 
       if (speakResponse) {
         setVoiceState('speaking');
         // TTS failure is non-critical: we already displayed the text response
-        try { await speakText(clean); } catch (e) { console.error('[FiscalitoVoiceChat] TTS error:', e); }
+        try { await speakText(reply); } catch (e) { console.error('[FiscalitoVoiceChat] TTS error:', e); }
       }
     } catch (e) {
-      console.error('[FiscalitoVoiceChat] sendMessage error:', e);
+      console.error('[FiscalitoVoiceChat] agentLoop error:', e);
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Lo siento, hubo un error. Intenta de nuevo.' }]);
     }
   }, [navigate]);
