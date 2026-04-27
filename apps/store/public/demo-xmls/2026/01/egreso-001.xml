@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Folio="DEMO0003" Fecha="2026-01-08T11:00:00" SubTotal="3200.00" Moneda="MXN" Total="3712.00" TipoDeComprobante="I" MetodoPago="PUE" FormaPago="04" LugarExpedicion="91020" Exportacion="01" Sello="DEMO" NoCertificado="00000000000000000000" Certificado="DEMO">
+  <cfdi:Emisor Rfc="OFI920101AAA" Nombre="OFICINAS Y PAPELERIA SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="CADG620317EE0" Nombre="GUADALUPE CABRERA DURAN" DomicilioFiscalReceptor="91020" RegimenFiscalReceptor="612" UsoCFDI="G03"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="44121700" Cantidad="1" ClaveUnidad="H87" Unidad="Pieza" Descripcion="Material de oficina y consumibles" ValorUnitario="3200.00" Importe="3200.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="3200.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="512.00"/>
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="512.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="3200.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="512.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="1.1" UUID="22222222-2222-2222-2222-222222220003" FechaTimbrado="2026-01-08T11:01:00" RfcProvCertif="DEMO010101AAA" SelloCFD="DEMO" NoCertificadoSAT="00000000000000000000" SelloSAT="DEMO"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>

@@ -12,9 +12,10 @@
  *    Las tools NO usan los hooks de React directamente (no son componentes) —
  *    usan `getAgentSnapshot()` y `getAgentActions()` que leen y escriben sobre
  *    refs vivas. Esto evita "stale closures" en el voice loop.
- *  - PreDeclaracionTab sigue siendo el "owner" visual de facturas/resultado,
- *    pero los sincroniza al context con un useEffect. Cuando una tool muta el
- *    estado del agente, el useEffect inverso del tab refleja el cambio.
+ *  - El AgentContext es la única source of truth para facturas/resultado/periodo.
+ *    PreDeclaracionTab los lee y muta directamente desde el context (sin estado
+ *    local duplicado). Esto evita los loops bidireccionales que el viejo
+ *    useSyncTabToAgent producía.
  */
 
 import {
@@ -154,38 +155,3 @@ export function useAgent() {
   return ctx;
 }
 
-/**
- * Hook auxiliar para que un tab "ceda" su estado local al AgentContext.
- * Sincroniza facturas/resultado/periodo desde el tab hacia el context.
- *
- * Uso típico en un tab:
- *   useSyncTabToAgent({ facturas, resultado, year, month });
- *
- * Para sincronía inversa (cuando una tool del agente cambió el estado), el
- * tab puede leer `useAgent().facturas` y reaccionar con su propio efecto.
- */
-export function useSyncTabToAgent({
-  facturas,
-  resultado,
-  year,
-  month,
-}: {
-  facturas: CFDI[];
-  resultado: PreDeclaracionResponse | null;
-  year: number;
-  month: number;
-}) {
-  const { setFacturas, setResultado, setPeriodo } = useAgent();
-
-  useEffect(() => {
-    setFacturas(facturas);
-  }, [facturas, setFacturas]);
-
-  useEffect(() => {
-    setResultado(resultado);
-  }, [resultado, setResultado]);
-
-  useEffect(() => {
-    setPeriodo(year, month);
-  }, [year, month, setPeriodo]);
-}

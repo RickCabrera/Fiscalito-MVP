@@ -4,8 +4,9 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
-import { calcularPreDeclaracion, type CFDI, type PreDeclaracionResponse } from '../../services/fiscalAgentApi';
+import { calcularPreDeclaracion } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, obtenerAcumuladoAnterior } from '../../services/declaracionesHistory';
+import { useAgent } from '../../agent/AgentContext';
 import { labelStyle } from '../../utils/styles';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
@@ -22,15 +23,17 @@ const YEARS = [2026, 2025, 2024, 2023];
 export default function PreDeclaracionTab() {
   const { profile } = useProfile();
   const { user } = useAuth();
+  const agent = useAgent();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [facturas, setFacturas] = useState<CFDI[]>([]);
+  const facturas = agent.facturas;
+  const resultado = agent.resultado;
+  const year = agent.periodoYear;
+  const month = agent.periodoMonth;
+
   const [parseErrors, setParseErrors] = useState<{ fileName: string; error: string }[]>([]);
-  const [year, setYear] = useState(2025);
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resultado, setResultado] = useState<PreDeclaracionResponse | null>(null);
   const [dragging, setDragging] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [pagosAnteriores, setPagosAnteriores] = useState(0);
@@ -86,14 +89,13 @@ export default function PreDeclaracionTab() {
     const xmlFiles = Array.from(files).filter((f) => f.name.endsWith('.xml'));
     if (xmlFiles.length === 0) return;
     const result = await parseMultipleCFDI(xmlFiles);
-    setFacturas((prev) => {
-      const existingUuids = new Set(prev.map((f) => f.uuid));
-      return [...prev, ...result.success.filter((f) => !existingUuids.has(f.uuid))];
-    });
+    const existingUuids = new Set(agent.facturas.map((f) => f.uuid));
+    const nuevas = result.success.filter((f) => !existingUuids.has(f.uuid));
+    if (nuevas.length > 0) agent.setFacturas([...agent.facturas, ...nuevas]);
     if (result.errors.length > 0) {
       setParseErrors((prev) => [...prev, ...result.errors]);
     }
-  }, []);
+  }, [agent]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -102,7 +104,7 @@ export default function PreDeclaracionTab() {
   }, [handleFiles]);
 
   const removeCFDI = (uuid: string) => {
-    setFacturas((prev) => prev.filter((f) => f.uuid !== uuid));
+    agent.setFacturas(agent.facturas.filter((f) => f.uuid !== uuid));
   };
 
   const handleCalcular = async () => {
@@ -132,7 +134,7 @@ export default function PreDeclaracionTab() {
             ? acumuladoAnterior.deducciones_acumuladas : undefined,
         predial_pagado: esArrendamiento ? predialPagado : undefined,
       });
-      setResultado(res);
+      agent.setResultado(res);
       if (user?.uid) {
         guardarDeclaracion(user.uid, {
           tipo: 'mensual', periodo: res.periodo, regimen: res.regimen, fecha_calculo: new Date(),
@@ -163,7 +165,12 @@ export default function PreDeclaracionTab() {
     }
   };
 
-  const resetAll = () => { setFacturas([]); setParseErrors([]); setResultado(null); setError(''); };
+  const resetAll = () => {
+    agent.setFacturas([]);
+    agent.setResultado(null);
+    setParseErrors([]);
+    setError('');
+  };
 
   if (resultado) {
     return (
@@ -272,13 +279,13 @@ export default function PreDeclaracionTab() {
       <div className="card" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <label style={labelStyle}>Año</label>
-          <select className="input-field" value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 120, cursor: 'pointer' }}>
+          <select className="input-field" value={year} onChange={(e) => agent.setPeriodo(Number(e.target.value), month)} style={{ width: 120, cursor: 'pointer' }}>
             {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <div>
           <label style={labelStyle}>Mes</label>
-          <select className="input-field" value={month} onChange={(e) => setMonth(Number(e.target.value))} style={{ width: 160, cursor: 'pointer' }}>
+          <select className="input-field" value={month} onChange={(e) => agent.setPeriodo(year, Number(e.target.value))} style={{ width: 160, cursor: 'pointer' }}>
             {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
           </select>
         </div>

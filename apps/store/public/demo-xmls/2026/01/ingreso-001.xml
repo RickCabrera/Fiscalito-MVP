@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="4.0" Folio="DEMO0001" Fecha="2026-01-15T10:30:00" SubTotal="15000.00" Moneda="MXN" Total="17400.00" TipoDeComprobante="I" MetodoPago="PUE" FormaPago="03" LugarExpedicion="91020" Exportacion="01" Sello="DEMO" NoCertificado="00000000000000000000" Certificado="DEMO">
+  <cfdi:Emisor Rfc="CADG620317EE0" Nombre="GUADALUPE CABRERA DURAN" RegimenFiscal="612"/>
+  <cfdi:Receptor Rfc="XAXX010101000" Nombre="PUBLICO EN GENERAL" DomicilioFiscalReceptor="91020" RegimenFiscalReceptor="616" UsoCFDI="S01"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="80101500" Cantidad="1" ClaveUnidad="E48" Unidad="Servicio" Descripcion="Servicios profesionales de consultoría" ValorUnitario="15000.00" Importe="15000.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="15000.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="2400.00"/>
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="2400.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Base="15000.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="2400.00"/>
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="1.1" UUID="11111111-1111-1111-1111-111111110001" FechaTimbrado="2026-01-15T10:31:00" RfcProvCertif="DEMO010101AAA" SelloCFD="DEMO" NoCertificadoSAT="00000000000000000000" SelloSAT="DEMO"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>
