@@ -18,6 +18,7 @@ import {
   type CFDI,
   type PreDeclaracionRequest,
 } from '../services/fiscalAgentApi';
+import { guardarDeclaracion } from '../services/declaracionesHistory';
 import { getAgentActions, getAgentSnapshot } from './AgentContext';
 import type { ToolName, ToolResult } from './types';
 
@@ -117,6 +118,7 @@ export const TOOLS_OPENAI = [
 export interface ToolDeps {
   navigate: NavigateFunction;
   profile: UserProfile;
+  uid: string | null;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -292,6 +294,48 @@ async function ejecutarCalcularPredeclaracion(
   const { setResultado, setPeriodo } = getAgentActions();
   setResultado(resp);
   setPeriodo(args.año, args.mes);
+
+  // Persistencia en Firestore (mismo upsert que el handler manual).
+  if (deps.uid && resp.exito !== false) {
+    const facturasCount = getAgentSnapshot().facturas.length;
+    guardarDeclaracion(deps.uid, {
+      tipo: 'mensual',
+      periodo: resp.periodo,
+      regimen: resp.regimen,
+      fecha_calculo: new Date(),
+      desglose: {
+        total_ingresos_facturados: resp.desglose.total_ingresos_facturados,
+        total_ingresos_gravados: resp.desglose.total_ingresos_gravados,
+        cantidad_facturas_ingreso: resp.desglose.cantidad_facturas_ingreso ?? 0,
+        total_egresos: resp.desglose.total_egresos ?? 0,
+        total_deducciones_autorizadas: resp.desglose.total_deducciones_autorizadas ?? 0,
+        cantidad_facturas_egreso: resp.desglose.cantidad_facturas_egreso ?? 0,
+        base_isr: resp.desglose.base_isr,
+        tasa_isr: resp.desglose.tasa_isr,
+        isr_causado: resp.desglose.isr_causado,
+        isr_retenido: resp.desglose.isr_retenido ?? 0,
+        isr_a_pagar: resp.desglose.isr_a_pagar,
+        iva_trasladado_cobrado: resp.desglose.iva_trasladado_cobrado ?? 0,
+        iva_trasladado_pagado: resp.desglose.iva_trasladado_pagado ?? 0,
+        iva_retenido: resp.desglose.iva_retenido ?? 0,
+        iva_a_pagar: resp.desglose.iva_a_pagar,
+        total_a_pagar: resp.desglose.total_a_pagar,
+      },
+      explicacion: resp.explicacion ?? null,
+      advertencias: resp.advertencias ?? [],
+      recomendaciones: resp.recomendaciones ?? [],
+      facturas_count: facturasCount,
+    }).catch(() => { /* fire-and-forget */ });
+  }
+
+  // Opción A — navegar al tab de declaración si el usuario no está ya allí.
+  const RUTA_DECLARACION = '/app/store/fiscalito/use?tab=declaracion';
+  const enRutaCorrecta =
+    window.location.pathname.includes('/store/fiscalito/use') &&
+    window.location.search.includes('tab=declaracion');
+  if (!enRutaCorrecta) {
+    deps.navigate(RUTA_DECLARACION);
+  }
 
   // `exito` es opcional en el response: sólo lo tratamos como fallo cuando
   // viene explícitamente `false`. Si es `undefined` o `true`, es éxito.

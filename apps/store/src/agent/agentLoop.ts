@@ -25,6 +25,7 @@ export interface AgentLoopOptions {
   profile: UserProfile;
   historialResumen: string;
   navigate: NavigateFunction;
+  uid: string | null;
 }
 
 export interface AgentLoopResult {
@@ -63,7 +64,7 @@ construyó para una feria de ciencias y la integración de agentes es el plato f
 }
 
 export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopResult> {
-  const { history, userMessage, profile, historialResumen, navigate } = opts;
+  const { history, userMessage, profile, historialResumen, navigate, uid } = opts;
   const { pushToolCall, updateToolCall } = getAgentActions();
 
   const systemMsg: ChatMessage = {
@@ -80,7 +81,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopRes
     { role: 'user', content: userMessage },
   ];
 
-  const deps: ToolDeps = { navigate, profile };
+  const deps: ToolDeps = { navigate, profile, uid };
   const executedTools: ToolCallLogEntry[] = [];
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {

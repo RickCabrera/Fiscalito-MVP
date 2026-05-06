@@ -80,6 +80,7 @@ export function useVoiceChat() {
   const chatHistoryRef = useRef<ChatMessage[]>([]);
   const profileRef = useRef(profile);
   const historialRef = useRef('');
+  const uidRef = useRef<string | null>(user?.uid ?? null);
   const vadCleanupRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +89,7 @@ export function useVoiceChat() {
   useEffect(() => { historialRef.current = historialResumen; }, [historialResumen]);
   useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
   useEffect(() => { openRef.current = open; }, [open]);
+  useEffect(() => { uidRef.current = user?.uid ?? null; }, [user?.uid]);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -124,6 +126,7 @@ export function useVoiceChat() {
         profile: profileRef.current,
         historialResumen: historialRef.current,
         navigate,
+        uid: uidRef.current,
       });
 
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
