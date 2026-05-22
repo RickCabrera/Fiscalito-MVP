@@ -206,13 +206,13 @@ export default function DashboardPage() {
               <Link key={def.id} to={`/app/store/fiscalito/use?tab=${def.tabParam}`} style={{ textDecoration: 'none' }}>
                 <div
                   className="card"
-                  style={{ padding: '16px 18px', cursor: 'pointer', borderLeft: `3px solid ${def.color}`, transition: 'all 0.2s' }}
-                  onMouseOver={(e) => { e.currentTarget.style.borderColor = def.color; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  style={{ padding: '16px 18px', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ''; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 8, background: `${def.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: def.color }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--purple-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
                         {def.icon}
                       </div>
                       <div>
