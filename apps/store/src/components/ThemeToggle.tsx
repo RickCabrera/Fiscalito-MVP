@@ -1,23 +1,31 @@
-/**
- * ThemeToggle — botón para alternar entre light y dark mode.
- * Versión "full" para el sidebar desktop y versión "mini" para mobile.
- */
-import { Sun, Moon } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Moon, Sun, Coffee } from 'lucide-react';
+import { useTheme, Theme } from '../context/ThemeContext';
 
 interface ThemeToggleProps {
   mini?: boolean;
 }
 
+const OPTIONS: Array<{ value: Theme; icon: React.ReactNode; label: string }> = [
+  { value: 'dark',    icon: <Moon size={14} />,   label: 'Oscuro'  },
+  { value: 'light',   icon: <Sun size={14} />,    label: 'Claro'   },
+  { value: 'vanilla', icon: <Coffee size={14} />, label: 'Vanilla' },
+];
+
+const iconMap: Record<Theme, React.ReactNode> = {
+  dark:    <Moon size={18} />,
+  light:   <Sun size={18} />,
+  vanilla: <Coffee size={18} />,
+};
+
 export default function ThemeToggle({ mini = false }: ThemeToggleProps) {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const { theme, setTheme, cycleTheme } = useTheme();
 
   if (mini) {
     return (
       <button
-        onClick={toggleTheme}
-        title={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
+        onClick={cycleTheme}
+        title={`Tema: ${theme}`}
+        aria-label="Cambiar tema"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -34,41 +42,50 @@ export default function ThemeToggle({ mini = false }: ThemeToggleProps) {
         onMouseOver={(e) => { e.currentTarget.style.color = 'var(--teal-light)'; }}
         onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
       >
-        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        {iconMap[theme]}
       </button>
     );
   }
 
   return (
-    <button
-      onClick={toggleTheme}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: '9px 12px',
-        background: 'transparent',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-sm)',
-        color: 'var(--text-primary)',
-        fontSize: '0.85rem',
-        fontWeight: 500,
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        width: '100%',
-      }}
-      onMouseOver={(e) => {
-        e.currentTarget.style.borderColor = 'var(--teal-light)';
-        e.currentTarget.style.color = 'var(--teal-light)';
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border)';
-        e.currentTarget.style.color = 'var(--text-primary)';
-      }}
-    >
-      {isDark ? <Sun size={15} /> : <Moon size={15} />}
-      {isDark ? 'Modo claro' : 'Modo oscuro'}
-    </button>
+    <div style={{
+      display: 'flex',
+      padding: 3,
+      background: 'var(--bg-input)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-sm)',
+      gap: 2,
+    }}>
+      {OPTIONS.map(opt => {
+        const isActive = theme === opt.value;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => setTheme(opt.value)}
+            title={opt.label}
+            aria-label={`Tema ${opt.label}`}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '6px 8px',
+              background: isActive ? 'var(--bg-card)' : 'transparent',
+              border: 'none',
+              borderRadius: 'var(--radius-xs)',
+              color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+              fontSize: '0.72rem',
+              fontWeight: isActive ? 600 : 400,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+            }}
+          >
+            {opt.icon}
+          </button>
+        );
+      })}
+    </div>
   );
 }
