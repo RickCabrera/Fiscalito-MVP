@@ -196,7 +196,7 @@ export default function PreDeclaracionTab() {
           background: dragging ? 'var(--teal-bg-subtle)' : 'transparent',
         }}
       >
-        <Upload size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+        <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
         <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Arrastra tus archivos XML aquí</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>o haz clic para seleccionar archivos CFDI</div>
         <input ref={fileInputRef} type="file" accept=".xml" multiple hidden

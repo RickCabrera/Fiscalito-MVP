@@ -51,7 +51,7 @@ export default function XMLUploader({ facturas, onChange }: Props) {
           background: dragging ? 'var(--teal-bg-subtle)' : 'transparent',
         }}
       >
-        <Upload size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+        <Upload size={28} color="var(--text-secondary)" style={{ marginBottom: 8 }} />
         <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
           Arrastra tus archivos XML aquí
         </div>
