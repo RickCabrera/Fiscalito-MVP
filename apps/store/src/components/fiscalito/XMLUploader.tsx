@@ -75,7 +75,7 @@ export default function XMLUploader({ facturas, onChange }: Props) {
 
       {/* Duplicadas */}
       {duplicadas > 0 && (
-        <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-xs)', background: 'rgba(224,160,96,0.08)', border: '1px solid rgba(224,160,96,0.3)', fontSize: '0.78rem', color: 'var(--warning)' }}>
+        <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-xs)', background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', fontSize: '0.78rem', color: 'var(--warning)' }}>
           {duplicadas} factura{duplicadas > 1 ? 's' : ''} omitida{duplicadas > 1 ? 's' : ''} — UUID ya cargado.
         </div>
       )}

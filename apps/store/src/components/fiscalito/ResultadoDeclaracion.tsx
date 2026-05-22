@@ -115,7 +115,7 @@ export default function ResultadoDeclaracion({ resultado, onNuevaDeclaracion }: 
       {/* Explicación LLM */}
       {resultado.explicacion && (
         <div className="card" style={{
-          background: 'var(--purple-bg-subtle)', border: '1px solid rgba(73,33,83,0.2)',
+          background: 'var(--purple-bg-subtle)', border: '1px solid var(--purple-muted)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <MessageSquare size={16} color="var(--purple-light)" />
