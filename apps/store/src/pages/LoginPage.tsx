@@ -125,8 +125,8 @@ export default function LoginPage() {
             {error && (
               <div style={{
                 padding: '10px 14px',
-                background: 'rgba(231, 76, 60, 0.1)',
-                border: '1px solid rgba(231, 76, 60, 0.3)',
+                background: 'var(--danger-bg)',
+                border: '1px solid var(--danger-border)',
                 borderRadius: 'var(--radius-xs)',
                 color: 'var(--danger)',
                 fontSize: '0.85rem',

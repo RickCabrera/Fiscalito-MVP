@@ -196,7 +196,7 @@ export default function PreDeclaracionTab() {
           background: dragging ? 'var(--teal-bg-subtle)' : 'transparent',
         }}
       >
-        <Upload size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+        <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
         <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Arrastra tus archivos XML aquí</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>o haz clic para seleccionar archivos CFDI</div>
         <input ref={fileInputRef} type="file" accept=".xml" multiple hidden
@@ -221,7 +221,7 @@ export default function PreDeclaracionTab() {
           {loadingAcumulado && (
             <div style={{
               padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'rgba(110,159,160,0.06)', border: '1px solid rgba(110,159,160,0.2)',
+              background: 'var(--teal-bg-subtle)', border: '1px solid var(--border-hover)',
               display: 'flex', alignItems: 'center', gap: 10,
               fontSize: '0.82rem', color: 'var(--text-secondary)',
             }}>
@@ -232,7 +232,7 @@ export default function PreDeclaracionTab() {
           {!loadingAcumulado && acumuladoAnterior && acumuladoAnterior.meses_faltantes.length === 0 && acumuladoAnterior.meses_encontrados.length > 0 && (
             <div style={{
               padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'rgba(46,204,113,0.08)', border: '1px solid rgba(46,204,113,0.25)',
+              background: 'var(--success-bg)', border: '1px solid var(--success-border)',
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
               <CheckCircle size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -246,7 +246,7 @@ export default function PreDeclaracionTab() {
           {!loadingAcumulado && acumuladoAnterior && acumuladoAnterior.meses_faltantes.length > 0 && acumuladoAnterior.meses_encontrados.length > 0 && (
             <div style={{
               padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'rgba(224,160,96,0.08)', border: '1px solid rgba(224,160,96,0.3)',
+              background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
               <AlertCircle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -262,7 +262,7 @@ export default function PreDeclaracionTab() {
           {!loadingAcumulado && (!acumuladoAnterior || acumuladoAnterior.meses_encontrados.length === 0) && (
             <div style={{
               padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'rgba(224,160,96,0.08)', border: '1px solid rgba(224,160,96,0.3)',
+              background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
               <AlertCircle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -305,7 +305,7 @@ export default function PreDeclaracionTab() {
                 </button>
               </>
             ) : (
-              <div style={{ background: 'var(--success-bg)', border: '1px solid rgba(46,204,113,0.2)', borderRadius: 'var(--radius-md)', padding: 12 }}>
+              <div style={{ background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <CheckCircle size={16} color="var(--success)" />
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
@@ -325,7 +325,7 @@ export default function PreDeclaracionTab() {
         )}
         {esArrendamiento && (
           <div style={{ flexBasis: '100%' }}>
-            <div style={{ background: 'var(--teal-bg-subtle)', border: '1px solid rgba(110,159,160,0.15)', borderRadius: 'var(--radius-md)', padding: 12 }}>
+            <div style={{ background: 'var(--teal-bg-subtle)', border: '1px solid var(--border-hover)', borderRadius: 'var(--radius-md)', padding: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                 onClick={() => { setIncluyePredial(prev => { if (prev) setPredialPagado(0); return !prev; }); }}>
                 <div style={{

@@ -178,7 +178,7 @@ export default function DeduccionesPersonalesTab() {
         <div style={{
           border: `2px dashed ${xmlsCargados ? 'var(--success-border)' : 'var(--border-hover)'}`,
           borderRadius: 'var(--radius)', padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 20,
-          background: xmlsCargados ? 'rgba(46,204,113,0.05)' : 'transparent',
+          background: xmlsCargados ? 'var(--success-bg)' : 'transparent',
         }} onClick={() => xmlInputRef.current?.click()}>
           <input ref={xmlInputRef} type="file" accept=".xml" multiple style={{ display: 'none' }}
             onChange={(e) => e.target.files && handleXMLUpload(e.target.files)} />

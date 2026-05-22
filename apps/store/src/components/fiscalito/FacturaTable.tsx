@@ -42,7 +42,7 @@ export default function FacturaTable({ facturas, onRemove }: Props) {
                 <td style={tdStyle}>
                   <span style={{
                     padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: 600,
-                    background: f.tipo === 'I' ? 'rgba(46,204,113,0.12)' : f.tipo === 'E' ? 'var(--danger-bg)' : 'var(--teal-bg)',
+                    background: f.tipo === 'I' ? 'var(--success-bg)' : f.tipo === 'E' ? 'var(--danger-bg)' : 'var(--teal-bg)',
                     color: f.tipo === 'I' ? 'var(--success)' : f.tipo === 'E' ? 'var(--danger)' : 'var(--teal-light)',
                   }}>
                     {f.tipo === 'I' ? 'Ingreso' : f.tipo === 'E' ? 'Egreso' : f.tipo}

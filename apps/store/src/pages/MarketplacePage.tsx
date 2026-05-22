@@ -31,7 +31,7 @@ export default function MarketplacePage() {
             padding: '8px 20px',
             borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border)',
-            background: i === 0 ? 'rgba(110, 159, 160, 0.1)' : 'transparent',
+            background: i === 0 ? 'var(--teal-bg)' : 'transparent',
             color: i === 0 ? 'var(--teal-light)' : 'var(--text-muted)',
             fontSize: '0.85rem',
             fontWeight: 500,
@@ -90,9 +90,9 @@ export default function MarketplacePage() {
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
-                  background: service.status === 'active' ? 'var(--border)' : 'rgba(73,33,83,0.15)',
+                  background: service.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
                   color: service.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
-                  border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'rgba(73,33,83,0.3)'}`,
+                  border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
                 }}>
                   {service.status === 'active' ? 'Disponible' : 'Proximamente'}
                 </span>
@@ -106,9 +106,9 @@ export default function MarketplacePage() {
                     fontWeight: 600,
                     textTransform: 'uppercase',
                     letterSpacing: 1,
-                    background: 'rgba(231, 76, 60, 0.1)',
+                    background: 'var(--danger-bg)',
                     color: 'var(--danger)',
-                    border: '1px solid rgba(231, 76, 60, 0.25)',
+                    border: '1px solid var(--danger-border)',
                   }}>
                     No aplica a tu perfil
                   </span>

@@ -68,8 +68,8 @@ export default function VoiceChatUI({
           <button onClick={onMicClick} disabled={voiceState === 'processing'}
             style={{
               ...micBtnStyle,
-              background: voiceLoopActive ? 'rgba(231,76,60,0.15)'
-                : voiceState === 'speaking' ? 'rgba(110,159,160,0.15)' : 'transparent',
+              background: voiceLoopActive ? 'var(--danger-bg)'
+                : voiceState === 'speaking' ? 'var(--teal-bg-subtle)' : 'transparent',
               color: voiceLoopActive ? 'var(--danger)'
                 : voiceState === 'speaking' ? 'var(--teal-light)' : 'var(--text-secondary)',
               animation: voiceLoopActive && voiceState === 'listening' ? 'pulse 1.5s infinite' : 'none',
