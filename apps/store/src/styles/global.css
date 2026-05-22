@@ -78,78 +78,59 @@
 
   /* Nav active background */
   --nav-active-bg: rgba(110, 159, 160, 0.08);
+
+  /* Active state — adapts per theme */
+  --accent-active: var(--teal-light);
+  --accent-active-bg: rgba(110, 159, 160, 0.08);
 }
 
 [data-theme="light"] {
-  /* Backgrounds — off-white con tinte morado */
-  --bg-dark: #faf7fb;
-  --bg-surface: #f4eff6;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f8f4fa;
-  --bg-input: #f4eff6;
+  /* Backgrounds — sistema de tres capas con tinte morado frío */
+  --bg-dark: #f5f1f7;          /* fondo principal: off-white con tinte morado perceptible */
+  --bg-surface: #ebe4ee;       /* sidebar: claramente más oscuro que el fondo */
+  --bg-card: #ffffff;          /* cards: blanco puro para que destaquen */
+  --bg-card-hover: #faf7fc;
+  --bg-input: #f0eaf3;
 
-  /* Purple ramp — sin cambios en hex base */
-  --purple-deep: #2d1436;
-  --purple: #492153;
-  --purple-light: #6b3580;
-  --purple-muted: rgba(73, 33, 83, 0.15);
-
-  /* Teal ramp — sin cambios en hex base */
-  --teal-deep: #1a2527;
-  --teal: #355654;
-  --teal-light: #6e9fa0;
-  --teal-muted: rgba(53, 86, 84, 0.25);
-
-  /* Text */
-  --text-primary: #1a0e22;
-  --text-secondary: #5a4a66;
-  --text-muted: #8a7d96;
+  /* Texto — contraste alto */
+  --text-primary: #1a0a24;
+  --text-secondary: #4a3a5a;
+  --text-muted: #7a6a8a;
   --text-on-accent: #ffffff;
 
-  /* Accents — gradiente idéntico */
-  --accent-gradient: linear-gradient(135deg, #492153, #355654);
-  --accent-gradient-hover: linear-gradient(135deg, #5a2a66, #3f6866);
-  --success: #2ecc71;
-  --warning: #e0a060;
-  --danger: #e74c3c;
+  /* Ramps — solo los muted cambian en light */
+  --purple-muted: rgba(73, 33, 83, 0.18);
+  --teal-muted: rgba(53, 86, 84, 0.22);
 
-  /* Semantic backgrounds — más sutiles sobre fondo claro */
-  --teal-bg: rgba(53, 86, 84, 0.08);
-  --teal-bg-subtle: rgba(53, 86, 84, 0.04);
-  --purple-bg: rgba(73, 33, 83, 0.08);
-  --purple-bg-subtle: rgba(73, 33, 83, 0.04);
-  --success-bg: rgba(46, 204, 113, 0.08);
-  --success-border: rgba(46, 204, 113, 0.3);
-  --danger-bg: rgba(231, 76, 60, 0.06);
-  --danger-border: rgba(231, 76, 60, 0.25);
-  --warning-bg: rgba(224, 160, 96, 0.1);
-  --warning-border: rgba(224, 160, 96, 0.3);
+  /* Semantic backgrounds — opacidades más altas que en dark */
+  --teal-bg: rgba(53, 86, 84, 0.1);
+  --teal-bg-subtle: rgba(53, 86, 84, 0.05);
+  --purple-bg: rgba(73, 33, 83, 0.1);
+  --purple-bg-subtle: rgba(73, 33, 83, 0.05);
+  --success-bg: rgba(46, 204, 113, 0.1);
+  --success-border: rgba(46, 204, 113, 0.35);
+  --danger-bg: rgba(231, 76, 60, 0.08);
+  --danger-border: rgba(231, 76, 60, 0.3);
+  --warning-bg: rgba(224, 160, 96, 0.12);
+  --warning-border: rgba(224, 160, 96, 0.35);
 
-  /* Borders */
-  --border: rgba(73, 33, 83, 0.1);
-  --border-hover: rgba(73, 33, 83, 0.2);
-  --border-active: rgba(73, 33, 83, 0.35);
+  /* Bordes — morado oscuro, perceptibles sin gritar */
+  --border: rgba(73, 33, 83, 0.14);
+  --border-hover: rgba(73, 33, 83, 0.28);
+  --border-active: rgba(73, 33, 83, 0.5);
 
-  /* Spacing, Shape — sin cambios */
-  --space-xs: 8px;
-  --space-sm: 12px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --radius-xs: 6px;
-  --radius-full: 100px;
+  /* Sombras multicapa con tinte morado — look premium */
+  --shadow-sm: 0 1px 3px rgba(73, 33, 83, 0.08), 0 1px 2px rgba(73, 33, 83, 0.04);
+  --shadow-md: 0 4px 16px rgba(73, 33, 83, 0.1), 0 2px 6px rgba(73, 33, 83, 0.05);
+  --shadow-lg: 0 16px 48px rgba(73, 33, 83, 0.16), 0 6px 16px rgba(73, 33, 83, 0.08);
+  --shadow-glow-purple: 0 8px 24px rgba(73, 33, 83, 0.28);
+  --shadow-glow-teal: 0 8px 24px rgba(53, 86, 84, 0.2);
 
-  /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(73, 33, 83, 0.08);
-  --shadow-md: 0 8px 30px rgba(73, 33, 83, 0.12);
-  --shadow-lg: 0 20px 60px rgba(73, 33, 83, 0.18);
-  --shadow-glow-purple: 0 8px 30px rgba(73, 33, 83, 0.25);
-  --shadow-glow-teal: 0 8px 30px rgba(53, 86, 84, 0.18);
+  /* Active state — purple tiene más presencia en fondo claro */
+  --accent-active: var(--purple);
+  --accent-active-bg: rgba(73, 33, 83, 0.08);
 
-  /* Nav active background */
+  /* Nav active — alias */
   --nav-active-bg: rgba(73, 33, 83, 0.08);
 }
 
@@ -251,6 +232,13 @@ input, select, textarea {
 .card:hover {
   border-color: var(--border-hover);
 }
+[data-theme="light"] .card {
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="light"] .card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
 .card-dense {
   padding: var(--space-md);
 }
@@ -338,8 +326,16 @@ input, select, textarea {
 ::-webkit-scrollbar-thumb { background: var(--purple-deep); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
-[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(73, 33, 83, 0.3); }
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(73, 33, 83, 0.5); }
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--purple-muted); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+[data-theme="light"] select,
+[data-theme="light"] input,
+[data-theme="light"] textarea {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
 
 /* ============================================================
    Responsive
