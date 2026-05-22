@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { LayoutDashboard, History, Scale, User, LogOut, Loader } from 'lucide-react';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
+import ThemeToggle from './ThemeToggle';
 
 export default function AppLayout() {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -65,7 +66,7 @@ export default function AppLayout() {
                 padding: '12px 20px', margin: '0 12px',
                 borderRadius: 'var(--radius-sm)',
                 color: isActive ? 'var(--teal-light)' : 'var(--text-primary)',
-                background: isActive ? 'rgba(110, 159, 160, 0.08)' : 'transparent',
+                background: isActive ? 'var(--nav-active-bg)' : 'transparent',
                 fontSize: '0.9rem', fontWeight: isActive ? 600 : 400,
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
@@ -78,9 +79,10 @@ export default function AppLayout() {
           <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 8px', textAlign: 'center' }}>
             {user?.email}
           </div>
+          <ThemeToggle />
           <button onClick={handleSignOut}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '9px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(231, 76, 60, 0.1)'; e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)'; }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'var(--danger-bg)'; e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
           >
             <LogOut size={15} />Cerrar sesión
@@ -101,7 +103,7 @@ export default function AppLayout() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 44, height: 44, borderRadius: 'var(--radius-sm)',
                 color: isActive ? 'var(--teal-light)' : 'var(--text-primary)',
-                background: isActive ? 'rgba(110, 159, 160, 0.08)' : 'transparent',
+                background: isActive ? 'var(--nav-active-bg)' : 'transparent',
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
             >
@@ -109,7 +111,8 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+          <ThemeToggle mini />
           <button onClick={handleSignOut} title="Cerrar sesión"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 'var(--radius-sm)', transition: 'all 0.2s' }}
             onMouseOver={(e) => { e.currentTarget.style.color = 'var(--danger)'; }}
