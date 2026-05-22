@@ -69,10 +69,12 @@ export default function ResultadoDeclaracion({ resultado, onNuevaDeclaracion }: 
         <div style={{
           fontSize: '2.4rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace",
           color: esAFavor ? 'var(--success)' : 'var(--text-primary)',
+          display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'center',
         }}>
+          <span className="monto-currency-symbol" style={{ fontSize: '0.6em' }}>$</span>
           {esAFavor
-            ? `${formatMoney(Math.abs(totalAPagar))} a favor`
-            : formatMoney(totalAPagar)}
+            ? `${formatMoney(Math.abs(totalAPagar)).slice(1)} a favor`
+            : formatMoney(totalAPagar).slice(1)}
         </div>
         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
           {esAFavor ? 'Saldo a favor estimado' : 'Total estimado a pagar (ISR + IVA)'}

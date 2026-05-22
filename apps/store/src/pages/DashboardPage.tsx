@@ -188,7 +188,9 @@ export default function DashboardPage() {
               <div style={{ fontSize: '1.3rem', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: stat.color }}>
                 {stat.loading && loadingStats
                   ? <div className="skeleton" style={{ height: 24, width: 68, borderRadius: 4 }} />
-                  : stat.value}
+                  : (typeof stat.value === 'string' && stat.value.startsWith('$')
+                      ? <><span className="monto-currency-symbol" style={{ fontSize: '0.75em' }}>$</span>{stat.value.slice(1)}</>
+                      : stat.value)}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{stat.label}</div>
             </div>
