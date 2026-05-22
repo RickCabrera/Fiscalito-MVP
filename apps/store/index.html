@@ -11,7 +11,13 @@
   <script>
     (function() {
       var stored = localStorage.getItem('fiscalito-theme');
-      var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      var valid = ['light', 'dark', 'vanilla'];
+      var theme;
+      if (stored && valid.indexOf(stored) !== -1) {
+        theme = stored;
+      } else {
+        theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
