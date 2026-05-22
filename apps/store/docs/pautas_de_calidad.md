@@ -3,7 +3,7 @@
 ## Principios fundamentales
 
 1. **El LLM no calcula.** Toda la lógica fiscal (ISR, IVA, deducciones) vive en el Fiscal Agent API. El frontend solo presenta resultados.
-2. **Dark theme estricto.** Nunca se usan fondos blancos ni colores fuera de la paleta definida en `src/styles/global.css`.
+2. **Theming light/dark.** La app soporta ambos modos. Siempre se usan variables CSS de `src/styles/global.css`. Nunca colores hex o rgba hardcodeados en componentes.
 3. **Sin librerías de UI.** No se usa Tailwind, Material UI, Bootstrap ni ningún framework de componentes. Todo con CSS variables.
 
 ---
@@ -164,12 +164,36 @@ Si el servidor no está disponible, el error debe mostrarse al usuario mediante 
 
 ---
 
+## Theming
+
+La app usa `data-theme="dark"` (default) o `data-theme="light"` en el elemento `<html>`.
+
+### Cómo funciona
+
+- `ThemeContext` (`src/context/ThemeContext.tsx`) gestiona el tema activo, lo persiste en `localStorage` y lo aplica vía `document.documentElement.setAttribute('data-theme', theme)`.
+- Las variables de color para cada tema viven en `src/styles/global.css`: bloque `:root, [data-theme="dark"]` para dark y bloque `[data-theme="light"]` para light.
+- Un script anti-FOUC en `index.html` aplica el tema **antes** de que React monte.
+- El toggle es `ThemeToggle.tsx`, integrado en el sidebar (full y mini).
+
+### Reglas al agregar variables nuevas
+
+Toda variable de color nueva se define **en pareja**:
+```css
+:root, [data-theme="dark"] { --nueva-var: rgba(110, 159, 160, 0.12); }
+[data-theme="light"]       { --nueva-var: rgba(53, 86, 84, 0.08); }
+```
+
+Los valores hex de `--purple`, `--purple-light`, `--teal`, `--teal-light` y el `--accent-gradient` son **idénticos** en ambos temas — son la firma visual de la marca.
+
+---
+
 ## Checklist de revisión de código
 
 Antes de aprobar un PR:
 
 - [ ] `npm run build` sin errores TypeScript
-- [ ] Sin colores hardcodeados fuera de la paleta
+- [ ] Sin colores hardcodeados (hex/rgba) fuera de `global.css` — solo variables CSS
+- [ ] Componentes nuevos probados visualmente en ambos temas (light y dark)
 - [ ] Sin `console.log` ni `any` injustificados
 - [ ] Llamadas async con loading + error handler
 - [ ] Componentes nuevos bajo 300 líneas

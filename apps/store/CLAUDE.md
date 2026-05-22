@@ -68,7 +68,12 @@ El primer servicio es **Fiscalito**: un asistente fiscal cuyo backend es el **Fi
 Gradiente principal: `linear-gradient(135deg, #492153, #355654)`
 Tipografia: **Outfit** (UI) + **JetBrains Mono** (codigo/datos)
 
-NUNCA usar colores fuera de esta paleta. NUNCA usar fondos blancos o claros. Es SIEMPRE dark theme.
+La app soporta light y dark mode. Ambos comparten la misma paleta de purple/teal en acentos.
+Reglas:
+- SIEMPRE usar variables CSS de global.css. NUNCA hex o rgba hardcodeados en componentes.
+- El gradiente principal (--accent-gradient) y los ramps de purple/teal son IDÉNTICOS en ambos temas.
+- Light mode usa fondos claros con tinte morado sutil. Dark mode usa fondos casi negros.
+- Al agregar componentes, probar visualmente en ambos temas antes de hacer merge.
 
 ## ESTRUCTURA DEL PROYECTO
 
