@@ -82,6 +82,12 @@
   /* Active state — adapts per theme */
   --accent-active: var(--teal-light);
   --accent-active-bg: rgba(110, 159, 160, 0.08);
+  --accent-active-rail: transparent;
+
+  /* Ámbar — protagonista en vanilla, neutro en dark/light */
+  --amber: #b86b2a;
+  --amber-soft: #c89060;
+  --amber-ink: #7c4520;
 }
 
 [data-theme="light"] {
@@ -132,6 +138,63 @@
 
   /* Nav active — alias */
   --nav-active-bg: rgba(73, 33, 83, 0.08);
+  --accent-active-rail: transparent;
+}
+
+[data-theme="vanilla"] {
+  /* Fondos — cream cálido tipo papel manila */
+  --bg-dark: #f3ecdc;
+  --bg-surface: #ebe0c8;
+  --bg-card: #fbf5e7;
+  --bg-card-hover: #f4ecd9;
+  --bg-input: #f6efe0;
+
+  /* Texto — marrón oscuro, NO negro */
+  --text-primary: #2a1e16;
+  --text-secondary: #5a4536;
+  --text-muted: #837060;
+  --text-on-accent: #ffffff;
+
+  /* Ramps — solo los muted ajustados para cream */
+  --purple-muted: rgba(73, 33, 83, 0.18);
+  --teal-muted: rgba(53, 86, 84, 0.22);
+
+  /* Semantic backgrounds */
+  --teal-bg: rgba(53, 86, 84, 0.1);
+  --teal-bg-subtle: rgba(53, 86, 84, 0.05);
+  --purple-bg: rgba(73, 33, 83, 0.1);
+  --purple-bg-subtle: rgba(73, 33, 83, 0.05);
+  --success-bg: rgba(46, 204, 113, 0.12);
+  --success-border: rgba(46, 204, 113, 0.35);
+  --danger-bg: rgba(231, 76, 60, 0.08);
+  --danger-border: rgba(231, 76, 60, 0.3);
+  --warning-bg: rgba(224, 160, 96, 0.14);
+  --warning-border: rgba(224, 160, 96, 0.4);
+
+  /* Bordes — hairlines sobre cream sin gritar */
+  --border: #ddd0b8;
+  --border-hover: #b89d80;
+  --border-active: var(--purple);
+
+  /* Sombras — tintadas con ámbar, multicapa */
+  --shadow-sm:
+    0 1px 2px rgba(124, 69, 32, 0.06),
+    0 1px 3px rgba(124, 69, 32, 0.04);
+  --shadow-md:
+    0 2px 4px rgba(124, 69, 32, 0.05),
+    0 4px 12px rgba(124, 69, 32, 0.08),
+    0 8px 24px rgba(124, 69, 32, 0.02);
+  --shadow-lg:
+    0 4px 8px rgba(124, 69, 32, 0.08),
+    0 12px 32px rgba(124, 69, 32, 0.12),
+    0 24px 64px rgba(124, 69, 32, 0.03);
+  --shadow-glow-purple: 0 8px 24px rgba(73, 33, 83, 0.25);
+  --shadow-glow-teal: 0 8px 24px rgba(53, 86, 84, 0.2);
+
+  /* Rail ámbar — firma retro del tema vanilla */
+  --accent-active: var(--purple);
+  --accent-active-bg: rgba(73, 33, 83, 0.08);
+  --accent-active-rail: var(--amber);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -320,6 +383,19 @@ input, select, textarea {
   box-shadow: none;
 }
 
+/* Nav item rail — visible solo en vanilla via --accent-active-rail */
+.nav-item { position: relative; }
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent-active-rail);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
@@ -353,3 +429,38 @@ input, select, textarea {
 @media (min-width: 769px) {
   .sidebar-mini { display: none !important; }
 }
+
+/* ============================================================
+   Vanilla — overrides específicos
+   ============================================================ */
+
+[data-theme="vanilla"] .gradient-text {
+  background: linear-gradient(135deg, var(--teal), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="vanilla"] .card {
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="vanilla"] .card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+[data-theme="vanilla"] select,
+[data-theme="vanilla"] input,
+[data-theme="vanilla"] textarea {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+[data-theme="vanilla"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="vanilla"] ::-webkit-scrollbar-thumb { background: var(--amber-soft); border-radius: 3px; }
+[data-theme="vanilla"] ::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+/* Símbolo $ de montos — ámbar en vanilla, muted en dark/light */
+[data-theme="dark"]    .monto-currency-symbol { color: var(--text-muted); }
+[data-theme="light"]   .monto-currency-symbol { color: var(--text-muted); }
+[data-theme="vanilla"] .monto-currency-symbol { color: var(--amber-ink); }
