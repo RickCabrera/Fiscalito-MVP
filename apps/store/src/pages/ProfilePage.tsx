@@ -87,7 +87,7 @@ export default function ProfilePage() {
                   alignItems: 'center',
                   gap: 10,
                   padding: '12px 14px',
-                  background: selected ? 'rgba(110, 159, 160, 0.08)' : 'var(--bg-input)',
+                  background: selected ? 'var(--nav-active-bg)' : 'var(--bg-input)',
                   border: `1.5px solid ${selected ? 'var(--teal-light)' : 'var(--border)'}`,
                   borderRadius: 'var(--radius-sm)',
                   color: 'var(--text-primary)',
