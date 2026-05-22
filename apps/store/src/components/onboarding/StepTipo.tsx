@@ -31,7 +31,7 @@ export default function StepTipo({ tipo, setTipo }: StepTipoProps) {
                 alignItems: 'center',
                 gap: 16,
                 padding: '20px 24px',
-                background: selected ? 'rgba(110, 159, 160, 0.08)' : 'var(--bg-card)',
+                background: selected ? 'var(--nav-active-bg)' : 'var(--bg-card)',
                 border: `1.5px solid ${selected ? 'var(--teal-light)' : 'var(--border)'}`,
                 borderRadius: 'var(--radius)',
                 color: 'var(--text-primary)',
