@@ -1,9 +1,11 @@
 /* ============================================================
    FISCALITO STORE — Global Styles
    Palette: #080409, #492153, #1a2527, #355654, #6e9fa0
+   Theming: data-theme="dark" (default) | data-theme="light"
    ============================================================ */
 
-:root {
+:root,
+[data-theme="dark"] {
   /* Backgrounds */
   --bg-dark: #080409;
   --bg-surface: #0f0a12;
@@ -73,6 +75,82 @@
   --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
   --shadow-glow-purple: 0 8px 30px rgba(73, 33, 83, 0.4);
   --shadow-glow-teal: 0 8px 30px rgba(110, 159, 160, 0.2);
+
+  /* Nav active background */
+  --nav-active-bg: rgba(110, 159, 160, 0.08);
+}
+
+[data-theme="light"] {
+  /* Backgrounds — off-white con tinte morado */
+  --bg-dark: #faf7fb;
+  --bg-surface: #f4eff6;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8f4fa;
+  --bg-input: #f4eff6;
+
+  /* Purple ramp — sin cambios en hex base */
+  --purple-deep: #2d1436;
+  --purple: #492153;
+  --purple-light: #6b3580;
+  --purple-muted: rgba(73, 33, 83, 0.15);
+
+  /* Teal ramp — sin cambios en hex base */
+  --teal-deep: #1a2527;
+  --teal: #355654;
+  --teal-light: #6e9fa0;
+  --teal-muted: rgba(53, 86, 84, 0.25);
+
+  /* Text */
+  --text-primary: #1a0e22;
+  --text-secondary: #5a4a66;
+  --text-muted: #8a7d96;
+  --text-on-accent: #ffffff;
+
+  /* Accents — gradiente idéntico */
+  --accent-gradient: linear-gradient(135deg, #492153, #355654);
+  --accent-gradient-hover: linear-gradient(135deg, #5a2a66, #3f6866);
+  --success: #2ecc71;
+  --warning: #e0a060;
+  --danger: #e74c3c;
+
+  /* Semantic backgrounds — más sutiles sobre fondo claro */
+  --teal-bg: rgba(53, 86, 84, 0.08);
+  --teal-bg-subtle: rgba(53, 86, 84, 0.04);
+  --purple-bg: rgba(73, 33, 83, 0.08);
+  --purple-bg-subtle: rgba(73, 33, 83, 0.04);
+  --success-bg: rgba(46, 204, 113, 0.08);
+  --success-border: rgba(46, 204, 113, 0.3);
+  --danger-bg: rgba(231, 76, 60, 0.06);
+  --danger-border: rgba(231, 76, 60, 0.25);
+  --warning-bg: rgba(224, 160, 96, 0.1);
+  --warning-border: rgba(224, 160, 96, 0.3);
+
+  /* Borders */
+  --border: rgba(73, 33, 83, 0.1);
+  --border-hover: rgba(73, 33, 83, 0.2);
+  --border-active: rgba(73, 33, 83, 0.35);
+
+  /* Spacing, Shape — sin cambios */
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --radius-full: 100px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(73, 33, 83, 0.08);
+  --shadow-md: 0 8px 30px rgba(73, 33, 83, 0.12);
+  --shadow-lg: 0 20px 60px rgba(73, 33, 83, 0.18);
+  --shadow-glow-purple: 0 8px 30px rgba(73, 33, 83, 0.25);
+  --shadow-glow-teal: 0 8px 30px rgba(53, 86, 84, 0.18);
+
+  /* Nav active background */
+  --nav-active-bg: rgba(73, 33, 83, 0.08);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -83,6 +161,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -105,6 +184,14 @@ input, select, textarea {
 
 .gradient-text {
   background: linear-gradient(135deg, var(--teal-light), var(--purple-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* En light mode, usar tonos más oscuros para mejor contraste sobre fondo claro */
+[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, var(--teal), var(--purple));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -250,6 +337,9 @@ input, select, textarea {
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: var(--purple-deep); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(73, 33, 83, 0.3); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(73, 33, 83, 0.5); }
 
 /* ============================================================
    Responsive
