@@ -61,6 +61,7 @@ export default function AppLayout() {
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end}
+              className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 20px', margin: '0 12px',
@@ -99,6 +100,7 @@ export default function AppLayout() {
           {links.map((link) => (
             <NavLink key={link.to} to={link.to} end={link.end}
               title={link.label}
+              className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 44, height: 44, borderRadius: 'var(--radius-sm)',
