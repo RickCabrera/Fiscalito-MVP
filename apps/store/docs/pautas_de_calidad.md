@@ -166,24 +166,33 @@ Si el servidor no está disponible, el error debe mostrarse al usuario mediante 
 
 ## Theming
 
-La app usa `data-theme="dark"` (default) o `data-theme="light"` en el elemento `<html>`.
+La app soporta **tres temas** seleccionables desde el sidebar: `dark` (default), `light` y `vanilla`.
+
+| Tema | Descripción |
+|------|-------------|
+| `dark` | Fondos casi negros con acentos teal/purple. Modo por defecto. |
+| `light` | Fondos blancos fríos con tinte morado. |
+| `vanilla` | Fondos cream cálidos tipo papel manila, trim ámbar puntual. |
 
 ### Cómo funciona
 
 - `ThemeContext` (`src/context/ThemeContext.tsx`) gestiona el tema activo, lo persiste en `localStorage` y lo aplica vía `document.documentElement.setAttribute('data-theme', theme)`.
-- Las variables de color para cada tema viven en `src/styles/global.css`: bloque `:root, [data-theme="dark"]` para dark y bloque `[data-theme="light"]` para light.
+- Las variables de color para cada tema viven en `src/styles/global.css`: bloques `:root, [data-theme="dark"]`, `[data-theme="light"]` y `[data-theme="vanilla"]`.
 - Un script anti-FOUC en `index.html` aplica el tema **antes** de que React monte.
-- El toggle es `ThemeToggle.tsx`, integrado en el sidebar (full y mini).
+- El toggle es `ThemeToggle.tsx` — segmented control de 3 opciones (desktop) y botón ciclo (mobile).
 
 ### Reglas al agregar variables nuevas
 
-Toda variable de color nueva se define **en pareja**:
+Toda variable de color nueva se define en los **tres temas**:
 ```css
 :root, [data-theme="dark"] { --nueva-var: rgba(110, 159, 160, 0.12); }
 [data-theme="light"]       { --nueva-var: rgba(53, 86, 84, 0.08); }
+[data-theme="vanilla"]     { --nueva-var: rgba(53, 86, 84, 0.06); }
 ```
 
-Los valores hex de `--purple`, `--purple-light`, `--teal`, `--teal-light` y el `--accent-gradient` son **idénticos** en ambos temas — son la firma visual de la marca.
+Los valores hex de `--purple`, `--purple-light`, `--teal`, `--teal-light` y el `--accent-gradient` son **idénticos** en los tres temas — son la firma visual de la marca.
+
+El ámbar (`--amber`, `--amber-soft`, `--amber-ink`) existe en los tres temas pero solo es protagonista en vanilla.
 
 ---
 
@@ -193,7 +202,7 @@ Antes de aprobar un PR:
 
 - [ ] `npm run build` sin errores TypeScript
 - [ ] Sin colores hardcodeados (hex/rgba) fuera de `global.css` — solo variables CSS
-- [ ] Componentes nuevos probados visualmente en ambos temas (light y dark)
+- [ ] Componentes nuevos probados visualmente en los tres temas (dark, light y vanilla)
 - [ ] Sin `console.log` ni `any` injustificados
 - [ ] Llamadas async con loading + error handler
 - [ ] Componentes nuevos bajo 300 líneas
