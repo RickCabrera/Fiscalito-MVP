@@ -13,7 +13,7 @@ export default function AppLayout() {
   if (authLoading || profileLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <Loader size={28} className="spin" color="var(--teal-light)" />
+        <Loader size={28} className="spin" color="var(--accent-active)" />
       </div>
     );
   }
@@ -65,8 +65,8 @@ export default function AppLayout() {
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 20px', margin: '0 12px',
                 borderRadius: 'var(--radius-sm)',
-                color: isActive ? 'var(--teal-light)' : 'var(--text-primary)',
-                background: isActive ? 'var(--nav-active-bg)' : 'transparent',
+                color: isActive ? 'var(--accent-active)' : 'var(--text-primary)',
+                background: isActive ? 'var(--accent-active-bg)' : 'transparent',
                 fontSize: '0.9rem', fontWeight: isActive ? 600 : 400,
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
@@ -102,8 +102,8 @@ export default function AppLayout() {
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 44, height: 44, borderRadius: 'var(--radius-sm)',
-                color: isActive ? 'var(--teal-light)' : 'var(--text-primary)',
-                background: isActive ? 'var(--nav-active-bg)' : 'transparent',
+                color: isActive ? 'var(--accent-active)' : 'var(--text-primary)',
+                background: isActive ? 'var(--accent-active-bg)' : 'transparent',
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
             >
