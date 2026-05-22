@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { AgentProvider } from './agent/AgentContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 import LandingPage from './pages/LandingPage';
@@ -24,41 +25,43 @@ import './styles/global.css';
 
 function App() {
   return (
-    <AuthProvider>
-      <ProfileProvider>
-        <AgentProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <ProfileProvider>
+          <AgentProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* Onboarding — protected but no sidebar */}
-              <Route path="/app/onboarding" element={
-                <ProtectedRoute>
-                  <OnboardingWizard />
-                </ProtectedRoute>
-              } />
+                {/* Onboarding — protected but no sidebar */}
+                <Route path="/app/onboarding" element={
+                  <ProtectedRoute>
+                    <OnboardingWizard />
+                  </ProtectedRoute>
+                } />
 
-              {/* Protected — App */}
-              <Route path="/app" element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<DashboardPage />} />
-                <Route path="historial" element={<HistorialPage />} />
-                <Route path="store" element={<MarketplacePage />} />
-                <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
-                <Route path="store/:serviceId" element={<ServiceDetailPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-                <Route path="admin" element={<AdminPage />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </AgentProvider>
-      </ProfileProvider>
-    </AuthProvider>
+                {/* Protected — App */}
+                <Route path="/app" element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<DashboardPage />} />
+                  <Route path="historial" element={<HistorialPage />} />
+                  <Route path="store" element={<MarketplacePage />} />
+                  <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
+                  <Route path="store/:serviceId" element={<ServiceDetailPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="admin" element={<AdminPage />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </AgentProvider>
+        </ProfileProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
