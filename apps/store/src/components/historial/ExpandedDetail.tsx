@@ -91,7 +91,7 @@ export default function ExpandedDetail({ record: d, profile, fmtMoney }: Expande
             { l: 'Promedio', v: fmtMoney(d.acumulado.promedio) },
             { l: 'Tendencia', v: d.acumulado.tendencia },
           ].map((s) => (
-            <div key={s.l} style={{ padding: '8px 10px', borderRadius: 'var(--radius-xs)', background: 'rgba(110,159,160,0.06)', textAlign: 'center' }}>
+            <div key={s.l} style={{ padding: '8px 10px', borderRadius: 'var(--radius-xs)', background: 'var(--teal-bg-subtle)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4 }}>{s.l}</div>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{s.v}</div>
             </div>
@@ -131,7 +131,7 @@ export default function ExpandedDetail({ record: d, profile, fmtMoney }: Expande
             { l: 'ISR faltante', v: ec.isr_faltante <= 0 ? `${fmtMoney(Math.abs(ec.isr_faltante))} a favor` : fmtMoney(ec.isr_faltante), c: ec.isr_faltante <= 0 ? 'var(--success)' : 'var(--warning)' },
             { l: 'IVA neto', v: fmtMoney(ec.iva_neto), c: 'var(--text-primary)' },
           ].map((s) => (
-            <div key={s.l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 'var(--radius-xs)', background: 'rgba(110,159,160,0.04)' }}>
+            <div key={s.l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 'var(--radius-xs)', background: 'var(--teal-bg-subtle)' }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{s.l}</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem', fontWeight: 600, color: s.c }}>{s.v}</span>
             </div>
@@ -171,7 +171,7 @@ export default function ExpandedDetail({ record: d, profile, fmtMoney }: Expande
             <div key={item.label} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '8px 12px', borderRadius: 'var(--radius-xs)',
-              background: item.hl ? 'rgba(110,159,160,0.06)' : 'transparent',
+              background: item.hl ? 'var(--teal-bg-subtle)' : 'transparent',
             }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{item.label}</span>
               <span style={{
@@ -185,7 +185,7 @@ export default function ExpandedDetail({ record: d, profile, fmtMoney }: Expande
           ))}
         </div>
         {d.explicacion && (
-          <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 'var(--radius-xs)', background: 'rgba(73,33,83,0.08)', border: '1px solid rgba(73,33,83,0.2)' }}>
+          <div style={{ marginTop: 14, padding: '14px 16px', borderRadius: 'var(--radius-xs)', background: 'var(--purple-bg-subtle)', border: '1px solid var(--purple-muted)' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--purple-light)', marginBottom: 6 }}>Explicación</div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{d.explicacion}</p>
           </div>

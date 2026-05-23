@@ -1,9 +1,11 @@
 /* ============================================================
    FISCALITO STORE — Global Styles
    Palette: #080409, #492153, #1a2527, #355654, #6e9fa0
+   Theming: data-theme="dark" (default) | data-theme="light"
    ============================================================ */
 
-:root {
+:root,
+[data-theme="dark"] {
   /* Backgrounds */
   --bg-dark: #080409;
   --bg-surface: #0f0a12;
@@ -73,6 +75,126 @@
   --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
   --shadow-glow-purple: 0 8px 30px rgba(73, 33, 83, 0.4);
   --shadow-glow-teal: 0 8px 30px rgba(110, 159, 160, 0.2);
+
+  /* Nav active background */
+  --nav-active-bg: rgba(110, 159, 160, 0.08);
+
+  /* Active state — adapts per theme */
+  --accent-active: var(--teal-light);
+  --accent-active-bg: rgba(110, 159, 160, 0.08);
+  --accent-active-rail: transparent;
+
+  /* Ámbar — protagonista en vanilla, neutro en dark/light */
+  --amber: #b86b2a;
+  --amber-soft: #c89060;
+  --amber-ink: #7c4520;
+}
+
+[data-theme="light"] {
+  /* Backgrounds — sistema de tres capas con tinte morado frío */
+  --bg-dark: #f5f1f7;          /* fondo principal: off-white con tinte morado perceptible */
+  --bg-surface: #ebe4ee;       /* sidebar: claramente más oscuro que el fondo */
+  --bg-card: #ffffff;          /* cards: blanco puro para que destaquen */
+  --bg-card-hover: #faf7fc;
+  --bg-input: #f0eaf3;
+
+  /* Texto — contraste alto */
+  --text-primary: #1a0a24;
+  --text-secondary: #4a3a5a;
+  --text-muted: #7a6a8a;
+  --text-on-accent: #ffffff;
+
+  /* Ramps — solo los muted cambian en light */
+  --purple-muted: rgba(73, 33, 83, 0.18);
+  --teal-muted: rgba(53, 86, 84, 0.22);
+
+  /* Semantic backgrounds — opacidades más altas que en dark */
+  --teal-bg: rgba(53, 86, 84, 0.1);
+  --teal-bg-subtle: rgba(53, 86, 84, 0.05);
+  --purple-bg: rgba(73, 33, 83, 0.1);
+  --purple-bg-subtle: rgba(73, 33, 83, 0.05);
+  --success-bg: rgba(46, 204, 113, 0.1);
+  --success-border: rgba(46, 204, 113, 0.35);
+  --danger-bg: rgba(231, 76, 60, 0.08);
+  --danger-border: rgba(231, 76, 60, 0.3);
+  --warning-bg: rgba(224, 160, 96, 0.12);
+  --warning-border: rgba(224, 160, 96, 0.35);
+
+  /* Bordes — morado oscuro, perceptibles sin gritar */
+  --border: rgba(73, 33, 83, 0.14);
+  --border-hover: rgba(73, 33, 83, 0.28);
+  --border-active: rgba(73, 33, 83, 0.5);
+
+  /* Sombras multicapa con tinte morado — look premium */
+  --shadow-sm: 0 1px 3px rgba(73, 33, 83, 0.08), 0 1px 2px rgba(73, 33, 83, 0.04);
+  --shadow-md: 0 4px 16px rgba(73, 33, 83, 0.1), 0 2px 6px rgba(73, 33, 83, 0.05);
+  --shadow-lg: 0 16px 48px rgba(73, 33, 83, 0.16), 0 6px 16px rgba(73, 33, 83, 0.08);
+  --shadow-glow-purple: 0 8px 24px rgba(73, 33, 83, 0.28);
+  --shadow-glow-teal: 0 8px 24px rgba(53, 86, 84, 0.2);
+
+  /* Active state — purple tiene más presencia en fondo claro */
+  --accent-active: var(--purple);
+  --accent-active-bg: rgba(73, 33, 83, 0.08);
+
+  /* Nav active — alias */
+  --nav-active-bg: rgba(73, 33, 83, 0.08);
+  --accent-active-rail: transparent;
+}
+
+[data-theme="vanilla"] {
+  /* Fondos — cream cálido tipo papel manila */
+  --bg-dark: #f3ecdc;
+  --bg-surface: #ebe0c8;
+  --bg-card: #fbf5e7;
+  --bg-card-hover: #f4ecd9;
+  --bg-input: #f6efe0;
+
+  /* Texto — marrón oscuro, NO negro */
+  --text-primary: #2a1e16;
+  --text-secondary: #5a4536;
+  --text-muted: #837060;
+  --text-on-accent: #ffffff;
+
+  /* Ramps — solo los muted ajustados para cream */
+  --purple-muted: rgba(73, 33, 83, 0.18);
+  --teal-muted: rgba(53, 86, 84, 0.22);
+
+  /* Semantic backgrounds */
+  --teal-bg: rgba(53, 86, 84, 0.1);
+  --teal-bg-subtle: rgba(53, 86, 84, 0.05);
+  --purple-bg: rgba(73, 33, 83, 0.1);
+  --purple-bg-subtle: rgba(73, 33, 83, 0.05);
+  --success-bg: rgba(46, 204, 113, 0.12);
+  --success-border: rgba(46, 204, 113, 0.35);
+  --danger-bg: rgba(231, 76, 60, 0.08);
+  --danger-border: rgba(231, 76, 60, 0.3);
+  --warning-bg: rgba(224, 160, 96, 0.14);
+  --warning-border: rgba(224, 160, 96, 0.4);
+
+  /* Bordes — hairlines sobre cream sin gritar */
+  --border: #ddd0b8;
+  --border-hover: #b89d80;
+  --border-active: var(--purple);
+
+  /* Sombras — tintadas con ámbar, multicapa */
+  --shadow-sm:
+    0 1px 2px rgba(124, 69, 32, 0.06),
+    0 1px 3px rgba(124, 69, 32, 0.04);
+  --shadow-md:
+    0 2px 4px rgba(124, 69, 32, 0.05),
+    0 4px 12px rgba(124, 69, 32, 0.08),
+    0 8px 24px rgba(124, 69, 32, 0.02);
+  --shadow-lg:
+    0 4px 8px rgba(124, 69, 32, 0.08),
+    0 12px 32px rgba(124, 69, 32, 0.12),
+    0 24px 64px rgba(124, 69, 32, 0.03);
+  --shadow-glow-purple: 0 8px 24px rgba(73, 33, 83, 0.25);
+  --shadow-glow-teal: 0 8px 24px rgba(53, 86, 84, 0.2);
+
+  /* Rail ámbar — firma retro del tema vanilla */
+  --accent-active: var(--purple);
+  --accent-active-bg: rgba(73, 33, 83, 0.08);
+  --accent-active-rail: var(--amber);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -83,6 +205,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -105,6 +228,14 @@ input, select, textarea {
 
 .gradient-text {
   background: linear-gradient(135deg, var(--teal-light), var(--purple-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* En light mode, usar tonos más oscuros para mejor contraste sobre fondo claro */
+[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, var(--teal), var(--purple));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -163,6 +294,13 @@ input, select, textarea {
 }
 .card:hover {
   border-color: var(--border-hover);
+}
+[data-theme="light"] .card {
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="light"] .card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 .card-dense {
   padding: var(--space-md);
@@ -245,11 +383,35 @@ input, select, textarea {
   box-shadow: none;
 }
 
+/* Nav item rail — visible solo en vanilla via --accent-active-rail */
+.nav-item { position: relative; }
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent-active-rail);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: var(--purple-deep); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--purple-muted); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+[data-theme="light"] select,
+[data-theme="light"] input,
+[data-theme="light"] textarea {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
 
 /* ============================================================
    Responsive
@@ -267,3 +429,38 @@ input, select, textarea {
 @media (min-width: 769px) {
   .sidebar-mini { display: none !important; }
 }
+
+/* ============================================================
+   Vanilla — overrides específicos
+   ============================================================ */
+
+[data-theme="vanilla"] .gradient-text {
+  background: linear-gradient(135deg, var(--teal), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="vanilla"] .card {
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="vanilla"] .card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+[data-theme="vanilla"] select,
+[data-theme="vanilla"] input,
+[data-theme="vanilla"] textarea {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+[data-theme="vanilla"] ::-webkit-scrollbar-track { background: var(--bg-surface); }
+[data-theme="vanilla"] ::-webkit-scrollbar-thumb { background: var(--amber-soft); border-radius: 3px; }
+[data-theme="vanilla"] ::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+/* Símbolo $ de montos — ámbar en vanilla, muted en dark/light */
+[data-theme="dark"]    .monto-currency-symbol { color: var(--text-muted); }
+[data-theme="light"]   .monto-currency-symbol { color: var(--text-muted); }
+[data-theme="vanilla"] .monto-currency-symbol { color: var(--amber-ink); }

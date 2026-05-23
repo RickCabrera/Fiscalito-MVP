@@ -37,7 +37,7 @@ export default function DeduccionesResult({ resultado, guardado, onReset }: Prop
             {formatMoney(resultado.total_deducible)}
           </div>
         </div>
-        <div style={{ padding: '14px', borderRadius: 'var(--radius-xs)', background: 'rgba(73,33,83,0.06)' }}>
+        <div style={{ padding: '14px', borderRadius: 'var(--radius-xs)', background: 'var(--purple-bg-subtle)' }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>Tope global ({resultado.tope_tipo})</div>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.1rem', fontWeight: 700, color: 'var(--purple-light)' }}>
             {formatMoney(resultado.tope_global)}
@@ -62,7 +62,7 @@ export default function DeduccionesResult({ resultado, guardado, onReset }: Prop
       )}
 
       {resultado.explicacion && (
-        <div className="card" style={{ background: 'var(--purple-bg-subtle)', border: '1px solid rgba(73,33,83,0.2)' }}>
+        <div className="card" style={{ background: 'var(--purple-bg-subtle)', border: '1px solid var(--purple-muted)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <MessageSquare size={16} color="var(--purple-light)" />
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--purple-light)' }}>Explicación</h3>

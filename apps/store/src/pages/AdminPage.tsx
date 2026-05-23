@@ -103,7 +103,7 @@ export default function AdminPage() {
                   <span style={{
                     padding: '3px 10px', borderRadius: 'var(--radius-full)',
                     fontSize: '0.7rem', fontWeight: 600,
-                    background: service.status === 'active' ? 'rgba(46,204,113,0.12)' : 'rgba(224,160,96,0.12)',
+                    background: service.status === 'active' ? 'var(--success-bg)' : 'var(--warning-bg)',
                     color: service.status === 'active' ? 'var(--success)' : 'var(--warning)',
                   }}>
                     {service.status === 'active' ? 'Activo' : 'Pendiente'}
@@ -175,7 +175,7 @@ export default function AdminPage() {
                 cursor: borrando ? 'default' : 'pointer',
                 opacity: borrando ? 0.6 : 1,
               }}
-              onMouseEnter={(e) => { if (!borrando) (e.currentTarget.style.background = 'rgba(231,76,60,0.1)'); }}
+              onMouseEnter={(e) => { if (!borrando) (e.currentTarget.style.background = 'var(--danger-bg)'); }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
             >
               {borrando ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
@@ -190,8 +190,8 @@ export default function AdminPage() {
         {mensajeAdmin && (
           <div style={{
             fontSize: '0.82rem', padding: '8px 14px', borderRadius: 'var(--radius-xs)',
-            background: mensajeAdmin.startsWith('Error') ? 'rgba(231,76,60,0.08)' : 'rgba(46,204,113,0.08)',
-            border: `1px solid ${mensajeAdmin.startsWith('Error') ? 'rgba(231,76,60,0.2)' : 'rgba(46,204,113,0.2)'}`,
+            background: mensajeAdmin.startsWith('Error') ? 'var(--danger-bg)' : 'var(--success-bg)',
+            border: `1px solid ${mensajeAdmin.startsWith('Error') ? 'var(--danger-border)' : 'var(--success-border)'}`,
             color: mensajeAdmin.startsWith('Error') ? 'var(--danger)' : 'var(--success)',
           }}>
             {mensajeAdmin}

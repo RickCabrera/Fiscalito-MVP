@@ -56,7 +56,7 @@ function RegimenRow({ resultado, posicion, esMejor }: { resultado: ResultadoRegi
               {resultado.regimen}
             </span>
             {!resultado.disponible && (
-              <span style={{ fontSize: '0.68rem', color: 'var(--danger)', background: 'rgba(231,76,60,0.08)', padding: '2px 7px', borderRadius: 4, border: '1px solid var(--danger-border)' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--danger)', background: 'var(--danger-bg)', padding: '2px 7px', borderRadius: 4, border: '1px solid var(--danger-border)' }}>
                 No disponible
               </span>
             )}
@@ -183,7 +183,7 @@ export default function CompararRegimenTab() {
 
         {/* Explicación IA */}
         {resultado.explicacion && (
-          <div className="card" style={{ background: 'var(--purple-bg-subtle)', border: '1px solid rgba(73,33,83,0.2)' }}>
+          <div className="card" style={{ background: 'var(--purple-bg-subtle)', border: '1px solid var(--purple-muted)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <MessageSquare size={16} color="var(--purple-light)" />
               <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--purple-light)' }}>Análisis detallado</h3>

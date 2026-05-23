@@ -62,13 +62,29 @@ El primer servicio es **Fiscalito**: un asistente fiscal cuyo backend es el **Fi
 --warning: #e0a060          (advertencias)
 --danger: #e74c3c           (errores, montos negativos)
 
-/* Tambien definidos: --border, --radius, --shadow (ver global.css) */
+/* Amber — acento del tema vanilla (definido en los 3 temas, protagonista solo en vanilla) */
+--amber: #b86b2a
+--amber-soft: #c89060
+--amber-ink: #7c4520
+
+/* Tambien definidos: --border, --radius, --shadow, --accent-active, --accent-active-rail (ver global.css) */
 ```
 
 Gradiente principal: `linear-gradient(135deg, #492153, #355654)`
 Tipografia: **Outfit** (UI) + **JetBrains Mono** (codigo/datos)
 
-NUNCA usar colores fuera de esta paleta. NUNCA usar fondos blancos o claros. Es SIEMPRE dark theme.
+La app soporta **tres temas**: dark (default), light y vanilla. Los tres comparten la misma paleta de purple/teal en acentos.
+
+**Temas:**
+- **dark** — fondos casi negros, acentos teal/purple. Modo por defecto.
+- **light** — fondos blancos fríos con tinte morado sutil.
+- **vanilla** — fondos cream cálidos tipo papel manila, trim ámbar puntual en sidebar y símbolos `$`.
+
+Reglas:
+- SIEMPRE usar variables CSS de global.css. NUNCA hex o rgba hardcodeados en componentes.
+- El gradiente principal (--accent-gradient) y los ramps de purple/teal son IDÉNTICOS en los tres temas.
+- Cualquier variable nueva debe definirse en los tres bloques: `:root`, `[data-theme="light"]` y `[data-theme="vanilla"]`.
+- Al agregar componentes, probar visualmente en los tres temas antes de hacer merge.
 
 ## ESTRUCTURA DEL PROYECTO
 

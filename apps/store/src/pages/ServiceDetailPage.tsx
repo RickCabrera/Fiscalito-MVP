@@ -38,9 +38,9 @@ export default function ServiceDetailPage() {
             <span style={{
               padding: '4px 14px', borderRadius: 'var(--radius-full)',
               fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
-              background: service.status === 'active' ? 'var(--border)' : 'rgba(73,33,83,0.15)',
+              background: service.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
               color: service.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
-              border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'rgba(73,33,83,0.3)'}`,
+              border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
             }}>
               {service.status === 'active' ? 'Activo' : 'Proximamente'}
             </span>
@@ -106,7 +106,7 @@ export default function ServiceDetailPage() {
                 {['FastAPI', 'Python', 'OpenAI / Anthropic', 'Cloud Run'].map((t) => (
                   <span key={t} style={{
                     padding: '4px 10px', borderRadius: 'var(--radius-full)',
-                    background: 'rgba(73,33,83,0.15)', color: 'var(--purple-light)',
+                    background: 'var(--purple-bg)', color: 'var(--purple-light)',
                     fontSize: '0.75rem', fontWeight: 500,
                   }}>
                     {t}
@@ -160,7 +160,7 @@ export default function ServiceDetailPage() {
             <div style={{
               padding: 20, borderRight: '1px solid var(--border)',
               fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', lineHeight: 1.8,
-              background: 'rgba(73,33,83,0.04)', whiteSpace: 'pre',
+              background: 'var(--purple-bg-subtle)', whiteSpace: 'pre',
             }}>
               <div style={{ fontFamily: 'Outfit', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--text-muted)', marginBottom: 10 }}>Request</div>
 {`{
@@ -180,7 +180,7 @@ export default function ServiceDetailPage() {
             <div style={{
               padding: 20,
               fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', lineHeight: 1.8,
-              background: 'rgba(53,86,84,0.04)', whiteSpace: 'pre',
+              background: 'var(--teal-bg-subtle)', whiteSpace: 'pre',
             }}>
               <div style={{ fontFamily: 'Outfit', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1.5, color: 'var(--text-muted)', marginBottom: 10 }}>Response</div>
 {`{

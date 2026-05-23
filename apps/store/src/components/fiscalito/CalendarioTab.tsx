@@ -15,7 +15,7 @@ const MES_NUM_TO_NAME: Record<number, string> = {
 function getBadgeColor(periodicidad: string): { bg: string; border: string; color: string } {
   switch (periodicidad.toLowerCase()) {
     case 'mensual': return { bg: 'var(--teal-bg)', border: 'var(--border-hover)', color: 'var(--teal-light)' };
-    case 'bimestral': return { bg: 'var(--purple-bg)', border: 'rgba(73,33,83,0.25)', color: 'var(--purple-light)' };
+    case 'bimestral': return { bg: 'var(--purple-bg)', border: 'var(--purple-muted)', color: 'var(--purple-light)' };
     case 'anual': return { bg: 'var(--success-bg)', border: 'var(--success-border)', color: 'var(--success)' };
     default: return { bg: 'var(--teal-bg)', border: 'var(--border-hover)', color: 'var(--teal-light)' };
   }

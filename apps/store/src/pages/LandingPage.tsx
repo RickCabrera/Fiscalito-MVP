@@ -82,7 +82,7 @@ export default function LandingPage() {
                   display: 'inline-block', marginTop: 12,
                   padding: '4px 12px', borderRadius: 'var(--radius-full)',
                   fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
-                  background: s.status === 'active' ? 'var(--border)' : 'rgba(73,33,83,0.12)',
+                  background: s.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
                   color: s.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
                 }}>
                   {s.status === 'active' ? 'Disponible' : 'Proximamente'}

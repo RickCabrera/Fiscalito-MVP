@@ -14,13 +14,13 @@ interface BadgeConfig {
 
 function getBadge(cat: HistorialCategoria): BadgeConfig {
   switch (cat) {
-    case 'predeclaracion': return { label: 'Pre-declaración', bg: 'rgba(73,33,83,0.15)', color: 'var(--purple-light)', icon: <FileText size={12} /> };
-    case 'diot': return { label: 'DIOT', bg: 'rgba(110,159,160,0.12)', color: 'var(--teal-light)', icon: <FileSpreadsheet size={12} /> };
-    case 'retenciones': return { label: 'Retenciones', bg: 'rgba(224,160,96,0.15)', color: 'var(--warning)', icon: <Users size={12} /> };
-    case 'multiperiodo': return { label: 'Multi-periodo', bg: 'rgba(110,159,160,0.18)', color: 'var(--teal-light)', icon: <TrendingUp size={12} /> };
-    case 'estado_cuenta': return { label: 'Estado cuenta', bg: 'rgba(46,204,113,0.12)', color: 'var(--success)', icon: <Wallet size={12} /> };
-    case 'deducciones': return { label: 'Deducciones', bg: 'rgba(107,53,128,0.15)', color: '#a06cb8', icon: <Calculator size={12} /> };
-    default: return { label: 'Cálculo', bg: 'rgba(110,159,160,0.12)', color: 'var(--teal-light)', icon: <FileText size={12} /> };
+    case 'predeclaracion': return { label: 'Pre-declaración', bg: 'var(--purple-bg)', color: 'var(--purple-light)', icon: <FileText size={12} /> };
+    case 'diot': return { label: 'DIOT', bg: 'var(--teal-bg)', color: 'var(--teal-light)', icon: <FileSpreadsheet size={12} /> };
+    case 'retenciones': return { label: 'Retenciones', bg: 'var(--warning-bg)', color: 'var(--warning)', icon: <Users size={12} /> };
+    case 'multiperiodo': return { label: 'Multi-periodo', bg: 'var(--teal-bg)', color: 'var(--teal-light)', icon: <TrendingUp size={12} /> };
+    case 'estado_cuenta': return { label: 'Estado cuenta', bg: 'var(--success-bg)', color: 'var(--success)', icon: <Wallet size={12} /> };
+    case 'deducciones': return { label: 'Deducciones', bg: 'var(--purple-bg)', color: '#a06cb8', icon: <Calculator size={12} /> };
+    default: return { label: 'Cálculo', bg: 'var(--teal-bg)', color: 'var(--teal-light)', icon: <FileText size={12} /> };
   }
 }
 
