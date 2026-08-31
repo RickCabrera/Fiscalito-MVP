@@ -3,8 +3,8 @@ Configuracion de logging estructurado para Fiscal Agent API.
 Usa stdlib logging con formato JSON-like para facilitar observabilidad en Cloud Run.
 """
 
-import logging
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from typing import Any

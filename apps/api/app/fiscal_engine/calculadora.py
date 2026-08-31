@@ -7,16 +7,16 @@ el LLM solo se usa para generar explicaciones en lenguaje natural.
 """
 
 from __future__ import annotations
-from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura, PeriodicidadDeclaracion
-from app.schemas.declaraciones import DesgloseFiscal
+
+from app.fiscal_engine.clasificador_gastos import clasificar_egresos
 from app.fiscal_engine.tablas_isr import (
     RESICO_TASAS_MENSUALES,
-    TABLA_ISR_MENSUAL,
     TABLA_ISR_ANUAL,
-    TASA_IVA,
+    TABLA_ISR_MENSUAL,
     generar_tabla_acumulada,
 )
-from app.fiscal_engine.clasificador_gastos import clasificar_egresos
+from app.schemas.declaraciones import DesgloseFiscal
+from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura
 
 
 def clasificar_facturas(

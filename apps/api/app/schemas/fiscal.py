@@ -7,10 +7,12 @@ estos schemas te dicen que campos agregar al UserModel y CfdiModel.
 """
 
 from __future__ import annotations
+
 import re
-from pydantic import BaseModel, Field, field_validator
-from enum import Enum
 from datetime import date
+from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator
 
 # Patron RFC: 3-4 letras (incluye Ñ y &) + 6 digitos + 3 alfanumericos
 _RFC_PATTERN = re.compile(r"^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$")

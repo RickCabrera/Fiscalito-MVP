@@ -3,9 +3,10 @@ Schemas de request/response para los endpoints de declaraciones.
 """
 
 from __future__ import annotations
-from pydantic import BaseModel, Field
-from app.schemas.fiscal import PerfilContribuyente, CFDI
 
+from pydantic import BaseModel, Field
+
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 # ============================================================
 # Requests

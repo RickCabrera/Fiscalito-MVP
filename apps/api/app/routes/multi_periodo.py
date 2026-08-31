@@ -1,8 +1,9 @@
 """Endpoint multi-periodo — calcula multiples periodos a la vez."""
 
 from fastapi import APIRouter, HTTPException
-from app.schemas.multi_periodo import MultiPeriodoRequest, MultiPeriodoResponse
+
 from app.fiscal_engine.multi_periodo import calcular_multi_periodo
+from app.schemas.multi_periodo import MultiPeriodoRequest, MultiPeriodoResponse
 from app.services.llm_service import generar_explicacion_multi_periodo
 
 router = APIRouter(tags=["PYME"])

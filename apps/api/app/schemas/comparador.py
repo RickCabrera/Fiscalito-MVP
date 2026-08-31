@@ -3,6 +3,7 @@ Schemas de request/response para el endpoint de comparacion de regimenes.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 

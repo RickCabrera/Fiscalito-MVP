@@ -5,13 +5,14 @@ POST /api/v1/calendario → Genera calendario de obligaciones fiscales
 """
 
 from fastapi import APIRouter, HTTPException
+
+from app.fiscal_engine.calendario import generar_calendario
 from app.schemas.calendario import (
     CalendarioRequest,
     CalendarioResponse,
     ObligacionFiscalSchema,
 )
 from app.schemas.declaraciones import ErrorResponse
-from app.fiscal_engine.calendario import generar_calendario
 
 router = APIRouter(tags=["Calendario"])
 

@@ -218,7 +218,7 @@ Sé directo y practico. No repitas los numeros de la tabla — ya los ve el usua
         logger.exception("LLM call failed para generar_explicacion_comparacion: %s", e)
         lines = [f"{r.nombre}: ${r.isr_anual:,.2f}/año" for r in resultados if r.disponible]
         return (
-            f"Comparacion de regimenes:\n\n"
+            "Comparacion de regimenes:\n\n"
             + "\n".join(lines)
             + f"\n\n{recomendacion}\n\n"
             "IMPORTANTE: Esta es una estimacion. Consulta con un contador."

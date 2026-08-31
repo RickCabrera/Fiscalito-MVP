@@ -3,23 +3,22 @@ Tests del motor fiscal con datos de ejemplo.
 Ejecutar: pytest tests/ -v
 """
 
-import pytest
-from app.schemas.fiscal import PerfilContribuyente, CFDI, TipoFactura, PeriodicidadDeclaracion
-from app.fiscal_engine.calculadora import (
-    clasificar_facturas,
-    calcular_isr_resico,
-    calcular_isr_general,
-    calcular_declaracion,
-)
-from app.fiscal_engine.deducciones_personales import (
-    calcular_deducciones_personales,
-    TOPE_5_UMAS_ANUALES,
-)
-from app.fiscal_engine.tablas_isr import TABLA_ISR_MENSUAL, generar_tabla_acumulada
-from app.fiscal_engine.calendario import generar_calendario, _dias_habiles_extra
-from app.fiscal_engine.comparador import calcular_todos_regimenes
 from datetime import date
 
+from app.fiscal_engine.calculadora import (
+    calcular_declaracion,
+    calcular_isr_general,
+    calcular_isr_resico,
+    clasificar_facturas,
+)
+from app.fiscal_engine.calendario import _dias_habiles_extra, generar_calendario
+from app.fiscal_engine.comparador import calcular_todos_regimenes
+from app.fiscal_engine.deducciones_personales import (
+    TOPE_5_UMAS_ANUALES,
+    calcular_deducciones_personales,
+)
+from app.fiscal_engine.tablas_isr import TABLA_ISR_MENSUAL, generar_tabla_acumulada
+from app.schemas.fiscal import CFDI, PerfilContribuyente, PeriodicidadDeclaracion, TipoFactura
 
 # ============================================================
 # Fixtures — datos de ejemplo

@@ -1,6 +1,7 @@
 """Motor de resumen de retenciones a terceros."""
 
 from __future__ import annotations
+
 from app.schemas.fiscal import CFDI, TipoFactura
 from app.schemas.retenciones import TerceroRetencion
 

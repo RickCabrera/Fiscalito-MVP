@@ -7,9 +7,10 @@ Fuente: Art. 151 LISR.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from app.fiscal_engine.tablas_isr import UMA_DIARIA_2026
 
+from dataclasses import dataclass
+
+from app.fiscal_engine.tablas_isr import UMA_DIARIA_2026
 
 # Topes de colegiaturas por nivel educativo (Art. 1.8 Decreto)
 TOPES_COLEGIATURAS: dict[str, float] = {

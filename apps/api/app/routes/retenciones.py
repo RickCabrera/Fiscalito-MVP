@@ -1,10 +1,11 @@
 """Endpoint de resumen de retenciones a terceros."""
 
 from fastapi import APIRouter, HTTPException
-from app.schemas.retenciones import RetencionesRequest, RetencionesResponse
+
+from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES
 from app.fiscal_engine.retenciones import generar_resumen_retenciones
+from app.schemas.retenciones import RetencionesRequest, RetencionesResponse
 from app.services.llm_service import generar_explicacion_retenciones
-from app.constants import NOMBRES_MESES, NOMBRES_BIMESTRES
 
 router = APIRouter(tags=["PYME"])
 

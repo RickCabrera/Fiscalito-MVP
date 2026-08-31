@@ -1,10 +1,11 @@
 """Motor de calculo multi-periodo."""
 
 from __future__ import annotations
-from app.schemas.fiscal import CFDI, PerfilContribuyente
-from app.schemas.multi_periodo import PeriodoResultado, AcumuladoMultiPeriodo
-from app.fiscal_engine.calculadora import calcular_declaracion
+
 from app.constants import NOMBRES_MESES, REGIMENES_ACUMULATIVOS
+from app.fiscal_engine.calculadora import calcular_declaracion
+from app.schemas.fiscal import CFDI, PerfilContribuyente
+from app.schemas.multi_periodo import AcumuladoMultiPeriodo, PeriodoResultado
 
 
 def _determinar_tendencia(pagos: list[float]) -> str:

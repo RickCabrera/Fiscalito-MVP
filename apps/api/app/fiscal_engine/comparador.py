@@ -7,9 +7,10 @@ Permite al contribuyente elegir el regimen que mas le conviene.
 """
 
 from __future__ import annotations
-from app.fiscal_engine.calculadora import calcular_isr_resico, calcular_isr_general
-from app.schemas.comparador import ResultadoRegimen
+
 from app.constants import TOPE_RESICO_ANUAL
+from app.fiscal_engine.calculadora import calcular_isr_general, calcular_isr_resico
+from app.schemas.comparador import ResultadoRegimen
 
 # Umbral ingresos anuales para pago definitivo en plataformas (Art. 113-B LISR)
 TOPE_PLATAFORMAS_DEFINITIVO: float = 300_000.00
@@ -111,7 +112,7 @@ def _calcular_625(ingresos_m: float, ingresos_a: float, gastos_a: float) -> Resu
         base = max(ingresos_a - gastos_a, 0)
         isr_anual, _ = calcular_isr_general(base, es_anual=True)
         isr_anual = round(isr_anual, 2)
-        notas.append(f"Ingresos > $300,000: debes declarar normalmente (Art. 113-B LISR)")
+        notas.append("Ingresos > $300,000: debes declarar normalmente (Art. 113-B LISR)")
         notas.append("Las retenciones de la plataforma se acreditan contra el ISR calculado")
 
     notas.append("Solo aplica si operas a traves de plataformas digitales (Uber, Rappi, Airbnb, etc.)")

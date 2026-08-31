@@ -13,12 +13,14 @@ Soporta Anthropic (claude-haiku) y OpenAI (gpt-4o-mini) via LLM_PROVIDER.
 """
 
 from __future__ import annotations
+
 import json
 import logging
 
 from fastapi import APIRouter
 
 from app.config import settings
+from app.constants import NOMBRES_REGIMEN
 from app.schemas.agente import AgentePreDeclaracionRequest, AgentePreDeclaracionResponse
 from app.schemas.declaraciones import DesgloseFiscal, PreDeclaracionResponse
 from app.services.agent_tools import (
@@ -27,7 +29,6 @@ from app.services.agent_tools import (
     RequestContext,
     ejecutar_tool,
 )
-from app.constants import NOMBRES_REGIMEN
 
 router = APIRouter(tags=["Agente"])
 logger = logging.getLogger(__name__)

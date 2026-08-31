@@ -6,21 +6,21 @@ POST /api/v1/pre-declaracion-anual    → Pre-declaracion anual
 """
 
 from fastapi import APIRouter, HTTPException
-from app.schemas.declaraciones import (
-    PreDeclaracionRequest,
-    PreDeclaracionResponse,
-    ErrorResponse,
-)
-from app.schemas.deducciones import (
-    DeduccionesPersonalesRequest,
-    DeduccionesPersonalesResponse,
-    DeduccionDetalle,
-)
+
+from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES, NOMBRES_REGIMEN
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.deducciones_personales import calcular_deducciones_personales
-from app.fiscal_engine.tablas_isr import TABLA_ISR_ANUAL
+from app.schemas.declaraciones import (
+    ErrorResponse,
+    PreDeclaracionRequest,
+    PreDeclaracionResponse,
+)
+from app.schemas.deducciones import (
+    DeduccionDetalle,
+    DeduccionesPersonalesRequest,
+    DeduccionesPersonalesResponse,
+)
 from app.services.llm_service import generar_explicacion, generar_explicacion_deducciones
-from app.constants import NOMBRES_MESES, NOMBRES_BIMESTRES, NOMBRES_REGIMEN
 
 router = APIRouter(tags=["Declaraciones"])
 

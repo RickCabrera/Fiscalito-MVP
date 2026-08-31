@@ -8,8 +8,9 @@ Ejecutar: pytest tests/test_caso_real_enero2026.py -v
 """
 
 from datetime import date
-from app.schemas.fiscal import PerfilContribuyente, CFDI, TipoFactura
+
 from app.fiscal_engine.calculadora import calcular_declaracion
+from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura
 
 
 def _perfil_cadg() -> PerfilContribuyente:

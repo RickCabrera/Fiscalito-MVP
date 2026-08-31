@@ -1,8 +1,9 @@
 """Schemas para el endpoint multi-periodo."""
 
 from pydantic import BaseModel
-from app.schemas.fiscal import PerfilContribuyente, CFDI
+
 from app.schemas.declaraciones import DesgloseFiscal
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 
 class MultiPeriodoRequest(BaseModel):

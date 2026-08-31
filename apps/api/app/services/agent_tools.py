@@ -10,13 +10,14 @@ Cada tool recibe el input del LLM + el contexto del request original (stateless)
 """
 
 from __future__ import annotations
+
 import json
 import logging
 
-from app.schemas.fiscal import PerfilContribuyente, CFDI
-from app.schemas.agente import DeclaracionHistorialItem
+from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES, NOMBRES_REGIMEN
 from app.fiscal_engine.calculadora import calcular_declaracion
-from app.constants import NOMBRES_MESES, NOMBRES_BIMESTRES, NOMBRES_REGIMEN
+from app.schemas.agente import DeclaracionHistorialItem
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 logger = logging.getLogger(__name__)
 

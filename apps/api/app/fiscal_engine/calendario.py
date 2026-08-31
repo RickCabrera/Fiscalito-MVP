@@ -5,8 +5,9 @@ Genera obligaciones fiscales segun el tipo de contribuyente, regimen y RFC.
 """
 
 from __future__ import annotations
-from datetime import date, timedelta
+
 from dataclasses import dataclass
+from datetime import date, timedelta
 
 
 @dataclass

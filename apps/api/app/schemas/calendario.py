@@ -3,6 +3,7 @@ Schemas de request/response para el endpoint de calendario fiscal.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 

@@ -5,9 +5,10 @@ POST /api/v1/comparar-regimenes → Compara los 5 regimenes de PF entre si
 """
 
 from fastapi import APIRouter, HTTPException
+
+from app.fiscal_engine.comparador import calcular_todos_regimenes
 from app.schemas.comparador import CompararRegimenRequest, CompararRegimenResponse
 from app.schemas.declaraciones import ErrorResponse
-from app.fiscal_engine.comparador import calcular_todos_regimenes
 from app.services.llm_service import generar_explicacion_comparacion
 
 router = APIRouter(tags=["Comparador"])
