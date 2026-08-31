@@ -20,10 +20,9 @@ jobs:
           cache: pip
           cache-dependency-path: apps/api/pyproject.toml
       - run: pip install -e ".[dev]"
+      # Lint antes que los tests: falla en un segundo en vez de quemar la suite.
+      - run: ruff check .
       - run: pytest tests/ -v
-      # Se activa al cerrar S-01 (lint backend a cero). Hoy hay 111 errores:
-      # descomentar esto antes de limpiarlos pondría el CI en rojo desde el día 1.
-      # - run: ruff check .
 
   frontend:
     name: Frontend
