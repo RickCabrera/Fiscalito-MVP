@@ -7,10 +7,12 @@ estos schemas te dicen que campos agregar al UserModel y CfdiModel.
 """
 
 from __future__ import annotations
+
 import re
-from pydantic import BaseModel, Field, field_validator
-from enum import Enum
 from datetime import date
+from enum import Enum
+
+from pydantic import BaseModel, Field, field_validator
 
 # Patron RFC: 3-4 letras (incluye Ñ y &) + 6 digitos + 3 alfanumericos
 _RFC_PATTERN = re.compile(r"^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$")
@@ -76,7 +78,8 @@ class PerfilContribuyente(BaseModel):
         v = v.upper().strip()
         if not _RFC_PATTERN.match(v):
             raise ValueError(
-                f"RFC invalido: '{v}'. Formato esperado: 3-4 letras + 6 digitos + 3 caracteres alfanumericos."
+                f"RFC invalido: '{v}'. Formato esperado: "
+                "3-4 letras + 6 digitos + 3 caracteres alfanumericos."
             )
         return v
     tipo_persona: str = Field(default="fisica", description="'fisica' o 'moral'")
@@ -91,7 +94,9 @@ class PerfilContribuyente(BaseModel):
         default=None, description="Fecha de inicio de actividades ante el SAT"
     )
     contributor_type: ContributorType | None = Field(
-        default=None, description="Tipo de contribuyente: asalariado, independiente, arrendamiento, plataformas, pyme"
+        default=None,
+        description="Tipo de contribuyente: asalariado, independiente, arrendamiento, "
+                    "plataformas, pyme",
     )
 
 
@@ -120,10 +125,18 @@ class CFDI(BaseModel):
     descuento: float = Field(default=0.0, description="Descuento aplicado")
     uso_cfdi: str = Field(default="G03", description="Clave de uso CFDI (G03=Gastos en general)")
     descripcion: str = Field(default="", description="Descripcion o concepto principal")
-    clave_prod_serv: str = Field(default="", description="Clave de producto/servicio del catalogo SAT (8 digitos)")
+    clave_prod_serv: str = Field(
+        default="", description="Clave de producto/servicio del catalogo SAT (8 digitos)"
+    )
     metodo_pago: str = Field(default="PUE", description="Metodo de pago: PUE o PPD")
-    uuid_relacionado: str | None = Field(default=None, description="UUID del CFDI original al que hace referencia un complemento de pago tipo P")
-    monto_pago: float | None = Field(default=None, description="Monto efectivamente pagado (solo para complementos tipo P)")
+    uuid_relacionado: str | None = Field(
+        default=None,
+        description="UUID del CFDI original al que hace referencia "
+                    "un complemento de pago tipo P",
+    )
+    monto_pago: float | None = Field(
+        default=None, description="Monto efectivamente pagado (solo para complementos tipo P)"
+    )
 
     @property
     def es_ingreso(self) -> bool:

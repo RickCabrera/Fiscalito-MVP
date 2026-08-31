@@ -1,9 +1,14 @@
 """Motor de generacion de estado de cuenta fiscal."""
 
 from __future__ import annotations
-from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura
-from app.fiscal_engine.calculadora import calcular_isr_resico, calcular_isr_general, clasificar_facturas
+
 from app.constants import NOMBRES_MESES, TOPE_RESICO_ANUAL
+from app.fiscal_engine.calculadora import (
+    calcular_isr_general,
+    calcular_isr_resico,
+    clasificar_facturas,
+)
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 
 def generar_estado_cuenta(
@@ -60,7 +65,9 @@ def generar_estado_cuenta(
     gastos_por_mes: dict[int, float] = {}
     for f in ingresos:
         if f.es_ingreso:
-            ingresos_por_mes[f.fecha.month] = ingresos_por_mes.get(f.fecha.month, 0) + f.base_gravable
+            ingresos_por_mes[f.fecha.month] = (
+                ingresos_por_mes.get(f.fecha.month, 0) + f.base_gravable
+            )
     for f in egresos:
         gastos_por_mes[f.fecha.month] = gastos_por_mes.get(f.fecha.month, 0) + f.base_gravable
 

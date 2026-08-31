@@ -1,8 +1,9 @@
 """Endpoint de estado de cuenta fiscal."""
 
 from fastapi import APIRouter, HTTPException
-from app.schemas.estado_cuenta import EstadoCuentaRequest, EstadoCuentaResponse
+
 from app.fiscal_engine.estado_cuenta import generar_estado_cuenta
+from app.schemas.estado_cuenta import EstadoCuentaRequest, EstadoCuentaResponse
 from app.services.llm_service import generar_explicacion_estado_cuenta
 
 router = APIRouter(tags=["PYME"])

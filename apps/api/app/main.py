@@ -14,10 +14,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.config import settings
 from app.exceptions import FiscalAgentError
 from app.logging_config import setup_logging
-from app.routes import declaraciones, health, calendario, comparador, diot, retenciones, multi_periodo, estado_cuenta, agente
-from app.config import settings
+from app.routes import (
+    agente,
+    calendario,
+    comparador,
+    declaraciones,
+    diot,
+    estado_cuenta,
+    health,
+    multi_periodo,
+    retenciones,
+)
 
 # Inicializar logging estructurado al arrancar la aplicacion
 setup_logging()

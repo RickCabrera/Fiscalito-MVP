@@ -6,21 +6,21 @@ POST /api/v1/pre-declaracion-anual    → Pre-declaracion anual
 """
 
 from fastapi import APIRouter, HTTPException
-from app.schemas.declaraciones import (
-    PreDeclaracionRequest,
-    PreDeclaracionResponse,
-    ErrorResponse,
-)
-from app.schemas.deducciones import (
-    DeduccionesPersonalesRequest,
-    DeduccionesPersonalesResponse,
-    DeduccionDetalle,
-)
+
+from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES, NOMBRES_REGIMEN
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.deducciones_personales import calcular_deducciones_personales
-from app.fiscal_engine.tablas_isr import TABLA_ISR_ANUAL
+from app.schemas.declaraciones import (
+    ErrorResponse,
+    PreDeclaracionRequest,
+    PreDeclaracionResponse,
+)
+from app.schemas.deducciones import (
+    DeduccionDetalle,
+    DeduccionesPersonalesRequest,
+    DeduccionesPersonalesResponse,
+)
 from app.services.llm_service import generar_explicacion, generar_explicacion_deducciones
-from app.constants import NOMBRES_MESES, NOMBRES_BIMESTRES, NOMBRES_REGIMEN
 
 router = APIRouter(tags=["Declaraciones"])
 
@@ -172,12 +172,14 @@ def _generar_advertencias(req: PreDeclaracionRequest, desglose) -> list[str]:
         proyeccion = (desglose.total_ingresos_gravados / mes) * 12
         if proyeccion > 3_500_000:
             advertencias.append(
-                f"Tus ingresos proyectados (${proyeccion:,.0f}) superan el tope RESICO de $3,500,000. "
+                f"Tus ingresos proyectados (${proyeccion:,.0f}) superan el tope RESICO "
+                "de $3,500,000. "
                 "Debes considerar cambiar al regimen de Actividad Empresarial (612)."
             )
         elif proyeccion > 2_800_000:  # 80% del tope
             advertencias.append(
-                f"Tus ingresos proyectados representan el {proyeccion/3_500_000*100:.0f}% del tope RESICO."
+                f"Tus ingresos proyectados representan el "
+                f"{proyeccion/3_500_000*100:.0f}% del tope RESICO."
             )
         if desglose.total_ingresos_gravados > 291_666.67:
             advertencias.append(

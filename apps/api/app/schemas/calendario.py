@@ -3,6 +3,7 @@ Schemas de request/response para el endpoint de calendario fiscal.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
 
@@ -17,7 +18,9 @@ class ObligacionFiscalSchema(BaseModel):
 
 class CalendarioRequest(BaseModel):
     """Request para generar calendario fiscal personalizado."""
-    contributor_type: str = Field(..., description="Tipo: asalariado, independiente, arrendamiento, plataformas, pyme")
+    contributor_type: str = Field(
+        ..., description="Tipo: asalariado, independiente, arrendamiento, plataformas, pyme"
+    )
     regimen: str = Field(..., description="Codigo de regimen fiscal (626, 612, 606, 625, 605)")
     rfc: str = Field(..., description="RFC del contribuyente")
     year: int = Field(default=2025, description="Anio fiscal")

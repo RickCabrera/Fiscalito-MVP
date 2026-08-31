@@ -6,16 +6,16 @@ en los archivos de test individuales. Provee fixtures reutilizables
 de pytest para datos comunes (perfiles, facturas).
 """
 
-import pytest
 from datetime import date
 
-from app.schemas.fiscal import (
-    PerfilContribuyente,
-    CFDI,
-    TipoFactura,
-    PeriodicidadDeclaracion,
-)
+import pytest
 
+from app.schemas.fiscal import (
+    CFDI,
+    PerfilContribuyente,
+    PeriodicidadDeclaracion,
+    TipoFactura,
+)
 
 # ============================================================
 # Fixtures — perfiles de contribuyente

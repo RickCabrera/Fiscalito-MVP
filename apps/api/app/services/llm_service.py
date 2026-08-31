@@ -22,8 +22,10 @@ declaracion fiscal y explicarle al contribuyente:
 3. Si hay algo que pueda optimizar (deducciones faltantes, cambio de regimen, etc.)
 
 Tipos de contribuyente que manejas:
-- asalariado: Solo declara anual, su patron retiene ISR mensualmente. Enfocate en deducciones personales.
-- independiente: Freelancer o profesionista. RESICO (626) con tasas fijas o Act. Empresarial (612) con deducciones.
+- asalariado: Solo declara anual, su patron retiene ISR mensualmente. \
+Enfocate en deducciones personales.
+- independiente: Freelancer o profesionista. RESICO (626) con tasas fijas o \
+Act. Empresarial (612) con deducciones.
 - arrendamiento: Renta de inmuebles. Puede usar deduccion ciega del 35% o gastos reales.
 - plataformas: Uber, Rappi, etc. Si gana <$300k anuales, retenciones pueden ser pago definitivo.
 - pyme: Empresa con empleados. Tiene obligaciones adicionales como DIOT y retenciones de nomina.
@@ -152,7 +154,8 @@ Tope global aplicado: ${resultado.tope_global:,.2f} ({resultado.tope_tipo})
 Excedente no aprovechado: ${resultado.excedente_no_aprovechado:,.2f}
 Saldo a favor estimado de ISR: ${saldo_a_favor:,.2f}
 
-Explicale al contribuyente que deducciones aprovecho, cuales le faltan, y cuanto podria recuperar."""
+Explicale al contribuyente que deducciones aprovecho, cuales le faltan, \
+y cuanto podria recuperar."""
 
     try:
         if settings.LLM_PROVIDER == "anthropic":
@@ -162,14 +165,16 @@ Explicale al contribuyente que deducciones aprovecho, cuales le faltan, y cuanto
     except Exception as e:
         logger.exception("LLM call failed para generar_explicacion_deducciones: %s", e)
         partes = [
-            f"Tus deducciones personales suman ${resultado.total_antes_tope:,.2f} antes del tope global.",
+            f"Tus deducciones personales suman ${resultado.total_antes_tope:,.2f} "
+            "antes del tope global.",
             f"El tope global aplicado es ${resultado.tope_global:,.2f} ({resultado.tope_tipo}).",
             f"Total efectivamente deducible: ${resultado.total_deducible:,.2f}.",
             f"Saldo a favor estimado de ISR: ${saldo_a_favor:,.2f}.",
         ]
         if resultado.excedente_no_aprovechado > 0:
             partes.append(
-                f"No pudiste aprovechar ${resultado.excedente_no_aprovechado:,.2f} por exceder el tope."
+                f"No pudiste aprovechar ${resultado.excedente_no_aprovechado:,.2f} "
+                "por exceder el tope."
             )
         partes.append(
             "IMPORTANTE: Esta es una estimacion. Verifica con el portal del SAT."
@@ -218,7 +223,7 @@ Sé directo y practico. No repitas los numeros de la tabla — ya los ve el usua
         logger.exception("LLM call failed para generar_explicacion_comparacion: %s", e)
         lines = [f"{r.nombre}: ${r.isr_anual:,.2f}/año" for r in resultados if r.disponible]
         return (
-            f"Comparacion de regimenes:\n\n"
+            "Comparacion de regimenes:\n\n"
             + "\n".join(lines)
             + f"\n\n{recomendacion}\n\n"
             "IMPORTANTE: Esta es una estimacion. Consulta con un contador."
@@ -234,7 +239,9 @@ async def generar_explicacion_diot(
         f"operaciones ${p['total_operaciones']:,.2f}, IVA pagado ${p['iva_pagado']:,.2f}"
         for p in resultado_diot.get("proveedores", [])
     )
-    user_prompt = f"""Genera una explicacion clara de esta DIOT (Declaracion Informativa de Operaciones con Terceros):
+    user_prompt = f"""\
+Genera una explicacion clara de esta DIOT \
+(Declaracion Informativa de Operaciones con Terceros):
 
 Periodo: {resultado_diot.get("periodo", "N/A")}
 Total de proveedores: {resultado_diot.get("total_proveedores", 0)}
@@ -319,7 +326,9 @@ async def generar_explicacion_multi_periodo(
     n_periodos: int,
 ) -> str:
     """Genera explicacion del resumen multi-periodo usando LLM."""
-    user_prompt = f"""Analisis del resumen fiscal acumulado del ejercicio {year} ({n_periodos} periodos calculados):
+    user_prompt = f"""\
+Analisis del resumen fiscal acumulado del ejercicio {year} \
+({n_periodos} periodos calculados):
 
 - Total ISR pagado: ${acumulado.get("total_isr_pagado", 0):,.2f}
 - Total IVA pagado: ${acumulado.get("total_iva_pagado", 0):,.2f}
@@ -329,7 +338,8 @@ async def generar_explicacion_multi_periodo(
 
 Explica:
 1. Cuanto ha pagado el contribuyente en total de impuestos en estos periodos
-2. Que significa la tendencia ({acumulado.get("tendencia", "estable")}) y que implica para los siguientes periodos
+2. Que significa la tendencia ({acumulado.get("tendencia", "estable")}) y que \
+implica para los siguientes periodos
 3. Si el promedio por periodo es alto o bajo en relacion al total
 Se directo, no uses frases conversacionales."""
 
@@ -371,7 +381,8 @@ async def generar_explicacion_estado_cuenta(
         f"- {a}" for a in resultado.get("advertencias", [])
     ) or "Ninguna"
 
-    user_prompt = f"""Analisis del estado de cuenta fiscal del ejercicio {resultado.get("year", "")}:
+    user_prompt = f"""\
+Analisis del estado de cuenta fiscal del ejercicio {resultado.get("year", "")}:
 
 Ingresos acumulados: ${resultado.get("ingresos_acumulados", 0):,.2f}
 Egresos acumulados: ${resultado.get("egresos_acumulados", 0):,.2f}
@@ -409,7 +420,8 @@ Se directo, no uses frases conversacionales."""
             f"ISR anual estimado: ${resultado.get('isr_anual_estimado', 0):,.2f}. "
             f"ISR retenido hasta ahora: ${resultado.get('isr_retenido_acumulado', 0):,.2f}. "
             f"ISR faltante: ${resultado.get('isr_faltante', 0):,.2f}.",
-            f"Proyeccion de ingresos anuales: ${resultado.get('proyeccion_ingresos_anuales', 0):,.2f}.",
+            f"Proyeccion de ingresos anuales: "
+            f"${resultado.get('proyeccion_ingresos_anuales', 0):,.2f}.",
         ]
         if resultado.get("advertencias"):
             partes.append("Advertencias: " + "; ".join(resultado["advertencias"]))

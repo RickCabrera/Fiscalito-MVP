@@ -5,9 +5,10 @@ POST /api/v1/comparar-regimenes → Compara los 5 regimenes de PF entre si
 """
 
 from fastapi import APIRouter, HTTPException
+
+from app.fiscal_engine.comparador import calcular_todos_regimenes
 from app.schemas.comparador import CompararRegimenRequest, CompararRegimenResponse
 from app.schemas.declaraciones import ErrorResponse
-from app.fiscal_engine.comparador import calcular_todos_regimenes
 from app.services.llm_service import generar_explicacion_comparacion
 
 router = APIRouter(tags=["Comparador"])
@@ -18,7 +19,8 @@ router = APIRouter(tags=["Comparador"])
     response_model=CompararRegimenResponse,
     responses={400: {"model": ErrorResponse}},
     summary="Comparar todos los regimenes fiscales de personas fisicas",
-    description="Simula ISR anual en los 5 regimenes (626, 612, 606, 625, 605) y los ordena de menor a mayor costo.",
+    description="Simula ISR anual en los 5 regimenes (626, 612, 606, 625, 605) "
+                "y los ordena de menor a mayor costo.",
 )
 async def comparar(req: CompararRegimenRequest):
     if req.ingresos_mensuales_estimados <= 0:

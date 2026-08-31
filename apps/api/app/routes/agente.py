@@ -13,12 +13,14 @@ Soporta Anthropic (claude-haiku) y OpenAI (gpt-4o-mini) via LLM_PROVIDER.
 """
 
 from __future__ import annotations
+
 import json
 import logging
 
 from fastapi import APIRouter
 
 from app.config import settings
+from app.constants import NOMBRES_REGIMEN
 from app.schemas.agente import AgentePreDeclaracionRequest, AgentePreDeclaracionResponse
 from app.schemas.declaraciones import DesgloseFiscal, PreDeclaracionResponse
 from app.services.agent_tools import (
@@ -27,7 +29,6 @@ from app.services.agent_tools import (
     RequestContext,
     ejecutar_tool,
 )
-from app.constants import NOMBRES_REGIMEN
 
 router = APIRouter(tags=["Agente"])
 logger = logging.getLogger(__name__)
@@ -160,7 +161,10 @@ async def _run_anthropic_agent(
 
     # Fallback si se agotaron las iteraciones
     return AgentePreDeclaracionResponse(
-        respuesta="No pude completar el análisis. Intenta de nuevo con una pregunta más específica.",
+        respuesta=(
+            "No pude completar el análisis. "
+            "Intenta de nuevo con una pregunta más específica."
+        ),
         herramientas_usadas=herramientas_usadas,
     )
 
@@ -218,7 +222,10 @@ async def _run_openai_agent(
             break
 
     return AgentePreDeclaracionResponse(
-        respuesta="No pude completar el análisis. Intenta de nuevo con una pregunta más específica.",
+        respuesta=(
+            "No pude completar el análisis. "
+            "Intenta de nuevo con una pregunta más específica."
+        ),
         herramientas_usadas=herramientas_usadas,
     )
 
@@ -237,7 +244,9 @@ def _build_response(
 
     if predeclaracion_dict:
         periodo = predeclaracion_dict.pop("periodo", "")
-        regimen = predeclaracion_dict.pop("regimen", NOMBRES_REGIMEN.get(ctx.contribuyente.regimen, ctx.contribuyente.regimen))
+        regimen = predeclaracion_dict.pop(
+            "regimen", NOMBRES_REGIMEN.get(ctx.contribuyente.regimen, ctx.contribuyente.regimen)
+        )
         tipo = "anual" if ctx.periodo_month is None else "mensual"
 
         try:

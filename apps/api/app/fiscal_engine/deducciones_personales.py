@@ -7,9 +7,10 @@ Fuente: Art. 151 LISR.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from app.fiscal_engine.tablas_isr import UMA_DIARIA_2026
 
+from dataclasses import dataclass
+
+from app.fiscal_engine.tablas_isr import UMA_DIARIA_2026
 
 # Topes de colegiaturas por nivel educativo (Art. 1.8 Decreto)
 TOPES_COLEGIATURAS: dict[str, float] = {
@@ -85,7 +86,9 @@ def calcular_deducciones_personales(
     ))
 
     # 2. Colegiaturas (con tope por nivel)
-    tope_colegiatura = TOPES_COLEGIATURAS.get(nivel_educativo.lower(), 0.0) if nivel_educativo else None
+    tope_colegiatura = (
+        TOPES_COLEGIATURAS.get(nivel_educativo.lower(), 0.0) if nivel_educativo else None
+    )
     if tope_colegiatura is not None:
         col_aceptado = min(max(colegiaturas, 0.0), tope_colegiatura)
     else:

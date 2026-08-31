@@ -4,13 +4,12 @@ Ejecutar: pytest tests/test_clasificador_gastos.py -v
 """
 
 from datetime import date
-from app.schemas.fiscal import CFDI, TipoFactura
+
 from app.fiscal_engine.clasificador_gastos import (
-    es_gasto_deducible,
-    obtener_division,
-    inferir_actividad_contribuyente,
     clasificar_egresos,
+    es_gasto_deducible,
 )
+from app.schemas.fiscal import CFDI, TipoFactura
 
 
 class TestClasificadorGastos:

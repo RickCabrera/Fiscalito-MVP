@@ -1,7 +1,8 @@
 """Schemas para el endpoint de resumen de retenciones a terceros."""
 
 from pydantic import BaseModel
-from app.schemas.fiscal import PerfilContribuyente, CFDI
+
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 
 class RetencionesRequest(BaseModel):

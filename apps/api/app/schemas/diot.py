@@ -1,7 +1,8 @@
 """Schemas para el endpoint DIOT (Declaracion Informativa de Operaciones con Terceros)."""
 
 from pydantic import BaseModel
-from app.schemas.fiscal import PerfilContribuyente, CFDI
+
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 
 class DIOTRequest(BaseModel):

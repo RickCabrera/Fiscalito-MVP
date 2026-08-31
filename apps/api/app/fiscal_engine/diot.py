@@ -1,8 +1,9 @@
 """Motor de generacion de DIOT (Declaracion Informativa de Operaciones con Terceros)."""
 
 from __future__ import annotations
-from app.schemas.fiscal import CFDI, TipoFactura
+
 from app.schemas.diot import ProveedorDIOT
+from app.schemas.fiscal import CFDI, TipoFactura
 
 
 def generar_diot(

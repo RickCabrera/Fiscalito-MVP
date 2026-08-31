@@ -6,9 +6,11 @@ usa tools para leer el perfil, consultar el historial y calcular declaraciones.
 """
 
 from __future__ import annotations
+
 from pydantic import BaseModel, Field
-from app.schemas.fiscal import PerfilContribuyente, CFDI
+
 from app.schemas.declaraciones import PreDeclaracionResponse
+from app.schemas.fiscal import CFDI, PerfilContribuyente
 
 
 class DeclaracionHistorialItem(BaseModel):

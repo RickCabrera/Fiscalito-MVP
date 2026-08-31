@@ -7,9 +7,10 @@ Permite al contribuyente elegir el regimen que mas le conviene.
 """
 
 from __future__ import annotations
-from app.fiscal_engine.calculadora import calcular_isr_resico, calcular_isr_general
-from app.schemas.comparador import ResultadoRegimen
+
 from app.constants import TOPE_RESICO_ANUAL
+from app.fiscal_engine.calculadora import calcular_isr_general, calcular_isr_resico
+from app.schemas.comparador import ResultadoRegimen
 
 # Umbral ingresos anuales para pago definitivo en plataformas (Art. 113-B LISR)
 TOPE_PLATAFORMAS_DEFINITIVO: float = 300_000.00
@@ -35,7 +36,10 @@ def _calcular_626(ingresos_m: float, ingresos_a: float) -> ResultadoRegimen:
         # Fuera de rango: referencia con tasa maxima
         isr_anual = round(ingresos_a * 0.025, 2)
         isr_mensual = round(isr_anual / 12, 2)
-        notas.append(f"No disponible: ingresos anuales (${ingresos_a:,.0f}) superan el tope de $3,500,000")
+        notas.append(
+            f"No disponible: ingresos anuales (${ingresos_a:,.0f}) "
+            "superan el tope de $3,500,000"
+        )
 
     return ResultadoRegimen(
         regimen="626", nombre=NOMBRES_REGIMEN["626"],
@@ -45,7 +49,8 @@ def _calcular_626(ingresos_m: float, ingresos_a: float) -> ResultadoRegimen:
 
 
 def _calcular_612(ingresos_a: float, gastos_a: float) -> ResultadoRegimen:
-    """Actividad Empresarial / Honorarios: tabla progresiva sobre ingresos - gastos (Art. 152 LISR)."""
+    """Actividad Empresarial / Honorarios: tabla progresiva sobre ingresos - gastos \
+(Art. 152 LISR)."""
     base = max(ingresos_a - gastos_a, 0)
     isr_anual, _ = calcular_isr_general(base, es_anual=True)
     isr_anual = round(isr_anual, 2)
@@ -75,12 +80,14 @@ def _calcular_606(ingresos_a: float, gastos_a: float, predial_a: float) -> Resul
     if isr_ciega <= isr_real:
         isr_anual = round(isr_ciega, 2)
         notas = [
-            f"Deduccion ciega 35% = ${ded_ciega:,.2f} (conviene mas que gastos reales ${ded_real:,.2f})",
+            f"Deduccion ciega 35% = ${ded_ciega:,.2f} "
+            f"(conviene mas que gastos reales ${ded_real:,.2f})",
         ]
     else:
         isr_anual = round(isr_real, 2)
         notas = [
-            f"Gastos reales = ${ded_real:,.2f} (convienen mas que deduccion ciega ${ded_ciega:,.2f})",
+            f"Gastos reales = ${ded_real:,.2f} "
+            f"(convienen mas que deduccion ciega ${ded_ciega:,.2f})",
         ]
     if predial_a > 0:
         notas.append(f"Predial incluido: ${predial_a:,.2f} al ano")
@@ -105,16 +112,20 @@ def _calcular_625(ingresos_m: float, ingresos_a: float, gastos_a: float) -> Resu
         # Se estima con las tasas RESICO (1-2.5%) como aproximacion, ya que son similares.
         isr_mensual, _ = calcular_isr_resico(ingresos_m)
         isr_anual = round(isr_mensual * 12, 2)
-        notas.append("Pago definitivo — la plataforma retiene ISR en la fuente (sin declaracion mensual)")
+        notas.append(
+            "Pago definitivo — la plataforma retiene ISR en la fuente (sin declaracion mensual)"
+        )
         notas.append("ISR estimado con tasas similares a las retenciones de plataformas (1-4%)")
     else:
         base = max(ingresos_a - gastos_a, 0)
         isr_anual, _ = calcular_isr_general(base, es_anual=True)
         isr_anual = round(isr_anual, 2)
-        notas.append(f"Ingresos > $300,000: debes declarar normalmente (Art. 113-B LISR)")
+        notas.append("Ingresos > $300,000: debes declarar normalmente (Art. 113-B LISR)")
         notas.append("Las retenciones de la plataforma se acreditan contra el ISR calculado")
 
-    notas.append("Solo aplica si operas a traves de plataformas digitales (Uber, Rappi, Airbnb, etc.)")
+    notas.append(
+        "Solo aplica si operas a traves de plataformas digitales (Uber, Rappi, Airbnb, etc.)"
+    )
 
     return ResultadoRegimen(
         regimen="625", nombre=NOMBRES_REGIMEN["625"],
@@ -187,12 +198,14 @@ def calcular_todos_regimenes(
 
     if ahorro == 0:
         recomendacion = (
-            f"Todos los regimenes disponibles resultan en ISR similar (${mejor.isr_anual:,.2f} anuales). "
+            f"Todos los regimenes disponibles resultan en ISR similar "
+            f"(${mejor.isr_anual:,.2f} anuales). "
             f"Considera la carga administrativa: RESICO es la mas simple si aplica."
         )
     else:
         recomendacion = (
-            f"{mejor.nombre} es el regimen mas conveniente con ${mejor.isr_anual:,.2f} de ISR anual. "
+            f"{mejor.nombre} es el regimen mas conveniente con "
+            f"${mejor.isr_anual:,.2f} de ISR anual. "
             f"Ahorras ${ahorro:,.2f} al año vs {peor.nombre} (${peor.isr_anual:,.2f})."
         )
 
