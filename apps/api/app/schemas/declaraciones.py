@@ -32,23 +32,27 @@ class PreDeclaracionRequest(BaseModel):
     pagos_provisionales_anteriores: float = Field(
         default=0.0,
         ge=0,
-        description="ISR de pagos provisionales ya efectuados en meses anteriores del mismo ejercicio. "
+        description="ISR de pagos provisionales ya efectuados en meses anteriores "
+                    "del mismo ejercicio. "
                     "Solo aplica para regimen 612 y 606 en meses posteriores a enero."
     )
     ingresos_acumulados_anteriores: float = Field(
         default=0.0,
-        description="Ingresos gravados acumulados de meses anteriores del ejercicio (Art. 106). "
+        description="Ingresos gravados acumulados de meses anteriores del ejercicio "
+                    "(Art. 106). "
                     "Solo para regimen 612/606. Se suman a los ingresos del mes actual."
     )
     deducciones_acumuladas_anteriores: float = Field(
         default=0.0,
-        description="Deducciones autorizadas acumuladas de meses anteriores del ejercicio (Art. 106). "
+        description="Deducciones autorizadas acumuladas de meses anteriores del ejercicio "
+                    "(Art. 106). "
                     "Solo para regimen 612/606. Se suman a las deducciones del mes actual."
     )
     predial_pagado: float = Field(
         default=0.0,
         ge=0,
-        description="Impuesto predial pagado en el periodo. Solo aplica para regimen 606 (arrendamiento) con deduccion ciega."
+        description="Impuesto predial pagado en el periodo. Solo aplica para regimen 606 "
+                    "(arrendamiento) con deduccion ciega."
     )
     incluir_explicacion: bool = Field(
         default=True,
@@ -63,13 +67,17 @@ class PreDeclaracionRequest(BaseModel):
 class DesgloseFiscal(BaseModel):
     """Desglose numerico de una declaracion."""
     # Ingresos
-    total_ingresos_facturados: float = Field(description="Suma de subtotales de facturas de ingreso")
+    total_ingresos_facturados: float = Field(
+        description="Suma de subtotales de facturas de ingreso"
+    )
     total_ingresos_gravados: float = Field(description="Ingresos gravados (despues de descuentos)")
     cantidad_facturas_ingreso: int = 0
 
     # Egresos / Deducciones
     total_egresos: float = Field(default=0, description="Suma de facturas de egreso (gastos)")
-    total_deducciones_autorizadas: float = Field(default=0, description="Deducciones que aplican al regimen")
+    total_deducciones_autorizadas: float = Field(
+        default=0, description="Deducciones que aplican al regimen"
+    )
     cantidad_facturas_egreso: int = 0
 
     # ISR
@@ -81,25 +89,47 @@ class DesgloseFiscal(BaseModel):
 
     # IVA
     iva_trasladado_cobrado: float = Field(default=0, description="IVA que cobraste a clientes")
-    iva_trasladado_pagado: float = Field(default=0, description="IVA que pagaste en gastos (acreditable)")
+    iva_trasladado_pagado: float = Field(
+        default=0, description="IVA que pagaste en gastos (acreditable)"
+    )
     iva_retenido: float = Field(default=0, description="IVA que te retuvieron terceros")
     iva_a_pagar: float = Field(description="IVA neto: cobrado - pagado - retenido")
 
     # Arrendamiento — deduccion ciega
-    deduccion_ciega_aplicada: bool = Field(default=False, description="Si se uso la deduccion ciega del 35%")
-    comparacion_deduccion: str | None = Field(default=None, description="Explicacion de cual opcion convino")
+    deduccion_ciega_aplicada: bool = Field(
+        default=False, description="Si se uso la deduccion ciega del 35%"
+    )
+    comparacion_deduccion: str | None = Field(
+        default=None, description="Explicacion de cual opcion convino"
+    )
 
     # Pagos provisionales Art. 106
-    pagos_provisionales_anteriores: float = Field(default=0, description="ISR de pagos provisionales de meses anteriores (Art. 106)")
-    ingresos_acumulados: float = Field(default=0, description="Ingresos acumulados ene-mes (Art. 106). Solo para 612/606 con tabla acumulada.")
-    deducciones_acumuladas: float = Field(default=0, description="Deducciones acumuladas ene-mes (Art. 106). Solo para 612/606 con tabla acumulada.")
+    pagos_provisionales_anteriores: float = Field(
+        default=0, description="ISR de pagos provisionales de meses anteriores (Art. 106)"
+    )
+    ingresos_acumulados: float = Field(
+        default=0,
+        description="Ingresos acumulados ene-mes (Art. 106). "
+                    "Solo para 612/606 con tabla acumulada.",
+    )
+    deducciones_acumuladas: float = Field(
+        default=0,
+        description="Deducciones acumuladas ene-mes (Art. 106). "
+                    "Solo para 612/606 con tabla acumulada.",
+    )
 
     # Gastos personales excluidos (Art. 105 LISR)
-    gastos_personales_excluidos: float = Field(default=0, description="Monto de gastos excluidos por ser personales (no deducibles)")
-    cantidad_gastos_personales: int = Field(default=0, description="Numero de facturas excluidas como gastos personales")
+    gastos_personales_excluidos: float = Field(
+        default=0, description="Monto de gastos excluidos por ser personales (no deducibles)"
+    )
+    cantidad_gastos_personales: int = Field(
+        default=0, description="Numero de facturas excluidas como gastos personales"
+    )
 
     # Plataformas — retenciones definitivas
-    retenciones_definitivas: bool = Field(default=False, description="Si aplican retenciones como pago definitivo")
+    retenciones_definitivas: bool = Field(
+        default=False, description="Si aplican retenciones como pago definitivo"
+    )
     ingreso_anualizado_estimado: float = Field(default=0, description="Ingreso anualizado estimado")
 
     # Total

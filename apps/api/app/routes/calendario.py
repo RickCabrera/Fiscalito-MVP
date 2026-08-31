@@ -31,7 +31,8 @@ async def calendario_fiscal(req: CalendarioRequest):
     if req.contributor_type not in CONTRIBUTOR_TYPES_VALIDOS:
         raise HTTPException(
             status_code=400,
-            detail=f"Tipo de contribuyente invalido. Opciones: {', '.join(sorted(CONTRIBUTOR_TYPES_VALIDOS))}",
+            detail="Tipo de contribuyente invalido. Opciones: "
+            f"{', '.join(sorted(CONTRIBUTOR_TYPES_VALIDOS))}",
         )
 
     obligaciones = generar_calendario(

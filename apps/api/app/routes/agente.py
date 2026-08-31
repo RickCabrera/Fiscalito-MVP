@@ -161,7 +161,10 @@ async def _run_anthropic_agent(
 
     # Fallback si se agotaron las iteraciones
     return AgentePreDeclaracionResponse(
-        respuesta="No pude completar el análisis. Intenta de nuevo con una pregunta más específica.",
+        respuesta=(
+            "No pude completar el análisis. "
+            "Intenta de nuevo con una pregunta más específica."
+        ),
         herramientas_usadas=herramientas_usadas,
     )
 
@@ -219,7 +222,10 @@ async def _run_openai_agent(
             break
 
     return AgentePreDeclaracionResponse(
-        respuesta="No pude completar el análisis. Intenta de nuevo con una pregunta más específica.",
+        respuesta=(
+            "No pude completar el análisis. "
+            "Intenta de nuevo con una pregunta más específica."
+        ),
         herramientas_usadas=herramientas_usadas,
     )
 
@@ -238,7 +244,9 @@ def _build_response(
 
     if predeclaracion_dict:
         periodo = predeclaracion_dict.pop("periodo", "")
-        regimen = predeclaracion_dict.pop("regimen", NOMBRES_REGIMEN.get(ctx.contribuyente.regimen, ctx.contribuyente.regimen))
+        regimen = predeclaracion_dict.pop(
+            "regimen", NOMBRES_REGIMEN.get(ctx.contribuyente.regimen, ctx.contribuyente.regimen)
+        )
         tipo = "anual" if ctx.periodo_month is None else "mensual"
 
         try:

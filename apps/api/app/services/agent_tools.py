@@ -83,11 +83,16 @@ TOOLS_ANTHROPIC = [
                 },
                 "periodo_bimestre": {
                     "type": "integer",
-                    "description": "Bimestre (1-6). Solo si el contribuyente declara bimestralmente.",
+                    "description": (
+                        "Bimestre (1-6). Solo si el contribuyente declara bimestralmente."
+                    ),
                 },
                 "pagos_provisionales_anteriores": {
                     "type": "number",
-                    "description": "ISR ya pagado en meses anteriores del mismo ejercicio. Solo para regimenes 612 y 606.",
+                    "description": (
+                        "ISR ya pagado en meses anteriores del mismo ejercicio. "
+                        "Solo para regimenes 612 y 606."
+                    ),
                     "default": 0,
                 },
             },
@@ -217,7 +222,11 @@ def _handle_obtener_predeclaraciones(ctx: RequestContext, tool_input: dict) -> s
 
     if not historial:
         return json.dumps(
-            {"encontradas": 0, "declaraciones": [], "mensaje": "No hay declaraciones registradas para ese periodo."},
+            {
+                "encontradas": 0,
+                "declaraciones": [],
+                "mensaje": "No hay declaraciones registradas para ese periodo.",
+            },
             ensure_ascii=False
         )
 
@@ -259,7 +268,10 @@ def _handle_crear_predeclaracion(ctx: RequestContext, tool_input: dict) -> tuple
 
     # Determinar string del periodo
     if periodo_bimestre:
-        periodo_str = f"{NOMBRES_BIMESTRES.get(periodo_bimestre, str(periodo_bimestre))} {periodo_year}"
+        periodo_str = (
+            f"{NOMBRES_BIMESTRES.get(periodo_bimestre, str(periodo_bimestre))} "
+            f"{periodo_year}"
+        )
     elif periodo_month:
         periodo_str = f"{NOMBRES_MESES.get(periodo_month, str(periodo_month))} {periodo_year}"
     else:
@@ -298,7 +310,9 @@ def _handle_crear_predeclaracion(ctx: RequestContext, tool_input: dict) -> tuple
         resultado["nota_arrendamiento"] = desglose.comparacion_deduccion
 
     if desglose.retenciones_definitivas:
-        resultado["nota_plataformas"] = "Retenciones aplicadas como pago definitivo (ingresos < $300k anuales)"
+        resultado["nota_plataformas"] = (
+            "Retenciones aplicadas como pago definitivo (ingresos < $300k anuales)"
+        )
 
     desglose_dict = desglose.model_dump()
     desglose_dict["periodo"] = periodo_str

@@ -65,7 +65,9 @@ def generar_estado_cuenta(
     gastos_por_mes: dict[int, float] = {}
     for f in ingresos:
         if f.es_ingreso:
-            ingresos_por_mes[f.fecha.month] = ingresos_por_mes.get(f.fecha.month, 0) + f.base_gravable
+            ingresos_por_mes[f.fecha.month] = (
+                ingresos_por_mes.get(f.fecha.month, 0) + f.base_gravable
+            )
     for f in egresos:
         gastos_por_mes[f.fecha.month] = gastos_por_mes.get(f.fecha.month, 0) + f.base_gravable
 

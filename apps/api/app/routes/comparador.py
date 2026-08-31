@@ -19,7 +19,8 @@ router = APIRouter(tags=["Comparador"])
     response_model=CompararRegimenResponse,
     responses={400: {"model": ErrorResponse}},
     summary="Comparar todos los regimenes fiscales de personas fisicas",
-    description="Simula ISR anual en los 5 regimenes (626, 612, 606, 625, 605) y los ordena de menor a mayor costo.",
+    description="Simula ISR anual en los 5 regimenes (626, 612, 606, 625, 605) "
+                "y los ordena de menor a mayor costo.",
 )
 async def comparar(req: CompararRegimenRequest):
     if req.ingresos_mensuales_estimados <= 0:

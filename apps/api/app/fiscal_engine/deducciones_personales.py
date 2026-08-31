@@ -86,7 +86,9 @@ def calcular_deducciones_personales(
     ))
 
     # 2. Colegiaturas (con tope por nivel)
-    tope_colegiatura = TOPES_COLEGIATURAS.get(nivel_educativo.lower(), 0.0) if nivel_educativo else None
+    tope_colegiatura = (
+        TOPES_COLEGIATURAS.get(nivel_educativo.lower(), 0.0) if nivel_educativo else None
+    )
     if tope_colegiatura is not None:
         col_aceptado = min(max(colegiaturas, 0.0), tope_colegiatura)
     else:

@@ -172,12 +172,14 @@ def _generar_advertencias(req: PreDeclaracionRequest, desglose) -> list[str]:
         proyeccion = (desglose.total_ingresos_gravados / mes) * 12
         if proyeccion > 3_500_000:
             advertencias.append(
-                f"Tus ingresos proyectados (${proyeccion:,.0f}) superan el tope RESICO de $3,500,000. "
+                f"Tus ingresos proyectados (${proyeccion:,.0f}) superan el tope RESICO "
+                "de $3,500,000. "
                 "Debes considerar cambiar al regimen de Actividad Empresarial (612)."
             )
         elif proyeccion > 2_800_000:  # 80% del tope
             advertencias.append(
-                f"Tus ingresos proyectados representan el {proyeccion/3_500_000*100:.0f}% del tope RESICO."
+                f"Tus ingresos proyectados representan el "
+                f"{proyeccion/3_500_000*100:.0f}% del tope RESICO."
             )
         if desglose.total_ingresos_gravados > 291_666.67:
             advertencias.append(
