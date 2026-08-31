@@ -2,8 +2,24 @@ node_modules/
 dist/
 .env
 .env.*
+!.env.example
 __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
-.claude/
+
+# Claude Code: se versiona la config de proyecto (settings.json, hooks, agents),
+# NO lo personal/local
+.claude/settings.local.json
+.claude/prompts/
+**/.claude/settings.local.json
+
+# Datos personales reales — JAMÁS al repo (nóminas de personas identificables)
+03. CFDI DE NOMINA/
+VERIFICACION_NOMINAS.md
+apps/api/XML CCPEV/
+apps/api/XML PF/
+apps/api/pfebrero/
+
+# Firebase local
+apps/store/.firebase/

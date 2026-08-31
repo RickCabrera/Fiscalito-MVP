@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/ -v
+      # Se activa al cerrar S-01 (lint backend a cero). Hoy hay 111 errores:
+      # descomentar esto antes de limpiarlos pondría el CI en rojo desde el día 1.
+      # - run: ruff check .
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/store
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/store/package-lock.json
+      - run: npm ci
+      # tsc + vite build: el gate mínimo de tipos del frontend
+      - run: npm run build
+      # Se activa al cerrar S-02 (lint frontend a cero; hoy 20 errores).
+      # - run: npm run lint
+      # Se activa al cerrar S-05 (instalar Vitest; hoy no existe script "test").
+      # - run: npm test
