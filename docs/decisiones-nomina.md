@@ -65,6 +65,13 @@ Las dos lecturas dan **3.150% vs 6.026% para todos los trabajadores de salario m
 país**. El código no adivina: aplica la literal, la documenta y la prueba. Si la respuesta es
 la segunda, lo que cambia es `ceav_patronal()` y sus tests, y se ve exactamente dónde.
 
+**Ampliado en F1-04: y también los Arts. 93 fr. I y 96 de la LISR.** El predicado decide
+cuatro cosas, no dos: el renglón de 3.150 % de CEAV, la absorción del Art. 36, el tiempo extra
+100 % exento y la no retención de ISR. **Salvedad:** el predicado compara el **SBC** contra el
+salario mínimo, y los artículos de la LISR hablan del **salario**, no del SBC. Es la misma
+ambigüedad de esta decisión y por eso no se bifurcó el predicado; si la contadora responde que
+son criterios distintos, se separa entonces y se ve exactamente dónde.
+
 **Ampliado en F1-03: la misma respuesta gobierna el Art. 36 LSS**, la absorción de la cuota
 obrera por el patrón. Son dos consecuencias de una sola pregunta legal, así que el motor tiene
 un **predicado único** —`ceav.es_trabajador_de_salario_minimo()`— que usan tanto la tabla de
@@ -141,8 +148,31 @@ El decreto fija el tope del subsidio en **$11,492.66 mensuales**, y el caso real
 derecho al subsidio, no solo cuánto.
 
 `subsidio_empleo()` recibe el ingreso mensual ya resuelto y **no toma la decisión**: la
-responsabilidad es del llamador (F1-04), y el docstring lo dice. Hay que cerrarla antes de
-cuadrar el ISR del caso real.
+responsabilidad es del llamador (F1-04), y el docstring lo dice.
+
+### Evidencia del caso real (F1-04) — PROVISIONAL, pero discrimina
+
+En **abril de 2026** el patrón dejó de aplicar el subsidio a exactamente tres empleados. La
+única lectura que reproduce esa separación es **`SBC × 30.4`**:
+
+| Empleado | SBC | SBC × 30.4 | ¿subsidio en abril? |
+|---|---|---|---|
+| ...AA3 | 399.52 | 12,145.41 | **no** |
+| ...AA4 | 399.05 | 12,131.12 | **no** |
+| ...AA7 | 387.23 | 11,771.79 | **no** |
+| ...AA9 | 358.34 | 10,893.54 | sí |
+| ...AA6 | 346.11 | 10,521.74 | sí |
+| ...AA5 | 343.00 | 10,427.20 | sí |
+| ...AA8 | 331.58 | 10,080.03 | sí |
+
+**Las dos opciones que esta decisión enumeraba quedan refutadas.** Para ...AA3: proyectar el
+gravado semanal da **$11,188.72** y acumular el mes calendario da **$10,305.40** — las dos por
+debajo del tope de $11,492.66, o sea que las dos predicen subsidio, y el CFDI dice que no lo
+hubo. Solo `SBC × 30.4` = $12,145.41 lo explica.
+
+Es **n = 3 contra n = 4**, con dos niveles salariales, así que no cierra la decisión: la
+confirma la contadora. Pero el motor ya usa esa lectura en el test del caso real y con ella los
+**28 recibos de abril cuadran al centavo**.
 
 ## D12 · Decimales del factor de integración — PROVISIONAL
 
@@ -262,3 +292,52 @@ Las fixtures van del **8-mar-2026 al 3-may-2026**, así que **no ejercitan el tr
 enero** (ni el de la UMA ni el del subsidio). Todos los recibos traen `NumDiasPagados=7.000` y
 no hay ni una incapacidad, así que **S-04 no puede validar §D3**. Y el subsidio para el empleo
 viene con `Importe="0"` en todos, así que **tampoco va a cerrar §D11**.
+
+
+## D15 · El patrón usó el subsidio de los considerandos hasta marzo, y lo corrigió en abril
+
+**Hallazgo de F1-04, leído del propio CFDI.** El complemento de nómina declara el subsidio en
+`SubsidioAlEmpleo/@SubsidioCausado`, y ahí se ve el cambio:
+
+| Mes | `SubsidioCausado` | De dónde sale |
+|---|---|---|
+| marzo 2026 (35 recibos) | **$123.47** | $536.22 ÷ 30.4 × 7 |
+| abril 2026 (28 recibos) | **$123.34** | $535.65 ÷ 30.4 × 7 |
+| mayo 2026 (7 recibos) | $103.73 y $127.05 | varía por empleado — ver abajo |
+
+**$536.22 es el importe que aparece únicamente en los considerandos del Decreto DOF
+31-12-2025 y que no reconcilia con su propia fórmula** (15.02 % × $3,566.22 = $535.65). Lo
+documentó F0-01 en `knowledge_base/nomina/20_valores_referencia_2026.md` §4, y F1-01 decidió
+por eso **calcular el subsidio desde el porcentaje del articulado y nunca copiar el peso**.
+
+El caso real confirma esa decisión de la mejor manera posible: **el patrón hizo la misma
+corrección**. Usó el peso de los considerandos hasta marzo y cambió a la fórmula desde abril.
+
+### Consecuencia sobre el cuadre de F1-04
+
+| Mes | Recibos que cuadran |
+|---|---|
+| marzo | 6 de 35 |
+| **abril** | **28 de 28** |
+| mayo | 0 de 7 |
+
+Marzo falla por dos razones que se acumulan: la base del subsidio ($536.22) y que **el tope de
+ingresos todavía no mordía** — en marzo el patrón dio subsidio también a los tres empleados que
+en abril quedaron fuera (§D11). Mayo son 7 recibos de otra naturaleza.
+
+### El CFDI de marzo se contradice a sí mismo
+
+El ISR retenido de marzo **no** es `causado − SubsidioCausado` del propio comprobante: el
+subsidio implícito en la retención es $123.34 o $123.35, no el $123.47 declarado. Es un dato
+duro sobre la calidad del timbrado, del mismo tipo que §D14.
+
+### Lo que queda como hipótesis, no como hallazgo
+
+Los 7 recibos de mayo (semana-09) tienen ISR muy superior al de las demás semanas sobre el
+mismo gravado, y su `SubsidioCausado` **varía por empleado** ($103.73 y $127.05), cosa que el
+esquema plano de 2024 no produce. Parecen semanas de **ajuste mensual de ISR**, que es práctica
+real —la retención semanal es provisional y se ajusta contra el cálculo mensual del Art. 96—
+pero **no está verificado**. F1-04 no implementa el ajuste mensual: no está en su alcance.
+
+**Pregunta para la contadora:** ¿la semana 09 lleva ajuste mensual de ISR? ¿Y por qué el
+subsidio declarado varía por empleado ahí?
