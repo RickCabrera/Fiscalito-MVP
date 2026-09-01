@@ -13,10 +13,11 @@ esta en `knowledge_base/nomina/20_valores_referencia_2026.md`.
 from __future__ import annotations
 
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from enum import Enum
 
 from app.exceptions import FiscalValidationError
+from app.redondeo import redondear as _redondear
 
 # Nombres de meses del calendario fiscal
 NOMBRES_MESES: dict[int, str] = {
@@ -103,14 +104,6 @@ SALARIO_MINIMO_POR_ANIO: dict[int, dict[ZonaSalarioMinimo, Decimal]] = {
         ZonaSalarioMinimo.ZLFN: Decimal("440.87"),
     },
 }
-
-_DOS_DECIMALES = Decimal("0.01")
-
-
-def _redondear(valor: Decimal) -> Decimal:
-    """Redondea a 2 decimales con ROUND_HALF_UP (no el banker's rounding de round())."""
-    return valor.quantize(_DOS_DECIMALES, rounding=ROUND_HALF_UP)
-
 
 def _anio_uma_vigente(fecha: date) -> int:
     """

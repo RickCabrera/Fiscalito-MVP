@@ -26,24 +26,35 @@ UMA 2025 — las dos excepciones a la vez.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from app.constants import uma_mensual_vigente
 from app.exceptions import FiscalValidationError
+from app.redondeo import redondear as _redondear
 
-_DOS_DECIMALES = Decimal("0.01")
 _DIAS_MES_FISCAL = Decimal("30.4")
 
 
-def _redondear(valor: Decimal) -> Decimal:
-    return valor.quantize(_DOS_DECIMALES, rounding=ROUND_HALF_UP)
+@dataclass(frozen=True)
+class PorcentajesSubsidio:
+    """
+    Porcentajes de un ejercicio. `enero` recoge el articulo transitorio.
+
+    Es un dataclass y no un dict con llaves de texto para que agregar un
+    ejercicio con una llave mal escrita sea un error al importar y no un
+    KeyError en runtime.
+    """
+
+    enero: Decimal
+    resto: Decimal
 
 
 # Porcentaje de la UMA mensual, por ejercicio. `enero` recoge el transitorio.
 # Fuente: Decreto DOF 31-12-2025 y su articulo transitorio.
-PORCENTAJE_SUBSIDIO_POR_EJERCICIO: dict[int, dict[str, Decimal]] = {
-    2026: {"enero": Decimal("0.1559"), "resto": Decimal("0.1502")},
+PORCENTAJE_SUBSIDIO_POR_EJERCICIO: dict[int, PorcentajesSubsidio] = {
+    2026: PorcentajesSubsidio(enero=Decimal("0.1559"), resto=Decimal("0.1502")),
 }
 
 # Tope de ingresos gravados mensuales para tener derecho al subsidio.
@@ -73,7 +84,7 @@ def porcentaje_subsidio_vigente(fecha: date) -> Decimal:
     compensar que en enero todavia rige la UMA del año anterior.
     """
     porcentajes = _del_ejercicio(PORCENTAJE_SUBSIDIO_POR_EJERCICIO, fecha, "porcentaje")
-    return porcentajes["enero"] if fecha.month == 1 else porcentajes["resto"]
+    return porcentajes.enero if fecha.month == 1 else porcentajes.resto
 
 
 def tope_ingreso_subsidio(fecha: date) -> Decimal:

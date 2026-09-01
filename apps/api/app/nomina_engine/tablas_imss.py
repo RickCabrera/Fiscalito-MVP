@@ -197,9 +197,13 @@ def ramo_riesgos_trabajo(prima: Decimal, fecha: date) -> Ramo:
     con su siniestralidad (Art. 74 LSS) y para empresa nueva es la prima media
     de su clase (`PRIMA_MEDIA_CLASE`). Por eso se inyecta.
 
+    La `fecha` no selecciona la prima —la trae el llamador— sino que valida
+    que el año tenga tablas cargadas, para que construir un ramo de RT de un
+    ejercicio sin fuente falle igual que pedir cualquier otro ramo.
+
     Raises:
         FiscalValidationError: si la prima cae fuera del rango del Art. 72 LSS
-            (0.50000% a 15.00000%).
+            (0.50000% a 15.00000%), o si el año no tiene tablas.
     """
     _del_anio(CUOTAS_RAMOS, fecha, "tabla de ramos del IMSS")
     if not PRIMA_RT_MINIMA <= prima <= PRIMA_RT_MAXIMA:

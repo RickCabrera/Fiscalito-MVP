@@ -130,6 +130,12 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
 - [ ] **F1-04 · `isr_nomina.py`** — exenciones Art. 93, ISR Art. 96 periódico, subsidio
   con vigencia. *Listo cuando:* el ISR retenido de las fixtures S-04 cuadra al centavo
   (o con la regla de redondeo decidida en F0-03).
+  **Huecos que le deja F1-01:** `tarifa_por_periodicidad()` levanta error para la
+  **catorcenal** (nadie la publica) y para la **decenal** (el Anexo 8 sí la publica, pero sus
+  11 renglones no se pudieron verificar contra fuente publicada — agregarla es transcribir sus
+  22 celdas con su cita). Ver `docs/decisiones-nomina.md` D10. Y **D11 sigue abierta**: el tope
+  del subsidio es mensual y el caso real es semanal; `subsidio_empleo()` recibe el ingreso
+  mensual ya resuelto y no decide si se proyecta o se acumula.
 - [ ] **F1-05 · `recibo.py` + `cfdi_nomina_xml.py`** — recibo completo
   (percepciones/deducciones/otros pagos) y XML complemento nómina 1.2 **sin timbrar**,
   validado contra XSD. Las fixtures de S-04 son estructuralmente correctas pero

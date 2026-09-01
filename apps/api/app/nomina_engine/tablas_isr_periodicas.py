@@ -46,18 +46,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from app.exceptions import FiscalValidationError
+from app.redondeo import DOS_DECIMALES as _DOS_DECIMALES
+from app.redondeo import redondear as _redondear
 
-_DOS_DECIMALES = Decimal("0.01")
 _DIAS_MES_FISCAL = Decimal("30.4")
 INFINITO = Decimal("Infinity")
-
-
-def _redondear(valor: Decimal) -> Decimal:
-    """Redondea a 2 decimales con ROUND_HALF_UP (nunca el banker's rounding de round())."""
-    return valor.quantize(_DOS_DECIMALES, rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True)
@@ -132,9 +128,6 @@ TARIFAS_POR_EJERCICIO: dict[int, dict[str, tuple[RenglonTarifa, ...]]] = {
         "05": TARIFA_MENSUAL_2026,
     },
 }
-
-# Dias que cubre cada clave soportada, para el prorrateo de otros conceptos.
-DIAS_POR_PERIODICIDAD: dict[str, int] = {"01": 1, "02": 7, "04": 15, "05": 30}
 
 # Claves de c_PeriodicidadPago que existen en el catalogo pero para las que
 # este modulo NO entrega tarifa, con la razon. Se responde con un error

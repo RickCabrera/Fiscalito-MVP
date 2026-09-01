@@ -29,6 +29,21 @@ EyM. Confirmar con la contadora.
 Aplicar la tabla literal por rango de UMA. El salario mínimo exacto cae en **3.150%**. Los
 renglones inalcanzables se dejan en la tabla, sin lógica especial que los excluya.
 
+**Afinado en F1-01 — la pregunta para la contadora es más filosa de lo que parecía.** Lo
+implementado es `SBC == 1 SM`, y el SBC de un trabajador de salario mínimo **casi nunca** es
+1 SM: es `SM × factor de integración` (≈1.0493) ≈ $330.57, o sea ~2.82 UMA, que cae en el
+tramo 2.51–3.00 → **6.026%**. Con la lectura literal, el renglón de 3.150% solo se alcanza
+cuando el clamp del Art. 28 subió un SBC al piso, cosa que a un trabajador de salario mínimo
+de jornada completa no le pasa: el renglón es, en la práctica, casi inalcanzable.
+
+> **¿El SUA lee "1.00 SM" como *SBC igual al salario mínimo* (lo implementado) o como
+> *trabajador que percibe el salario mínimo*, es decir salario diario = SM con SBC integrado
+> por encima?**
+
+Las dos lecturas dan **3.150% vs 6.026% para todos los trabajadores de salario mínimo del
+país**. El código no adivina: aplica la literal, la documenta y la prueba. Si la respuesta es
+la segunda, lo que cambia es `ceav_patronal()` y sus tests, y se ve exactamente dónde.
+
 ## D5 · Prestaciones superiores a las de ley
 
 Modelar vía `ConceptoIntegrable`. El default es el **mínimo de ley**.

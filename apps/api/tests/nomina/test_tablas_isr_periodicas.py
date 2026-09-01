@@ -191,30 +191,29 @@ class TestISRPeriodo:
         assert isr_periodo(Decimal("0"), "05", date(2026, 6, 1)) == Decimal("0.00")
 
     def test_primer_renglon_mensual(self):
-        """$500 mensuales: cuota fija 0 + (500 - 0.01) x 1.92%."""
-        esperado = ((Decimal("500") - Decimal("0.01")) * Decimal("0.0192")).quantize(
-            Decimal("0.01")
-        )
-        assert isr_periodo(Decimal("500"), "05", date(2026, 6, 1)) == esperado
+        """
+        $500 mensuales: cuota fija $0.00 + (500 - 0.01) x 1.92% = $9.60.
+
+        Esperado literal a propósito: recalcular la fórmula en el test la
+        verifica contra sí misma y no puede atrapar una fórmula equivocada.
+        """
+        assert isr_periodo(Decimal("500"), "05", date(2026, 6, 1)) == Decimal("9.60")
 
     def test_borde_superior_de_renglon(self):
-        """En el límite superior exacto todavía manda ese renglón."""
-        resultado = isr_periodo(Decimal("844.59"), "05", date(2026, 6, 1))
-        esperado = ((Decimal("844.59") - Decimal("0.01")) * Decimal("0.0192")).quantize(
-            Decimal("0.01")
-        )
-        assert resultado == esperado
+        """En el límite superior exacto todavía manda ese renglón: $16.22."""
+        assert isr_periodo(Decimal("844.59"), "05", date(2026, 6, 1)) == Decimal("16.22")
+
+    def test_quincenal_literal(self):
+        """$10,000 quincenales: renglón 6, $916.20 + (10000 - 8651.41) x 21.36%."""
+        assert isr_periodo(Decimal("10000"), "04", date(2026, 6, 1)) == Decimal("1204.26")
 
     def test_primer_peso_del_renglon_siguiente(self):
         resultado = isr_periodo(Decimal("844.60"), "05", date(2026, 6, 1))
         assert resultado == Decimal("16.22")  # cuota fija, excedente cero
 
     def test_semanal_de_un_salario_tipico(self):
-        """$2,000 semanales caen en el tercer renglón: 96.95 + (2000-1650.68)x10.88%."""
-        esperado = (
-            Decimal("96.95") + (Decimal("2000") - Decimal("1650.68")) * Decimal("0.1088")
-        ).quantize(Decimal("0.01"))
-        assert isr_periodo(Decimal("2000"), "02", date(2026, 6, 1)) == esperado
+        """$2,000 semanales: renglón 3, $96.95 + (2000 - 1650.68) x 10.88% = $134.96."""
+        assert isr_periodo(Decimal("2000"), "02", date(2026, 6, 1)) == Decimal("134.96")
 
     def test_ultimo_renglon_abierto(self):
         assert isr_periodo(Decimal("900000"), "05", date(2026, 6, 1)) > Decimal("0")
