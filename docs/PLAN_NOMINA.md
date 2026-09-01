@@ -61,7 +61,7 @@ tests/                      # un archivo por módulo del engine + caso real CADG
 | Salario mínimo Zona Libre Frontera Norte 2026 | $440.87 diarios | 1-ene-2026 | CONASAMI |
 | Tope SBC | 25 UMA = $2,932.75 diarios (feb–dic 2026) | Art. 28 LSS | — |
 | Piso SBC | 1 SM general ($315.04) | Art. 28 LSS | — |
-| **Subsidio al empleo 2026** | 15.02 % de UMA mensual = **$536.22/mes** (feb–dic); enero transitorio 15.59 % × UMA 2025 mensual = $536.21 | Decreto DOF 31-12-2025 | PRODECON / IDC |
+| **Subsidio al empleo 2026** | 15.02 % de UMA mensual = **$535.65/mes** (feb–dic); enero transitorio 15.59 % × UMA 2025 mensual ($3,439.46) = **$536.21** | Decreto DOF 31-12-2025 | DOF 31-12-2025 (articulado) |
 | Tope ingresos para subsidio | $11,492.66 mensuales | ídem | ídem |
 
 > ⚠️ **Regla de diseño:** `constants.py` debe exponer `uma_vigente(fecha)` y `salario_minimo_vigente(fecha, zona)` — no constantes sueltas. Enero 2026 usa UMA 2025; febrero en adelante UMA 2026. Esto se repite cada año.
@@ -188,7 +188,7 @@ Otras fechas laborales fijas: **febrero** → Declaración Anual de Prima de RT;
 
 1. **Base gravable** = percepciones gravadas del periodo. Exenciones principales (Art. 93 LISR, en UMA): aguinaldo hasta 30 UMA diarias; prima vacacional hasta 15 UMA; PTU hasta 15 UMA; tiempo extra 50 % exento hasta 5 UMA semanales (dentro de límites LFT); previsión social (vales, fondo de ahorro) con topes propios.
 2. **ISR** = tarifa **Art. 96 LISR** (mensual; para periodos menores se usan las tablas semanal/decenal/quincenal del Anexo 8 RMF, o se prorratea la mensual ÷ 30.4 × días — validar cuál usa el despacho). **La tabla mensual ya está en `fiscal_engine/tablas_isr.py`.** Falta agregar las periódicas.
-3. **Subsidio al empleo 2026**: si ingresos mensuales ≤ $11,492.66 → subsidio = $536.22 (feb–dic) / $536.21 (ene). Periodos < mes: `536.22 ÷ 30.4 × días`. Se acredita contra el ISR causado; si el subsidio > ISR ya **no** se entrega en efectivo (esquema vigente desde 2024: solo reduce ISR hasta cero).
+3. **Subsidio al empleo 2026**: si ingresos mensuales ≤ $11,492.66 → subsidio = $535.65 (feb–dic) / $536.21 (ene). Periodos < mes: `subsidio_mensual ÷ 30.4 × días`. El motor **calcula** el importe como `% vigente × UMA mensual vigente`; no lo hardcodea. Se acredita contra el ISR causado; si el subsidio > ISR ya **no** se entrega en efectivo (esquema vigente desde 2024: solo reduce ISR hasta cero).
 4. **ISR a retener** = max(ISR − subsidio, 0).
 5. Ese ISR retenido lo **entera el patrón** en su declaración mensual (día 17) → aquí conecta con `retenciones.py` / `pre-declaracion` del Fiscalito actual.
 
@@ -451,7 +451,11 @@ contadores/{uid}
 
 - INEGI, Comunicado 1/26 UMA 2026 — `inegi.org.mx/contenidos/saladeprensa/boletines/2026/uma/uma2026.pdf`; DOF 09-01-2026.
 - CONASAMI / DOF 09-12-2025 — salarios mínimos 2026 ($315.04 general / $440.87 ZLFN).
-- DOF 31-12-2025 — Decreto que modifica el subsidio para el empleo (15.02 %, transitorio 15.59 % enero, tope $11,492.66).
+- DOF 31-12-2025 — Decreto que modifica el subsidio para el empleo (15.02 %, transitorio
+  15.59 % enero, tope $11,492.66). **Corrección F0-01:** este documento decía $536.22/mes para
+  feb–dic; el articulado del decreto fija solo el **porcentaje**, y 15.02 % × $3,566.22 =
+  **$535.65**. El $536.22 aparece únicamente en los considerandos y no se reconcilia con la
+  fórmula. Detalle en `apps/api/knowledge_base/nomina/20_valores_referencia_2026.md` §4.
 - DOF 16-12-2020 — Reforma LSS/SAR (transición CEAV 2023–2030). Tabla 2026 confirmada por IMSS y reproducida por IDC, ContadorMx, El Contribuyente.
 - DOF 16-07-2026 — Acuerdo Consejo Técnico IMSS: e.firma único certificado, derogación NPIE (comunicado IMSS 380/2026).
 - Ley del Seguro Social: Arts. 15, 25, 27, 28, 30, 34, 36, 71–74, 106, 107, 147, 168, 211.

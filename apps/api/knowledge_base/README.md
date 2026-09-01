@@ -23,3 +23,23 @@
 | `12_calendario_fiscal_2026.md` | Fechas límite de declaraciones por régimen |
 | `13_rmf_2026_cambios.md` | Principales cambios RMF 2026 relevantes al sistema |
 | `14_cfdi_clasificacion.md` | Tipos de CFDI, clasificación para cálculo fiscal |
+
+---
+
+## Nómina y seguridad social (`nomina/`)
+
+Referencia del módulo de nómina / IMSS. El plan de dominio está en `docs/PLAN_NOMINA.md`; las
+decisiones abiertas, en `docs/decisiones-nomina.md`.
+
+| Archivo | Contenido |
+|---------|-----------|
+| `nomina/20_valores_referencia_2026.md` | UMA y SM por vigencia, piso/tope del SBC, subsidio al empleo 2026 |
+| `nomina/21_sbc_integracion.md` | SBC/SDI, factor de integración, salario fijo/variable/mixto, avisos |
+| `nomina/22_cuotas_imss_infonavit_2026.md` | Cuotas por ramo, tabla CEAV 2026, primas de RT, reglas especiales |
+| `nomina/23_isr_nomina_subsidio.md` | Exenciones Art. 93, ISR Art. 96, aplicación del subsidio |
+| `nomina/24_cfdi_nomina_12.md` | Complemento de nómina 1.2 sobre CFDI 4.0, catálogos, validación XSD |
+| `nomina/25_calendario_laboral_2026.md` | Vencimientos IMSS/SUA 2026, prima de RT, PTU, aguinaldo, ISN |
+| `nomina/26_flujo_despacho_idse_sua_ema.md` | Ciclo operativo del despacho, plazos afiliatorios, e.firma |
+
+> **Los docs 20–26 son referencia, no fuente de cálculo.** El motor calcula desde
+> `app/nomina_engine/` y `app/constants.py`; cada doc lo declara en su encabezado.

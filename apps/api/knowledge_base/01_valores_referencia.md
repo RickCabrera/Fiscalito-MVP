@@ -21,8 +21,11 @@ Vigente a partir del **1 de febrero de 2026** (enero 2026 aplica UMA 2025).
 | Periodo | Valor |
 |---------|-------|
 | Diario | $113.14 MXN |
-| Mensual | $3,439.68 MXN |
-| Anual | $41,276.16 MXN |
+| Mensual | $3,439.46 MXN |
+| Anual | $41,273.52 MXN |
+
+*Valores corregidos en F0-01 contra el Comunicado de prensa 1/25 del INEGI (antes decían
+$3,439.68 y $41,276.16). Vigencia: 1-feb-2025 → 31-ene-2026.*
 
 ### Uso de la UMA en el sistema Fiscalito
 
@@ -34,10 +37,15 @@ Vigente a partir del **1 de febrero de 2026** (enero 2026 aplica UMA 2025).
 
 ## Salario Mínimo 2026
 
-| Zona | Valor Diario |
-|------|-------------|
-| General (todo el país) | $278.80 MXN |
-| Zona Libre Frontera Norte (ZLFN) | $419.88 MXN |
+| Zona | Valor Diario | Vigencia |
+|------|-------------|----------|
+| General (todo el país) | $315.04 MXN | 1-ene-2026 → 31-dic-2026 |
+| Zona Libre Frontera Norte (ZLFN) | $440.87 MXN | 1-ene-2026 → 31-dic-2026 |
+
+*Valores corregidos en F0-01 contra la Resolución CONASAMI publicada en el DOF el 09-12-2025
+(antes decían $278.80 y $419.88, que son los mínimos de **2025**). El incremento del general
+es 13 % — MIR de $17.01 más 6.5 % de fijación — y el de la ZLFN 5 % sin MIR; la asimetría es
+correcta. Desglose en `nomina/20_valores_referencia_2026.md` §2.*
 
 **Nota:** No se retiene ISR a trabajadores que perciban únicamente 1 salario mínimo mensual (Art. 96 LISR).
 
@@ -54,9 +62,14 @@ Vigente a partir del **1 de febrero de 2026** (enero 2026 aplica UMA 2025).
 
 ## Subsidio al Empleo 2026 (Decreto DOF 31/12/2025)
 
-| Ingresos Mensuales (hasta) | Subsidio Mensual |
-|---------------------------|-----------------|
-| $11,492.66 | $535.65 |
+| Ingresos Mensuales (hasta) | Subsidio Mensual | Regla del decreto |
+|---------------------------|-----------------|-------------------|
+| $11,492.66 | $535.65 (feb–dic) | 15.02 % × UMA mensual 2026 ($3,566.22) |
+| $11,492.66 | $536.21 (enero) | 15.59 % × UMA mensual 2025 ($3,439.46), transitorio |
+
+*Verificado en F0-01 contra el articulado del Decreto DOF 31-12-2025, que fija el porcentaje y
+no un monto en pesos. El importe se calcula, no se hardcodea; ver
+`nomina/20_valores_referencia_2026.md` §4.*
 
 **Nota:** El subsidio al empleo solo aplica a personas físicas asalariadas (régimen 605). Se acredita contra el ISR causado; si el subsidio excede el ISR, no genera saldo a favor reembolsable del patrón.
 
