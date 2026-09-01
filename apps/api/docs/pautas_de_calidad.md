@@ -105,6 +105,9 @@ El número mínimo de tests aceptable es **el número actual** — no se hace me
 
 **Tamaño máximo de archivo:** 300 líneas. Si se excede, extraer a módulo.
 
+**Excepción — `apps/api/scripts/`:** las utilidades de un solo uso quedan exentas del
+límite de 300 líneas y de la prohibición de `print()`, porque su interfaz *es* stdout.
+
 ---
 
 ## Modificar tablas ISR
