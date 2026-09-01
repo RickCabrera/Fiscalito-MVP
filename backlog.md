@@ -117,10 +117,16 @@ cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
   `POST /asistencia/eventos`, `GET /asistencia/eventos`, `POST /asistencia/cerrar-periodo`;
   almacenamiento **en memoria del proceso**, solo para la demo. *Listo cuando:* un payload
   `AcsEvent` real de la doc Hikvision produce las incidencias esperadas.
-- [ ] **D-05 · Simulador de checador** — `scripts/simular_checador.py` genera la quincena
+- [x] **D-05 · Simulador de checador** — `scripts/simular_checador.py` genera la quincena
   completa de los empleados de S-04 (con 2 faltas y 3 retardos sembrados) y la POSTea con el
   **mismo JSON que el dispositivo**. Modo `--en-vivo`, una checada cada 5 s. *Listo cuando:*
   corriéndolo, el panel se llena solo.
+  **Criterio cumplido a medias, a propósito (PR #17):** el panel es D-07 y no existía al cerrar
+  esta tarea. Lo verificado end-to-end contra los tres endpoints es que el simulador alimenta
+  `POST /asistencia/eventos`, que `GET /asistencia/eventos` devuelve lo que el panel va a
+  consumir —194 checadas en orden, cada una con el nombre que le toca— y que `cerrar-periodo`
+  da las 2 faltas y los 3 retardos. **"El panel se llena solo" lo cierra D-07.** La lógica pura
+  vive en `scripts/checador_sintetico.py`.
 - [ ] **D-06 · `POST /api/v1/nomina/calcular-periodo` + tool de agente** — recibe
   `{cliente, empleados[], incidencias, periodo}` → `{recibos[], cuotas_consolidadas,
   explicacion?}`. **Orquestador, no motor: llama directo a `recibo.py` y `cuotas.py` y no
