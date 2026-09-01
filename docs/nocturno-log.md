@@ -730,3 +730,125 @@ más ISR, esa es la respuesta.
   periodo — y `empleados_desconocidos` del cierre.
 - `origen_plantilla` existe para el PDF: si dice `demo`, el PDF no puede llevar el nombre de un
   cliente real.
+
+---
+
+## D-07 · pantalla de la demo del checador (2026-09-01, sesión nocturna)
+
+**PR #19, mergeada. Tests: 970 → 980 backend, 26 → 28 frontend.**
+**CI: rojo el primer intento, verde al segundo** (ver abajo).
+`pytest -q` → `980 passed` · `ruff check .` limpio · `npm run build` limpio · `npm test` →
+`28 passed` · `npx eslint .` → 20 errores / 8 warnings, **la línea base preexistente de S-02**,
+con los archivos nuevos limpios.
+
+# ▶ COMANDOS DEL ENSAYO END-TO-END
+
+**Tres terminales. En este orden.**
+
+```bash
+# ── TERMINAL 1 · API. Dejarla corriendo. SIN --reload.
+cd C:\Users\Rykard\Desktop\fiscalito-mvp\apps\api
+.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
+
+# ── TERMINAL 2 · Sembrar la quincena
+cd C:\Users\Rykard\Desktop\fiscalito-mvp\apps\api
+.venv/Scripts/python.exe scripts/simular_checador.py
+#   Espera ver:
+#   9 empleados | 2026-08-16 a 2026-08-31 | 194 checadas | serial 900001
+#   recibidos=194 duplicados=0
+
+#   Para el efecto en vivo (el último día gota a gota, ~90 s), en vez de lo anterior:
+.venv/Scripts/python.exe scripts/simular_checador.py --en-vivo
+
+# ── TERMINAL 3 · Front
+cd C:\Users\Rykard\Desktop\fiscalito-mvp
+npm run dev --workspace fiscalito-store
+#   → http://localhost:3000
+```
+
+**Ruta:** iniciar sesión y abrir **"Nómina (demo)"** en el sidebar, o ir directo a
+`http://localhost:3000/app/nomina-demo`.
+
+**Qué debe verse:** panel con 194 checadas → fechas precargadas en `2026-08-16 → 2026-08-31`
+→ "Cerrar quincena" da **E-05 y E-08 con 1 falta** y **E-02, E-06 y E-09 con 1 retardo** →
+"Calcular nómina" da 9 recibos con E-05 y E-08 en **15 días y $4,740.00** → el PDF sale con la
+banda naranja **"DATOS DE DEMOSTRACIÓN"**.
+
+**Los tres modos de falla que NO son bugs** (el runbook completo está en
+`docs/D-DEMO-CHECADOR.md`):
+
+1. **La cuenta necesita onboarding completo.** La ruta está detrás de `ProtectedRoute` y del
+   gate `isOnboardingComplete()`; con una cuenta a medias la app redirige al wizard.
+2. **No reiniciar la API después de sembrar.** El almacén es memoria del proceso: un
+   `--reload` que se dispare borra las 194 checadas y el panel queda vacío.
+3. **Sembrar y demostrar el mismo día.** El simulador y la pantalla piden la última quincena
+   **ya terminada**; el día 15 y el 16 son quincenas distintas y el panel sale vacío.
+
+Si hay que repetir el ensayo sin reiniciar la API: `--serial-base 5000000` (el almacén
+deduplica por `(empleado, serialNo)`, así que re-correr con los mismos seriales es un no-op).
+
+### EL BUG QUE LA REVISIÓN EVITÓ, Y QUE VALE LA TAREA ENTERA
+
+El plan que escribí deducía el periodo del `min`/`max` de las fechas de las checadas. **Da
+mal:**
+
+| | |
+|---|---|
+| Quincena real | `2026-08-16 → 2026-08-31` = **16 días naturales** |
+| Primera y última checada | `2026-08-17 → 2026-08-31` = **15** (el 16 es domingo) |
+
+Ese día de menos entra a `DiasDelPeriodo` —base de EyM, IyV, Retiro y CEAV— y a
+`dias_pagados`, o sea a la percepción 001 y de ahí al ISR. **Habría movido las cuotas del IMSS
+y el neto de los recibos, en pantalla y en el PDF, sin que nadie lo notara.** Es exactamente el
+error contra el que el repo ya advierte dos veces (`incidencias.py` y el docstring de
+`quincena()`), reintroducido desde el front.
+
+El periodo lo da ahora el backend con la regla real, y hay test con **los dos números
+literales** para que el heurístico no vuelva por la puerta de atrás.
+
+### El endpoint nuevo, y por qué es backend en una tarea de frontend
+
+`GET /api/v1/nomina/demo/plantilla`. La alternativa era hardcodear en TypeScript los nueve
+empleados **y la prima de riesgo** —que tiene fundamento legal (Art. 72/74 LSS) y dueño en
+`app/demo_nomina.py`— donde ningún test comprueba que no diverjan. **La pantalla no escribe ni
+una constante fiscal.** Es aditivo puro: `cerrar-periodo` no se tocó.
+
+`quincena()` se mudó de `scripts/` a `app/demo_nomina.py`: el endpoint la necesita en runtime y
+`pip install -e .` sólo empaqueta `app*`. Sembrar y demostrar usan **la misma función**.
+
+### Decisiones tomadas sin Ricardo
+
+1. **La ruta va en el sidebar**, etiquetada como demo, y no sólo por URL: el criterio es
+   recorrer el flujo sin tocar consola, y teclear una ruta a mano enfrente del cliente es lo
+   que falla en vivo. Riesgo acotado: producción está apagada (S-08) y la pantalla se borra en
+   F2, con comentario `// DEMO D-07` en la ruta y en el enlace.
+2. **`fecha_pago_efectiva` en la respuesta del cálculo.** De esa fecha dependen UMA, salario
+   mínimo, tarifa y el transitorio de enero; §D18 está abierta sobre cuál debería ser. La
+   pantalla y el PDF imprimen **lo que el motor usó**, no una fecha derivada en el front.
+3. **Si el operador mueve el periodo con los inputs, se manda `fecha_pago: null`** y lo
+   resuelve el backend, en vez de arrastrar la fecha de la quincena sugerida a otro mes.
+4. **`dias_cotizados` se pinta etiquetado como informativo** y no alimenta ningún total: la
+   base de cuotas la decide el motor por ramo (Art. 31 LSS, §D3).
+
+### CI rojo el primer intento — y la causa era mía
+
+Un test verde en local y rojo en CI. `waitFor` esperaba a que el botón **existiera**, pero
+existe desde el primer render y está **deshabilitado** hasta que llega la plantilla: el click
+no hacía nada y no se pintaba ninguna incidencia. En local la promesa resolvía antes del click;
+en CI no. Ahora se espera al valor de la fecha, que sólo aparece con la plantilla cargada.
+
+**Verificado retrasando la respuesta 150 ms a propósito**: con la versión anterior el test se
+cae, con esta pasa. No se aflojó la aserción.
+
+### Verificación
+
+**11 mutaciones sobre front y back, las 11 en rojo.** Una sobrevivió al primer intento: la
+fixture del test usaba **el mismo valor de prima** que el hardcode, así que la aserción se
+validaba sola — quinta vez en el proyecto que aparece ese patrón, y otra vez lo cazó una
+mutación y no una relectura.
+
+### Decisión abierta que sigue viva
+
+**§D18** — si el cliente paga corrido y no el último día del periodo, el default está mal para
+las quincenas de enero ($282.22 contra $281.92 de subsidio). D-07 **enseña el número** en vez
+de asumirlo, que es lo correcto, pero no lo cierra. Sigue siendo pregunta para la contadora.
