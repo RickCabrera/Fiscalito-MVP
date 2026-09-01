@@ -127,11 +127,18 @@ cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
   consumir —194 checadas en orden, cada una con el nombre que le toca— y que `cerrar-periodo`
   da las 2 faltas y los 3 retardos. **"El panel se llena solo" lo cierra D-07.** La lógica pura
   vive en `scripts/checador_sintetico.py`.
-- [ ] **D-06 · `POST /api/v1/nomina/calcular-periodo` + tool de agente** — recibe
+- [x] **D-06 · `POST /api/v1/nomina/calcular-periodo` + tool de agente** — recibe
   `{cliente, empleados[], incidencias, periodo}` → `{recibos[], cuotas_consolidadas,
   explicacion?}`. **Orquestador, no motor: llama directo a `recibo.py` y `cuotas.py` y no
   reimplementa nada.** Tool `calcular_nomina_periodo` en `agent_tools.py`. *Listo cuando:*
   `docs/api-contract.md` lo lista y el agente lo invoca desde el chat de texto.
+  **Cerrada con PR #18, con dos precisiones que hay que leer antes de la demo:**
+  (1) `cuotas_consolidadas` se llama `porcion_mensual` / `porcion_bimestral` porque **no es
+  el entero del Art. 39 LSS**: es lo devengado en el periodo, y una quincena trae media
+  mensualidad de EyM/IyV. La respuesta lo advierte. (2) Del "el agente lo invoca" está
+  probado el registro, el despacho y que **los system prompts lo enumeran** —que era el
+  hueco real—, pero **que un LLM decida llamarlo no se verifica en CI**: no hay key y
+  ningún test pega a un proveedor. Decisiones nuevas en §D17–§D20.
 - [ ] **D-07 · Pantalla demo en `apps/store`** — ruta `/app/nomina-demo`, sin tocar los tabs
   existentes: panel de checador con polling cada 3 s, botón "Cerrar quincena" → tabla de
   incidencias, botón "Calcular nómina" → recibos + cuotas patronales por ramo, export PDF con
