@@ -19,6 +19,7 @@ from app.exceptions import FiscalAgentError
 from app.logging_config import setup_logging
 from app.routes import (
     agente,
+    asistencia,
     calendario,
     comparador,
     declaraciones,
@@ -94,5 +95,6 @@ app.include_router(retenciones.router, prefix="/api/v1")
 app.include_router(multi_periodo.router, prefix="/api/v1")
 app.include_router(estado_cuenta.router, prefix="/api/v1")
 app.include_router(agente.router, prefix="/api/v1")
+app.include_router(asistencia.router, prefix="/api/v1")
 
 logger.info("Fiscal Agent API inicializada correctamente")
