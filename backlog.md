@@ -101,7 +101,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
 ## F0 — Fundamentos de nómina (sin código de producto)
 
-- [ ] **F0-01 · `knowledge_base/nomina/`** — docs 20–26 con los valores de
+- [x] **F0-01 · `knowledge_base/nomina/`** — docs 20–26 con los valores de
   PLAN_NOMINA §2 (UMA por vigencia, SM, tope/piso SBC, subsidio 2026, factor de
   integración, ramos IMSS, CEAV) y sus fuentes. *Listo cuando:* cada valor tiene fuente
   y fecha de vigencia.
