@@ -106,60 +106,104 @@ def fecha_limite_aviso_variable(bimestre_reportado: int, anio: int) -> date:
     return n_esimo_dia_habil_del_mes(anio, mes, DIAS_HABILES_AVISO)
 
 
+def _exigir(valor, nombre: str, motivo: str):
+    if valor is None:
+        raise FiscalValidationError(f"Falta `{nombre}`: {motivo}")
+    return valor
+
+
+def _aviso_parte_fija(
+    sbc_fijo_anterior: Decimal, sbc_fijo_nuevo: Decimal, fecha_cambio: date, fundamento: str
+) -> ResultadoAviso:
+    hubo_cambio = cambio_de_sbc(sbc_fijo_anterior, sbc_fijo_nuevo)
+    return ResultadoAviso(
+        requiere=hubo_cambio,
+        tipo=TipoAviso.MODIFICACION_FIJA,
+        fecha_limite=fecha_limite_aviso_fijo(fecha_cambio) if hubo_cambio else None,
+        fundamento=fundamento,
+    )
+
+
 def avisos_requeridos(
     tipo_salario: TipoSalario,
-    sbc_anterior: Decimal,
-    sbc_nuevo: Decimal,
-    fecha_cambio: date,
+    *,
+    sbc_fijo_anterior: Decimal | None = None,
+    sbc_fijo_nuevo: Decimal | None = None,
+    fecha_cambio: date | None = None,
     bimestre_reportado: int | None = None,
+    anio_bimestre: int | None = None,
 ) -> tuple[ResultadoAviso, ...]:
     """
-    Avisos que hay que presentar por un SBC, con su vencimiento.
+    Avisos que hay que presentar, con su vencimiento.
 
-    Diferencia importante entre los tipos: en el **fijo** el aviso existe solo
-    si el SBC cambio, mientras que en **variable** y **mixto** la obligacion
-    bimestral existe aunque el promedio haya dado igual — lo que se presenta es
-    la determinacion del bimestre, no el cambio.
+    Los argumentos son SOLO POR NOMBRE y no tienen defaults derivados de otro
+    argumento, a proposito: cada tipo de salario necesita datos distintos y un
+    default silencioso aqui produce una fecha limite legal equivocada sin que
+    nada falle.
 
     Args:
-        bimestre_reportado: obligatorio para variable y mixto; es el bimestre
-            cuyo promedio se determina, no el del aviso.
+        sbc_fijo_anterior / sbc_fijo_nuevo: la parte FIJA del SBC, no el total.
+            Para el mixto la distincion es la que decide si hay aviso: el
+            Art. 34 fr. III obliga a avisar la parte fija solo cuando la parte
+            fija cambia. Comparar totales declararia un aviso que no existe
+            cada vez que se moviera nada mas el promedio variable.
+        fecha_cambio: fecha del cambio de la parte fija. Obligatoria para fijo
+            y mixto; sin sentido para variable puro, que no tiene "fecha de
+            cambio" sino un bimestre.
+        bimestre_reportado: 1 a 6, el bimestre cuyo promedio se determina.
+        anio_bimestre: año DEL BIMESTRE reportado, no el del aviso. Es
+            obligatorio y explicito: el bimestre 6 se avisa en enero del año
+            siguiente, asi que derivarlo de una fecha de captura de enero
+            devolveria el vencimiento del año equivocado.
+
+    Diferencia de fondo entre los tipos: en el fijo el aviso existe solo si el
+    SBC cambio; en variable y mixto la obligacion bimestral existe **aunque el
+    promedio haya dado igual**, porque lo que se presenta es la determinacion
+    del bimestre.
 
     Returns:
-        Una tupla: el mixto devuelve DOS avisos con vencimientos distintos.
+        Una tupla. El mixto devuelve DOS avisos con vencimientos distintos.
     """
-    hubo_cambio = cambio_de_sbc(sbc_anterior, sbc_nuevo)
+    motivo_sbc = "el aviso compara el SBC de la parte fija antes y despues del cambio"
+    motivo_fecha = "el plazo de 5 dias habiles del Art. 34 corre desde el cambio"
 
     if tipo_salario is TipoSalario.FIJO:
         return (
-            ResultadoAviso(
-                requiere=hubo_cambio,
-                tipo=TipoAviso.MODIFICACION_FIJA,
-                fecha_limite=fecha_limite_aviso_fijo(fecha_cambio) if hubo_cambio else None,
-                fundamento="Art. 34 fr. I LSS",
+            _aviso_parte_fija(
+                _exigir(sbc_fijo_anterior, "sbc_fijo_anterior", motivo_sbc),
+                _exigir(sbc_fijo_nuevo, "sbc_fijo_nuevo", motivo_sbc),
+                _exigir(fecha_cambio, "fecha_cambio", motivo_fecha),
+                "Art. 34 fr. I LSS",
             ),
         )
 
-    if bimestre_reportado is None:
-        raise FiscalValidationError(
-            f"El tipo de salario {tipo_salario.value} exige `bimestre_reportado`: su "
-            f"aviso es bimestral (Art. 34 fr. II LSS) y no depende de una fecha de cambio."
-        )
+    motivo_bimestre = (
+        f"el aviso de {tipo_salario.value} es bimestral (Art. 34 fr. II LSS) y no "
+        f"depende de una fecha de cambio"
+    )
     aviso_variable = ResultadoAviso(
         requiere=True,  # la obligacion bimestral no depende de que el SBC cambie
         tipo=TipoAviso.BIMESTRAL_VARIABLE,
-        fecha_limite=fecha_limite_aviso_variable(bimestre_reportado, fecha_cambio.year),
+        fecha_limite=fecha_limite_aviso_variable(
+            _exigir(bimestre_reportado, "bimestre_reportado", motivo_bimestre),
+            _exigir(
+                anio_bimestre,
+                "anio_bimestre",
+                "el bimestre 6 se avisa en enero del año siguiente, asi que el año del "
+                "bimestre no se puede inferir de la fecha en que se calcula",
+            ),
+        ),
         fundamento="Art. 34 fr. II LSS",
     )
     if tipo_salario is TipoSalario.VARIABLE:
         return (aviso_variable,)
 
     return (
-        ResultadoAviso(
-            requiere=hubo_cambio,
-            tipo=TipoAviso.MODIFICACION_FIJA,
-            fecha_limite=fecha_limite_aviso_fijo(fecha_cambio) if hubo_cambio else None,
-            fundamento="Art. 34 fr. III LSS (parte fija)",
+        _aviso_parte_fija(
+            _exigir(sbc_fijo_anterior, "sbc_fijo_anterior", motivo_sbc),
+            _exigir(sbc_fijo_nuevo, "sbc_fijo_nuevo", motivo_sbc),
+            _exigir(fecha_cambio, "fecha_cambio", motivo_fecha),
+            "Art. 34 fr. III LSS (parte fija)",
         ),
         aviso_variable,
     )

@@ -41,7 +41,7 @@ from app.redondeo import redondear, redondear_factor
 
 DIAS_AGUINALDO_DE_LEY = 15
 PRIMA_VACACIONAL_DE_LEY = Decimal("0.25")
-DIAS_DEL_AÑO_PARA_INTEGRAR = Decimal("365")
+DIAS_DEL_ANIO_PARA_INTEGRAR = Decimal("365")
 UMAS_TOPE_SBC = 25
 
 
@@ -108,9 +108,9 @@ def factor_integracion(
             f"mínimo de ley es 25% (Art. 80 LFT) y se expresa como proporción "
             f"(0.25), no como porcentaje (25)."
         )
-    proporcion_aguinaldo = Decimal(dias_aguinaldo) / DIAS_DEL_AÑO_PARA_INTEGRAR
+    proporcion_aguinaldo = Decimal(dias_aguinaldo) / DIAS_DEL_ANIO_PARA_INTEGRAR
     proporcion_prima = (
-        Decimal(dias_vacaciones) * prima_vacacional / DIAS_DEL_AÑO_PARA_INTEGRAR
+        Decimal(dias_vacaciones) * prima_vacacional / DIAS_DEL_ANIO_PARA_INTEGRAR
     )
     return redondear_factor(Decimal(1) + proporcion_aguinaldo + proporcion_prima)
 

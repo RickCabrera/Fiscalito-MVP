@@ -19,7 +19,15 @@ Este modulo usa los descansos obligatorios del **Art. 74 LFT**. El IMSS publica
 ademas su propio acuerdo anual de dias inhabiles, que incluye sus periodos
 vacacionales y **no coincide** con el Art. 74. Mientras ese acuerdo no este en
 el repo con su fuente, toda fecha limite calculada aqui es una **estimacion
-conservadora**, no una fecha legal cierta. Ver `docs/nocturno-log.md`.
+conservadora**, no una fecha legal cierta. Ver `docs/decisiones-nomina.md` §D13.
+
+POR QUE ESTE MODULO LEVANTA ValueError Y NO FiscalValidationError
+-----------------------------------------------------------------
+Pedir -1 dias habiles o el dia habil numero 0 es un error del programador, no
+un dato fiscal del usuario. `FiscalValidationError` viaja hasta la respuesta
+HTTP en F1-07 y convertiria un bug interno en un mensaje de dominio que no le
+dice nada al contador. Los datos que SI vienen del usuario (un bimestre fuera
+de 1-6, por ejemplo) se validan en `avisos.py` con `FiscalValidationError`.
 
 QUE QUEDA FUERA, A PROPOSITO
 -----------------------------
@@ -37,6 +45,7 @@ QUE QUEDA FUERA, A PROPOSITO
 from __future__ import annotations
 
 from datetime import date, timedelta
+from functools import lru_cache
 
 _LUNES = 0
 
@@ -48,6 +57,7 @@ def _n_esimo_lunes(anio: int, mes: int, n: int) -> date:
     return primero + timedelta(days=dias_al_lunes + 7 * (n - 1))
 
 
+@lru_cache(maxsize=None)
 def descansos_obligatorios(anio: int) -> frozenset[date]:
     """
     Dias de descanso obligatorio del Art. 74 LFT para un año.

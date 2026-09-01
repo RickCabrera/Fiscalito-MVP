@@ -142,7 +142,10 @@ class TestCambioDeSBC:
 class TestAvisosRequeridos:
     def test_fijo_con_cambio(self):
         (aviso,) = avisos_requeridos(
-            TipoSalario.FIJO, Decimal("500"), Decimal("520"), date(2026, 6, 8)
+            TipoSalario.FIJO,
+            sbc_fijo_anterior=Decimal("500"),
+            sbc_fijo_nuevo=Decimal("520"),
+            fecha_cambio=date(2026, 6, 8),
         )
         assert aviso.requiere is True
         assert aviso.tipo is TipoAviso.MODIFICACION_FIJA
@@ -151,7 +154,10 @@ class TestAvisosRequeridos:
 
     def test_fijo_sin_cambio_no_requiere_aviso(self):
         (aviso,) = avisos_requeridos(
-            TipoSalario.FIJO, Decimal("500"), Decimal("500"), date(2026, 6, 8)
+            TipoSalario.FIJO,
+            sbc_fijo_anterior=Decimal("500"),
+            sbc_fijo_nuevo=Decimal("500"),
+            fecha_cambio=date(2026, 6, 8),
         )
         assert aviso.requiere is False
         assert aviso.fecha_limite is None
@@ -162,36 +168,76 @@ class TestAvisosRequeridos:
         determinación del bimestre (Art. 34 fr. II).
         """
         (aviso,) = avisos_requeridos(
-            TipoSalario.VARIABLE,
-            Decimal("500"),
-            Decimal("500"),
-            date(2026, 3, 1),
-            bimestre_reportado=1,
+            TipoSalario.VARIABLE, bimestre_reportado=1, anio_bimestre=2026
         )
         assert aviso.requiere is True
         assert aviso.tipo is TipoAviso.BIMESTRAL_VARIABLE
         assert aviso.fecha_limite == date(2026, 3, 6)
 
+    def test_el_anio_del_bimestre_es_explicito_y_no_se_infiere(self):
+        """
+        REGRESIÓN. El año del bimestre se derivaba de `fecha_cambio.year`, y el
+        bimestre 6 solo se puede determinar cuando cerró — o sea, capturando en
+        enero del año siguiente. Eso devolvía el vencimiento de enero de 2028
+        para el bimestre nov-dic de 2026: un año tarde, en silencio, sobre un
+        plazo cuya multa va de 20 a 350 UMA.
+        """
+        (aviso,) = avisos_requeridos(
+            TipoSalario.VARIABLE, bimestre_reportado=6, anio_bimestre=2026
+        )
+        assert aviso.fecha_limite == date(2027, 1, 8)
+
     def test_variable_sin_bimestre_es_error(self):
         with pytest.raises(FiscalValidationError) as exc:
-            avisos_requeridos(
-                TipoSalario.VARIABLE, Decimal("500"), Decimal("520"), date(2026, 6, 8)
-            )
+            avisos_requeridos(TipoSalario.VARIABLE, anio_bimestre=2026)
         assert "bimestre_reportado" in str(exc.value)
+
+    def test_variable_sin_anio_del_bimestre_es_error(self):
+        """No hay default: derivarlo de otra fecha es justo el bug de arriba."""
+        with pytest.raises(FiscalValidationError) as exc:
+            avisos_requeridos(TipoSalario.VARIABLE, bimestre_reportado=6)
+        assert "anio_bimestre" in str(exc.value)
 
     def test_mixto_genera_dos_avisos_con_vencimientos_distintos(self):
         """Art. 34 fr. III: la parte fija al cambiar, la variable bimestral."""
         avisos = avisos_requeridos(
             TipoSalario.MIXTO,
-            Decimal("500"),
-            Decimal("520"),
-            date(2026, 6, 8),
+            sbc_fijo_anterior=Decimal("500"),
+            sbc_fijo_nuevo=Decimal("520"),
+            fecha_cambio=date(2026, 6, 8),
             bimestre_reportado=2,
+            anio_bimestre=2026,
         )
         assert len(avisos) == 2
         fija, variable = avisos
         assert fija.tipo is TipoAviso.MODIFICACION_FIJA
+        assert fija.requiere is True
         assert variable.tipo is TipoAviso.BIMESTRAL_VARIABLE
-        assert fija.fecha_limite != variable.fecha_limite
         assert fija.fecha_limite == date(2026, 6, 15)
         assert variable.fecha_limite == date(2026, 5, 8)
+        assert fija.fecha_limite != variable.fecha_limite
+
+    def test_mixto_con_la_parte_fija_intacta_no_avisa_modificacion(self):
+        """
+        Si solo se movió el promedio variable, el aviso de parte fija NO existe
+        (Art. 34 fr. III obliga a avisarla solo cuando la parte fija cambia).
+        Comparar el SBC total declararía un aviso inexistente cada bimestre.
+        """
+        fija, variable = avisos_requeridos(
+            TipoSalario.MIXTO,
+            sbc_fijo_anterior=Decimal("500"),
+            sbc_fijo_nuevo=Decimal("500"),
+            fecha_cambio=date(2026, 6, 8),
+            bimestre_reportado=2,
+            anio_bimestre=2026,
+        )
+        assert fija.requiere is False
+        assert fija.fecha_limite is None
+        assert variable.requiere is True
+
+    def test_mixto_sin_parte_fija_es_error(self):
+        with pytest.raises(FiscalValidationError) as exc:
+            avisos_requeridos(
+                TipoSalario.MIXTO, bimestre_reportado=2, anio_bimestre=2026
+            )
+        assert "sbc_fijo_anterior" in str(exc.value)
