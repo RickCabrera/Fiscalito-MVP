@@ -8,7 +8,8 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 
 Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no este
 `[x]` ni marcada SALTADA en `docs/nocturno-log.md`. Una tarea por sesion. El detalle de
-cada una vive en su seccion de abajo.
+cada una vive en su seccion de abajo. **S-00 no esta aqui a proposito:** su criterio de
+cierre exige probar el chat de voz con microfono, asi que es diurna.
 
 1. F0-01
 2. F0-02
@@ -21,9 +22,8 @@ cada una vive en su seccion de abajo.
 9. S-03
 10. F1-07
 11. F1-08
-12. S-00
-13. S-02
-14. S-01b
+12. S-02
+13. S-01b
 
 ## S — Saneamiento (deuda que estorba al bucle)
 
