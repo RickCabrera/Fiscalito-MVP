@@ -14,6 +14,7 @@ import pytest
 
 from app.constants import ZonaSalarioMinimo
 from app.exceptions import FiscalValidationError
+from app.nomina_engine.ceav import ceav_patronal
 from app.nomina_engine.integracion import (
     ConceptoIntegrable,
     clamp_sbc,
@@ -24,7 +25,6 @@ from app.nomina_engine.integracion import (
     sbc_mixto,
     sbc_variable,
 )
-from app.nomina_engine.tablas_imss import ceav_patronal
 
 FEBRERO = date(2026, 2, 15)
 ENERO = date(2026, 1, 15)

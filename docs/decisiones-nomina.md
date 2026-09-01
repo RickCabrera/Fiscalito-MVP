@@ -18,6 +18,18 @@ el prorrateo de la tabla mensual y documentar aquí cuál de los dos cuadró.
 
 Por concepto y por empleado, a **2 decimales**, al estilo SUA. Validar contra las fixtures.
 
+**Validado en F1-03, y el caso real trae los dos órdenes.** El empleado `XAHH010101AA8` tiene
+deducción de IMSS de **$55.13 en marzo** y **$55.12 de abril en adelante**, con el mismo SBC
+($331.58) y los mismos 7 días. Esos dos valores son, al centavo, los dos órdenes de redondeo
+admisibles:
+
+- por concepto (lo que manda D2 y hace el motor) → **$55.12**
+- sobre el agregado → **$55.13**
+
+O sea que el software del patrón **cambió de orden de redondeo en el corte marzo→abril**. No es
+ruido: es una decisión de redondeo observable, y confirma que D2 es una decisión real y no una
+formalidad. Ver §D14.
+
 ## D3 · Ausentismos e incapacidades — PROVISIONAL
 
 Aplicar el **Art. 31 LSS** literal: las ausencias de hasta 7 días al mes descuentan días en
@@ -43,6 +55,12 @@ de jornada completa no le pasa: el renglón es, en la práctica, casi inalcanzab
 Las dos lecturas dan **3.150% vs 6.026% para todos los trabajadores de salario mínimo del
 país**. El código no adivina: aplica la literal, la documenta y la prueba. Si la respuesta es
 la segunda, lo que cambia es `ceav_patronal()` y sus tests, y se ve exactamente dónde.
+
+**Ampliado en F1-03: la misma respuesta gobierna el Art. 36 LSS**, la absorción de la cuota
+obrera por el patrón. Son dos consecuencias de una sola pregunta legal, así que el motor tiene
+un **predicado único** —`ceav.es_trabajador_de_salario_minimo()`— que usan tanto la tabla de
+CEAV como el cálculo de cuotas. Si viviera contestado en dos archivos, la respuesta de la
+contadora se aplicaría en uno y no en el otro.
 
 ## D5 · Prestaciones superiores a las de ley
 
@@ -152,3 +170,72 @@ docstring. Dos fracciones del Art. 74 quedaron fuera a propósito:
 En los dos casos el error tiene dirección: marcar de más un día como inhábil **corre el
 vencimiento hacia adelante**, y presentar tarde un aviso afiliatorio cuesta de 20 a 350 UMA
 (Art. 304-B LSS). Contar de menos es lo conservador.
+
+
+## D14 · La cuota obrera del caso real no es reproducible — HALLAZGO, para la contadora
+
+**El "Listo cuando" de F1-03 pedía cuadrar contra el caso real de S-04. No es alcanzable con
+el dato timbrado, y esto explica por qué.**
+
+La deducción de IMSS (`TipoDeduccion=001`, cuota obrera) de los 70 CFDI **no se reproduce**
+desde el `SalarioBaseCotApor` del propio comprobante con las tasas de ley. Solo 2 de 9
+empleados cuadran.
+
+| Empleado | SBC timbrado | Deducción observada | Tasa obrera implícita |
+|---|---|---|---|
+| ...AA1 | 331.58 | 55.13 / 55.12 | **2.3752 %** ✅ |
+| ...AA2 | 357.44 | 57.09 | 2.2817 % |
+| ...AA3 | 399.52 | 68.10 / 68.09 | 2.4351 % |
+| ...AA4 | 399.05 | 66.63 | 2.3853 % |
+| ...AA5 | 343.00 | 57.28 | 2.3857 % |
+| ...AA6 | 346.11 | 57.06 | 2.3552 % |
+| ...AA7 | 387.23 | 64.46 | 2.3781 % |
+| ...AA8 | 331.58 | 55.13 / 55.12 | **2.3752 %** ✅ |
+| ...AA9 | 358.34 | 57.21 | 2.2808 % |
+
+La tasa obrera de ley es **2.3750 %** (EyM prestaciones en dinero 0.25 + EyM gastos médicos de
+pensionados 0.375 + IyV 0.625 + CEAV 1.125), más 0.40 % sobre el excedente de 3 UMA cuando
+aplica.
+
+### La prueba de que el problema es el dato de entrada, no la fórmula
+
+Tres empleados tienen una deducción **por debajo del mínimo legal** que impone su propio SBC
+timbrado:
+
+| Empleado | SBC | Mínimo legal (2.375 % × 7 días) | Observado | Diferencia |
+|---|---|---|---|---|
+| ...AA2 | 357.44 | 59.42 | 57.09 | **−2.33** |
+| ...AA6 | 346.11 | 57.54 | 57.06 | −0.48 |
+| ...AA9 | 358.34 | 59.57 | 57.21 | **−2.36** |
+
+**Ningún ramo omitido, ningún día faltante y ningún excedente puede hacer que un número baje.**
+Si la deducción es menor que el piso que impone el SBC, entonces la base con la que el patrón
+determinó la cuota **no es el `SalarioBaseCotApor` que timbró**. Es la misma naturaleza que
+§D9: el caso real trae números que no se derivan de los campos visibles del CFDI.
+
+### Preguntas concretas para la contadora
+
+1. **¿Qué SBC se usó realmente para determinar la cuota obrera?** El timbrado no reproduce ni
+   siquiera el mínimo en tres empleados.
+2. **¿El software refresca la UMA el 1 de febrero para el excedente del Art. 106 fr. II, o
+   arrastra la del ejercicio anterior?** Pista concreta: el empleado ...AA3 cuadra **al
+   centavo** en marzo si el excedente se calcula contra 3 × UMA **2025** ($339.42) en vez de
+   la de 2026: `66.42 + 1.68 = 68.10`. Con UMA 2026 da $67.75. Es n=1 y no explica su valor de
+   abril, así que no se toma como explicación — pero es barato de confirmar.
+3. **¿Por qué cambió el orden de redondeo entre marzo y abril?** Ver §D2.
+
+### Qué se hizo en el código
+
+`cuotas.py` cuadra contra **la fórmula de ley**, ramo por ramo. En
+`tests/nomina/test_cuotas_caso_real.py` hay dos clases de test y **las dos pasan**, sin skips
+ni `xfail`: el cuadre estricto de los dos empleados que sí se reproducen (las nueve semanas), y
+la **caracterización** de los siete que no, con sus importes observados como literales. Si
+alguien "arregla" el motor y esos siete empiezan a cuadrar, el test truena y obliga a explicar
+qué cambió.
+
+### Lo que S-04 no cubre, para que nadie lo asuma
+
+Las fixtures van del **8-mar-2026 al 3-may-2026**, así que **no ejercitan el transitorio de
+enero** (ni el de la UMA ni el del subsidio). Todos los recibos traen `NumDiasPagados=7.000` y
+no hay ni una incapacidad, así que **S-04 no puede validar §D3**. Y el subsidio para el empleo
+viene con `Importe="0"` en todos, así que **tampoco va a cerrar §D11**.
