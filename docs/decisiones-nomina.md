@@ -29,6 +29,21 @@ EyM. Confirmar con la contadora.
 Aplicar la tabla literal por rango de UMA. El salario mínimo exacto cae en **3.150%**. Los
 renglones inalcanzables se dejan en la tabla, sin lógica especial que los excluya.
 
+**Afinado en F1-01 — la pregunta para la contadora es más filosa de lo que parecía.** Lo
+implementado es `SBC == 1 SM`, y el SBC de un trabajador de salario mínimo **casi nunca** es
+1 SM: es `SM × factor de integración` (≈1.0493) ≈ $330.57, o sea ~2.82 UMA, que cae en el
+tramo 2.51–3.00 → **6.026%**. Con la lectura literal, el renglón de 3.150% solo se alcanza
+cuando el clamp del Art. 28 subió un SBC al piso, cosa que a un trabajador de salario mínimo
+de jornada completa no le pasa: el renglón es, en la práctica, casi inalcanzable.
+
+> **¿El SUA lee "1.00 SM" como *SBC igual al salario mínimo* (lo implementado) o como
+> *trabajador que percibe el salario mínimo*, es decir salario diario = SM con SBC integrado
+> por encima?**
+
+Las dos lecturas dan **3.150% vs 6.026% para todos los trabajadores de salario mínimo del
+país**. El código no adivina: aplica la literal, la documenta y la prueba. Si la respuesta es
+la segunda, lo que cambia es `ceav_patronal()` y sus tests, y se ve exactamente dónde.
+
 ## D5 · Prestaciones superiores a las de ley
 
 Modelar vía `ConceptoIntegrable`. El default es el **mínimo de ley**.
@@ -70,3 +85,34 @@ al SBC? Sin esa respuesta, el SDI del caso real solo puede tratarse como dato ob
 
 *(Los factores por empleado no se documentan aquí a propósito: el salario diario no está en el
 CFDI, y publicar el factor permitiría despejarlo.)*
+
+## D10 · Periodicidades sin tarifa publicada — PROVISIONAL
+
+El Anexo 8 publica tarifas **diaria, semanal, decenal, quincenal y mensual**, pero
+`c_PeriodicidadPago` incluye además la **catorcenal** (clave 03), que ninguna autoridad
+publica como tarifa.
+
+Decisión del nocturno: `tarifa_por_periodicidad()` **levanta `FiscalValidationError`** en vez
+de derivar una tarifa de 14 días. Generar un ISR que nadie publicó, aunque lleve etiqueta de
+"derivada", es peor que fallar: F1-04 lo consumiría sin saberlo. El caso real es semanal, así
+que no bloquea nada.
+
+**Para la contadora:** si un patrón paga catorcenal, ¿qué hace su software — semanal × 2,
+diaria × 14, o el procedimiento del RLISR?
+
+La **decenal** (clave 10) queda fuera por una razón distinta: el Anexo 8 sí la publica, pero
+sus once renglones no se pudieron verificar contra una fuente publicada al construir F1-01. No
+se generó desde la fórmula porque las tablas periódicas de este módulo son legítimas
+únicamente por estar validadas contra literales publicados. Agregarla es transcribir sus 22
+celdas con su cita.
+
+## D11 · Base mensual del tope del subsidio en nóminas sub-mensuales — ABIERTA
+
+El decreto fija el tope del subsidio en **$11,492.66 mensuales**, y el caso real es de nómina
+**semanal**. No está definido si el ingreso mensual que se compara contra el tope se
+**proyecta** (semanal × 30.4 ÷ 7) o se **acumula por mes calendario**. Cambia quién tiene
+derecho al subsidio, no solo cuánto.
+
+`subsidio_empleo()` recibe el ingreso mensual ya resuelto y **no toma la decisión**: la
+responsabilidad es del llamador (F1-04), y el docstring lo dice. Hay que cerrarla antes de
+cuadrar el ISR del caso real.

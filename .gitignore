@@ -23,3 +23,6 @@ apps/api/pfebrero/
 
 # Firebase local
 apps/store/.firebase/
+
+# Salida del runner nocturno: log de corrida, no se versiona
+docs/nocturno-run.txt
