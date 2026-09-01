@@ -6,10 +6,14 @@ import { AgentProvider, getAgentActions, getAgentSnapshot } from './AgentContext
 afterEach(cleanup);
 
 /**
- * Estos dos tests protegen el invariante que S-02 puede romper al perseguir los
- * errores de react-hooks: los dos useEffect que sincronizan stateRef y
- * actionsRef son lo unico que conecta las tools (que no son componentes) con el
- * estado de React.
+ * Estos dos tests protegen el invariante de los dos useEffect que sincronizan
+ * stateRef y actionsRef: son lo unico que conecta las tools (que no son
+ * componentes) con el estado de React.
+ *
+ * Por que importa para S-02: este archivo no tiene errores de eslint, tiene 3
+ * warnings de react-refresh/only-export-components. La forma canonica de
+ * callarlos es mover getAgentSnapshot/getAgentActions/useAgent a otro archivo,
+ * y ese refactor es justo el que puede dejar colgado el cableado de las refs.
  */
 describe('AgentContext', () => {
   it('getAgentActions lanza si no hay provider montado', async () => {
