@@ -48,11 +48,13 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
+from app.constants import DIAS_MES_FISCAL
 from app.exceptions import FiscalValidationError
 from app.redondeo import DOS_DECIMALES as _DOS_DECIMALES
 from app.redondeo import redondear as _redondear
 
-_DIAS_MES_FISCAL = Decimal("30.4")
+# Se importa de `app.constants`: vivia duplicada en cuatro archivos.
+_DIAS_MES_FISCAL = DIAS_MES_FISCAL
 INFINITO = Decimal("Infinity")
 
 

@@ -27,6 +27,7 @@ from app.routes import (
     estado_cuenta,
     health,
     multi_periodo,
+    nomina,
     retenciones,
 )
 
@@ -96,5 +97,6 @@ app.include_router(multi_periodo.router, prefix="/api/v1")
 app.include_router(estado_cuenta.router, prefix="/api/v1")
 app.include_router(agente.router, prefix="/api/v1")
 app.include_router(asistencia.router, prefix="/api/v1")
+app.include_router(nomina.router, prefix="/api/v1")
 
 logger.info("Fiscal Agent API inicializada correctamente")

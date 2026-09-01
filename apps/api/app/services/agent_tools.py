@@ -18,6 +18,10 @@ from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES, NOMBRES_REGIMEN
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.schemas.agente import DeclaracionHistorialItem
 from app.schemas.fiscal import CFDI, PerfilContribuyente
+from app.services.agent_tools_nomina import (
+    TOOL_NOMINA_PERIODO,
+    calcular_nomina_periodo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +105,10 @@ TOOLS_ANTHROPIC = [
     },
 ]
 
-# Conversion a formato OpenAI
+# El de nomina vive en su propio modulo: este archivo ya esta sobre el limite
+# de 300 lineas y meterle el handler completo lo empeoraria.
+TOOLS_ANTHROPIC.append(TOOL_NOMINA_PERIODO)
+
 TOOLS_OPENAI = [
     {
         "type": "function",
@@ -344,5 +351,10 @@ def ejecutar_tool(
 
     if tool_name == "crear_predeclaracion":
         return _handle_crear_predeclaracion(ctx, tool_input)
+
+    if tool_name == "calcular_nomina_periodo":
+        # No usa `ctx`: la nomina de la demo sale del almacen de asistencia
+        # y de la plantilla del servidor, no del perfil fiscal del request.
+        return calcular_nomina_periodo(tool_input), None
 
     return json.dumps({"error": f"Tool desconocida: {tool_name}"}), None

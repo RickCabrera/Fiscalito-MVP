@@ -393,3 +393,103 @@ al trabajador*, y desde 2024 no se entrega nada — la contradicción que `knowl
 24_cfdi_nomina_12.md` §3 ya había anotado. **La validación XSD no verifica esta regla**, así
 que el verde de F1-05 no la responde: cómo timbrarlo sin rechazo es pregunta para la Guía de
 llenado vigente y para la contadora, y se cierra hasta F3 (§D7).
+
+---
+
+## D17 · El séptimo día ante una falta injustificada — PROVISIONAL
+
+Cuando un empleado de salario fijo falta sin justificar, el orquestador de D-06 calcula
+`dias_pagados = dias_periodo − faltas`: **se descuenta el día y nada más**.
+
+La otra lectura defendible descuenta además la **parte proporcional del séptimo día**. El
+Art. 69 LFT concede un día de descanso con salario íntegro por cada seis días de trabajo, y
+parte de los despachos entiende que una falta injustificada rompe esa proporción y arrastra
+1/6 de día adicional. Con una falta en una quincena la diferencia es de ~0.17 días de salario.
+
+**Se tomó la primera** por dos razones: es la que **favorece al trabajador** —el error, si lo
+hay, no le quita dinero a la persona— y es la que se puede explicar en una demo sin abrir un
+debate. Va marcada en `app/nomina_engine/periodo.py`.
+
+**Pregunta para la contadora:** ¿el software del cliente (NOI, CONTPAQi) descuenta sólo el día
+o también la proporción del séptimo?
+
+---
+
+## D18 · Fecha de pago contra fin de periodo — PROVISIONAL
+
+`POST /api/v1/nomina/calcular-periodo` recibe `periodo.fecha_pago` **separada** de
+`periodo.fin`, y **toda la vigencia se lee de la fecha de pago**: UMA, salario mínimo, tarifa
+del Anexo 8 y el transitorio de enero del subsidio. El default, cuando no se manda, es
+`periodo.fin`.
+
+**Por qué importa y no es teórico.** Las dos magnitudes cambian en fechas distintas (la UMA el
+1 de febrero, el salario mínimo el 1 de enero), así que una quincena que **cierra el 31 de
+enero y se paga en febrero** se calcula con valores distintos según cuál de las dos fechas se
+use. Está fijado por test: el subsidio de esa quincena es $282.22 pagada el 31-ene y $281.92
+pagada el 5-feb.
+
+**Pregunta para Ricardo o la contadora:** ¿el cliente de la demo paga el último día del periodo
+o corrido unos días? Si paga corrido, el default es el equivocado para las quincenas de enero.
+
+---
+
+## D19 · La base del tope del subsidio usa el SBC acotado — PROVISIONAL
+
+El orquestador compara contra el tope del subsidio un ingreso mensual de
+`redondear(SBC × 30.4)`, tomando el SBC **ya acotado** por el Art. 28 (`clamp_sbc`).
+
+La evidencia que sostiene §D11 se construyó con el SBC **timbrado**, sin acotar. Los dos
+coinciden en los 9 empleados de la demo y en los 70 recibos del caso real, y **divergen sólo
+para un trabajador cuyo SBC caiga por debajo del piso** —donde el clamp lo sube al salario
+mínimo y por tanto sube también la base del tope, quitándole subsidio a quien menos gana.
+
+Se dejó el acotado porque es el mismo valor con el que se calculan las cuotas, y tener dos SBC
+distintos en el mismo recibo sería peor. Pero **es una decisión, no una consecuencia**.
+
+**Nota metodológica que vale la pena:** `SBC × 30.4` es la única de las tres lecturas de §D11
+que **no depende de la periodicidad**, así que trasladarla de la nómina semanal del caso real a
+la quincenal de la demo no agrega un supuesto nuevo. Las otras dos (proyectar el gravado o
+acumular el mes calendario) sí habrían necesitado re-justificarse.
+
+---
+
+## D20 · El ausentismo prolongado se advierte, no se trata — PROVISIONAL
+
+El motor cobra **las cuotas completas de cada ramo** sin importar cuánto ausentismo haya, con
+la única reducción de días que ya fija §D3. Es la dirección conservadora: cobra de más, nunca
+de menos.
+
+**Lo que NO se afirma, y por qué.** El Art. 31 LSS da un tratamiento distinto al ausentismo
+prolongado, pero **este repo no tiene el texto del artículo transcrito contra el DOF** y §D3
+—de donde salía la lectura— está marcada PROVISIONAL, pendiente de la contadora. Una versión
+anterior de esta decisión afirmaba que el artículo "libera al patrón de todas las cuotas". Se
+retiró por dos razones. Primero, no hay fuente. Segundo, **se contradice con el propio
+motor**: §D3 mantiene Enfermedades y Maternidad a cargo del patrón aun con ausentismo, así que
+"todas" no puede ser cierto en la lectura que el código implementa. Como la frase viajaba a la
+respuesta del endpoint y al prompt del LLM, el destinatario habría sido el patrón — y tomada
+al pie de la letra lo invitaba a dejar de enterar EyM.
+
+**Pregunta para la contadora, y es la que desbloquea esto:** ¿qué dice exactamente el Art. 31
+sobre las ausencias prolongadas, qué ramos subsisten en cada supuesto, y desde qué número de
+días? Con la respuesta y su cita se puede implementar; sin ella, cobrar completo y advertir es
+lo correcto.
+
+**Nota de alcance.** La misma frase sin fuente sigue en §D3 ("la fr. II del Art. 31 libera al
+patrón de todas las cuotas…"), donde la dejó F1-03. **No se tocó aquí**: es una nota interna,
+la sección ya está marcada PROVISIONAL y pendiente de la contadora, y reescribirla sería
+trabajo "de pasada" de otra tarea. Lo que sí importaba —y era lo que D-06 introducía— es que
+esa lectura **no** se publique como texto legal en la respuesta de un endpoint ni en el prompt
+del LLM. Cuando la contadora conteste, §D3 y §D20 se cierran juntas.
+
+D-06 agrega una **advertencia** en la respuesta cuando un empleado supera 7 días de ausentismo
+en el periodo, para que el caso no pase inadvertido.
+
+**Lo que la advertencia NO cubre, y hay que saberlo:** el aviso mira **un periodo a la vez**.
+Dos quincenas con 5 faltas cada una suman 10 días en el mes y **ninguna de las dos lo dispara**.
+Si el conteo del ausentismo resultara ser **mensual** —la lectura que traía F1-03, sin fuente
+verificada, ver arriba— haría falta un acumulado que hoy no existe: el almacén de asistencia es
+por periodo y en memoria.
+
+**Pregunta para la contadora:** ¿sobre qué ventana se cuenta el ausentismo, y quién lleva el
+acumulado cuando la nómina es quincenal? Y **para F1-09**: si la ventana es mensual, la
+persistencia tiene que permitir consultarla.
