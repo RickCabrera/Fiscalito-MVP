@@ -116,3 +116,39 @@ derecho al subsidio, no solo cuánto.
 `subsidio_empleo()` recibe el ingreso mensual ya resuelto y **no toma la decisión**: la
 responsabilidad es del llamador (F1-04), y el docstring lo dice. Hay que cerrarla antes de
 cuadrar el ISR del caso real.
+
+## D12 · Decimales del factor de integración — PROVISIONAL
+
+El factor se redondea a **4 decimales** (`ROUND_HALF_UP`) y el SBC se calcula con **ese factor
+ya redondeado**, no con el cociente completo.
+
+Razón: el SBC que el patrón declara al IMSS tiene que ser reproducible a mano desde el factor
+que el sistema le muestra. Cuatro decimales es la precisión con la que se declara el factor y
+con la que están expresadas las tablas de prestaciones mínimas.
+
+No es cosmético: con un salario diario cercano al tope (~$2,800) la diferencia entre usar el
+factor redondeado y el completo vale hasta **$0.14 de SBC**.
+
+**Pregunta para la contadora:** ¿su software (NOI / CONTPAQi) calcula el SDI con el factor
+redondeado a 4 decimales o con el factor completo?
+
+**Riesgo acotado:** por §D9 el caso real toma el `SalarioDiarioIntegrado` como dato de entrada
+y no lo recomputa, así que esta decisión **no afecta el cuadre de S-04**.
+
+## D13 · Qué es un "día hábil" para los plazos del IMSS — ABIERTA
+
+`dias_habiles.py` usa los días de descanso obligatorio del **Art. 74 LFT**. El IMSS publica
+además su propio acuerdo anual de días inhábiles, que incluye sus periodos vacacionales y **no
+coincide** con el Art. 74.
+
+Mientras ese acuerdo no esté en el repo con su fuente, toda fecha límite de aviso que calcule
+el motor es una **estimación conservadora**, no una fecha legal cierta, y así lo dice el
+docstring. Dos fracciones del Art. 74 quedaron fuera a propósito:
+
+- **fr. IX, jornada electoral** — depende del calendario del INE.
+- **fr. VII, transmisión del Poder Ejecutivo cada seis años** — no se incluyó sin poder citar
+  el DOF de su texto vigente. No afecta ningún cálculo de 2026; la próxima ocurrencia es 2030.
+
+En los dos casos el error tiene dirección: marcar de más un día como inhábil **corre el
+vencimiento hacia adelante**, y presentar tarde un aviso afiliatorio cuesta de 20 a 350 UMA
+(Art. 304-B LSS). Contar de menos es lo conservador.

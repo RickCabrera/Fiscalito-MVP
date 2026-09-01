@@ -24,3 +24,19 @@ DOS_DECIMALES = Decimal("0.01")
 def redondear(valor: Decimal) -> Decimal:
     """Redondea a 2 decimales con ROUND_HALF_UP (D2)."""
     return valor.quantize(DOS_DECIMALES, rounding=ROUND_HALF_UP)
+
+
+CUATRO_DECIMALES = Decimal("0.0001")
+
+
+def redondear_factor(valor: Decimal) -> Decimal:
+    """
+    Redondea a 4 decimales con ROUND_HALF_UP.
+
+    Es la precision con la que se declara el factor de integracion y con la
+    que lo publican las tablas de prestaciones minimas de ley. Ver la decision
+    D12 de `docs/decisiones-nomina.md`: el SBC se calcula con ESTE factor ya
+    redondeado, no con el cociente completo, para que el numero que el patron
+    declara al IMSS sea reproducible a mano.
+    """
+    return valor.quantize(CUATRO_DECIMALES, rounding=ROUND_HALF_UP)
