@@ -33,7 +33,12 @@ paga con la línea de captura de **SIPARE**, en portal bancario o ventanilla.
 > Empresas, Recaudación y Fiscalización).
 
 Que el **viernes** también corra es específico del IMSS y distinto de la regla del SAT. Un
-motor que solo mueva sábados y domingos produce dos fechas mal en 2026 (abril y julio).
+motor que solo mueva sábados y domingos produce **dos fechas mal en 2026**: las cuotas de
+marzo y las de junio, que vencen en viernes y se corren al lunes.
+
+> **Convención de este archivo:** cada obligación se nombra por el **mes de las cuotas**, no
+> por el mes en que vence. "Las cuotas de marzo" vencen en abril. La tabla de §3 lleva las dos
+> columnas para que no haya ambigüedad.
 
 ---
 
@@ -54,8 +59,10 @@ motor que solo mueva sábados y domingos produce dos fechas mal en 2026 (abril y
 | Noviembre | jueves 17-dic | **17-dic-2026** | Mensual |
 | Diciembre | **domingo** 17-ene-2027 | **18-ene-2027** (lunes) | Mensual + bimestral (nov-dic) |
 
-Las cuatro fechas corridas (marzo, abril, junio y diciembre) son consecuencia directa de la
-regla del §2; no hay ninguna excepción discrecional. Los días de descanso obligatorio de la
+**Cinco** de las doce fechas se corren, todas por la regla del §2 y ninguna por excepción
+discrecional: las cuotas de **marzo** (viernes → lunes 20-abr), **abril** (domingo → lunes
+18-may), **junio** (viernes → lunes 20-jul), **septiembre** (sábado → lunes 19-oct) y
+**diciembre** (domingo → lunes 18-ene-2027). Los días de descanso obligatorio de la
 LFT (Art. 74) pueden correr una fecha más — el generador debe considerarlos, no solo el día
 de la semana.
 

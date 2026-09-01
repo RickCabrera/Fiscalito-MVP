@@ -38,22 +38,37 @@ subsidio— se resuelven **a la fecha de pago**, no a la de cálculo.
 ## 2. Exenciones del Art. 93 LISR (expresadas en UMA)
 
 Los topes se expresan en **veces la UMA diaria vigente a la fecha del pago** — de nuevo, enero
-usa UMA 2025.
+usa la UMA 2025.
 
-| Percepción | Exento hasta | Fracción Art. 93 |
+> **Por qué UMA y no salario mínimo.** El Art. 93 dice literalmente *salario mínimo*. El
+> **Decreto de desindexación (DOF 27-01-2016)** y el Art. 26 apartado B constitucional
+> convirtieron esas referencias en UMA. Sin ese eslabón, "30 veces el SM" daría $9,451.20 de
+> aguinaldo exento en vez de $3,519.30 (importes **derivados** de los valores del doc 20 §1 y
+> §2): un factor de 2.69 de diferencia en cada exención.
+
+| Percepción | Exento hasta | Fundamento |
 |---|---|---|
-| Aguinaldo | **30 UMA** | fr. XIV |
-| Prima vacacional | **15 UMA** | fr. XIV |
-| PTU | **15 UMA** | fr. XIV |
-| Prima dominical | **1 UMA por domingo trabajado** | fr. XIV |
-| Tiempo extra | **50 % exento, tope 5 UMA por semana**, siempre dentro de los límites de la LFT (3 horas diarias, 3 veces por semana). El tiempo extra que excede los límites de la LFT es 100 % gravado | fr. I |
-| Previsión social (vales, fondo de ahorro, ayudas) | topes propios de la fracción, con el límite conjunto de 7 UMA | fr. VIII y IX y penúltimo párrafo |
-| Indemnizaciones por riesgo de trabajo o enfermedad | conforme a la ley o al contrato | fr. III |
+| Aguinaldo | **30 UMA** | Art. 93 fr. XIV |
+| Prima vacacional | **15 UMA** | Art. 93 fr. XIV |
+| PTU | **15 UMA** | Art. 93 fr. XIV |
+| Prima dominical | **1 UMA por domingo trabajado** | Art. 93 fr. XIV |
+| Tiempo extra, **trabajador de salario mínimo** | **100 %**, dentro de los límites de la LFT | Art. 93 fr. I |
+| Tiempo extra, **los demás trabajadores** | **50 %**, sin exceder **5 UMA por semana** y dentro de los límites de la LFT | Art. 93 fr. I |
+| Previsión social (vales, fondo de ahorro, ayudas) | topes propios de la fracción, con el límite conjunto de 7 UMA | Art. 93 fr. VIII y IX y penúltimo párrafo |
+| Indemnizaciones por riesgo de trabajo o enfermedad | conforme a la ley o al contrato | Art. 93 fr. III |
 
-Lo que excede el tope es **gravado** y entra a la base. La misma percepción se parte en
-`ImporteGravado` / `ImporteExento` en el CFDI (ver `24_cfdi_nomina_12.md`).
+**El excedente de cualquiera de estas exenciones es gravado** (Art. 93 fr. II) y entra a la
+base. La misma percepción se parte en `ImporteGravado` / `ImporteExento` en el CFDI (ver
+`24_cfdi_nomina_12.md`).
 
----
+**Los límites de la LFT para el tiempo extra** (Art. 66: máximo 3 horas diarias y 3 veces por
+semana) acotan la exención: las horas extra que exceden esos límites se pagan al triple y son
+**100 % gravadas**.
+
+> **El trabajador de salario mínimo aparece tres veces, con reglas independientes.** No
+> retención de ISR (Art. 96, último párrafo); tiempo extra 100 % exento (Art. 93 fr. I); y el
+> patrón absorbe su cuota obrera del IMSS (Art. 36 LSS). Son tres normas distintas que
+> coinciden en el mismo empleado — F1-04 debe aplicarlas por separado, no como una sola.
 
 ## 3. Tarifa del Art. 96 LISR
 
@@ -118,9 +133,8 @@ el ajuste por sexto dígito del RFC). Ese es el puente con el módulo fiscal ya 
 
 ## 6. Casos que el motor debe manejar sin sorpresas
 
-- **Trabajador con 1 salario mínimo**: no se le retiene ISR (Art. 96, último párrafo — el
-  salario mínimo no es objeto de retención). Ojo: es distinto del Art. 36 LSS, que habla de la
-  **cuota obrera del IMSS**; son dos reglas independientes que coinciden en el mismo empleado.
+- **Trabajador con 1 salario mínimo**: las tres reglas del recuadro de §2 aplican a la vez y
+  ninguna implica a las otras.
 - **Aguinaldo y finiquito**: percepciones no ordinarias que pueden calcularse con el
   procedimiento del **Art. 174 RLISR** (opcional) en vez de acumularse sin más al mes.
   Fuera del alcance de F1-04 salvo que el caso real lo exija.
@@ -131,7 +145,10 @@ el ajuste por sexto dígito del RFC). Ese es el puente con el módulo fiscal ya 
 
 ## Fuentes
 
-- LISR: Arts. 27, 93 (fr. I, III, VIII, IX, XIV), 96, 152. RLISR Art. 174.
+- LISR: Arts. 27, 93 (fr. I, II, III, VIII, IX, XIV), 96, 152. RLISR Art. 174.
+- Decreto de desindexación del salario mínimo — DOF 27-01-2016; Art. 26 apartado B
+  constitucional (lectura en UMA de los topes del Art. 93).
+- LFT Art. 66 (límites del tiempo extraordinario).
 - Decreto que modifica el subsidio para el empleo — DOF 31-12-2025.
 - Anexo 8 de la RMF 2026 — tarifas por periodicidad (los valores se versionan en F1-01).
 - `docs/PLAN_NOMINA.md` §2.6; `docs/decisiones-nomina.md` §D1, §D2.

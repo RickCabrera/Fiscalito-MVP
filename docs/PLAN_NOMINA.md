@@ -291,7 +291,7 @@ tests/nomina/
 ```python
 # schemas/nomina/base.py
 class TipoSalario(str, Enum): FIJO = "fijo"; VARIABLE = "variable"; MIXTO = "mixto"
-class Periodicidad(str, Enum): SEMANAL = "07"; CATORCENAL = "14"; QUINCENAL = "15"; MENSUAL = "30"
+class Periodicidad(str, Enum): SEMANAL = "02"; CATORCENAL = "03"; QUINCENAL = "04"; MENSUAL = "05"  # claves c_PeriodicidadPago, NO dias (corregido en F0-01)
 
 class Cliente(BaseModel):            # = patrón
     rfc: str; razon_social: str; registro_patronal: str

@@ -43,8 +43,10 @@ legales de cada paso. Cada paso es un candidato a feature o a tool del agente.
 | Modificación de salario fijo | **5 días hábiles** siguientes al cambio | Art. 34 fr. I LSS |
 | Modificación de la parte variable | primeros **5 días hábiles** de enero, marzo, mayo, julio, septiembre y noviembre | Art. 34 fr. II LSS |
 
-**Multa por extemporaneidad: 20 a 350 UMA** (Art. 304-B LSS). Con la UMA 2026 ($117.31) eso
-es **$2,346.20 a $41,058.50** por infracción.
+**Multa por extemporaneidad: 20 a 350 UMA** (Art. 304-B LSS). Convertido con la UMA vigente
+(`20_valores_referencia_2026.md` §1), en feb–dic de 2026 eso es **$2,346.20 a $41,058.50** por
+infracción; en enero, con la UMA 2025, $2,262.80 a $39,599.00. Es importe **derivado**, no un
+valor propio de este archivo.
 
 > La prórroga del "viernes o día inhábil" del Art. 3 del RACERF **no aplica a los avisos
 > afiliatorios**, solo al pago de cuotas. Ver `25_calendario_laboral_2026.md` §2.

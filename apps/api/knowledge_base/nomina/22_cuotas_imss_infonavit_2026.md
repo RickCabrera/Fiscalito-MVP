@@ -48,7 +48,8 @@ trabajadores que no ganan exactamente 1 UMA.
 cuota_fija_eym = 0.2040 × UMA_diaria_vigente(fecha) × dias_cotizados
 ```
 
-El **excedente de EyM** solo existe si `SBC > 3 UMA` ($351.93 diarios con UMA 2026) y se
+El **excedente de EyM** solo existe si `SBC > 3 UMA` (el importe de ese umbral, en sus dos
+vigencias de 2026, está en `20_valores_referencia_2026.md` §3) y se
 aplica **únicamente sobre la porción excedente**:
 
 ```
@@ -91,7 +92,7 @@ anteriores no se borran, porque un recálculo de un ejercicio pasado debe seguir
 > la UMA 2025 y de febrero en adelante contra la UMA 2026: un mismo trabajador puede cambiar
 > de renglón el 1 de febrero sin que su salario haya cambiado.
 
-> ⚠️ **Quirk 2026.** El salario mínimo general ($315.04) equivale a ~2.69 UMA, así que los
+> ⚠️ **Quirk 2026.** El salario mínimo general (doc 20 §2) equivale a ~2.69 UMA, así que los
 > renglones "1.01 SM a 1.50 UMA", "1.51–2.00 UMA" y "2.01–2.50 UMA" quedan **por debajo del
 > salario mínimo** y son inalcanzables en zona general. Un trabajador con SM exacto cae en
 > 3.150 %; el siguiente escalón real es 2.51–3.00 UMA (6.026 %). Decisión adoptada
