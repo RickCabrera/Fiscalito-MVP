@@ -63,6 +63,9 @@ TOPES_EN_UMA: dict[str, tuple[int, str]] = {
 #
 # Y aqui el silencio es el error peligroso: gravar de mas es conservador **para
 # el fisco**, no para el trabajador, que es a quien se le retiene de mas.
+#
+# Las cuatro claves salen de knowledge_base/nomina/24_cfdi_nomina_12.md §3, que
+# marca 010 y 049 como "100 % gravado": no son criterio de quien escribio esto.
 GRAVADAS_AL_100: dict[str, str] = {
     "001": "Sueldos, salarios, rayas y jornales",
     "010": "Premios por puntualidad",
@@ -273,10 +276,13 @@ def isr_retenido(
     """
     causado = isr_periodo(base, clave_periodicidad, fecha)
     subsidio = subsidio_empleo(fecha, ingreso_gravado_mensual, dias_periodo)
-    # Sin retencion no hay ISR contra el cual acreditar, asi que el subsidio
-    # queda integro sin entregar. Devolver `acreditado` explicito es lo que
-    # permite a F1-05 emitir SubsidioCausado y el importe entregado sin tener
-    # que reconstruirlos, y lo que mantiene el invariante en las dos ramas.
+    # DECISIÓN PROVISIONAL (nocturno): al trabajador de salario minimo el
+    # subsidio no se acredita —no hay ISR retenido contra el cual hacerlo— y
+    # tampoco se entrega en efectivo. Es la lectura mas conservadora de la
+    # interaccion entre el Art. 96 ultimo parrafo y el decreto del subsidio:
+    # ni credito para el patron ni efectivo para el trabajador. Ver §D16.
+    # Devolver `acreditado` explicito es lo que permite a F1-05 emitir
+    # SubsidioCausado y el importe entregado sin tener que reconstruirlos.
     acreditado = (
         Decimal("0.00") if es_trabajador_de_salario_minimo else min(subsidio, causado)
     )

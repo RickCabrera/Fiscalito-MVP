@@ -363,3 +363,22 @@ pero **no está verificado**. F1-04 no implementa el ajuste mensual: no está en
 
 **Pregunta para la contadora:** ¿la semana 09 lleva ajuste mensual de ISR? ¿Y por qué el
 subsidio declarado varía por empleado ahí?
+
+## D16 · El subsidio del trabajador de salario mínimo — PROVISIONAL
+
+Al trabajador de salario mínimo **no se le retiene ISR** (Art. 96, último párrafo). ¿Qué pasa
+entonces con su subsidio para el empleo?
+
+Decisión del nocturno, la **más conservadora** de las lecturas: el subsidio **no se acredita**
+—no hay ISR retenido contra el cual hacerlo— y **tampoco se entrega en efectivo**, que es el
+esquema vigente desde 2024. Ni crédito para el patrón ni efectivo para el trabajador. En el
+resultado del motor eso se ve como `acreditado = 0.00` y `subsidio_no_entregado = subsidio`.
+
+Consecuencia técnica: el invariante del resultado **no es el mismo en las dos ramas**, a
+propósito. `subsidio == acreditado + no_entregado` se cumple siempre, pero
+`retenido == causado − acreditado` vale solo cuando hay retención: la no retención del Art. 96
+**no es un acreditamiento**, el ISR se causa igual y simplemente no se retiene.
+
+**Pregunta para la contadora:** ¿es correcto que el subsidio de ese trabajador se pierda, o su
+software lo acredita/entrega de alguna forma? Afecta lo que F1-05 emita en `SubsidioCausado` y
+en el importe entregado del CFDI.

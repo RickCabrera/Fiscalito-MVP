@@ -138,7 +138,7 @@ class TestPercepcionesSinExencion:
             "023",  # pagos por separación — fr. XIII
             "014",  # subsidios por incapacidad — fr. III
             "022",  # prima de antigüedad — fr. XIII
-            "054",  # becas — previsión social
+            "015",  # becas para trabajadores y/o hijos — previsión social
             "999",  # una clave que ni siquiera existe en el catálogo
         ],
     )
@@ -245,13 +245,17 @@ class TestRetencion:
         self, base, mensual, salario_minimo
     ):
         """
-        `retenido == causado − acreditado` y `subsidio == acreditado +
-        no_entregado`, también cuando el Art. 96 fuerza la retención a cero.
+        Las dos reglas, que NO son la misma en las dos ramas.
 
-        Sin `acreditado` explícito, la rama del salario mínimo rompía el
-        invariante en silencio: el subsidio se contaba como acreditado contra
-        un ISR que nunca se retuvo, y el consumidor —F1-05, que va a emitir
-        `SubsidioCausado` y el importe entregado al CFDI— no podía detectarlo.
+        `subsidio == acreditado + no_entregado` se cumple siempre. En cambio
+        `retenido == causado − acreditado` vale solo cuando hay retención: si
+        el Art. 96 último párrafo la suprime, el retenido es cero **aunque el
+        ISR se haya causado**, porque la no retención no es un acreditamiento.
+
+        Sin `acreditado` explícito esto pasaba en silencio: el subsidio se
+        contaba como acreditado contra un ISR que nunca se retuvo, y el
+        consumidor —F1-05, que va a emitir `SubsidioCausado` y el importe
+        entregado al CFDI— no podía detectarlo.
         """
         resultado = isr_retenido(
             Decimal(base),
@@ -264,6 +268,11 @@ class TestRetencion:
         assert resultado.invariante
 
     def test_sin_retencion_el_subsidio_queda_integro_sin_entregar(self):
+        """
+        DECISIÓN PROVISIONAL (nocturno), ver `docs/decisiones-nomina.md` §D16:
+        al trabajador de salario mínimo el subsidio no se acredita (no hay ISR
+        retenido contra el cual hacerlo) y tampoco se entrega en efectivo.
+        """
         resultado = isr_retenido(
             Decimal("2212.00"),
             "02",
@@ -272,8 +281,22 @@ class TestRetencion:
             7,
             es_trabajador_de_salario_minimo=True,
         )
+        assert resultado.causado == Decimal("158.02")  # se causa
+        assert resultado.retenido == Decimal("0.00")  # no se retiene
+        assert resultado.acreditado == Decimal("0.00")  # no se acredita
+        assert resultado.subsidio == Decimal("123.34")
+        assert resultado.subsidio_no_entregado == Decimal("123.34")
+
+    def test_sobre_el_tope_no_hay_subsidio_que_acreditar(self):
+        """Ancla numérica de la rama sin subsidio."""
+        resultado = isr_retenido(
+            Decimal("2576.35"), "02", MARZO, Decimal("12145.41"), 7
+        )
+        assert resultado.causado == Decimal("197.66")
+        assert resultado.subsidio == Decimal("0.00")
         assert resultado.acreditado == Decimal("0.00")
-        assert resultado.subsidio_no_entregado == resultado.subsidio
+        assert resultado.retenido == Decimal("197.66")
+        assert resultado.subsidio_no_entregado == Decimal("0.00")
 
 
 def test_la_uma_vigente_es_la_esperada():
