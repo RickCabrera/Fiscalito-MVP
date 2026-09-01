@@ -45,3 +45,28 @@ Modelar vía `ConceptoIntegrable`. El default es el **mínimo de ley**.
 
 El patrón del caso real es de **Veracruz**: `ClaveEntFed=VER` en el CFDI. El **ISN del 3% es
 solo informativo** — no se calcula en F1.
+
+## D9 · El caso real no es "mínimo de ley" — PROVISIONAL, para la contadora
+
+Hallazgo al construir las fixtures de S-04: los factores de integración implícitos del caso
+real (`SalarioDiarioIntegrado` contra el salario diario) son **superiores al mínimo de ley**,
+**distintos entre empleados** y **no derivables de la antigüedad** — el empleado con menos
+antigüedad tiene uno de los factores más altos.
+
+Consecuencias, que conviene tener claras antes de llegar a F1:
+
+- **El `SalarioDiarioIntegrado` se toma como dato de entrada**, no se recomputa desde la
+  antigüedad. Cualquier código que intente derivarlo de los días de vacaciones de ley va a
+  discrepar con el caso real.
+- **F1-02 no se valida contra el caso real**: su "Listo cuando" se mide contra la tabla de
+  factores mínimos de PLAN_NOMINA §2.2, que es independiente de este patrón. F1-03 consume el
+  SDI como entrada, así que no se ve afectada.
+- La explicación probable es que el patrón otorga **prestaciones superiores a las de ley**,
+  cuyos montos **no son visibles en el CFDI**. Esto matiza §D5, que fija el default en el
+  mínimo de ley: el default sigue bien, pero este patrón no lo sigue.
+
+**Pregunta para la contadora:** ¿qué prestaciones superiores otorga el patrón y cómo integran
+al SBC? Sin esa respuesta, el SDI del caso real solo puede tratarse como dato observado.
+
+*(Los factores por empleado no se documentan aquí a propósito: el salario diario no está en el
+CFDI, y publicar el factor permitiría despejarlo.)*
