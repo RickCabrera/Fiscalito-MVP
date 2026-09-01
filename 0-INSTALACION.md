@@ -54,3 +54,38 @@ backlog.md                                 ← nuevo
 
 > Lee CLAUDE.md y backlog.md. Empezamos con la tarea S-01 (lint backend a cero y
 > cablearlo al CI). Propón el plan y pásalo por el revisor antes de mostrármelo.
+
+## Hook `pre-push` (NO se versiona — recrear en cada clon)
+
+`.git/hooks/` vive fuera del control de versiones, así que este hook **no viaja con el
+repo**: en un clon nuevo hay que crearlo a mano o no habrá guardia.
+
+Qué hace: al empujar a `main`, rechaza el push si el rango toca cualquier archivo que no sea
+`backlog.md` o `docs/nocturno-log.md`. Todo lo demás pasa por PR. Es la guardia real del
+**modo autónomo**, porque `main` no puede protegerse en GitHub: el repo es privado en plan
+gratuito y la API de branch protection responde 403 pidiendo GitHub Pro.
+
+Para recrearlo:
+
+```sh
+cat > .git/hooks/pre-push <<'HOOK'
+#!/bin/sh
+# Guardia: a main solo entran directo backlog.md y docs/nocturno-log.md. Todo lo demás, por PR.
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+    for f in $(git diff --name-only "$range"); do
+      case "$f" in
+        backlog.md|docs/nocturno-log.md) ;;
+        *) echo "pre-push BLOQUEADO: '$f' no puede ir directo a main. Abre un PR." >&2; exit 1 ;;
+      esac
+    done
+  fi
+done
+exit 0
+HOOK
+chmod +x .git/hooks/pre-push
+```
+
+Para comprobar que quedó bien: un commit en `main` que toque cualquier otro archivo debe ser
+rechazado al hacer `git push`, y uno que toque solo `backlog.md` debe pasar.

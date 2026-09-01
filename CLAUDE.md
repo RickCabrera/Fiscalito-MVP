@@ -54,7 +54,9 @@ causa) y espera OK antes de editar. No reescribas a ciegas.
 
 - Nunca avances de tarea sin autorización explícita de Ricardo.
 - Nunca marques `[x]` sin merge confirmado.
-- Nunca uses `--dangerously-skip-permissions`.
+- Nunca uses `--dangerously-skip-permissions` en sesiones interactivas; la única excepción
+  es `scripts/nocturno.ps1` en Modo autónomo, que lo lanza con el hook `pre-push` como
+  guardia.
 - **Nunca commitees ni copies al repo datos personales reales.** La carpeta
   `03. CFDI DE NOMINA/` y `VERIFICACION_NOMINAS.md` contienen nóminas de personas
   identificables (nombre, RFC, salario): están gitignoreadas y así se quedan. Para
@@ -79,9 +81,9 @@ En ese modo el bucle cambia así, y NADA MÁS cambia:
 - Rama `feat/<id>` desde main actualizado. Construye. Checks locales. Revisor. Si el revisor
   BLOQUEA, corrige y vuelve a pasar; si bloquea dos veces, la tarea se SALTA: escribes la
   razón en `docs/nocturno-log.md`, borras la rama, y terminas la sesión sin marcar nada.
-- Con revisor aprobado: push, `gh pr create`, luego `gh pr merge --auto --squash
-  --delete-branch`, y espera el CI con `gh pr checks --watch`. Si el CI falla: máximo 2
-  intentos de arreglo; si sigue rojo, SALTA la tarea (log + cierra el PR + borra rama).
+- Con revisor aprobado: push, `gh pr create`, `gh pr checks --watch`; con CI verde:
+  `gh pr merge --squash --delete-branch` (sin `--auto`). Si el CI falla: máximo 2 intentos
+  de arreglo; si sigue rojo, SALTA (log + `gh pr close` + borra rama).
 - Merge confirmado (`gh pr view --json state` dice MERGED): `git checkout main && git pull`,
   marca `[x]` en `backlog.md`, commit directo a main con push, y anota en
   `docs/nocturno-log.md`: tarea, PR, hora, y cualquier decisión que hayas tomado sin Ricardo.
