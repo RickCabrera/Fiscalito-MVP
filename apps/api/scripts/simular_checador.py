@@ -39,6 +39,11 @@ from pathlib import Path
 import httpx
 
 from app.constants import CLIENTE_DEMO
+
+# `quincena` se mudo a `app/` en D-07: el endpoint de la plantilla la
+# necesita en runtime y `scripts/` no se empaqueta. Sembrar y demostrar
+# usan la MISMA funcion; si divergieran, el panel saldria vacio.
+from app.demo_nomina import quincena
 from app.exceptions import FiscalValidationError
 from app.schemas.asistencia import FuenteChecada, HorarioLaboral, Periodo
 
@@ -76,7 +81,6 @@ dias_laborables = _gen.dias_laborables
 envolver = _gen.envolver
 generar_checadas = _gen.generar_checadas
 plantilla_desde_fixtures = _gen.plantilla_desde_fixtures
-quincena = _gen.quincena
 repartir = _gen.repartir
 ventana_entrada_normal = _gen.ventana_entrada_normal
 

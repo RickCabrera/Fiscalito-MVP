@@ -11,10 +11,18 @@ DEMO — ver `docs/D-DEMO-CHECADOR.md`: sin autenticación (la del resto de
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from datetime import date
+
+from fastapi import APIRouter, Query
 
 from app.constants import CLIENTE_DEMO
-from app.demo_nomina import PLANTILLA_DEMO
+from app.demo_nomina import (
+    CLAVE_PERIODICIDAD_DEMO,
+    PLANTILLA_DEMO,
+    PRIMA_RIESGO_DEMO,
+    ZONA_DEMO,
+    quincena,
+)
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.cuotas import Consolidado
 from app.nomina_engine.periodo import (
@@ -28,7 +36,10 @@ from app.schemas.nomina import (
     CalcularPeriodoRequest,
     CalcularPeriodoResponse,
     CuotaRamoSchema,
+    EmpleadoDemoSchema,
     PartidaSchema,
+    PeriodoNomina,
+    PlantillaDemoResponse,
     PorcionConsolidada,
     ReciboSchema,
 )
@@ -164,6 +175,43 @@ def _resumen_para_llm(
     }
 
 
+@router.get(
+    "/nomina/demo/plantilla",
+    response_model=PlantillaDemoResponse,
+    summary=_AVISO + "Plantilla del cliente de demostración",
+    description=_AVISO
+    + "Los empleados, la prima de riesgo, la periodicidad y el periodo sugerido del "
+    "cliente de la demo. Existe para que la pantalla no tenga que hardcodear ninguna "
+    "constante fiscal: `prima_riesgo` tiene fundamento legal y `periodo_sugerido` sale "
+    "de la regla de quincena, no de las fechas de las checadas.",
+)
+async def plantilla_demo(
+    cliente: str = Query(default=CLIENTE_DEMO, description="Sólo el cliente de la demo"),
+) -> PlantillaDemoResponse:
+    if cliente != CLIENTE_DEMO:
+        raise FiscalValidationError(
+            f"El cliente {cliente!r} tiene que mandar su propia plantilla en "
+            f"`empleados`. La plantilla por omisión es la del cliente de demostración "
+            f"({CLIENTE_DEMO!r}) y no es la nómina de nadie más."
+        )
+    sugerido = quincena(date.today())
+    return PlantillaDemoResponse(
+        cliente=cliente,
+        empleados=tuple(
+            EmpleadoDemoSchema(empleado_no=e.empleado_no, nombre=e.nombre)
+            for e in PLANTILLA_DEMO
+        ),
+        prima_riesgo=PRIMA_RIESGO_DEMO,
+        clave_periodicidad=CLAVE_PERIODICIDAD_DEMO,
+        zona=ZONA_DEMO,
+        # `fecha_pago` explícita, no None: la pantalla tiene que poder mostrar
+        # con qué fecha se va a calcular sin replicar el default (§D18).
+        periodo_sugerido=PeriodoNomina(
+            inicio=sugerido.inicio, fin=sugerido.fin, fecha_pago=sugerido.fin
+        ),
+    )
+
+
 @router.post(
     "/nomina/calcular-periodo",
     response_model=CalcularPeriodoResponse,
@@ -202,6 +250,7 @@ async def calcular(req: CalcularPeriodoRequest) -> CalcularPeriodoResponse:
     return CalcularPeriodoResponse(
         cliente=req.cliente,
         periodo=req.periodo,
+        fecha_pago_efectiva=req.periodo.pago,
         origen_plantilla=origen,
         recibos=tuple(_a_schema(r) for r in resultado.recibos),
         porcion_mensual=_porcion(resultado.porcion_mensual),

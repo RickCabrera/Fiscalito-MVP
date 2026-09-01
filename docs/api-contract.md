@@ -109,6 +109,43 @@ turnos nocturnos caen en dos días calendario.
 
 > ⚠️ **DEMO — sin autenticación, no desplegar.** La auth de todo `/api/v1` es S-00b.
 
+### `GET /api/v1/nomina/demo/plantilla`
+
+Todo lo que la pantalla de la demo necesita y **no puede inventarse**. Existe para
+que el front no escriba **ni una constante fiscal**: sin él tendría que hardcodear en
+TypeScript los nueve empleados y la `prima_riesgo` —que tiene fundamento legal
+(Art. 72/74 LSS) y dueño en `app/demo_nomina.py`— en un lugar donde ningún test
+comprueba que no diverjan.
+
+| Query param | Default | Notas |
+|---|---|---|
+| `cliente` | `demo` | Cualquier otro responde **422**, con el mismo argumento que `calcular-periodo`: la plantilla por omisión no es la nómina de nadie más. |
+
+```json
+{ "exito": true, "cliente": "demo", "origen": "demo",
+  "empleados": [{"empleado_no": "E-01", "nombre": "ANA BEATRIZ XALA MORA"}],
+  "prima_riesgo": "0.0054355", "clave_periodicidad": "04", "zona": "general",
+  "periodo_sugerido": {"inicio": "2026-08-16", "fin": "2026-08-31",
+                       "fecha_pago": "2026-08-31"} }
+```
+
+- **Sin salarios.** El front no los necesita —los recibos ya los traen— y menos
+  superficie es menos que pueda salir por donde no debe. Las identidades son
+  sintéticas (fixtures de S-04).
+- **`periodo_sugerido` sale de la regla de quincena, no de las checadas.** Deducirlo
+  de la primera y la última checada **da mal**: del 16 al 31 de agosto de 2026 son
+  **16 días naturales**, pero la primera checada es del 17 porque el 16 es domingo,
+  o sea **15**. Ese día de menos entra a `DiasDelPeriodo` y a `dias_pagados`, así que
+  movería las cuotas del IMSS y el ISR — en pantalla y en el PDF. Hay test con los
+  dos números literales.
+- **`fecha_pago` viene explícita, nunca `null`**: la pantalla tiene que poder mostrar
+  con qué fecha se va a calcular sin replicar el default. §D18 sigue abierta sobre
+  cuál debería ser.
+- El periodo es la **última quincena ya terminada**, la misma regla que usa el
+  simulador de D-05 al sembrar. **Sembrar y demostrar tienen que caer el mismo día**:
+  si se siembra el 15 y se demuestra el 16, son quincenas distintas y el panel sale
+  vacío.
+
 ### `POST /api/v1/nomina/calcular-periodo`
 
 Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo.
@@ -142,6 +179,12 @@ Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo
 Respuesta: `{exito, cliente, periodo, origen_plantilla, recibos[], porcion_mensual,
 porcion_bimestral, advertencias[], explicacion?}`.
 
+- **`fecha_pago_efectiva`** es la fecha con la que se calculó, **ya resuelto el
+  default** (`periodo.fecha_pago` o, si no vino, `periodo.fin`). Se serializa para
+  que el cliente no tenga que replicar esa regla: de esa fecha dependen la UMA, el
+  salario mínimo, la tarifa del Anexo 8 y el transitorio de enero del subsidio, y
+  §D18 está abierta sobre cuál debería ser el default. Un PDF que imprimiera una
+  fecha derivada en el cliente mentiría en silencio el día que el default cambie.
 - **`origen_plantilla`** es `"demo"` o `"request"`. Existe para que el PDF de D-07 no
   pueda mentir sobre de quién es la nómina.
 - **`porcion_mensual` y `porcion_bimestral` NO son el entero del Art. 39 LSS.** Son

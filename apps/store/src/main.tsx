@@ -21,6 +21,8 @@ import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
 import HistorialPage from './pages/HistorialPage';
+// DEMO D-07: se borra en F2 junto con la pantalla.
+import NominaDemoPage from './pages/NominaDemoPage';
 import './styles/global.css';
 
 function App() {
@@ -55,6 +57,8 @@ function App() {
                   <Route path="store/:serviceId" element={<ServiceDetailPage />} />
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="admin" element={<AdminPage />} />
+                  {/* DEMO D-07: se borra en F2 */}
+                  <Route path="nomina-demo" element={<NominaDemoPage />} />
                 </Route>
               </Routes>
             </BrowserRouter>

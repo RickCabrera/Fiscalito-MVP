@@ -150,29 +150,6 @@ def plantilla_desde_fixtures() -> tuple[EmpleadoDemo, ...]:
     return tuple(EmpleadoDemo(n, encontrados[n]) for n in sorted(encontrados))
 
 
-def quincena(hoy: date) -> Periodo:
-    """
-    La ultima quincena **ya terminada**.
-
-    DECISIÓN PROVISIONAL (nocturno): se eligio la terminada y no la quincena en
-    curso por dos consecuencias que se compensan mal:
-
-    - A favor: `cerrar_periodo()` marca falta **todo** dia laborable sin
-      checada, incluidos los que aun no llegan. Cerrar la quincena en curso el
-      dia 2 daria ~9 faltas por empleado y las 2 sembradas serian invisibles.
-    - En contra: el panel mostrara checadas del mes pasado. **Si D-07 pollea
-      con un `desde` anclado en el presente, se vera vacio.** Ese acoplamiento
-      se resuelve al escribir D-07, no aqui.
-
-    Los dias del periodo salen de las fechas, nunca de una constante: del 16 al
-    31 son 16 dias, no 15.
-    """
-    if hoy.day > 15:
-        return Periodo(inicio=hoy.replace(day=1), fin=hoy.replace(day=15))
-    fin = hoy.replace(day=1) - timedelta(days=1)
-    return Periodo(inicio=fin.replace(day=16), fin=fin)
-
-
 def dias_laborables(periodo: Periodo, horario: HorarioLaboral) -> tuple[date, ...]:
     """Dias laborables del periodo, en orden. El fin de semana no genera nada."""
     total = (periodo.fin - periodo.inicio).days + 1

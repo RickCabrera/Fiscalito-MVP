@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { LayoutDashboard, History, Scale, User, LogOut, Loader } from 'lucide-react';
+import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio } from 'lucide-react';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
 
@@ -35,6 +35,10 @@ export default function AppLayout() {
     { to: '/app', icon: <LayoutDashboard size={20} />, label: 'Dashboard', end: true },
     { to: '/app/store/fiscalito/use', icon: <Scale size={20} />, label: 'Fiscalito' },
     { to: '/app/historial', icon: <History size={20} />, label: 'Historial' },
+    // DEMO D-07: se borra en F2. Va en el sidebar y no sólo por URL porque el
+    // criterio de la tarea es recorrer el flujo sin tocar consola, y teclear
+    // una ruta a mano enfrente del cliente es justo lo que falla en vivo.
+    { to: '/app/nomina-demo', icon: <Radio size={20} />, label: 'Nómina (demo)' },
     { to: '/app/profile', icon: <User size={20} />, label: 'Perfil' },
   ];
 
