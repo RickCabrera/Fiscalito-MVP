@@ -16,10 +16,7 @@ from app.fiscal_engine.calculadora import (
 )
 from app.fiscal_engine.calendario import _dias_habiles_extra, generar_calendario
 from app.fiscal_engine.comparador import calcular_todos_regimenes
-from app.fiscal_engine.deducciones_personales import (
-    TOPE_5_UMAS_ANUALES,
-    calcular_deducciones_personales,
-)
+from app.fiscal_engine.deducciones_personales import calcular_deducciones_personales
 from app.fiscal_engine.tablas_isr import TABLA_ISR_MENSUAL, generar_tabla_acumulada
 from app.schemas.fiscal import CFDI, PerfilContribuyente, PeriodicidadDeclaracion, TipoFactura
 
@@ -215,11 +212,10 @@ class TestDeduccionesPersonales:
             intereses_hipotecarios=100_000.00,
         )
         assert resultado.tope_tipo == "5_umas"
-        assert resultado.total_deducible == round(TOPE_5_UMAS_ANUALES, 2)
-        # Contra el literal, no solo contra la constante: comparar el resultado
-        # con la misma constante que lo produce pasa con cualquier valor, incluido
-        # uno mal. Fuente: 5 x UMA anual 2026 ($42,794.64, INEGI Comunicado 1/26)
-        # = $213,973.20 (Art. 151 ultimo parrafo LISR).
+        # Contra el literal, no contra la constante que produce el resultado:
+        # el test viejo comparaba con la misma constante y pasaba con cualquier
+        # valor, incluido el 117.22 mal. Fuente: 5 x UMA anual 2026 ($42,794.64,
+        # INEGI Comunicado 1/26) = $213,973.20 (Art. 151 ultimo parrafo LISR).
         assert resultado.total_deducible == 213_973.20
         assert resultado.excedente_no_aprovechado > 0
 

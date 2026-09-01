@@ -172,7 +172,7 @@ def uma_anual_vigente(fecha: date) -> Decimal:
     return _redondear(uma_mensual_vigente(fecha) * 12)
 
 
-def salario_minimo_vigente(fecha: date, zona: ZonaSalarioMinimo) -> Decimal:
+def salario_minimo_vigente(fecha: date, zona: ZonaSalarioMinimo | str) -> Decimal:
     """
     Salario minimo general diario vigente en `fecha` para `zona`.
 

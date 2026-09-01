@@ -73,10 +73,11 @@ def tope_gastos_funerarios(ejercicio: int = EJERCICIO_DEFAULT) -> float:
     """
     return round(_uma_anual_del_ejercicio(ejercicio), 2)
 
-
-# Valores del ejercicio por defecto, para llamadores que no especifican uno.
-TOPE_5_UMAS_ANUALES: float = tope_global_deducciones()  # $213,973.20 en 2026
-TOPE_FUNERAL: float = tope_gastos_funerarios()  # $42,794.64 en 2026
+# NO se exponen los topes como constantes de modulo. Una constante evaluada al
+# import congela el ejercicio por defecto, y el siguiente que la importe para
+# otro ejercicio obtiene un numero mal en silencio — que es exactamente el bug
+# que esta tarea vino a matar. Pide el tope por ejercicio:
+#   tope_global_deducciones(ejercicio) / tope_gastos_funerarios(ejercicio)
 
 
 @dataclass

@@ -107,6 +107,7 @@ fiscal-agent-api/
     ├── __init__.py
     ├── conftest.py                  # Fixtures compartidas
     ├── test_calculadora.py          # Motor principal (clasificación, ISR/IVA, flujo efectivo, regímenes)
+    ├── test_constants_vigencias.py  # UMA y salario mínimo por fecha de vigencia
     ├── test_caso_real_enero2026.py  # Caso real CADG620317EE0 enero 2026
     └── test_clasificador_gastos.py  # Clasificador de gastos deducibles
 ```
