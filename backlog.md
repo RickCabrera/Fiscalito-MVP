@@ -132,8 +132,12 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   (o con la regla de redondeo decidida en F0-03).
 - [ ] **F1-05 · `recibo.py` + `cfdi_nomina_xml.py`** — recibo completo
   (percepciones/deducciones/otros pagos) y XML complemento nómina 1.2 **sin timbrar**,
-  validado contra XSD. *Listo cuando:* el XML generado del caso real valida y sus
-  totales cuadran con el timbrado original.
+  validado contra XSD. Las fixtures de S-04 son estructuralmente correctas pero
+  **criptográficamente inverificables** (sellos sintéticos): la validación XSD es de
+  estructura, no de sello. *Listo cuando:* los XSD de complemento nómina 1.2 y CFDI 4.0
+  están **versionados offline en `apps/api/tests/xsd/`** para validar en CI sin red, el
+  XML generado del caso real valida contra ellos, y sus totales cuadran con el timbrado
+  original.
 - [ ] **F1-06 · `calendario_laboral.py`** — obligaciones patronales (pago mensual día
   17, bimestral, avisos de variables) fusionables con el calendario SAT existente.
 - [ ] **F1-07 · Routes + schemas nómina** — `app/routes/nomina/` y
