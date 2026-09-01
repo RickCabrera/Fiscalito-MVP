@@ -36,11 +36,11 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: apps/store/package-lock.json
+          # El lock vivo es el del workspace root; el de apps/store era peso muerto.
+          cache-dependency-path: package-lock.json
       - run: npm ci
       # tsc + vite build: el gate mínimo de tipos del frontend
       - run: npm run build
       # Se activa al cerrar S-02 (lint frontend a cero; hoy 20 errores).
       # - run: npm run lint
-      # Se activa al cerrar S-05 (instalar Vitest; hoy no existe script "test").
-      # - run: npm test
+      - run: npm test
