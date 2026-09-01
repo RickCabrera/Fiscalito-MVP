@@ -11,19 +11,19 @@ Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no 
 cada una vive en su seccion de abajo. **S-00 no esta aqui a proposito:** su criterio de
 cierre exige probar el chat de voz con microfono, asi que es diurna.
 
-1. F0-01
-2. F0-02
-3. F1-01
-4. F1-02
-5. F1-03
-6. F1-04
-7. F1-05
+1. D-04
+2. D-05
+3. D-06
+4. D-07
+5. S-03
+6. F1-07
+7. F1-08
 8. F1-06
-9. S-03
-10. F1-07
-11. F1-08
-12. S-02
-13. S-01b
+9. S-02
+10. S-01b
+
+**D-08 no está en la cola**, igual que S-00: necesita el checador físico enfrente, así que es
+diurna. F0-01, F0-02 y F1-01…F1-05 ya están cerradas.
 
 ## S — Saneamiento (deuda que estorba al bucle)
 
@@ -99,6 +99,47 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
   `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
+## D — Demo 2026-09-02: nómina + checador Hikvision
+
+Rama **vertical de demo**, no sustituye a F0/F1: cuando la demo pase, lo demo-only se borra y
+el motor se queda. El detalle completo —alcance, referencia ISAPI del Hikvision, configuración
+del dispositivo— vive en `docs/D-DEMO-CHECADOR.md`. Reglas del día: salario **fijo**, **1
+cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
+
+- [x] **D-01 · Tablas + constantes mínimas** — cubierta por F1-01…F1-05.
+- [x] **D-02 · `integracion.py` + `cuotas.py`** — cubierta por F1-02 y F1-03.
+- [x] **D-03 · `isr_nomina.py` + `recibo.py`** — cubierta por F1-04 y F1-05.
+- [ ] **D-04 · Módulo `asistencia/` + endpoints** — `schemas/asistencia.py` con
+  `EventoChecada{empleado_no, timestamp, tipo, fuente, raw?}`; `asistencia/hikvision.py`
+  con `parse_acs_event()` (lee `InfoList[].employeeNoString`, `time`, `attendanceStatus`;
+  filtra `major==5 and minor==75`); `asistencia/incidencias.py` con `cerrar_periodo()`
+  → días trabajados, faltas, retardos, `dias_cotizados`. Endpoints
+  `POST /asistencia/eventos`, `GET /asistencia/eventos`, `POST /asistencia/cerrar-periodo`;
+  almacenamiento **en memoria del proceso**, solo para la demo. *Listo cuando:* un payload
+  `AcsEvent` real de la doc Hikvision produce las incidencias esperadas.
+- [ ] **D-05 · Simulador de checador** — `scripts/simular_checador.py` genera la quincena
+  completa de los empleados de S-04 (con 2 faltas y 3 retardos sembrados) y la POSTea con el
+  **mismo JSON que el dispositivo**. Modo `--en-vivo`, una checada cada 5 s. *Listo cuando:*
+  corriéndolo, el panel se llena solo.
+- [ ] **D-06 · `POST /api/v1/nomina/calcular-periodo` + tool de agente** — recibe
+  `{cliente, empleados[], incidencias, periodo}` → `{recibos[], cuotas_consolidadas,
+  explicacion?}`. **Orquestador, no motor: llama directo a `recibo.py` y `cuotas.py` y no
+  reimplementa nada.** Tool `calcular_nomina_periodo` en `agent_tools.py`. *Listo cuando:*
+  `docs/api-contract.md` lo lista y el agente lo invoca desde el chat de texto.
+- [ ] **D-07 · Pantalla demo en `apps/store`** — ruta `/app/nomina-demo`, sin tocar los tabs
+  existentes: panel de checador con polling cada 3 s, botón "Cerrar quincena" → tabla de
+  incidencias, botón "Calcular nómina" → recibos + cuotas patronales por ramo, export PDF con
+  `pdfExport*.ts`. *Listo cuando:* el flujo completo se recorre sin tocar consola.
+- [ ] **D-08 · (Solo con el dispositivo enfrente) Conectar el Hikvision real** — push por
+  HTTP listening o poll con Digest; alta de 2–3 rostros con `employeeNo` = id de fixture.
+  **Fuera de la cola nocturna**: necesita hardware. *Listo cuando:* una checada real aparece
+  en el panel.
+
+> **El motor no lleva tolerancias**: es exacto. Lo que **no** hace es reproducir los recibos
+> históricos del caso real, y la diferencia es del CFDI timbrado, no del motor — ver el
+> recuadro "Qué significa *el motor cuadra al centavo*" en `docs/D-DEMO-CHECADOR.md` antes de
+> decir nada de esto en la demo.
+
 ## F0 — Fundamentos de nómina (sin código de producto)
 
 - [x] **F0-01 · `knowledge_base/nomina/`** — docs 20–26 con los valores de
