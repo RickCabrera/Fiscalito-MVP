@@ -9,6 +9,58 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
   resto (111 total: E501, I001, F401, F541). Descomentar el paso `ruff check .` en
   `ci.yml`. *Listo cuando:* `ruff check .` sale limpio en local y corre en CI.
+- [ ] **S-00 · Sacar la API key de OpenAI del frontend (SEGURIDAD — bloquea todo lo demas)**
+  — `VITE_OPENAI_API_KEY` se inyecta en el bundle de Vite y viaja al navegador. Verificado
+  el 2026-08-31: la key (prefijo `sk-proj-`) esta en texto plano en el bundle **en vivo**
+  de `https://fiscalito-mvp.web.app/assets/index-DQ99Y4ao.js`, deployado el 2026-04-09 y
+  servido con `Cache-Control: immutable`. El historial de git esta limpio (nunca se
+  commiteo una key real): la fuga es solo por bundle y runtime.
+  **Qué se mueve del front al back:** las 4 llamadas de
+  `apps/store/src/services/voiceChatService.ts` a `api.openai.com` — `transcribeAudio`
+  (Whisper), `sendMessage` (legacy, se elimina), `sendMessageWithTools` (gpt-4o-mini con
+  tools) y `speakText` (tts-1 "nova"). El loop agentico (`src/agent/agentLoop.ts` +
+  `tools.ts`) SE QUEDA en el cliente: sus tools operan el router y el estado de React.
+  Solo se mueve la llamada al proveedor.
+  **Endpoints nuevos** (bajo `/api/v1`, contrato en `docs/api-contract.md`):
+  (1) `POST /voz/transcribir` — multipart `file` (webm/ogg, tope de tamaño y duracion) →
+  `{"texto": str}`; (2) `POST /voz/hablar` — `{"texto": str}` (tope de caracteres) →
+  `audio/mpeg` en streaming; (3) `POST /agente/turno` — `{mensaje, historial, perfil}` →
+  `{"type":"text"|"tool_calls", ...}` con la MISMA forma que hoy devuelve
+  `sendMessageWithTools`, para no reescribir `agentLoop.ts`. El schema de tools y el
+  system prompt viven en el SERVIDOR (whitelist: `navegar`, `cargar_xmls_demo`,
+  `calcular_predeclaracion`); el cliente no manda schemas.
+  **Auth y CORS** (dentro del alcance: sin esto solo se traslada el agujero): dependencia
+  `verify_firebase_token` sobre los 3 endpoints nuevos (valida el ID token de Firebase del
+  header `Authorization: Bearer`; el front ya lo tiene en `useAuth()`) y `CORS_ORIGINS`
+  explicito en produccion, nunca `*`. El **rate limit sale a S-00b**.
+  **Qué se elimina de apps/store:** `VITE_OPENAI_API_KEY` de `.env` y `.env.example`; la
+  constante `OPENAI_API_KEY` y los 4 `fetch` a `api.openai.com` de `voiceChatService.ts`
+  (pasan por `fiscalAgentApi.ts` con el ID token); `sendMessage()` (muerta desde
+  `agentLoop`); la nota de `apps/store/CLAUDE.md` que declara la key de cliente como
+  "aceptable para demo"; y `apps/store/dist/` se borra y se reconstruye (el artefacto
+  actual esta contaminado).
+  **Rotacion (la hace Ricardo):** revocar la key `sk-proj-...` en OpenAI, emitir una nueva
+  solo en `apps/api/.env`, y restringir la key de Firebase (`AIzaSy...`) por HTTP referrer.
+  *Listo cuando:* (a) cero variables secretas en `apps/store/.env` y `.env.example` — solo
+  quedan las de Firebase y la URL del agente; (b) `grep -rn "api.openai.com" apps/store/src`
+  → cero resultados; (c) build nuevo y `grep -roE "sk-[A-Za-z0-9_-]{8,}" apps/store/dist/`
+  → cero resultados; (d) la key vieja esta REVOCADA en OpenAI, confirmado por Ricardo, y la
+  nueva vive solo en el backend; (e) los 3 endpoints nuevos responden 401 sin ID token
+  valido de Firebase; (f) `pytest -q` verde incluyendo tests nuevos de los 3 endpoints (401
+  sin token + happy path con el cliente OpenAI mockeado; los tests nunca pegan a la API
+  real); (g) `ruff check .` limpio, `npm run build` y `npm run lint` sin errores nuevos;
+  (h) el chat de voz funciona end-to-end (grabar → transcribir → tool call → responder →
+  TTS) sin ninguna key en el cliente; (i) `docs/api-contract.md` actualizado con los 3
+  endpoints y el esquema de auth.
+- [ ] **S-00b · Rate limit por uid en endpoints que gastan LLM + tope de gasto** — va
+  inmediatamente despues de S-00. Limite por uid de Firebase sobre `/voz/transcribir`,
+  `/voz/hablar`, `/agente/turno` y `/agente/predeclaracion`, con respuesta 429 y
+  `Retry-After`; tope de gasto configurable (limite duro en el dashboard de OpenAI +
+  corte propio por ventana). **El backend no se despliega publico hasta cerrar S-00b:**
+  con auth pero sin limite, una cuenta valida puede vaciar el presupuesto.
+  *Listo cuando:* tests que prueban 429 al exceder el limite y 200 dentro del limite,
+  el limite es configurable por env, `docs/api-contract.md` documenta el 429, y el tope
+  duro esta puesto en el dashboard de OpenAI (confirmado por Ricardo).
 - [ ] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
   script `test`, red cerrada por default en setup, pruebas semilla de `cfdiParser` (con
   los demo-xmls) **y de la lógica pura de `agentLoop.ts` y `tools.ts`**. Descomentar
