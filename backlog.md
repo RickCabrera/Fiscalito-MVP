@@ -139,10 +139,19 @@ cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
   probado el registro, el despacho y que **los system prompts lo enumeran** —que era el
   hueco real—, pero **que un LLM decida llamarlo no se verifica en CI**: no hay key y
   ningún test pega a un proveedor. Decisiones nuevas en §D17–§D20.
-- [ ] **D-07 · Pantalla demo en `apps/store`** — ruta `/app/nomina-demo`, sin tocar los tabs
+- [x] **D-07 · Pantalla demo en `apps/store`** — ruta `/app/nomina-demo`, sin tocar los tabs
   existentes: panel de checador con polling cada 3 s, botón "Cerrar quincena" → tabla de
   incidencias, botón "Calcular nómina" → recibos + cuotas patronales por ramo, export PDF con
   `pdfExport*.ts`. *Listo cuando:* el flujo completo se recorre sin tocar consola.
+  **Criterio cumplido a medias (PR #19).** *Verificado:* la secuencia completa de llamadas
+  contra la API viva —plantilla → 194 checadas → cierre con 2 faltas y 3 retardos → 9 recibos
+  con E-05 y E-08 en 15 días pagados— y los tests de jsdom con `fetch` stubbeado.
+  *No verificado:* que la pantalla se pinte y los botones respondan **en un navegador** contra
+  la API real; la ruta está detrás de Firebase Auth y del gate de onboarding. Para eso está el
+  **runbook en `docs/D-DEMO-CHECADOR.md`**, que además lista los tres modos de falla que no son
+  bugs: sembrar y demostrar el mismo día, no reiniciar la API, y la cuenta con onboarding
+  completo. Endpoint nuevo `GET /nomina/demo/plantilla` para que el front no hardcodee ninguna
+  constante fiscal.
 - [ ] **D-08 · (Solo con el dispositivo enfrente) Conectar el Hikvision real** — push por
   HTTP listening o poll con Digest; alta de 2–3 rostros con `employeeNo` = id de fixture.
   **Fuera de la cola nocturna**: necesita hardware. *Listo cuando:* una checada real aparece
