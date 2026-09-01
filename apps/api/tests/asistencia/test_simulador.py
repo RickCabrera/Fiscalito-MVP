@@ -29,6 +29,12 @@ import pytest
 
 from app.asistencia.hikvision import parse_acs_event
 from app.constants import CLIENTE_DEMO
+
+# `quincena` vive en `app/demo_nomina.py` desde D-07: el endpoint de la
+# plantilla la necesita en runtime y `scripts/` no se empaqueta. Es la MISMA
+# funcion que usa el simulador al sembrar; si divergieran, el panel de la
+# demo saldria vacio.
+from app.demo_nomina import quincena
 from app.exceptions import FiscalValidationError
 from app.schemas.asistencia import FuenteChecada, HorarioLaboral, Periodo
 from tests.nomina_inventario import EMPLEADOS_SINTETICOS
@@ -430,5 +436,5 @@ class TestQuincena:
         ],
     )
     def test_bordes(self, hoy, inicio, fin):
-        periodo = sim.quincena(hoy)
+        periodo = quincena(hoy)
         assert (periodo.inicio, periodo.fin) == (inicio, fin)

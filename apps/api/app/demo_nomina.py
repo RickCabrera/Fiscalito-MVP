@@ -30,10 +30,12 @@ no-divergencia es lo unico que lo detecta.
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from decimal import Decimal
 
 from app.constants import ZonaSalarioMinimo
 from app.nomina_engine.periodo import EmpleadoPeriodo
+from app.schemas.asistencia import Periodo
 
 # Prima de Riesgos de Trabajo del patron de la demo. NO es tasa de ley: se
 # autodetermina cada febrero (Art. 74 LSS). Es la misma que usan los tests del
@@ -67,3 +69,37 @@ PLANTILLA_DEMO: tuple[EmpleadoPeriodo, ...] = (
 # en las fixtures por §5.8 del PLAN_NOMINA), que no es Zona Libre de la
 # Frontera Norte.
 ZONA_DEMO: ZonaSalarioMinimo = ZonaSalarioMinimo.GENERAL
+
+
+def quincena(hoy: date) -> Periodo:
+    """
+    La ultima quincena **ya terminada**.
+
+    Vive aqui y no en `scripts/` porque **el endpoint la necesita en runtime**:
+    `pip install -e .` solo empaqueta `app*`, y `periodo_sugerido` de
+    `GET /nomina/demo/plantilla` sale de esta funcion. El simulador de D-05 la
+    importa de aqui, para que sembrar y demostrar usen exactamente la misma
+    regla — si divergieran, el panel saldria vacio.
+
+    DECISIÓN PROVISIONAL (nocturno): se eligio la terminada y no la quincena en
+    curso por dos consecuencias que se compensan mal:
+
+    - A favor: `cerrar_periodo()` marca falta **todo** dia laborable sin
+      checada, incluidos los que aun no llegan. Cerrar la quincena en curso el
+      dia 2 daria ~9 faltas por empleado y las 2 sembradas serian invisibles.
+    - En contra: el panel muestra checadas del mes pasado. Por eso D-07 pollea
+      **sin `desde`** y toma el periodo de aqui en vez de deducirlo de las
+      checadas.
+
+    OJO CON EL BORDE: sembrar el dia 15 y demostrar el 16 da **dos quincenas
+    distintas**, y el panel sale vacio. Sembrar y demostrar el mismo dia.
+
+    Los dias del periodo salen de las fechas, nunca de una constante: del 16 al
+    31 son **16 dias, no 15**. Deducirlos de la primera y la ultima checada da
+    15 —el 16 cae en fin de semana— y ese dia de menos entra a `DiasDelPeriodo`
+    y a los dias pagados, o sea a las cuotas del IMSS y al ISR.
+    """
+    if hoy.day > 15:
+        return Periodo(inicio=hoy.replace(day=1), fin=hoy.replace(day=15))
+    fin = hoy.replace(day=1) - timedelta(days=1)
+    return Periodo(inicio=fin.replace(day=16), fin=fin)

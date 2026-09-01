@@ -12,6 +12,9 @@ export const PDF_COLORS = {
   accent: [55, 80, 100] as RGBTuple,
   altRow: [245, 247, 250] as RGBTuple,
   lineColor: [220, 220, 220] as RGBTuple,
+  // Banda de datos de demostracion. Es el `--warning` de la paleta.
+  demo: [224, 160, 96] as RGBTuple,
+  white: [255, 255, 255] as RGBTuple,
 } as const;
 
 // ── Formatters ──

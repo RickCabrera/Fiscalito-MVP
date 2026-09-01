@@ -48,6 +48,43 @@ class PeriodoNomina(BaseModel):
         return self.fecha_pago or self.fin
 
 
+class EmpleadoDemoSchema(BaseModel):
+    """
+    Un empleado de la plantilla de demostración, **sin salarios**.
+
+    El front sólo necesita el número y el nombre: los importes vienen en los
+    recibos. Menos superficie es menos que pueda salir por donde no debe.
+    """
+
+    empleado_no: str
+    nombre: str
+
+
+class PlantillaDemoResponse(BaseModel):
+    """
+    Todo lo que la pantalla de la demo necesita y **no puede inventarse**.
+
+    Existe para que el front no escriba ni una constante fiscal. Sin este
+    endpoint tendría que hardcodear los nueve empleados y la prima de riesgo
+    —que tiene fundamento legal (Art. 72/74 LSS) y dueño en `demo_nomina.py`—
+    en TypeScript, donde ningún test verifica que no diverjan.
+
+    `periodo_sugerido` sale de la **regla de quincena real**, no de las fechas
+    de las checadas: deducirlo de la primera y la última da 15 días donde la
+    quincena tiene 16 —el día 16 cae en fin de semana— y ese día de menos
+    entra a `DiasDelPeriodo` y a los días pagados, o sea a las cuotas y al ISR.
+    """
+
+    exito: bool = True
+    cliente: str
+    origen: str = "demo"
+    empleados: tuple[EmpleadoDemoSchema, ...]
+    prima_riesgo: Decimal
+    clave_periodicidad: str
+    zona: ZonaSalarioMinimo
+    periodo_sugerido: PeriodoNomina
+
+
 class EmpleadoNominaSchema(BaseModel):
     """Un empleado de la plantilla. El SDI es dato de entrada (§D9)."""
 
@@ -190,6 +227,14 @@ class CalcularPeriodoResponse(BaseModel):
     origen_plantilla: str = Field(
         description="`demo` si se usó la plantilla del servidor, `request` si vino en "
         "el cuerpo. El PDF no puede mentir sobre de quién es la nómina."
+    )
+    fecha_pago_efectiva: date = Field(
+        description="La fecha con la que se calculó, ya resuelto el default "
+        "(`periodo.fecha_pago` o, si no vino, `periodo.fin`). Se serializa porque "
+        "de ella dependen UMA, salario mínimo, tarifa del Anexo 8 y el transitorio "
+        "de enero del subsidio: si el front tuviera que replicar el default para "
+        "mostrarla, mentiría en silencio el día que el default cambie — y §D18 está "
+        "abierta justamente sobre eso."
     )
     recibos: tuple[ReciboSchema, ...]
     porcion_mensual: PorcionConsolidada

@@ -177,3 +177,76 @@ El adaptador `asistencia/hikvision.py` y el módulo de incidencias son **extensi
 Fiscalito desarrolladas por Ricardo** → mismo régimen que el núcleo: propiedad del autor,
 licencia de uso/reventa para la empresa. El hardware (checador, red, instalación) lo aporta
 la empresa y es suyo. Dejarlo escrito antes de la demo, no después.
+
+## Ensayo de la demo, paso a paso (D-07)
+
+> **Esto NO lo cubre CI.** Los tests del front corren en jsdom con `fetch`
+> stubbeado: prueban qué pide la pantalla, qué manda y qué pinta, pero no que
+> el flujo se recorra contra la API real en un navegador. Este runbook es la
+> única verificación de eso, y se hace a mano.
+
+### Antes de empezar, tres cosas que hacen fallar el ensayo
+
+1. **La pantalla exige sesión.** `/app/nomina-demo` está detrás de
+   `ProtectedRoute` **y** del gate `isOnboardingComplete()` de `AppLayout`. Con
+   una cuenta sin onboarding terminado la app redirige al wizard y la pantalla
+   no abre. Usa una cuenta que ya lo haya completado.
+2. **El almacén de checadas es memoria del proceso.** Si reinicias la API
+   después de sembrar, el panel queda vacío. Siembra **después** de levantar, y
+   no uses `--reload` mientras demuestras: cualquier guardado reinicia el
+   proceso y borra las 194 checadas.
+3. **Siembra y demuestra el mismo día.** El simulador y la pantalla piden la
+   **última quincena ya terminada**. Si siembras el día 15 y demuestras el 16,
+   son dos quincenas distintas y el panel sale vacío o con faltas de todos.
+
+### Los comandos
+
+```bash
+# 1. API (déjala corriendo, SIN --reload)
+cd apps/api
+.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
+
+# 2. Sembrar la quincena (en otra terminal)
+cd apps/api
+.venv/Scripts/python.exe scripts/simular_checador.py
+#    → "9 empleados | 2026-08-16 a 2026-08-31 | 194 checadas | serial 900001"
+#    → "recibidos=194 duplicados=0"
+
+# 3. Front (en otra terminal, desde la raíz del repo)
+npm run dev --workspace fiscalito-store
+#    → http://localhost:3000
+
+# 4. En el navegador: entrar, iniciar sesión, y abrir "Nómina (demo)" en el sidebar
+#    (ruta directa: http://localhost:3000/app/nomina-demo)
+```
+
+**Para el efecto en vivo**, en vez del paso 2:
+
+```bash
+.venv/Scripts/python.exe scripts/simular_checador.py --en-vivo
+#    Manda el periodo completo de golpe y el ÚLTIMO DÍA gota a gota, una
+#    checada cada 5 s (~90 s). Con la pantalla abierta se ven llegar solas:
+#    el panel pollea cada 3 s.
+```
+
+### Qué debe verse en cada paso
+
+| Paso | Qué debe verse |
+|---|---|
+| Al abrir | "Checador en vivo" con **194 checadas**, nombres y horas |
+| Fechas | Precargadas en **2026-08-16 → 2026-08-31** (16 días naturales) y la fecha de pago debajo |
+| "Cerrar quincena" | Tabla de 9 empleados; **E-05 y E-08 con 1 falta**; **E-02, E-06 y E-09 con 1 retardo** |
+| "Calcular nómina" | 9 recibos. E-05 y E-08 con **15 días pagados y $4,740.00**; los demás con 16 |
+| Cuotas | Desglose por ramo, y la **advertencia** de que son la porción del periodo |
+| "Exportar PDF" | PDF con la banda naranja **"DATOS DE DEMOSTRACIÓN"** |
+
+### Si algo se ve raro y no es un bug
+
+- **Tres empleados retienen ~$463 de ISR y los demás ~$91.** Es correcto:
+  E-03, E-04 y E-07 rebasan el tope del subsidio al empleo. Es el hallazgo de
+  §D11 apareciendo en pantalla, no un error.
+- **El panel dice "0 checadas" después de re-correr el simulador.** El almacén
+  deduplica por `(empleado, serialNo)`: la segunda corrida es un no-op. Corre
+  con `--serial-base 5000000` para volver a sembrar sin reiniciar la API.
+- **Las cuotas no son "lo que se paga al mes".** Son lo devengado en la
+  quincena. Decirlo así si sale la pregunta.
