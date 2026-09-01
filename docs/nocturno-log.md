@@ -183,3 +183,55 @@ decide Ricardo, no la agrego yo):
    renglón del Anexo 8 2026 contra `PUBLICADA_DIARIA` en
    `apps/api/tests/nomina/test_tablas_isr_periodicas.py` lo cierra. Sugerencia: el segundo
    (`27.79 / 235.81 / 0.53`), que es donde el redondeo pesa más.
+
+---
+
+## F1-02 · integración, SBC y avisos (2026-09-01, sesión nocturna)
+
+**Estado:** CERRADA. PR #11, mergeada a main. CI verde al primer intento. Tests: 564 → 657.
+
+### Bug que encontró el revisor y que valía la tarea entera
+
+`avisos_requeridos` derivaba el año del bimestre de `fecha_cambio.year`. El promedio del
+bimestre nov-dic solo se puede determinar cuando el bimestre cerró — o sea, capturando en
+enero del año siguiente — así que el camino **normal** devolvía la fecha límite **un año
+tarde, en silencio**, sobre un plazo cuya multa va de 20 a 350 UMA (Art. 304-B LSS):
+
+```
+bimestre 6 de 2026, capturado el 5-ene-2027  →  2028-01-07
+fecha límite real                            →  2027-01-08
+```
+
+La raíz era de diseño: para un salario variable no existe una "fecha de cambio". Ahora
+`anio_bimestre` es explícito y sin default, y la firma pasó a ser solo-por-nombre, de modo que
+una llamada posicional vieja revienta con `TypeError` en vez de devolver un número plausible.
+El test de la función suelta ya cubría el cruce de año y no detectó nada: la regresión nueva
+atraviesa el compositor, que es donde vivía el defecto.
+
+### Decisiones tomadas sin Ricardo
+
+1. **D12 · el factor de integración se redondea a 4 decimales** y el SBC se calcula con ese
+   factor ya redondeado, para que el número que el patrón declara sea reproducible a mano.
+   Diferencia de hasta $0.14 de SBC cerca del tope. **Pregunta para la contadora:** ¿NOI /
+   CONTPAQi usan el factor redondeado o el completo? Por §D9 esto **no afecta el cuadre de
+   S-04**.
+2. **D13 · qué es un "día hábil"** para los plazos del IMSS. Se usan los descansos del Art. 74
+   LFT. El IMSS publica además su propio acuerdo anual de días inhábiles que **no coincide**;
+   mientras no esté en el repo con su fuente, toda fecha de aviso es una **estimación
+   conservadora, no una fecha legal cierta**, y así lo dice el código.
+3. **Fuera la jornada electoral (Art. 74 fr. IX) y la transmisión sexenal (fr. VII).** La
+   segunda por no poder citar el DOF de su texto vigente. En los dos casos el error tiene
+   dirección: marcar de más un día como inhábil **corre el vencimiento hacia adelante**, y un
+   aviso extemporáneo se multa. Contar de menos es lo conservador.
+4. **Aguinaldo menor a 15 días levanta error** en vez de aceptarse: subintegrar el SBC y las
+   cuotas es la dirección peligrosa.
+5. **Los `sbc_*` devuelven el SBC sin acotar** y el llamador tiene que pasarlo por
+   `clamp_sbc()`. Se eligió así porque el mixto debe acotar **una vez el total**, no cada
+   componente. El camino silencioso no existe: `ceav_patronal` levanta si recibe un SBC bajo
+   el piso, y hay tests de las dos costuras.
+
+### Nota sobre D4
+
+Esta tarea la roza: el `piso_aplicado` del clamp es el único camino práctico por el que un SBC
+llega a ser exactamente 1 salario mínimo, y por tanto el único por el que el renglón de
+3.150 % de CEAV es alcanzable. Ya hay un test que lo demuestra.
