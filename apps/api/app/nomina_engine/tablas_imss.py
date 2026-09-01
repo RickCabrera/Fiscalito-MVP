@@ -36,7 +36,6 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 
-from app.constants import ZonaSalarioMinimo, salario_minimo_vigente, uma_vigente
 from app.exceptions import FiscalValidationError
 
 
@@ -66,6 +65,14 @@ class Ramo:
     base: BaseCuota
     periodicidad: PeriodicidadCuota
     fundamento: str
+    se_reduce_por_ausentismo: bool = True
+    """
+    Si los dias de ausentismo e incapacidad reducen los dias cotizados de este
+    ramo. Enfermedades y Maternidad NO se reduce (Art. 31 LSS, decision D3
+    PROVISIONAL): un trabajador con 3 dias de ausencia cotiza 27 dias en los
+    demas ramos y 30 en EyM. Un motor que use un solo contador de dias subcobra
+    EyM en silencio, en el escenario mas comun que existe.
+    """
 
 
 # Ramos con tasa de ley escalar. RT y CEAV patronal NO estan aqui (ver el
@@ -76,22 +83,26 @@ CUOTAS_RAMOS: dict[int, tuple[Ramo, ...]] = {
             "eym_cuota_fija", "Enfermedades y Maternidad — cuota fija",
             Decimal("0.2040"), Decimal("0"), BaseCuota.UMA,
             PeriodicidadCuota.MENSUAL, "Art. 106 fr. I LSS",
+            se_reduce_por_ausentismo=False,
         ),
         Ramo(
             "eym_excedente", "Enfermedades y Maternidad — excedente sobre 3 UMA",
             Decimal("0.0110"), Decimal("0.0040"), BaseCuota.EXCEDENTE_3_UMA,
             PeriodicidadCuota.MENSUAL, "Art. 106 fr. II LSS",
+            se_reduce_por_ausentismo=False,
         ),
         Ramo(
             "eym_prestaciones_dinero", "Enfermedades y Maternidad — prestaciones en dinero",
             Decimal("0.0070"), Decimal("0.0025"), BaseCuota.SBC,
             PeriodicidadCuota.MENSUAL, "Art. 107 LSS",
+            se_reduce_por_ausentismo=False,
         ),
         Ramo(
             "eym_gastos_medicos_pensionados",
             "Enfermedades y Maternidad — gastos médicos de pensionados",
             Decimal("0.0105"), Decimal("0.00375"), BaseCuota.SBC,
             PeriodicidadCuota.MENSUAL, "Art. 25 LSS",
+            se_reduce_por_ausentismo=False,
         ),
         Ramo(
             "invalidez_vida", "Invalidez y Vida",
@@ -116,9 +127,6 @@ CUOTAS_RAMOS: dict[int, tuple[Ramo, ...]] = {
     ),
 }
 
-# Cuota OBRERA de CEAV: es un escalar, a diferencia de la patronal.
-CEAV_OBRERO: dict[int, Decimal] = {2026: Decimal("0.01125")}
-
 # Prima media por clase de riesgo (Art. 73 LSS). Aplica a empresa nueva.
 PRIMA_MEDIA_CLASE: dict[int, dict[int, Decimal]] = {
     2026: {
@@ -135,45 +143,13 @@ PRIMA_RT_MINIMA = Decimal("0.005")
 PRIMA_RT_MAXIMA = Decimal("0.15")
 
 
-@dataclass(frozen=True)
-class TramoCEAV:
+def tabla_del_anio(tabla: dict, fecha: date, que: str):
     """
-    Un tramo de la tabla de CEAV patronal.
+    Accesor por año con error explicito, compartido por el modulo de CEAV.
 
-    `limite_superior_uma` es el tope del tramo en multiplos de UMA. El primer
-    tramo es la excepcion: aplica al SBC de exactamente 1 salario minimo, no a
-    un rango de UMA (ver `ceav_patronal`).
+    Ningun diccionario versionado por año se indexa a pelo: un año sin fuente
+    cargada tiene que decir que años hay y que se necesita para agregar uno.
     """
-
-    limite_superior_uma: Decimal | None
-    tasa: Decimal
-    etiqueta: str
-
-
-# Tabla de CEAV patronal por año. Es el cuarto escalon de la transicion
-# 2023-2030 (llega a 11.875% en 2030).
-# Fuente: articulo transitorio del Decreto que reforma la LSS y la Ley del SAR,
-# DOF 16-12-2020. Consumidor documentado en knowledge_base/nomina/22.
-# MANTENIMIENTO: cada enero se agrega el renglon del año nuevo citando el mismo
-# transitorio. Los años viejos NO se borran: un recalculo de un ejercicio
-# pasado tiene que seguir cuadrando.
-CEAV_PATRONAL: dict[int, tuple[TramoCEAV, ...]] = {
-    2026: (
-        TramoCEAV(Decimal("1.50"), Decimal("0.03676"), "1.01 SM a 1.50 UMA"),
-        TramoCEAV(Decimal("2.00"), Decimal("0.04851"), "1.51 a 2.00 UMA"),
-        TramoCEAV(Decimal("2.50"), Decimal("0.05556"), "2.01 a 2.50 UMA"),
-        TramoCEAV(Decimal("3.00"), Decimal("0.06026"), "2.51 a 3.00 UMA"),
-        TramoCEAV(Decimal("3.50"), Decimal("0.06361"), "3.01 a 3.50 UMA"),
-        TramoCEAV(Decimal("4.00"), Decimal("0.06613"), "3.51 a 4.00 UMA"),
-        TramoCEAV(None, Decimal("0.07513"), "4.01 UMA en adelante"),
-    ),
-}
-
-# Tasa del trabajador con SBC de exactamente 1 salario minimo.
-CEAV_PATRONAL_SALARIO_MINIMO: dict[int, Decimal] = {2026: Decimal("0.03150")}
-
-
-def _del_anio(tabla: dict, fecha: date, que: str):
     valor = tabla.get(fecha.year)
     if valor is None:
         disponibles = ", ".join(str(a) for a in sorted(tabla))
@@ -186,7 +162,7 @@ def _del_anio(tabla: dict, fecha: date, que: str):
 
 def cuotas_ramos_vigentes(fecha: date) -> tuple[Ramo, ...]:
     """Ramos con tasa de ley vigentes en `fecha`. No incluye RT ni CEAV patronal."""
-    return _del_anio(CUOTAS_RAMOS, fecha, "tabla de ramos del IMSS")
+    return tabla_del_anio(CUOTAS_RAMOS, fecha, "tabla de ramos del IMSS")
 
 
 def ramo_riesgos_trabajo(prima: Decimal, fecha: date) -> Ramo:
@@ -205,7 +181,7 @@ def ramo_riesgos_trabajo(prima: Decimal, fecha: date) -> Ramo:
         FiscalValidationError: si la prima cae fuera del rango del Art. 72 LSS
             (0.50000% a 15.00000%), o si el año no tiene tablas.
     """
-    _del_anio(CUOTAS_RAMOS, fecha, "tabla de ramos del IMSS")
+    tabla_del_anio(CUOTAS_RAMOS, fecha, "tabla de ramos del IMSS")
     if not PRIMA_RT_MINIMA <= prima <= PRIMA_RT_MAXIMA:
         raise FiscalValidationError(
             f"La prima de Riesgos de Trabajo {prima} está fuera del rango legal "
@@ -219,71 +195,10 @@ def ramo_riesgos_trabajo(prima: Decimal, fecha: date) -> Ramo:
 
 def prima_media_clase(clase: int, fecha: date) -> Decimal:
     """Prima media de la clase de riesgo (Art. 73 LSS). Clases I a V."""
-    primas = _del_anio(PRIMA_MEDIA_CLASE, fecha, "tabla de primas medias")
+    primas = tabla_del_anio(PRIMA_MEDIA_CLASE, fecha, "tabla de primas medias")
     prima = primas.get(clase)
     if prima is None:
         raise FiscalValidationError(
             f"Clase de riesgo inválida: {clase}. Válidas: 1 a 5 (Art. 73 LSS)."
         )
     return prima
-
-
-def ceav_patronal(sbc: Decimal, fecha: date, zona: ZonaSalarioMinimo) -> Decimal:
-    """
-    Tasa patronal de CEAV para un SBC, en una fecha y una zona.
-
-    La `zona` es load-bearing, no cosmetica: el primer tramo de la tabla es el
-    trabajador de 1 salario minimo, y el salario minimo depende del area
-    geografica (Art. 28 LSS). En la ZLFN 1 SM son $440.87, que en 2026 son 3.76
-    UMA — un tramo completamente distinto del que ocupa el minimo general.
-
-    Los tramos se evaluan en multiplos de la UMA VIGENTE, asi que en enero se
-    miden contra la UMA del año anterior: un mismo SBC puede cambiar de tramo
-    el 1 de febrero sin que el salario haya cambiado.
-
-    ORDEN DE BUSQUEDA: primero la igualdad exacta con 1 SM, despues los tramos
-    en UMA. No es opcional — los limites no son monotonos. El salario minimo
-    general de 2026 equivale a ~2.69 UMA, o sea que cae por encima de los
-    tramos "1.01 SM a 1.50 UMA", "1.51 a 2.00 UMA" y "2.01 a 2.50 UMA". Una
-    busqueda ingenua por limite superior devolveria el tramo equivocado.
-
-    DECISION PROVISIONAL (docs/decisiones-nomina.md D4): se aplica la tabla
-    literal. Los tramos que quedan por debajo del salario minimo son
-    inalcanzables en zona general y se dejan sin logica especial, a la espera
-    de confirmar contra la emision del IMSS.
-
-    Raises:
-        FiscalValidationError: si el SBC es menor al salario minimo de la zona
-            (el clamp del Art. 28 LSS es responsabilidad de F1-02: aqui no se
-            corrige en silencio) o si el año no tiene tabla cargada.
-    """
-    tramos = _del_anio(CEAV_PATRONAL, fecha, "tabla de CEAV patronal")
-    salario_minimo = salario_minimo_vigente(fecha, zona)
-
-    if sbc < salario_minimo:
-        raise FiscalValidationError(
-            f"El SBC {sbc} es menor al salario mínimo de la zona {zona} en "
-            f"{fecha.isoformat()} ({salario_minimo}). El SBC se acota al piso del "
-            f"Art. 28 LSS antes de calcular cuotas."
-        )
-    if sbc == salario_minimo:
-        return _del_anio(
-            CEAV_PATRONAL_SALARIO_MINIMO, fecha, "tasa de CEAV del salario mínimo"
-        )
-
-    veces_uma = sbc / uma_vigente(fecha)
-    for tramo in tramos:
-        if tramo.limite_superior_uma is None or veces_uma <= tramo.limite_superior_uma:
-            return tramo.tasa
-    raise FiscalValidationError(f"No se encontró tramo de CEAV para el SBC {sbc}.")
-
-
-def ramo_ceav_patronal(sbc: Decimal, fecha: date, zona: ZonaSalarioMinimo) -> Ramo:
-    """Construye el ramo de CEAV con la tasa patronal del tramo que le toca al SBC."""
-    return Ramo(
-        "ceav", "Cesantía en Edad Avanzada y Vejez",
-        ceav_patronal(sbc, fecha, zona),
-        _del_anio(CEAV_OBRERO, fecha, "cuota obrera de CEAV"),
-        BaseCuota.SBC, PeriodicidadCuota.BIMESTRAL,
-        "Art. 168 fr. II LSS + transitorio del Decreto DOF 16-12-2020",
-    )

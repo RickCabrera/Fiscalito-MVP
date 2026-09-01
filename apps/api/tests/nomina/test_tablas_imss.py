@@ -15,16 +15,14 @@ import pytest
 
 from app.constants import ZonaSalarioMinimo
 from app.exceptions import FiscalValidationError
+from app.nomina_engine.ceav import CEAV_OBRERO, ceav_patronal, ramo_ceav_patronal
 from app.nomina_engine.tablas_imss import (
-    CEAV_OBRERO,
     PRIMA_RT_MAXIMA,
     PRIMA_RT_MINIMA,
     BaseCuota,
     PeriodicidadCuota,
-    ceav_patronal,
     cuotas_ramos_vigentes,
     prima_media_clase,
-    ramo_ceav_patronal,
     ramo_riesgos_trabajo,
 )
 

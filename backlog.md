@@ -127,6 +127,14 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
 - [ ] **F1-03 · `cuotas.py`** — cuotas por ramo, por empleado, consolidado
   mensual/bimestral; SM absorbe cuota obrera; EyM excedente 3 UMA. *Listo cuando:*
   tests unitarios por ramo + cuadre contra el caso real S-04.
+  **Criterio ajustado en F1-03 (ver `docs/decisiones-nomina.md` §D14):** el cuadre contra el
+  caso real **no es alcanzable con el dato timbrado**. Solo **5 de los 70 recibos** se
+  reproducen: un empleado, y solo desde abril, porque el software del patrón cambió de orden de
+  redondeo en el corte marzo→abril. De los demás, tres tienen una deducción **menor que el
+  mínimo legal** que impone su propio `SalarioBaseCotApor`, cosa que ninguna fórmula puede
+  producir. Se entregó el cuadre de esos 5 recibos contra el importe timbrado y la
+  caracterización ejecutable del resto. **El cuadre completo queda pendiente de la contadora**,
+  no del código.
 - [ ] **F1-04 · `isr_nomina.py`** — exenciones Art. 93, ISR Art. 96 periódico, subsidio
   con vigencia. *Listo cuando:* el ISR retenido de las fixtures S-04 cuadra al centavo
   (o con la regla de redondeo decidida en F0-03).
