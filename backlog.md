@@ -4,6 +4,27 @@ Reglas: una tarea = una rama = un PR. `[x]` solo tras merge a main confirmado po
 Ricardo. Cada tarea tiene su "Listo cuando" — el plan y el revisor se miden contra eso.
 El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOMINA.md`.
 
+## Cola nocturna
+
+Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no este
+`[x]` ni marcada SALTADA en `docs/nocturno-log.md`. Una tarea por sesion. El detalle de
+cada una vive en su seccion de abajo.
+
+1. F0-01
+2. F0-02
+3. F1-01
+4. F1-02
+5. F1-03
+6. F1-04
+7. F1-05
+8. F1-06
+9. S-03
+10. F1-07
+11. F1-08
+12. S-00
+13. S-02
+14. S-01b
+
 ## S — Saneamiento (deuda que estorba al bucle)
 
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
@@ -53,37 +74,7 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   (h) el chat de voz funciona end-to-end (grabar → transcribir → tool call → responder →
   TTS) sin ninguna key en el cliente; (i) `docs/api-contract.md` actualizado con los 3
   endpoints y el esquema de auth.
-- [ ] **S-00b · Auth en todo `/api/v1` + rate limit por uid + tope de gasto** — va
-  inmediatamente despues de S-00. S-00 pone auth solo en los 3 endpoints nuevos porque el
-  backend de produccion esta caido y la ventana de exposicion es cero; S-00b cierra el
-  resto.
-  (1) **Auth en todos los endpoints `/api/v1`** (`/health` queda publico) — la forma barata
-  es `include_router(..., dependencies=[Depends(verify_firebase_token)])` en `main.py`, una
-  linea por router. Importa porque los 7 endpoints de calculo aceptan
-  `incluir_explicacion: true` y **tambien queman tokens de LLM**: el front lo manda en 8
-  lugares.
-  (2) **Rate limit por uid de Firebase** sobre todo lo que gasta LLM (`/voz/transcribir`,
-  `/voz/hablar`, `/agente/turno`, `/agente/predeclaracion` y los 7 de calculo con
-  explicacion), con 429 y `Retry-After`.
-  (3) **Tope de gasto**: limite duro en el dashboard de OpenAI + corte propio por ventana.
-  Nota: la auth identifica, no frena — el alta de usuarios es abierta
-  (`createUserWithEmailAndPassword`), asi que cualquiera obtiene un token valido en 10
-  segundos. El uid sirve para rate-limitar, y ese es el control real.
-  **El backend no se despliega publico hasta cerrar S-00b.**
-  *Listo cuando:* tests que prueban 401 sin token en los endpoints de calculo, 429 al
-  exceder el limite y 200 dentro del limite; el limite es configurable por env;
-  `docs/api-contract.md` documenta la auth generica y el 429; y el tope duro esta puesto en
-  el dashboard de OpenAI (confirmado por Ricardo).
-- [ ] **S-08 · Deploy backend a Cloud Run + front apuntando a el** (cuando haya razon para
-  produccion) — hoy produccion esta APAGADA por decision de Ricardo (2026-09-01): el sitio
-  no tiene usuarios y la prioridad es nomina. El bundle publicado en
-  `fiscalito-mvp.web.app` apunta a `fiscal-agent-api-production.up.railway.app`, que
-  responde 404 (Railway lo dio de baja), asi que ningun calculo fiscal funciona en vivo.
-  Mientras tanto `VITE_FISCAL_AGENT_URL` apunta a localhost en dev y punto. No redesplegar
-  Railway. *Listo cuando:* haya una razon de producto para tener produccion; entonces se
-  desglosa (Cloud Run, CORS_ORIGINS explicito, build del front con la URL real, redeploy de
-  Hosting). Bloqueada por S-00b.
-- [ ] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
+- [x] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
   script `test`, red cerrada por default en setup, pruebas semilla de `cfdiParser` (con
   los demo-xmls) **y de la lógica pura de `agentLoop.ts` y `tools.ts`**. Descomentar
   `npm test` en `ci.yml`. Va **antes de S-02**: sin esta red, tocar `AgentContext` para
@@ -108,16 +99,6 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
   `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
-- [ ] **S-06 · (Opcional, prioridad baja) Reescribir historial para purgar
-  `apps/api/pfebrero/`** — 12 XML de CFDI con RFC de terceros identificables
-  (CADG620317EE0, NIGE780321TK2, MCP2404207Q2, BMS170308GT7...) siguen alcanzables en los
-  commits `29245f6` y `29313de` aunque ya no existan en el arbol. **Prioridad baja a
-  proposito:** el repo es privado y el historial no tiene ninguna API key (verificado el
-  2026-08-31 blob por blob). Reescribir historial rompe clones y forks, asi que solo vale
-  la pena si el repo se hace publico. *Listo cuando:* si se decide hacerlo, `git filter-repo`
-  purga la ruta, se fuerza el push y se avisa de la reescritura; si no, esta tarea se cierra
-  con una nota de decision explicita.
-
 ## F0 — Fundamentos de nómina (sin código de producto)
 
 - [ ] **F0-01 · `knowledge_base/nomina/`** — docs 20–26 con los valores de
@@ -128,7 +109,7 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   `salario_minimo_vigente(fecha, zona)`; migrar usos existentes; tests que cubran el
   corte enero/febrero 2026 (UMA 2025 en enero). *Listo cuando:* 93 tests previos
   siguen verdes + tests nuevos de vigencia.
-- [ ] **F0-03 · Checklist contadora** — documentar en `docs/decisiones-nomina.md` las 8
+- [x] **F0-03 · Checklist contadora** — documentar en `docs/decisiones-nomina.md` las 8
   preguntas abiertas de PLAN_NOMINA §5 con las respuestas obtenidas (tablas ISR
   periódicas vs prorrateo, redondeo, ausentismos por ramo, quirk CEAV, EMA/EBA, PAC,
   ISN Veracruz). *Listo cuando:* las que bloquean F1 tienen respuesta o decisión
@@ -168,3 +149,60 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   cuotas/nómina, dashboard, Fiscalito voz, preview fiscal) — ver PLAN_NOMINA §3.3/§4.
 - [ ] **F3 · Integraciones** (conciliación EMA/EBA, PAC sandbox, IDSE/SUA, alertas).
 - [ ] **F4 · Escala** (módulo fiscal por cliente, multi-usuario, ISN, PTU, MCP).
+
+## Diferido (despues de nomina)
+
+Nada de esto entra a la cola nocturna. Se retoma cuando nomina este cerrada.
+
+- [ ] **S-00b · Auth en todo `/api/v1` + rate limit por uid + tope de gasto** — va
+  inmediatamente despues de S-00. S-00 pone auth solo en los 3 endpoints nuevos porque el
+  backend de produccion esta caido y la ventana de exposicion es cero; S-00b cierra el
+  resto.
+  (1) **Auth en todos los endpoints `/api/v1`** (`/health` queda publico) — la forma barata
+  es `include_router(..., dependencies=[Depends(verify_firebase_token)])` en `main.py`, una
+  linea por router. Importa porque los 7 endpoints de calculo aceptan
+  `incluir_explicacion: true` y **tambien queman tokens de LLM**: el front lo manda en 8
+  lugares.
+  (2) **Rate limit por uid de Firebase** sobre todo lo que gasta LLM (`/voz/transcribir`,
+  `/voz/hablar`, `/agente/turno`, `/agente/predeclaracion` y los 7 de calculo con
+  explicacion), con 429 y `Retry-After`.
+  (3) **Tope de gasto**: limite duro en el dashboard de OpenAI + corte propio por ventana.
+  Nota: la auth identifica, no frena — el alta de usuarios es abierta
+  (`createUserWithEmailAndPassword`), asi que cualquiera obtiene un token valido en 10
+  segundos. El uid sirve para rate-limitar, y ese es el control real.
+  **El backend no se despliega publico hasta cerrar S-00b.**
+  *Listo cuando:* tests que prueban 401 sin token en los endpoints de calculo, 429 al
+  exceder el limite y 200 dentro del limite; el limite es configurable por env;
+  `docs/api-contract.md` documenta la auth generica y el 429; y el tope duro esta puesto en
+  el dashboard de OpenAI (confirmado por Ricardo).
+- [ ] **S-06 · (Opcional, prioridad baja) Reescribir historial para purgar
+  `apps/api/pfebrero/`** — 12 XML de CFDI con RFC de terceros identificables
+  (CADG620317EE0, NIGE780321TK2, MCP2404207Q2, BMS170308GT7...) siguen alcanzables en los
+  commits `29245f6` y `29313de` aunque ya no existan en el arbol. **Prioridad baja a
+  proposito:** el repo es privado y el historial no tiene ninguna API key (verificado el
+  2026-08-31 blob por blob). Reescribir historial rompe clones y forks, asi que solo vale
+  la pena si el repo se hace publico. *Listo cuando:* si se decide hacerlo, `git filter-repo`
+  purga la ruta, se fuerza el push y se avisa de la reescritura; si no, esta tarea se cierra
+  con una nota de decision explicita.
+- [ ] **S-08 · Deploy backend a Cloud Run + front apuntando a el** (cuando haya razon para
+  produccion) — hoy produccion esta APAGADA por decision de Ricardo (2026-09-01): el sitio
+  no tiene usuarios y la prioridad es nomina. El bundle publicado en
+  `fiscalito-mvp.web.app` apunta a `fiscal-agent-api-production.up.railway.app`, que
+  responde 404 (Railway lo dio de baja), asi que ningun calculo fiscal funciona en vivo.
+  Mientras tanto `VITE_FISCAL_AGENT_URL` apunta a localhost en dev y punto. No redesplegar
+  Railway. *Listo cuando:* haya una razon de producto para tener produccion; entonces se
+  desglosa (Cloud Run, CORS_ORIGINS explicito, build del front con la URL real, redeploy de
+  Hosting). Bloqueada por S-00b.
+- [ ] **S-07 · Anonimizar las demo-xmls y el caso real CADG620317EE0** — las tres
+  fixtures de `apps/store/public/demo-xmls/2026/01/` llevan RFC y nombre reales, y
+  `vite build` las copia tal cual a `dist/`, asi que viajan al bundle desplegado. Mismo
+  tratamiento para el caso real del backend. RFC/nombre sinteticos, montos reales.
+  **Ojo:** desde S-05 la suite depende de esas fixtures, asi que este cambio toca tambien
+  `apps/store/src/services/cfdiParser.test.ts` y `apps/store/src/agent/tools.test.ts`.
+  *Listo cuando:* ningun dato identificable real queda en `public/` ni en `dist/`, y
+  `npm test` sigue verde con las fixtures nuevas.
+- [ ] **B-01 · (Bug, prioridad baja) La demo siempre reporta "0 egreso(s)"** —
+  `ejecutarCargarXmlsDemo` cuenta `f.tipo === 'E'` para su resumen, pero las tres
+  demo-xmls son `TipoDeComprobante="I"` (una factura de compra lo es). El conteo nunca
+  es distinto de cero. Es un bug de datos demo, no del parser. *Listo cuando:* el resumen
+  refleja la realidad (o distingue emitidas de recibidas por RFC en vez de por tipo).

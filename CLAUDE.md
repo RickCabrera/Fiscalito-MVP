@@ -66,3 +66,30 @@ causa) y espera OK antes de editar. No reescribas a ciegas.
   en el docstring o en `knowledge_base/`.
 - Fuera de alcance salvo tarea explícita: timbrado real con PAC, facturación CFDI de
   ingresos, MCP server.
+
+## Modo autónomo (nocturno)
+
+Se activa SOLO cuando Ricardo lanza una sesión con la instrucción literal "MODO AUTÓNOMO".
+En ese modo el bucle cambia así, y NADA MÁS cambia:
+
+- No hay paradas humanas: no esperes autorización del plan ni del resultado. El revisor
+  SIGUE siendo obligatorio en ambos puntos (plan y entregable).
+- Toma la PRIMERA tarea de la sección "Cola nocturna" de `backlog.md` que no esté `[x]` ni
+  aparezca como SALTADA en `docs/nocturno-log.md`. Haz UNA sola tarea por sesión y termina.
+- Rama `feat/<id>` desde main actualizado. Construye. Checks locales. Revisor. Si el revisor
+  BLOQUEA, corrige y vuelve a pasar; si bloquea dos veces, la tarea se SALTA: escribes la
+  razón en `docs/nocturno-log.md`, borras la rama, y terminas la sesión sin marcar nada.
+- Con revisor aprobado: push, `gh pr create`, luego `gh pr merge --auto --squash
+  --delete-branch`, y espera el CI con `gh pr checks --watch`. Si el CI falla: máximo 2
+  intentos de arreglo; si sigue rojo, SALTA la tarea (log + cierra el PR + borra rama).
+- Merge confirmado (`gh pr view --json state` dice MERGED): `git checkout main && git pull`,
+  marca `[x]` en `backlog.md`, commit directo a main con push, y anota en
+  `docs/nocturno-log.md`: tarea, PR, hora, y cualquier decisión que hayas tomado sin Ricardo.
+- Decisiones que dependen del mundo (contadora, norma ambigua): usa
+  `docs/decisiones-nomina.md`. Si no está cubierta ahí, toma la opción MÁS CONSERVADORA,
+  déjala señalada con un comentario `# DECISIÓN PROVISIONAL (nocturno):` en el código y en
+  el log, y continúa. Nunca te detengas a preguntar.
+- Prohibido en modo autónomo, sin excepción: deploy (firebase, gcloud, railway), tocar
+  producción o keys, force push, filter-repo, borrar ramas que no sean tuyas ya mergeadas,
+  editar cualquier cosa bajo `03. CFDI DE NOMINA/`, cambiar este CLAUDE.md o
+  `settings.json`, y aflojar tests/CI para lograr el verde.

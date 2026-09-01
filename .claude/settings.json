@@ -62,11 +62,13 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr create:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
-    ],
-    "ask": [
+      "Bash(gh run view:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr close:*)",
       "Bash(git push:*)"
     ],
+    "ask": [],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(git push --force:*)",
