@@ -255,10 +255,11 @@ app/
 ├── nomina_engine/
 │   ├── __init__.py
 │   ├── tablas_imss.py                # CUOTAS_RAMOS[año], CEAV_PATRONAL[año], PRIMA_MEDIA_CLASE, factor tabla test
-│   ├── tablas_isr_periodicas.py      # Art. 96 semanal/decenal/quincenal (Anexo 8) + subsidio_empleo(año, mes)
+│   ├── tablas_isr_periodicas.py      # Art. 96 diaria/semanal/quincenal (Anexo 8) + isr_periodo()
+│   ├── subsidio.py                   # subsidio_empleo() con el transitorio de enero
 │   ├── integracion.py                # factor_integracion(), sbc_fijo(), sbc_variable(), sbc_mixto(), clamp
 │   ├── cuotas.py                     # cuotas_empleado(), cuotas_cliente() mensual/bimestral por ramo
-│   ├── isr_nomina.py                 # base_gravable(), exenciones Art. 93, isr_periodo(), aplica_subsidio()
+│   ├── isr_nomina.py                 # base_gravable(), exenciones Art. 93, aplica_subsidio()
 │   ├── recibo.py                     # recibo() orquesta percepciones→ISR→IMSS obrero→neto
 │   ├── cfdi_nomina_xml.py            # genera XML complemento 1.2 (sin timbrar)
 │   ├── calendario_laboral.py         # vencimientos IMSS/SUA, variables, prima RT, PTU, aguinaldo, ISN

@@ -70,3 +70,34 @@ al SBC? Sin esa respuesta, el SDI del caso real solo puede tratarse como dato ob
 
 *(Los factores por empleado no se documentan aquí a propósito: el salario diario no está en el
 CFDI, y publicar el factor permitiría despejarlo.)*
+
+## D10 · Periodicidades sin tarifa publicada — PROVISIONAL
+
+El Anexo 8 publica tarifas **diaria, semanal, decenal, quincenal y mensual**, pero
+`c_PeriodicidadPago` incluye además la **catorcenal** (clave 03), que ninguna autoridad
+publica como tarifa.
+
+Decisión del nocturno: `tarifa_por_periodicidad()` **levanta `FiscalValidationError`** en vez
+de derivar una tarifa de 14 días. Generar un ISR que nadie publicó, aunque lleve etiqueta de
+"derivada", es peor que fallar: F1-04 lo consumiría sin saberlo. El caso real es semanal, así
+que no bloquea nada.
+
+**Para la contadora:** si un patrón paga catorcenal, ¿qué hace su software — semanal × 2,
+diaria × 14, o el procedimiento del RLISR?
+
+La **decenal** (clave 10) queda fuera por una razón distinta: el Anexo 8 sí la publica, pero
+sus once renglones no se pudieron verificar contra una fuente publicada al construir F1-01. No
+se generó desde la fórmula porque las tablas periódicas de este módulo son legítimas
+únicamente por estar validadas contra literales publicados. Agregarla es transcribir sus 22
+celdas con su cita.
+
+## D11 · Base mensual del tope del subsidio en nóminas sub-mensuales — ABIERTA
+
+El decreto fija el tope del subsidio en **$11,492.66 mensuales**, y el caso real es de nómina
+**semanal**. No está definido si el ingreso mensual que se compara contra el tope se
+**proyecta** (semanal × 30.4 ÷ 7) o se **acumula por mes calendario**. Cambia quién tiene
+derecho al subsidio, no solo cuánto.
+
+`subsidio_empleo()` recibe el ingreso mensual ya resuelto y **no toma la decisión**: la
+responsabilidad es del llamador (F1-04), y el docstring lo dice. Hay que cerrarla antes de
+cuadrar el ISR del caso real.
