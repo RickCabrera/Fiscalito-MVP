@@ -80,6 +80,25 @@ class TestRecibirEventos:
         assert respuesta.status_code == 200
         assert respuesta.json()["recibidos"] == 1
 
+    def test_acepta_multipart_cuando_la_parte_json_trae_filename(self, cliente_http):
+        """
+        REGRESIÓN. Starlette convierte una parte en `str` **solo** si su
+        Content-Disposition no trae `filename`; con filename llega como
+        `UploadFile`. Varios firmwares mandan el evento con
+        `Content-Type: application/json` **y** filename, y mirar únicamente las
+        partes `str` rechazaba el batch entero contra el aparato real — que es
+        justo el riesgo que el soporte de multipart existía para eliminar.
+        """
+        respuesta = cliente_http.post(
+            EVENTOS,
+            files={
+                "event_log": ("evento.json", json.dumps(PAYLOAD_DOC), "application/json"),
+                "Picture": ("rostro.jpg", b"\xff\xd8\xff\xd9", "image/jpeg"),
+            },
+        )
+        assert respuesta.status_code == 200
+        assert respuesta.json()["recibidos"] == 1
+
     def test_deduplica_los_reintentos_del_push(self, cliente_http):
         """El dispositivo reintenta; los duplicados ensuciarían el panel."""
         cliente_http.post(EVENTOS, json=PAYLOAD_DOC)
@@ -122,6 +141,23 @@ class TestConsultarEventos:
         )
         horas = [e["timestamp"] for e in cliente_http.get(EVENTOS).json()["eventos"]]
         assert horas == sorted(horas)
+
+    def test_desde_sin_zona_horaria_responde_422_no_500(self, cliente_http):
+        """
+        REGRESIÓN. `desde` naive contra timestamps aware es `TypeError`, que no
+        es error de dominio: salía como **500 pelado**, sin cuerpo
+        `{exito, error}`, en el endpoint que el panel pollea cada 3 segundos.
+        El panel se quedaba en blanco y sin explicación.
+
+        Se rechaza con mensaje en vez de asumir una zona, por la misma razón
+        que el parser: la zona equivocada corre todas las horas.
+        """
+        cliente_http.post(EVENTOS, json=PAYLOAD_DOC)
+        respuesta = cliente_http.get(EVENTOS, params={"desde": "2026-09-01T00:00:00"})
+        assert respuesta.status_code == 422
+        cuerpo = respuesta.json()
+        assert cuerpo["exito"] is False
+        assert "zona horaria" in cuerpo["error"]
 
     def test_desde_es_inclusivo(self, cliente_http):
         cliente_http.post(

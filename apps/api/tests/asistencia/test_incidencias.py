@@ -139,6 +139,34 @@ class TestFueraDelPeriodo:
         assert inc.faltas == 5
 
 
+class TestAlmacen:
+    """El tope no puede cubrir solo la mitad de la estructura."""
+
+    def test_el_indice_de_duplicados_tambien_tiene_tope(self):
+        """
+        Acotar la cola de eventos dejaba `_vistos` creciendo sin límite: un
+        POST en loop con `serialNo` incremental seguía comiendo memoria, que es
+        justo lo que el tope existía para cerrar.
+        """
+        from app.asistencia.almacen import MAX_EVENTOS_POR_CLIENTE, AlmacenChecadas
+
+        almacen = AlmacenChecadas()
+        for numero in range(MAX_EVENTOS_POR_CLIENTE + 50):
+            almacen.agregar("x", (_checada(1, "08:00").model_copy(
+                update={"serial_no": numero}
+            ),))
+        assert len(almacen._vistos["x"]) <= MAX_EVENTOS_POR_CLIENTE
+        assert almacen.total("x") == MAX_EVENTOS_POR_CLIENTE
+
+    def test_sigue_deduplicando_dentro_del_tope(self):
+        from app.asistencia.almacen import AlmacenChecadas
+
+        almacen = AlmacenChecadas()
+        evento = _checada(1, "08:00").model_copy(update={"serial_no": 1})
+        assert almacen.agregar("x", (evento,)) == (1, 0)
+        assert almacen.agregar("x", (evento,)) == (0, 1)
+
+
 class TestVariosEmpleados:
     def test_cada_empleado_lleva_su_cuenta(self):
         eventos = [_checada(1, "08:00"), _checada(1, "08:30", empleado="8")]

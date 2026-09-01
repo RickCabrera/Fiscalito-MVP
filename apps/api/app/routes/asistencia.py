@@ -47,18 +47,27 @@ async def _cuerpo_json(request: Request) -> dict:
     reconocimiento: ahi el evento va en una parte y la imagen en otra. Solo se
     lee la parte JSON; la foto **no se guarda** (es un dato biometrico y no
     hace falta para calcular nada).
+
+    Se revisan **todas** las partes, con y sin `filename`. Starlette convierte
+    una parte en `str` solo cuando su Content-Disposition NO trae filename; con
+    filename llega como `UploadFile`. Varios firmwares mandan la parte del
+    evento con `Content-Type: application/json` **y** filename, asi que mirar
+    solo las de tipo `str` rechazaria el batch entero contra el aparato real.
     """
     tipo = request.headers.get("content-type", "")
     if tipo.startswith("multipart/form-data"):
         formulario = await request.form()
         for valor in formulario.values():
             if isinstance(valor, str):
-                try:
-                    contenido = json.loads(valor)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(contenido, dict):
-                    return contenido
+                crudo: bytes | str = valor
+            else:
+                crudo = await valor.read()
+            try:
+                contenido = json.loads(crudo)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue  # la parte de la imagen no decodifica: se salta
+            if isinstance(contenido, dict):
+                return contenido
         raise FiscalValidationError(
             "El multipart no trae ninguna parte con un objeto JSON de evento."
         )

@@ -27,7 +27,9 @@ Base: `/api/v1`. Errores de dominio se serializan como `{"exito": false, "error"
 
 Recibe checadas. Acepta el cuerpo `AcsEvent` **tal como lo manda el Hikvision**, en
 `application/json` o en `multipart/form-data` (cuando el aparato adjunta la foto del
-reconocimiento; solo se lee la parte JSON y **la foto no se guarda**).
+reconocimiento; solo se lee la parte JSON y **la foto no se guarda**). Se revisan todas las
+partes, **con y sin `filename`**: varios firmwares mandan el evento con filename, y ahí
+Starlette lo entrega como archivo en vez de como texto.
 
 | Query param | Default | Notas |
 |---|---|---|
@@ -64,7 +66,7 @@ Para el panel en vivo (D-07 hace polling cada 3 s).
 | Query param | Default | Notas |
 |---|---|---|
 | `cliente` | `demo` | Un cliente sin eventos devuelve **lista vacía y 200**, no 404. |
-| `desde` | — | ISO 8601. **Inclusivo.** |
+| `desde` | — | ISO 8601 **con offset obligatorio**. **Inclusivo.** Sin zona responde **422**, no 500: compararlo contra los timestamps aware de los eventos sería un `TypeError`, y asumir una zona correría todas las horas. Ej.: `2026-09-01T00:00:00-06:00`. |
 
 Respuesta: `{exito, cliente, eventos[]}`, **ordenados cronológicamente**.
 

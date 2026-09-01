@@ -32,6 +32,7 @@ from __future__ import annotations
 from collections import deque
 from datetime import datetime
 
+from app.exceptions import FiscalValidationError
 from app.schemas.asistencia import EventoChecada
 
 # Una quincena de 9 empleados con entrada y salida son ~270 eventos. 5000 deja
@@ -50,7 +51,11 @@ class AlmacenChecadas:
 
     def __init__(self) -> None:
         self._eventos: dict[str, deque[EventoChecada]] = {}
+        # El set de llaves vistas necesita su propio tope: acotar solo la cola
+        # de eventos dejaba la mitad del agujero abierto, porque un POST en
+        # loop con `serialNo` incremental seguiria creciendo aqui.
         self._vistos: dict[str, set[tuple[str, int]]] = {}
+        self._orden_vistos: dict[str, deque[tuple[str, int]]] = {}
 
     def agregar(
         self, cliente: str, eventos: tuple[EventoChecada, ...]
@@ -63,6 +68,9 @@ class AlmacenChecadas:
         """
         cola = self._eventos.setdefault(cliente, deque(maxlen=MAX_EVENTOS_POR_CLIENTE))
         vistos = self._vistos.setdefault(cliente, set())
+        orden = self._orden_vistos.setdefault(
+            cliente, deque(maxlen=MAX_EVENTOS_POR_CLIENTE)
+        )
         aceptados = duplicados = 0
         for evento in eventos:
             if evento.serial_no is not None:
@@ -70,6 +78,9 @@ class AlmacenChecadas:
                 if llave in vistos:
                     duplicados += 1
                     continue
+                if len(orden) == orden.maxlen:
+                    vistos.discard(orden[0])  # el que va a desalojar el deque
+                orden.append(llave)
                 vistos.add(llave)
             cola.append(evento)
             aceptados += 1
@@ -87,7 +98,19 @@ class AlmacenChecadas:
 
         `desde` es **inclusivo**; un cliente desconocido devuelve vacio, no un
         error.
+
+        `desde` **debe traer offset**, igual que el `time` del dispositivo:
+        comparar un naive contra los timestamps aware de los eventos revienta
+        con TypeError, que no es un error de dominio y saldria como 500 pelado
+        en el endpoint que el panel pollea cada 3 segundos. Se rechaza con un
+        mensaje en vez de asumir una zona, por la misma razon que el parser: la
+        zona equivocada corre todas las horas.
         """
+        if desde is not None and desde.tzinfo is None:
+            raise FiscalValidationError(
+                f"`desde` debe traer zona horaria: {desde.isoformat()!r}. Usa por ejemplo "
+                f"{desde.isoformat()}-06:00. Asumir una zona correría todas las horas."
+            )
         cola = list(self._eventos.get(cliente, ()))
         if desde is not None:
             cola = [e for e in cola if e.timestamp >= desde]
@@ -100,6 +123,7 @@ class AlmacenChecadas:
         """Vacia todo. Lo usan los tests para no depender del orden."""
         self._eventos.clear()
         self._vistos.clear()
+        self._orden_vistos.clear()
 
 
 # Instancia unica del proceso. Es el unico estado mutable del servicio.
