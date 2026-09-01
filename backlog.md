@@ -124,7 +124,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   (aguinaldo, vacaciones, prima), SBC fijo/variable/mixto, clamp 1 SM–25 UMA,
   `ConceptoIntegrable`, `requiere_aviso` con fecha límite (Art. 34). *Listo cuando:*
   la tabla de factores mínimos de ley de PLAN_NOMINA §2.2 pasa como test.
-- [ ] **F1-03 · `cuotas.py`** — cuotas por ramo, por empleado, consolidado
+- [x] **F1-03 · `cuotas.py`** — cuotas por ramo, por empleado, consolidado
   mensual/bimestral; SM absorbe cuota obrera; EyM excedente 3 UMA. *Listo cuando:*
   tests unitarios por ramo + cuadre contra el caso real S-04.
   **Criterio ajustado en F1-03 (ver `docs/decisiones-nomina.md` §D14):** el cuadre contra el
