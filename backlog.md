@@ -44,23 +44,45 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   *Listo cuando:* (a) cero variables secretas en `apps/store/.env` y `.env.example` — solo
   quedan las de Firebase y la URL del agente; (b) `grep -rn "api.openai.com" apps/store/src`
   → cero resultados; (c) build nuevo y `grep -roE "sk-[A-Za-z0-9_-]{8,}" apps/store/dist/`
-  → cero resultados; (d) la key vieja esta REVOCADA en OpenAI, confirmado por Ricardo, y la
-  nueva vive solo en el backend; (e) los 3 endpoints nuevos responden 401 sin ID token
+  → cero resultados; (d) la key vieja esta REVOCADA en OpenAI y la nueva vive solo en
+  `apps/api/.env` — **confirmado por Ricardo el 2026-09-01**; falta la restriccion
+  por HTTP referrer de la key de Firebase; (e) los 3 endpoints nuevos responden 401 sin ID token
   valido de Firebase; (f) `pytest -q` verde incluyendo tests nuevos de los 3 endpoints (401
   sin token + happy path con el cliente OpenAI mockeado; los tests nunca pegan a la API
   real); (g) `ruff check .` limpio, `npm run build` y `npm run lint` sin errores nuevos;
   (h) el chat de voz funciona end-to-end (grabar → transcribir → tool call → responder →
   TTS) sin ninguna key en el cliente; (i) `docs/api-contract.md` actualizado con los 3
   endpoints y el esquema de auth.
-- [ ] **S-00b · Rate limit por uid en endpoints que gastan LLM + tope de gasto** — va
-  inmediatamente despues de S-00. Limite por uid de Firebase sobre `/voz/transcribir`,
-  `/voz/hablar`, `/agente/turno` y `/agente/predeclaracion`, con respuesta 429 y
-  `Retry-After`; tope de gasto configurable (limite duro en el dashboard de OpenAI +
-  corte propio por ventana). **El backend no se despliega publico hasta cerrar S-00b:**
-  con auth pero sin limite, una cuenta valida puede vaciar el presupuesto.
-  *Listo cuando:* tests que prueban 429 al exceder el limite y 200 dentro del limite,
-  el limite es configurable por env, `docs/api-contract.md` documenta el 429, y el tope
-  duro esta puesto en el dashboard de OpenAI (confirmado por Ricardo).
+- [ ] **S-00b · Auth en todo `/api/v1` + rate limit por uid + tope de gasto** — va
+  inmediatamente despues de S-00. S-00 pone auth solo en los 3 endpoints nuevos porque el
+  backend de produccion esta caido y la ventana de exposicion es cero; S-00b cierra el
+  resto.
+  (1) **Auth en todos los endpoints `/api/v1`** (`/health` queda publico) — la forma barata
+  es `include_router(..., dependencies=[Depends(verify_firebase_token)])` en `main.py`, una
+  linea por router. Importa porque los 7 endpoints de calculo aceptan
+  `incluir_explicacion: true` y **tambien queman tokens de LLM**: el front lo manda en 8
+  lugares.
+  (2) **Rate limit por uid de Firebase** sobre todo lo que gasta LLM (`/voz/transcribir`,
+  `/voz/hablar`, `/agente/turno`, `/agente/predeclaracion` y los 7 de calculo con
+  explicacion), con 429 y `Retry-After`.
+  (3) **Tope de gasto**: limite duro en el dashboard de OpenAI + corte propio por ventana.
+  Nota: la auth identifica, no frena — el alta de usuarios es abierta
+  (`createUserWithEmailAndPassword`), asi que cualquiera obtiene un token valido en 10
+  segundos. El uid sirve para rate-limitar, y ese es el control real.
+  **El backend no se despliega publico hasta cerrar S-00b.**
+  *Listo cuando:* tests que prueban 401 sin token en los endpoints de calculo, 429 al
+  exceder el limite y 200 dentro del limite; el limite es configurable por env;
+  `docs/api-contract.md` documenta la auth generica y el 429; y el tope duro esta puesto en
+  el dashboard de OpenAI (confirmado por Ricardo).
+- [ ] **S-08 · Deploy backend a Cloud Run + front apuntando a el** (cuando haya razon para
+  produccion) — hoy produccion esta APAGADA por decision de Ricardo (2026-09-01): el sitio
+  no tiene usuarios y la prioridad es nomina. El bundle publicado en
+  `fiscalito-mvp.web.app` apunta a `fiscal-agent-api-production.up.railway.app`, que
+  responde 404 (Railway lo dio de baja), asi que ningun calculo fiscal funciona en vivo.
+  Mientras tanto `VITE_FISCAL_AGENT_URL` apunta a localhost en dev y punto. No redesplegar
+  Railway. *Listo cuando:* haya una razon de producto para tener produccion; entonces se
+  desglosa (Cloud Run, CORS_ORIGINS explicito, build del front con la URL real, redeploy de
+  Hosting). Bloqueada por S-00b.
 - [ ] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
   script `test`, red cerrada por default en setup, pruebas semilla de `cfdiParser` (con
   los demo-xmls) **y de la lógica pura de `agentLoop.ts` y `tools.ts`**. Descomentar
@@ -70,6 +92,11 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 - [ ] **S-02 · Lint frontend a cero y al CI** — corregir 20 errores + 8 warnings de
   eslint (concentrados en voiceChatService, AgentContext, tools). Descomentar `npm run
   lint` en `ci.yml`. *Listo cuando:* `npm run lint` exit 0 en local y corre en CI.
+- [ ] **S-01b · Alinear `target-version` de ruff con el Python del CI** —
+  `pyproject.toml` declara `target-version = "py311"` pero el job backend de `ci.yml` corre
+  en Python 3.12: ruff aplica reglas de una version que no es la que ejecuta los tests.
+  *Listo cuando:* las dos versiones coinciden (o la discrepancia queda justificada por
+  escrito en `pyproject.toml`) y `ruff check .` sigue limpio.
 - [ ] **S-03 · `docs/api-contract.md` como fuente única** — exportar el OpenAPI de
   FastAPI a un contrato versionado (endpoints, request/response). Los dos CLAUDE.md de
   apps dejan de duplicarlo y lo referencian. *Listo cuando:* el archivo existe, cubre
@@ -81,6 +108,15 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
   `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
+- [ ] **S-06 · (Opcional, prioridad baja) Reescribir historial para purgar
+  `apps/api/pfebrero/`** — 12 XML de CFDI con RFC de terceros identificables
+  (CADG620317EE0, NIGE780321TK2, MCP2404207Q2, BMS170308GT7...) siguen alcanzables en los
+  commits `29245f6` y `29313de` aunque ya no existan en el arbol. **Prioridad baja a
+  proposito:** el repo es privado y el historial no tiene ninguna API key (verificado el
+  2026-08-31 blob por blob). Reescribir historial rompe clones y forks, asi que solo vale
+  la pena si el repo se hace publico. *Listo cuando:* si se decide hacerlo, `git filter-repo`
+  purga la ruta, se fuerza el push y se avisa de la reescritura; si no, esta tarea se cierra
+  con una nota de decision explicita.
 
 ## F0 — Fundamentos de nómina (sin código de producto)
 
