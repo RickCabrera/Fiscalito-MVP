@@ -9,6 +9,12 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
   resto (111 total: E501, I001, F401, F541). Descomentar el paso `ruff check .` en
   `ci.yml`. *Listo cuando:* `ruff check .` sale limpio en local y corre en CI.
+- [ ] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
+  script `test`, red cerrada por default en setup, pruebas semilla de `cfdiParser` (con
+  los demo-xmls) **y de la lógica pura de `agentLoop.ts` y `tools.ts`**. Descomentar
+  `npm test` en `ci.yml`. Va **antes de S-02**: sin esta red, tocar `AgentContext` para
+  limpiar eslint es a ciegas. *Listo cuando:* `npm test` verde en local y en CI, y las
+  semillas cubren cfdiParser + la lógica pura de agentLoop y tools.
 - [ ] **S-02 · Lint frontend a cero y al CI** — corregir 20 errores + 8 warnings de
   eslint (concentrados en voiceChatService, AgentContext, tools). Descomentar `npm run
   lint` en `ci.yml`. *Listo cuando:* `npm run lint` exit 0 en local y corre en CI.
@@ -23,10 +29,6 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
   `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
-- [ ] **S-05 · Runner de tests en el frontend** — instalar Vitest + Testing Library,
-  script `test`, red cerrada por default en setup, 3–5 pruebas semilla (cfdiParser con
-  los demo-xmls). Descomentar `npm test` en `ci.yml`. *Listo cuando:* `npm test` verde
-  en local y en CI.
 
 ## F0 — Fundamentos de nómina (sin código de producto)
 

@@ -42,6 +42,8 @@ backend y frontend. La prioridad absoluta actual es **nómina** (ver `backlog.md
 - Si la tarea expone o cambia un endpoint: `docs/api-contract.md` se actualiza **en el
   mismo entregable** (es la fuente única del contrato; los CLAUDE.md de las apps solo
   lo referencian).
+- El commit que marca `[x]` en `backlog.md` (y solo ese, sin tocar otro archivo) va
+  directo a main con push; no requiere rama ni PR.
 
 ## Diagnóstico antes de modificar
 
