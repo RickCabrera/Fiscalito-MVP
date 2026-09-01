@@ -53,7 +53,7 @@ DIAS_MES_FISCAL = Decimal("30.4")
 CUADRE_POR_MES = {"2026-03": (6, 35), "2026-04": (28, 28), "2026-05": (0, 7)}
 
 # `SubsidioCausado` que declara el propio CFDI, por mes. La base cambia en el
-# corte marzo→abril: $536.22 (considerandos) → $535.65 (fórmula). Ver §D15.
+# corte marzo→abril; el 123.47 admite dos derivaciones. Ver §D15.
 SUBSIDIO_DECLARADO = {
     "2026-03": {Decimal("123.47")},
     "2026-04": {Decimal("123.34")},
