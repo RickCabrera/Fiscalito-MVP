@@ -26,6 +26,12 @@ dev = [
     # el CI en rojo en un PR que no tocó nada de eso.
     "ruff==0.15.13",
     "mypy>=1.0.0",
+    # Solo para validar el CFDI de nomina contra los XSD del SAT versionados
+    # en tests/xsd/. El generador (app/nomina_engine/cfdi_nomina_xml.py) usa la
+    # stdlib a proposito: si importara lxml, se volveria dependencia de runtime
+    # y habria que instalarlo en el contenedor de Cloud Run.
+    # >=5.0 porque el CI corre Python 3.12 y lxml 4.9 no publica wheels cp312.
+    "lxml>=5.0",
 ]
 
 [tool.pytest.ini_options]
