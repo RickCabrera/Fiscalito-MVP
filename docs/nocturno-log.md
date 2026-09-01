@@ -476,3 +476,117 @@ lo que faltaba era la rama que el dato real ejerce.
 **tiene que pintarse en pantalla**, o un alta con el `employeeNo` equivocado se ve como
 "faltaron todos" · **`dias_cotizados` es informativo**: D-06 construye `DiasDelPeriodo` con
 `dias_periodo` y `dias_ausentismo`, no con ese escalar, o contradice a `cuotas.py`.
+
+---
+
+## D-05 · simulador de checador (2026-09-01, sesión nocturna)
+
+**PR #17, mergeada. Tests: 876 → 910.** CI verde al primer intento.
+`.venv/Scripts/python.exe -m pytest -q` → `910 passed` · `ruff check .` → `All checks passed!`
+
+Tres archivos nuevos, ninguno modificado: `scripts/checador_sintetico.py` (lógica pura),
+`scripts/simular_checador.py` (CLI) y `tests/asistencia/test_simulador.py` (34 tests).
+`docs/api-contract.md` no se tocó: D-05 no expone ni cambia ningún endpoint.
+
+### EL "LISTO CUANDO" QUEDÓ CUMPLIDO A MEDIAS — leerlo antes de la demo
+
+El backlog pide *"corriéndolo, el panel se llena solo"*. **El panel es D-07 y no existía.**
+Lo que sí está verificado, end-to-end contra los tres endpoints reales: el simulador alimenta
+`POST /asistencia/eventos`; `GET /asistencia/eventos` devuelve las 194 checadas en orden
+cronológico, **cada una con el nombre que le toca**; y `cerrar-periodo` produce exactamente las
+2 faltas y los 3 retardos sembrados. **Que la pantalla se llene sola no está verificado y se
+cierra en D-07.** No se marcó `[x]` fingiendo lo contrario: el backlog lo dice también.
+
+### Decisiones abiertas para Ricardo
+
+1. **El horario de la demo no lo validó nadie.** El simulador y el cierre usan el default del
+   servidor: **08:00–17:00, tolerancia de 15 minutos, lunes a viernes**. Se grepearon
+   `docs/decisiones-nomina.md` y `PLAN_NOMINA` §5: **cero menciones** de horario, tolerancia o
+   retardo. O sea que **la demo le va a enseñar al cliente tres retardos calculados contra un
+   horario inventado por nosotros.** Es la pregunta más barata de hacerle al jefe antes del
+   martes, y la que peor se ve si la hace él primero.
+2. **El periodo por default es la última quincena YA TERMINADA**, no la que está en curso. La
+   razón: `cerrar_periodo()` marca falta **todo** día laborable sin checada, incluidos los
+   futuros, así que cerrar la quincena en curso el día 2 daría ~9 faltas por empleado y las 2
+   sembradas serían invisibles.
+   **Dos consecuencias que hay que tener presentes:**
+   - El panel mostrará checadas del **mes pasado**. Si D-07 pollea con un `desde` anclado en el
+     presente, **se verá vacío**. Se resuelve al escribir D-07 (ver "lo que D-07 hereda").
+   - Es además lo único que hoy evita que en D-08 se mezclen checadas simuladas y reales en el
+     mismo periodo: `cerrar-periodo` **no filtra por `fuente`**, agrega todo lo que haya del
+     cliente. Quien cambie esto a "quincena en curso" rompe eso sin darse cuenta.
+3. **`E-01` y `E-02` se tratan como plantilla completa** de la quincena, aunque en las fixtures
+   aparezcan sólo en 4 y en 3 de las 9 semanas (altas y bajas del caso real). Correcto para una
+   demo de salario fijo y un cliente; el caso de bajas es F1-09.
+
+### Decisiones tomadas sin Ricardo
+
+1. **`--serial-base` con default alto (900001).** El dedupe del almacén es por
+   `(empleado, serialNo)`, así que re-correr el simulador con los mismos seriales es un no-op:
+   **nadie va a reiniciar la API enfrente del cliente** si el ensayo hay que repetirlo. Y evita
+   colisionar con los seriales del aparato en D-08, que arrancan bajos (~575 en la doc ISAPI):
+   un `(empleado, serial)` repetido descartaría una checada **real** como duplicado.
+2. **`--fuente` no acepta `hikvision`** (`choices=[simulado, csv]`). Etiquetar lo simulado como
+   si viniera del aparato es falsear el origen del dato, y en D-08 dejaría de haber forma de
+   distinguirlos en `GET /eventos`.
+3. **`--en-vivo` acotado al último día laborable** (18 checadas, ~90 s). Los 194 gota a gota
+   serían 16 minutos antes de poder cerrar la quincena. `--limite N` mueve el corte y **nunca
+   descarta** eventos, o la tabla de incidencias cambiaría.
+4. **La lógica pura se partió a `checador_sintetico.py`** porque el archivo único llegó a 476
+   líneas. El CLI la carga con `spec_from_file_location` (patrón de `anonimizar_nomina.py:73`).
+   **Detalle que costó un rato:** hay que registrar el módulo en `sys.modules` **antes** de
+   `exec_module`, o `@dataclass` revienta con `AttributeError: NoneType object has no attribute
+   __dict__`. `anonimizar_nomina.py` no lo necesita porque `nomina_inventario` no tiene
+   dataclasses.
+5. **No se movió nada a `app/`**: `pip install -e .` sólo empaqueta `app*`, así que un módulo de
+   runtime que leyera `tests/fixtures/` reventaría en el contenedor de Cloud Run.
+
+### Tres bugs que encontraron las mutaciones, no el razonamiento
+
+Se corrieron **21 mutaciones** sobre los dos módulos antes de reportar. Las 21 en rojo al final,
+pero el camino importa más que el número:
+
+1. **El `name` de las 194 checadas salía vacío.** El `Nombre` vive en `cfdi:Receptor` y se leía
+   de `nomina12:Receptor`; `ElementTree` devuelve `""` **sin error**. El panel de D-07 habría
+   pintado 194 renglones anónimos y nadie habría sabido por qué.
+2. **`UnicodeEncodeError` al terminar, invisible desde pytest.** El resumen traía una flecha
+   Unicode y la consola de Windows es cp1252: `main()` moría **después** de generar y postear
+   todo. Los tests no lo veían porque pytest captura en UTF-8. Hoy hay test de regresión que
+   hace `.encode("cp1252")` sobre lo que el CLI imprime, y **todo** lo que sale por stdout y
+   stderr es ASCII a propósito.
+3. **La aserción del nombre se validaba sola, y no se detectó hasta que el revisor la mutó.**
+   Comparaba el `GET` contra la plantilla que devuelve el propio simulador: **intercambiando los
+   nombres de dos empleados pasaban los 28 tests**. Ahora se ancla a `tests/nomina_inventario.py`,
+   que el simulador nunca lee.
+
+**El patrón, otra vez:** el punto 3 es la cuarta vez en el proyecto (F1-03, F1-05 ×2, y aquí)
+que se escribe una validación que se valida a sí misma. Lo que la cazó no fue releer el test,
+fue **mutar el código y ver si el test moría**. La lección de F1-05 sigue siendo la correcta, y
+hay que aplicarla también a las correcciones que uno hace *después* de una revisión, no sólo al
+entregable original.
+
+### Lo que D-07 hereda
+
+- **El `desde` del polling.** Si el panel pide `desde` = ahora, no verá nada: el simulador
+  siembra la quincena pasada (ver decisión abierta 2). Lo natural es que el panel derive el
+  periodo de los eventos que hay en memoria (mín/máx) en vez de duplicar la regla de
+  `quincena()`.
+- **`empleados_desconocidos` tiene que pintarse en pantalla** (herencia de D-04): un alta con el
+  `employeeNo` equivocado en el dispositivo se ve como "faltaron todos".
+- La plantilla y los nombres salen de las fixtures de S-04; el par número→nombre es la única
+  llave de mapeo con el aparato (`employeeNo` = `E-0N`).
+
+### Límite conocido frente a D-08
+
+**El modo de falla más probable del aparato es el único que el simulador no puede reproducir.**
+`_tipo_desde_estado()` rechaza el batch completo si llega `attendanceStatus: "undefined"`, que es
+justo lo que manda el MinMoe **sin modo de asistencia configurado**. El simulador siempre emite
+`checkIn`/`checkOut` limpios, así que D-05 sale verde el día que el aparato mande cero eventos
+aprovechables. La decisión ya estaba documentada en `hikvision.py:53`; lo que se agrega aquí es
+que **el verde de D-05 no da ninguna confianza sobre eso**.
+
+### Deuda que sigue abierta y no se tocó (sería "de pasada")
+
+El árbol de archivos de `apps/api/CLAUDE.md` **quedó desactualizado desde D-04**: no lista
+`app/asistencia/`, `routes/asistencia.py` ni `schemas/asistencia.py`, y ahora tampoco los dos
+scripts de D-05 (aunque `scripts/` nunca estuvo listado). Cae natural en S-03.
