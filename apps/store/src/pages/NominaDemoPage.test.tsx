@@ -133,6 +133,24 @@ function stubApi(overrides: Record<string, unknown> = {}) {
   return llamadas;
 }
 
+/**
+ * Espera a que la plantilla haya cargado.
+ *
+ * NO basta con esperar a que el botón exista: existe desde el primer render,
+ * **deshabilitado** hasta que llega `GET /nomina/demo/plantilla`, y un click
+ * sobre él no hace nada. Esperar sólo su existencia hacía el test dependiente
+ * de que la promesa resolviera rápido — verde en local, rojo en CI.
+ *
+ * El valor de la fecha sólo aparece cuando la plantilla llegó, así que es la
+ * señal correcta.
+ */
+async function esperarPlantilla() {
+  await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+  const boton = screen.getByRole('button', { name: /Cerrar quincena/ }) as HTMLButtonElement;
+  expect(boton.disabled).toBe(false);
+  return boton;
+}
+
 describe('NominaDemoPage', () => {
   beforeEach(() => {
     vi.useRealTimers();
@@ -187,8 +205,7 @@ describe('NominaDemoPage', () => {
   it('al cerrar pinta faltas, retardos y los empleados desconocidos', async () => {
     stubApi();
     render(<NominaDemoPage />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    fireEvent.click(await esperarPlantilla());
     expect(await screen.findByText(/Checadas de empleados que no están en la plantilla/)).toBeTruthy();
     expect(screen.getByText(/E-99/)).toBeTruthy();
     expect(screen.getByText('PERSONA DOS')).toBeTruthy();
@@ -210,8 +227,7 @@ describe('NominaDemoPage', () => {
      */
     const llamadas = stubApi();
     render(<NominaDemoPage />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 
@@ -237,7 +253,7 @@ describe('NominaDemoPage', () => {
      */
     const llamadas = stubApi();
     render(<NominaDemoPage />);
-    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    await esperarPlantilla();
     fireEvent.change(screen.getByDisplayValue('2026-08-16'), { target: { value: '2026-01-16' } });
     fireEvent.change(screen.getByDisplayValue('2026-08-31'), { target: { value: '2026-01-31' } });
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
@@ -254,8 +270,7 @@ describe('NominaDemoPage', () => {
   it('sin tocar el periodo se manda la fecha de pago sugerida', async () => {
     const llamadas = stubApi();
     render(<NominaDemoPage />);
-    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 
@@ -269,8 +284,7 @@ describe('NominaDemoPage', () => {
   it('pinta recibos, cuotas por ramo y las advertencias del backend', async () => {
     stubApi();
     render(<NominaDemoPage />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 
