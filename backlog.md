@@ -93,7 +93,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   apps dejan de duplicarlo y lo referencian. *Listo cuando:* el archivo existe, cubre
   los 11 endpoints, y las secciones duplicadas de los CLAUDE.md se reemplazan por la
   referencia.
-- [ ] **S-04 · Caso real de nómina anonimizado** — tomar 1 bimestre de
+- [x] **S-04 · Caso real de nómina anonimizado** — tomar 1 bimestre de
   `03. CFDI DE NOMINA/` (p. ej. marzo–abril: 9→7 empleados, con INFONAVIT, prima
   dominical y subsidio), generar fixtures XML con RFC/nombres/CURP sintéticos y montos
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
