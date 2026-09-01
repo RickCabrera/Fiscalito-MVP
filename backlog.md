@@ -164,8 +164,9 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   (6.1 MB, de los cuales `catCFDI.xsd` son 5.98 MB) y la resolución offline la hace un resolver
   de lxml, no una reescritura — así el SHA-256 de cada uno sigue verificando contra la fuente
   oficial, y un test lo recalcula. **Los 70 recibos del caso real se vuelven a emitir con el generador** y los
-  totales que escribe en el XML cuadran contra el timbrado en los 70, además de validar sin
-  red. Se lee del documento emitido, no del objeto de dominio: comparar propiedades del recibo
+  totales que escribe en el XML cuadran contra el timbrado en los 70, **los 70 emitidos validan
+  sin red**, y un test de ida y vuelta compara atributo por atributo todo lo que el generador
+  emite contra el original, excluyendo los de sello. Se lee del documento emitido, no del objeto de dominio: comparar propiedades del recibo
   contra el fixture deja pasar un generador que escriba el atributo equivocado. El
   camino de **cálculo** (ISR y cuota obrera) sigue midiéndose donde lo dejaron §D14 y §D15;
   F1-05 no lo re-litiga.

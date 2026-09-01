@@ -17,6 +17,7 @@ números.
 """
 
 import xml.etree.ElementTree as ET
+from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -105,6 +106,14 @@ def _generar(recibo: Recibo) -> str:
         serie="DEMOSA",
         folio="37",
     )
+
+
+def _es_numero(valor: str) -> bool:
+    try:
+        Decimal(valor)
+    except (ArithmeticError, ValueError):
+        return False
+    return True
 
 
 def _generar_raiz(recibo: Recibo) -> ET.Element:
@@ -273,9 +282,143 @@ class TestTotales:
             assert Decimal(concepto["Descuento"]) == Decimal(emitido.attrib["Descuento"]), ruta
 
 
+# Atributos que el pre-recibo DEBE emitir distintos del original: son
+# justamente los que dicen que no esta timbrado.
+ATRIBUTOS_QUE_DIFIEREN = frozenset({"Sello", "NoCertificado", "Certificado"})
+
+
+def _atributos_por_ruta(raiz: ET.Element) -> dict[str, dict[str, str]]:
+    """
+    Aplana el documento a {ruta_del_nodo: atributos}, ignorando el timbre.
+
+    La ruta lleva el indice del hermano para que dos percepciones no se pisen.
+    """
+    plano: dict[str, dict[str, str]] = {}
+
+    def recorrer(nodo: ET.Element, ruta: str) -> None:
+        etiqueta = nodo.tag.split("}")[-1]
+        if etiqueta == "TimbreFiscalDigital":
+            return
+        hermanos = [h for h in nodo if h.tag == nodo.tag]  # noqa: F841
+        plano[ruta] = dict(nodo.attrib)
+        contador: dict[str, int] = {}
+        for hijo in nodo:
+            nombre = hijo.tag.split("}")[-1]
+            indice = contador.get(nombre, 0)
+            contador[nombre] = indice + 1
+            recorrer(hijo, f"{ruta}/{nombre}[{indice}]")
+
+    recorrer(raiz, "Comprobante")
+    return plano
+
+
+class TestIdaYVuelta:
+    """
+    Todo atributo del que el generador es responsable, no solo los totales.
+
+    `TestTotales` compara totales y `TestValidacionXSD` comprueba que el
+    documento es valido; ninguno de los dos mira los **renglones**. Sin este
+    test, intercambiar `ImporteGravado` con `ImporteExento` en cada percepcion
+    —invirtiendo la exencion del Art. 93 que F1-04 existe para calcular— deja
+    los totales intactos y no mueve nada: un CFDI que se contradice a si mismo.
+
+    Se excluyen a proposito los atributos de sello y el TimbreFiscalDigital,
+    que **tienen** que diferir: son lo que dice que el pre-recibo no esta
+    timbrado.
+    """
+
+    def test_el_documento_emitido_coincide_con_el_original(self):
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            original = _atributos_por_ruta(ET.parse(ruta).getroot())
+            emitido = _atributos_por_ruta(_regenerar(ruta))
+            assert set(emitido) == set(original), f"{ruta.name}: nodos distintos"
+            for nodo, atributos in original.items():
+                for nombre, valor in atributos.items():
+                    if nombre in ATRIBUTOS_QUE_DIFIEREN or nombre.startswith("{"):
+                        continue
+                    obtenido = emitido[nodo].get(nombre)
+                    assert obtenido is not None, f"{ruta.name} {nodo}/@{nombre}: falta"
+                    iguales = (
+                        Decimal(obtenido) == Decimal(valor)
+                        if _es_numero(valor) and _es_numero(obtenido)
+                        else obtenido == valor
+                    )
+                    assert iguales, f"{ruta.name} {nodo}/@{nombre}: {obtenido} != {valor}"
+
+    def test_lo_que_el_caso_real_no_puede_distinguir(self):
+        """
+        Tres atributos que el ida y vuelta NO puede probar, porque el dataset
+        no varía: los 70 recibos traen `TotalOtrosPagos=0`, `NumDiasPagados`
+        siempre 7.000 y `SalarioBaseCotApor == SalarioDiarioIntegrado`.
+
+        Con esos valores, emitir `SubTotal` sin sumar los otros pagos, fijar los
+        días a "7.000" o intercambiar el SBC con el SDI da exactamente el mismo
+        XML. Sin un caso sintético que los separe, las tres mutaciones pasan
+        desapercibidas.
+        """
+        recibo = Recibo(
+            percepciones=(
+                PartidaPercepcion("001", "P001", "SUELDO", Decimal("1000.00"), Decimal("0.00")),
+            ),
+            otros_pagos=(
+                PartidaOtroPago("004", "D200", "SALDO A FAVOR", Decimal("250.00")),
+            ),
+        )
+        trabajador = replace(
+            TRABAJADOR,
+            salario_base_cotizacion=Decimal("300.00"),
+            salario_diario_integrado=Decimal("315.50"),
+        )
+        xml = generar_cfdi_nomina(
+            recibo,
+            PATRON,
+            trabajador,
+            datetime(2026, 4, 5, 12, 0, 0),
+            date(2026, 3, 21),
+            date(2026, 4, 5),
+            date(2026, 4, 5),
+            Decimal("15"),
+            serie="DEMOSA",
+            folio="1",
+        )
+        raiz = ET.fromstring(xml)
+
+        # SubTotal suma los otros pagos, no solo las percepciones.
+        assert Decimal(raiz.attrib["SubTotal"]) == Decimal("1250.00")
+
+        nomina = raiz.find(".//n:Nomina", NS)
+        assert nomina.attrib["NumDiasPagados"] == "15.000"
+
+        receptor = raiz.find(".//n:Receptor", NS)
+        assert Decimal(receptor.attrib["SalarioBaseCotApor"]) == Decimal("300.00")
+        assert Decimal(receptor.attrib["SalarioDiarioIntegrado"]) == Decimal("315.50")
+
+        assert errores_de_validacion(xml) == []
+
+    def test_los_atributos_de_sello_si_difieren(self):
+        """Si dejaran de diferir, el pre-recibo estaria copiando un sello ajeno."""
+        ruta = next(iter(sorted(FIXTURES.glob("semana-01/*.xml"))))
+        original = ET.parse(ruta).getroot().attrib
+        emitido = _regenerar(ruta).attrib
+        for atributo in ATRIBUTOS_QUE_DIFIEREN:
+            assert emitido[atributo] != original[atributo]
+
+
 class TestValidacionXSD:
     def test_el_pre_recibo_generado_valida(self):
         assert errores_de_validacion(_generar(_recibo_ejemplo())) == []
+
+    def test_los_setenta_generados_validan(self):
+        """
+        Lo que prueba al generador: el XML que emite, no el que ya existía.
+
+        No es redundante con el pre-recibo de ejemplo: 9 de los 70 no traen
+        `Departamento`, que es una variante estructural que el ejemplo único no
+        ejercita.
+        """
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            xml = ET.tostring(_regenerar(ruta), encoding="unicode")
+            assert errores_de_validacion(xml) == [], ruta
 
     def test_las_setenta_fixtures_validan(self):
         """
