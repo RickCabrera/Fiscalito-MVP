@@ -590,3 +590,143 @@ que **el verde de D-05 no da ninguna confianza sobre eso**.
 El árbol de archivos de `apps/api/CLAUDE.md` **quedó desactualizado desde D-04**: no lista
 `app/asistencia/`, `routes/asistencia.py` ni `schemas/asistencia.py`, y ahora tampoco los dos
 scripts de D-05 (aunque `scripts/` nunca estuvo listado). Cae natural en S-03.
+
+---
+
+## D-06 · endpoint de nómina del periodo y tool de agente (2026-09-01, sesión nocturna)
+
+**PR #18, mergeada. Tests: 910 → 970.** CI verde al primer intento.
+`.venv/Scripts/python.exe -m pytest -q` → `970 passed` · `ruff check .` → `All checks passed!`
+
+`POST /api/v1/nomina/calcular-periodo` más la tool `calcular_nomina_periodo`. El orquestador
+puro vive en `app/nomina_engine/periodo.py` (+ `periodo_tipos.py`), la plantilla del cliente en
+`app/demo_nomina.py`, y el tool y la explicación LLM en módulos propios.
+
+### DOS COSAS QUE HAY QUE SABER ANTES DE ABRIR LA BOCA EN LA DEMO
+
+**1. Las cuotas que devuelve NO son lo que se paga al mes.** Los campos se llaman
+`porcion_mensual` y `porcion_bimestral` a propósito: son lo **devengado en ese periodo** por
+los ramos de cada periodicidad de entero. Una quincena trae **media** mensualidad de EyM/IyV y
+**un doceavo** de bimestre de Retiro/CEAV/Infonavit. Para enterar hay que sumar los periodos
+del mes o del bimestre. La respuesta lo advierte siempre, y el tool del agente lo dice en el
+texto. Si alguien pregunta "¿y esto es lo que pago al IMSS este mes?", la respuesta honesta es
+"es la parte de esta quincena".
+
+**2. Que Fiscalito llame a la tool desde el chat no está verificado.** Lo que sí está probado:
+que está registrada en los dos proveedores, que el despachador la ejecuta, y que **los system
+prompts la enumeran**. Eso último era el hueco real —el prompt de OpenAI listaba tres
+herramientas con "úsala primero, siempre" y el de Anthropic acotaba el trabajo a
+"pre-declaraciones de ISR e IVA", o sea que empujaba activamente a no llamarla—. Pero **que un
+LLM decida invocarla no se puede probar en CI**: no hay key y ningún test pega a un proveedor.
+Se sabrá en el ensayo, no antes. Vale la pena probar la pregunta a mano antes del martes.
+
+### La afirmación legal que estuve a punto de publicar
+
+La advertencia de ausentismo prolongado decía, en la respuesta del endpoint **y en el prompt
+del LLM**: *"El Art. 31 fr. II LSS libera al patrón de todas las cuotas por encima de ese
+límite"*. Se retiró entera, por tres razones que se acumulan:
+
+1. **No hay fuente.** No existe transcripción del Art. 31 contra el DOF en `knowledge_base/`, y
+   las dos menciones que hay marcan el tratamiento como PROVISIONAL.
+2. **Contradice al propio motor.** §D3 mantiene Enfermedades y Maternidad a cargo del patrón
+   aun con ausentismo —y hay test que lo fija—, así que "todas" no puede ser cierto en la
+   lectura que el código implementa.
+3. **El destinatario era el patrón**, y tomada al pie de la letra lo invitaba a dejar de
+   enterar EyM.
+
+Ahora el aviso dice que el motor cobra las cuotas completas, que es la dirección conservadora,
+y que el caso requiere revisión manual — sin citar articulado. Hay test que afirma que el texto
+**no** contiene "libera al patrón" ni "Art. 31". §D20 pasó a PROVISIONAL con la pregunta que la
+desbloquea.
+
+**Lo que NO se tocó, a propósito:** la misma frase sigue en §D3, en `cuotas.py` y en
+`test_cuotas.py`, donde la dejó F1-03. Las tres son notas internas, la sección ya está marcada
+PROVISIONAL, y reescribirlas es trabajo de otra tarea. Lo que importaba era que esa lectura no
+saliera publicada como texto legal.
+
+### Decisiones abiertas para Ricardo — §D17 a §D20
+
+1. **§D17 · El séptimo día.** Ante una falta injustificada el motor descuenta **el día y nada
+   más**; hay despachos que descuentan además la proporción del descanso semanal (Art. 69 LFT).
+   Se tomó la que favorece al trabajador. ¿Qué hace el software del cliente?
+2. **§D18 · `fecha_pago` contra fin de quincena.** El default es que se paga el último día del
+   periodo. **Si el cliente paga corrido, el default está mal para las quincenas de enero**: la
+   UMA cambia el 1 de febrero y el subsidio de esa quincena pasa de $282.22 a $281.92. Fijado
+   por test.
+3. **§D19 · La base del tope del subsidio usa el SBC acotado**, mientras la evidencia de §D11 se
+   construyó con el timbrado. Coinciden en los 9 de la demo y divergen para un trabajador al
+   piso del Art. 28 — donde el clamp le sube la base y le quita subsidio a quien menos gana.
+4. **§D20 · Ausentismo prolongado.** Qué concede realmente el Art. 31, desde cuántos días, y
+   **sobre qué ventana se cuenta**. Si fuera mensual, dos quincenas de 5 faltas suman 10 días y
+   ninguna dispara el aviso: haría falta un acumulado que hoy no existe.
+
+### Decisiones tomadas sin Ricardo
+
+1. **La plantilla demo sólo aplica al cliente `demo`.** Cualquier otro cliente que omita
+   `empleados` recibe un error. Calcularle a un cliente real la nómina de otras nueve personas
+   —y dejar que la exporte en PDF— es peor que fallar. La respuesta lleva `origen_plantilla`
+   (`demo` | `request`) para que el PDF de D-07 no pueda mentir.
+2. **`PLANTILLA_DEMO` vive en `app/`** con datos sintéticos de S-04. No se leen las fixtures en
+   runtime: `pip install -e .` sólo empaqueta `app*` y reventaría en Cloud Run. El precio es una
+   copia, y `tests/nomina/test_plantilla_demo.py` verifica contra los XML que no diverja —
+   incluido el par número→nombre, que se rompe si alguien vuelve a correr el anonimizador.
+3. **El tool lee el almacén de asistencia**, y con **cero checadas devuelve error, no una
+   nómina**: sobre un almacén vacío `cerrar_periodo` marca todo como falta y el motor produce
+   una nómina válida y completamente falsa que el agente afirmaría como hecho.
+4. **`DIAS_MES_FISCAL` subió a `constants.py`** y se deduplicaron las **cuatro** copias.
+   `test_constants_vigencias.py` no se tocó y sigue verde: es el ancla de que ningún valor
+   cambió.
+
+### Verificación, y los cinco huecos que se cerraron
+
+**22 mutaciones, las 22 en rojo al final.** Pero la primera corrida dejó **cinco huecos, todos
+en lo que agregué al corregir la primera revisión** —las propiedades de totales, el periodo
+invertido, el tope de la prima y los dos system prompts—. La lección se repite: el código nuevo
+que uno escribe *respondiendo a una revisión* también necesita mutarse.
+
+Dos detalles que valen:
+- Quitar el tope de `prima_riesgo` **sigue dando 422**, porque el motor lo caza. Lo que
+  distingue es la **forma** de la respuesta (`detail` de FastAPI contra el sobre de dominio), y
+  así quedó escrito el test.
+- Mi primera versión del test de prompts pedía que el nombre de la tool apareciera "en alguna
+  parte", y sobrevivía a la mutación: mencionarla de pasada y sacarla de la lista numerada le
+  quita al modelo la descripción, que es lo que gobierna la selección. Ahora exige el renglón.
+
+**Tres literales que puse a ojo estaban mal, y se corrigieron contra el motor y no al revés:**
+el subsidio de enero es **$123.47** (no $126.71), las claves de ramo son `riesgos_trabajo` /
+`invalidez_vida` / `eym_cuota_fija`, y duplicar la prima de RT da **$25.23** y no $25.24 porque
+el redondeo es por concepto (D2).
+
+**Y la trampa que el revisor evitó:** los literales de F1-03/F1-04 ($34.68 de ISR, $55.12 de
+cuota obrera) son de nómina **semanal**, no quincenal — el caso real se pagaba cada 7 días.
+Medir la quincena de la demo contra ellos habría fallado, y el arreglo tentador habría sido
+mover parámetros hasta que cuadrara. El test de pass-through corre en configuración semanal
+explícita y el caso quincenal va aparte, **etiquetado como caracterización, no verificación**.
+
+### Verificación en vivo del flujo de la demo
+
+Simulador de D-05 → 194 checadas → `cerrar-periodo` → `calcular-periodo`, sin tocar nada a mano:
+
+| | dias | faltas | sueldo | ISR | obrera | neto |
+|---|---|---|---|---|---|---|
+| E-01 | 16 | 0 | 5,056.00 | 91.08 | 125.99 | 4,838.93 |
+| E-05 | **15** | **1** | 4,740.00 | 56.70 | 124.34 | 4,558.96 |
+| E-08 | **15** | **1** | 4,740.00 | 56.70 | 120.19 | 4,563.11 |
+
+Patronal devengada: mensual **$6,074.62**, bimestral **$6,795.63** (retiro 1,027.75 · infonavit
+2,569.35 · ceav 3,776.62).
+
+**Ojo con esto en la demo:** E-03, E-04 y E-07 retienen **$463.61** contra ~$91 de los demás.
+No es un error: son los tres cuyo `SBC × 30.4` rebasa el tope del subsidio, o sea el hallazgo de
+§D11 apareciendo solo en pantalla. Si alguien pregunta por qué tres personas pagan cinco veces
+más ISR, esa es la respuesta.
+
+### Lo que D-07 hereda
+
+- **La plantilla NO se hardcodea en TypeScript.** `empleados` es opcional y el servidor pone la
+  del cliente demo; duplicar los nueve sueldos en el front sería una copia que ningún test cubre.
+- El botón "Calcular nómina" manda las incidencias que devolvió "Cerrar quincena", tal cual.
+- La pantalla tiene que pintar `advertencias[]` — ahí va la nota de que las cuotas son del
+  periodo — y `empleados_desconocidos` del cierre.
+- `origen_plantilla` existe para el PDF: si dice `demo`, el PDF no puede llevar el nombre de un
+  cliente real.
