@@ -80,6 +80,15 @@ EJERCICIO_DEFAULT: int = 2026
 # la asistencia sea multi-cliente y persistente.
 CLIENTE_DEMO: str = "demo"
 
+# Dias del "mes fiscal". Art. 4 fr. II de la Ley de la UMA para el valor
+# mensual, y la misma cifra gobierna la derivacion de las tarifas del Anexo 8
+# por periodicidad y el prorrateo del subsidio.
+#
+# Vivia CUATRO veces por separado —`subsidio.py`, `tablas_isr_periodicas.py`,
+# el literal de `uma_mensual_vigente()` y un quinto en los tests— y las cuatro
+# tenian que mover juntas o el motor se contradecia consigo mismo.
+DIAS_MES_FISCAL: Decimal = Decimal("30.4")
+
 
 class ZonaSalarioMinimo(str, Enum):
     """Zona geografica que determina el salario minimo aplicable."""
@@ -153,7 +162,7 @@ def uma_mensual_vigente(fecha: date) -> Decimal:
     va AQUI, antes de cualquier multiplicacion posterior: es lo que hace que
     el valor anual coincida con el que publica el INEGI.
     """
-    return _redondear(uma_vigente(fecha) * Decimal("30.4"))
+    return _redondear(uma_vigente(fecha) * DIAS_MES_FISCAL)
 
 
 def uma_anual_vigente(fecha: date) -> Decimal:

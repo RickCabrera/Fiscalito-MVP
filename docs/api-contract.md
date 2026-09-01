@@ -1,6 +1,7 @@
 # Contrato de la API — Fiscal Agent
 
-> **PARCIAL.** Cubre únicamente los endpoints de **asistencia** que agregó D-04.
+> **PARCIAL.** Cubre únicamente los endpoints de la **épica D**: los de **asistencia**
+> que agregó D-04 y el de **nómina** que agregó D-06.
 > **S-03 lo completa** con los 11 endpoints existentes exportados del OpenAPI de FastAPI y
 > reemplaza por una referencia a este archivo las secciones duplicadas de
 > `apps/api/CLAUDE.md` y `apps/store/CLAUDE.md`. Ese trabajo **no** está hecho: S-03 sigue
@@ -101,3 +102,94 @@ Respuesta: `{exito, cliente, periodo, incidencias[], empleados_desconocidos[]}`.
 **Limitaciones conocidas** (F1-09): toda ausencia cuenta como falta —no se distinguen
 vacaciones, permisos ni incapacidades, que legalmente no son ausentismo injustificado— y los
 turnos nocturnos caen en dos días calendario.
+
+---
+
+## Nómina (épica D — demo)
+
+> ⚠️ **DEMO — sin autenticación, no desplegar.** La auth de todo `/api/v1` es S-00b.
+
+### `POST /api/v1/nomina/calcular-periodo`
+
+Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo.
+**Es un orquestador, no un motor**: llama a `armado.py`, `cuotas.py` e
+`isr_nomina.py` y no reimplementa ninguna fórmula. Los endpoints granulares
+(SBC, cuotas y recibo por separado) son F1-07.
+
+```json
+{ "cliente": "demo",
+  "periodo": {"inicio": "2026-08-16", "fin": "2026-08-31", "fecha_pago": "2026-08-31"},
+  "incidencias": [
+    {"empleado_no": "E-01", "dias_periodo": 16, "faltas": 1,
+     "dias_ausentismo": 1, "dias_incapacidad": 0}
+  ],
+  "parametros": {"prima_riesgo": "0.0054355", "clave_periodicidad": "04",
+                 "dias_pagados": null},
+  "empleados": null,
+  "incluir_explicacion": false }
+```
+
+| Campo | Notas |
+|---|---|
+| `periodo.fecha_pago` | Opcional, default `fin`. **La vigencia se lee de aquí**, no del fin: UMA, salario mínimo, tarifa del Anexo 8 y el transitorio de enero del subsidio. Una quincena que cierra el 31-ene y se paga el 5-feb se calcula con los valores de febrero. *DECISIÓN PROVISIONAL (nocturno): que el patrón pague el último día del periodo no lo confirmó nadie.* |
+| `incidencias[].dias_periodo` | **Días naturales**, los que devuelve `cerrar-periodo`. Nunca `dias_laborables` ni `dias_cotizados`: ese último es informativo y tomarlo como base de cuotas contradice a `cuotas.py` (Art. 31 LSS, §D3). |
+| `incidencias[].dias_ausentismo` | Alimenta `DiasDelPeriodo`. **`faltas` es lo que descuenta días pagados.** Hoy son el mismo número; en F1-09 divergen, porque una incapacidad o unas vacaciones no son ausentismo injustificado y las vacaciones sí se pagan. |
+| `parametros.prima_riesgo` | Obligatoria y sin default: se autodetermina cada febrero (Art. 74 LSS), no es tasa de ley. Acotada a 0.005–0.15 (Art. 72). |
+| `parametros.clave_periodicidad` | `c_PeriodicidadPago`: 01 diaria, 02 semanal, 04 quincenal, 05 mensual. **Catorcenal (03) y decenal (10) responden 422** con su motivo: nadie publica una tarifa verificada (§D10). |
+| `parametros.dias_pagados` | Override opcional. Sin él, `dias_periodo − faltas`. *DECISIÓN PROVISIONAL (nocturno): ante una falta injustificada se descuenta el día y **no** la parte proporcional del séptimo (Art. 69 LFT). Es la lectura que favorece al trabajador.* |
+| `empleados` | Opcional. **Omitirlo usa la plantilla de la demo, y sólo es válido para `cliente: "demo"`**: cualquier otro cliente sin `empleados` responde 422. Calcularle a un cliente real la nómina de otras nueve personas —y dejar que la exporte en PDF— sería peor que fallar. El `salario_diario_integrado` es **dato de entrada** y no se deriva de la antigüedad (§D9). |
+
+Respuesta: `{exito, cliente, periodo, origen_plantilla, recibos[], porcion_mensual,
+porcion_bimestral, advertencias[], explicacion?}`.
+
+- **`origen_plantilla`** es `"demo"` o `"request"`. Existe para que el PDF de D-07 no
+  pueda mentir sobre de quién es la nómina.
+- **`porcion_mensual` y `porcion_bimestral` NO son el entero del Art. 39 LSS.** Son
+  lo **devengado en este periodo** por los ramos de cada periodicidad de entero: una
+  quincena trae **media** mensualidad de EyM/IyV y **un doceavo** de bimestre de
+  Retiro/CEAV/Infonavit. Para enterar hay que sumar los periodos que caen en el mes o
+  en el bimestre. Se llaman así, y no `consolidado_*`, precisamente para que nadie los
+  lea como el pago del mes.
+- `recibos[].ramos[]` lleva base diaria, días, importes y **fundamento** por ramo: es
+  lo que permite conciliar contra la EMA y la EBA renglón por renglón.
+- `advertencias[]` siempre trae la nota de la porción del periodo, y además avisa
+  cuando algún empleado supera **7 días de ausentismo**: el ausentismo prolongado
+  puede tener un tratamiento distinto que el motor **no** aplica —cobra las cuotas
+  completas de cada ramo, que es la dirección conservadora— y ese caso requiere
+  revisión manual. **La advertencia no afirma qué concede el Art. 31 LSS**: ese
+  tratamiento sigue PROVISIONAL (§D3, §D20) y no hay transcripción verificada contra
+  el DOF en el repo.
+
+**Límite conocido:** el subsidio se compara contra un ingreso mensual de `SBC × 30.4`
+(§D11, provisional) calculado con el SBC **acotado**, mientras la evidencia de §D11 se
+construyó con el timbrado. Coinciden en los 9 empleados de la demo y divergen en un
+trabajador al piso del Art. 28.
+
+### Tool del agente: `calcular_nomina_periodo`
+
+Disponible en `POST /api/v1/agente/predeclaracion`. Recibe `{periodo_inicio,
+periodo_fin, cliente?}` y **arma el cálculo con lo que hay en memoria**: la plantilla
+de la demo más las incidencias que salen de `cerrar_periodo` sobre las checadas del
+almacén de asistencia, de modo que la pregunta "¿cuánto pago de IMSS este mes?" se
+contesta sin que el usuario capture plantilla ni incidencias.
+
+**Dos precisiones para no prometer de más.** (a) El endpoint del agente sigue exigiendo
+`contribuyente` y `periodo_year` en el cuerpo, como cualquier otra llamada suya: lo que
+esta tool evita es capturar los sueldos y el cierre, no el request completo. (b) Que un
+LLM real **decida** invocarla no está verificado: los system prompts la enumeran y los
+tests comprueban el registro y el despacho, pero en CI no hay key de ningún proveedor y
+ninguna prueba pega a uno.
+
+- **Sin checadas en el periodo devuelve un error, no una nómina.** Con el almacén
+  vacío, `cerrar_periodo` marca todos los días laborables como falta y el motor
+  produce una nómina perfectamente válida y completamente falsa, que el agente
+  afirmaría en el chat como un hecho.
+- Avisa de las checadas de `employeeNo` que no estén en la plantilla: **no entran al
+  cálculo**, y un alta con el número equivocado en el dispositivo se vería como
+  "faltaron todos".
+- **El almacén de asistencia no se replica entre workers.** Con más de un proceso, la
+  petición del agente puede caer en uno distinto del que recibió el POST del checador
+  y no ver ninguna checada. Lo resuelve F1-09 con Firestore.
+- La descripción de la tool le dice al modelo que **reporte los importes tal cual y no
+  sume, promedie ni derive nada**: la regla de oro del repo es que el LLM explica y
+  nunca calcula.

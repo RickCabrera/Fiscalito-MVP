@@ -37,6 +37,7 @@ from pathlib import Path
 
 import pytest
 
+from app.constants import DIAS_MES_FISCAL
 from app.nomina_engine.isr_nomina import (
     ContextoExencion,
     Percepcion,
@@ -47,7 +48,7 @@ from app.redondeo import redondear
 
 NS = {"cfdi": "http://www.sat.gob.mx/cfd/4", "n": "http://www.sat.gob.mx/nomina12"}
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "nomina"
-DIAS_MES_FISCAL = Decimal("30.4")
+# Se importa de `app.constants`: era la cuarta copia del mismo 30.4.
 
 # Cuadre por mes, verificado recibo por recibo contra el ISR timbrado.
 CUADRE_POR_MES = {"2026-03": (6, 35), "2026-04": (28, 28), "2026-05": (0, 7)}
