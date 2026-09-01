@@ -8,7 +8,8 @@ hasta que Ricardo las desbloquee.
 
 ## F0-01 · `knowledge_base/nomina/` (2026-09-01, sesión nocturna)
 
-**Estado:** entregable construido en `feat/F0-01`. PR y merge se anotan abajo al cerrarse.
+**Estado:** CERRADA. PR #8, mergeada a main el 2026-09-01 a las 11:37 UTC (05:37 hora local).
+CI verde en el primer intento (Backend 25 s, Frontend 45 s).
 
 ### Decisiones tomadas sin Ricardo
 
@@ -49,7 +50,13 @@ hasta que Ricardo las desbloquee.
    fuera de F0-01, pero quedó más visible al corregir los valores de arriba.
 4. **`UMA_DIARIA_2026 = 117.22` en `app/fiscal_engine/tablas_isr.py`** cuando el valor oficial
    es **$117.31** (INEGI / DOF 09-01-2026). Es un error de cálculo real en el dominio fiscal
-   (afecta el tope de deducciones personales). Cae dentro de **F0-02**, la siguiente de la cola.
+   (se propaga a `TOPE_5_UMAS_ANUALES` y `TOPE_FUNERAL` de `deducciones_personales.py`). Cae
+   dentro de **F0-02**, la siguiente de la cola.
+   **Segunda cara del mismo bug, detectada por el revisor:** conviven **dos convenciones de
+   UMA anual**. El código usa `diaria × 365`; INEGI y el doc 20 usan `diaria × 30.4 × 12`
+   ($42,794.64). Con la UMA correcta, 5 UMA anuales dan $214,090.75 por la vía del código y
+   $213,973.20 por la oficial: el número no cuadra ni corrigiendo el centavo. **F0-02 tiene
+   que resolver las dos cosas**, el valor y la convención.
 
 ### Revisor
 
@@ -62,3 +69,11 @@ general" en vez de "SM del área geográfica" (Art. 28 LSS), y dos claves de cat
 heredadas de `PLAN_NOMINA` sin verificar — `c_TipoPercepcion` 049 es *Premios por asistencia*,
 no "ajuste al neto", y `c_TipoDeduccion` 004 es *Otros*, no "fondo de ahorro". Todo corregido
 contra el catálogo del SAT.
+
+### Lección de proceso (para futuras sesiones)
+
+Un `cat > archivo <<'EOF'` con contenido largo puede **fallar por truncamiento y no escribir
+nada**, dejando en disco la versión anterior. `wc -l` sobre esa versión previa devolvió un
+conteo parecido al esperado y dio falsa confianza: reporté al revisor un contenido que nunca
+tocó el disco. **Verificar leyendo el archivo, no contando sus líneas.** Para archivos largos,
+usar la herramienta de escritura en vez del heredoc.
