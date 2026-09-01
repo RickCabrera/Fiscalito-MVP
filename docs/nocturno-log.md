@@ -422,3 +422,57 @@ F1-05 no la responde. Ver §D16 y el doc 24 §3. Se cierra hasta F3.
   varía: los 70 traen `TotalOtrosPagos=0`, `NumDiasPagados=7.000` y `SBC == SDI`. Más
   `TipoNomina`, que siempre es "O". Están cubiertos con un caso sintético; si se agregan
   fixtures nuevas, conviene que varíen en eso.
+
+---
+
+## D-04 · asistencia, adaptador Hikvision y endpoints (2026-09-01, sesión nocturna)
+
+**PR #16, mergeada. Tests: 818 → 876.** CI verde al primer intento.
+`.venv/Scripts/python.exe -m pytest -q` → `876 passed`; `ruff check .` → `All checks passed!`
+
+### Para Ricardo, antes de la demo
+
+1. **¿Solo rostro, o también tarjeta y huella?** El backlog decía `minor==75` (rostro) pero el
+   spec del checador enumera 1 (tarjeta) y 38 (huella) como métodos válidos y marca solo
+   21/22/76 como fallos. Acepto los tres. La dirección del error lo decide: rechazar una
+   checada de tarjeta fabrica una **falta fantasma** que subdeclara cuotas al IMSS; aceptarla,
+   en el peor caso, cuenta un día trabajado de más. **Si el jefe quiere solo rostro, es una
+   línea** en `MINORS_AUTENTICACION_VALIDA`.
+2. **Si alguien pregunta por incapacidades o vacaciones, la respuesta honesta es "es F1-09".**
+   Hoy **toda** ausencia cuenta como falta y baja `dias_cotizados`. Legalmente ni la
+   incapacidad ni las vacaciones son ausentismo injustificado, y §D3 sí las distingue. Es la
+   primera vez que el flujo mete al IMSS un número que no viene del CFDI.
+3. **Turnos nocturnos** cuentan como dos días trabajados. Fuera de alcance hoy.
+4. `docs/api-contract.md` se creó **parcial**, solo con los 3 endpoints de asistencia. **S-03
+   sigue abierta con su criterio intacto**: los 11 endpoints existentes y el reemplazo de las
+   secciones duplicadas de los CLAUDE.md.
+
+### Decisiones tomadas sin Ricardo
+
+1. `minor` 1 y 38 además de 75 (arriba).
+2. **`attendanceStatus` desconocido rechaza el batch completo.** Costo conocido en D-08: si el
+   aparato llega sin modo de asistencia configurado, no entra ningún evento hasta configurarlo.
+   Se prefirió el error ruidoso a inventar una jornada.
+3. **`time` y `desde` sin offset levantan**, en vez de asumir zona. La zona equivocada corre
+   todas las horas y convierte el día en retardos.
+4. **`CLIENTE_DEMO` como default** del query param `cliente`: el cuerpo del dispositivo no
+   puede llevarlo. D-05 y D-07 heredan ese contrato.
+
+### Dos bugs que el revisor encontró en lo que yo ya había entregado
+
+- `GET /asistencia/eventos?desde=` **sin offset respondía 500 pelado** —sin cuerpo
+  `{exito, error}`— y es el endpoint que el panel pollea cada 3 s: se habría quedado en blanco
+  en vivo.
+- El **multipart fallaba si la parte JSON traía `filename`**, que es la variante que varios
+  firmwares mandan. Mi test usaba justo la otra. Contra el aparato real en D-08 se habría
+  rechazado el batch entero.
+
+Los dos con test de regresión. El patrón se repite: el código de la ruta feliz estaba bien y
+lo que faltaba era la rama que el dato real ejerce.
+
+### Lo que D-05, D-06 y D-07 heredan
+
+`cliente` es query con default `demo` · `desde` **exige offset** · `empleados_desconocidos`
+**tiene que pintarse en pantalla**, o un alta con el `employeeNo` equivocado se ve como
+"faltaron todos" · **`dias_cotizados` es informativo**: D-06 construye `DiasDelPeriodo` con
+`dias_periodo` y `dias_ausentismo`, no con ese escalar, o contradice a `cuotas.py`.
