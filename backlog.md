@@ -109,7 +109,7 @@ cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
 - [x] **D-01 · Tablas + constantes mínimas** — cubierta por F1-01…F1-05.
 - [x] **D-02 · `integracion.py` + `cuotas.py`** — cubierta por F1-02 y F1-03.
 - [x] **D-03 · `isr_nomina.py` + `recibo.py`** — cubierta por F1-04 y F1-05.
-- [ ] **D-04 · Módulo `asistencia/` + endpoints** — `schemas/asistencia.py` con
+- [x] **D-04 · Módulo `asistencia/` + endpoints** — `schemas/asistencia.py` con
   `EventoChecada{empleado_no, timestamp, tipo, fuente, raw?}`; `asistencia/hikvision.py`
   con `parse_acs_event()` (lee `InfoList[].employeeNoString`, `time`, `attendanceStatus`;
   filtra `major==5 and minor==75`); `asistencia/incidencias.py` con `cerrar_periodo()`
