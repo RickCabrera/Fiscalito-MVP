@@ -105,7 +105,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   PLAN_NOMINA §2 (UMA por vigencia, SM, tope/piso SBC, subsidio 2026, factor de
   integración, ramos IMSS, CEAV) y sus fuentes. *Listo cuando:* cada valor tiene fuente
   y fecha de vigencia.
-- [ ] **F0-02 · Refactor `constants.py` a vigencias** — `uma_vigente(fecha)` y
+- [x] **F0-02 · Refactor `constants.py` a vigencias** — `uma_vigente(fecha)` y
   `salario_minimo_vigente(fecha, zona)`; migrar usos existentes; tests que cubran el
   corte enero/febrero 2026 (UMA 2025 en enero). *Listo cuando:* 93 tests previos
   siguen verdes + tests nuevos de vigencia.
