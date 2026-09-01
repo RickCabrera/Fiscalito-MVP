@@ -235,3 +235,64 @@ atraviesa el compositor, que es donde vivía el defecto.
 Esta tarea la roza: el `piso_aplicado` del clamp es el único camino práctico por el que un SBC
 llega a ser exactamente 1 salario mínimo, y por tanto el único por el que el renglón de
 3.150 % de CEAV es alcanzable. Ya hay un test que lo demuestra.
+
+---
+
+## F1-03 · cuotas obrero-patronales (2026-09-01, sesión nocturna)
+
+**Estado:** CERRADA. PR #12, mergeada a main. CI verde al primer intento. Tests: 657 → 715.
+
+### El criterio de cierre se ajustó, y esto es lo que Ricardo tiene que saber
+
+El backlog pedía **cuadrar contra el caso real de S-04**. No es alcanzable con el dato
+timbrado, y el criterio quedó ajustado **en el propio `backlog.md`** para que el `[x]` no se
+lea como "cuadró". La evidencia completa está en **§D14**. En corto:
+
+- Cuadran **5 de los 70 recibos**: un solo empleado, y solo desde abril.
+- **Tres empleados tienen una deducción por debajo del mínimo legal** que impone su propio
+  `SalarioBaseCotApor` (−2.49, −0.49, −2.55). Ninguna fórmula puede hacer que un número baje:
+  la base con la que el patrón determinó la cuota **no es la que timbró**.
+- **El cuadre completo depende de la contadora, no del código.**
+
+### El hallazgo que sí valida D2
+
+`XAHH010101AA8` tiene $55.13 en marzo y $55.12 desde abril, con el mismo SBC y los mismos 7
+días. Son, al centavo, los **dos órdenes de redondeo admisibles** (agregado y por concepto): el
+software del patrón cambió de criterio en el corte marzo→abril.
+
+Y `XAAA010101AA1`, con **SBC idéntico**, no cuadra en ninguno de sus cuatro recibos porque
+causó baja el 29 de marzo. Mismo salario, resultado opuesto según el mes: aísla la fecha como
+causa. D2 deja de ser una suposición razonable y pasa a ser una decisión observada.
+
+### Errores míos que el revisor cazó
+
+1. **El test que llamé "cuadre estricto" comparaba el motor contra sí mismo.** Descartaba el
+   importe del CFDI y afirmaba que el motor da 55.12. Pasaba dijera lo que dijera el dato real,
+   y de ahí se propagó una afirmación falsa a D14 y al backlog — el texto que Ricardo iba a
+   leer para decidir el cierre. Es exactamente la clase de validación-que-no-valida que este
+   repo persigue. Corregido: ahora comparan contra el timbrado y afirman el **conjunto exacto**
+   de los cinco que cuadran sobre los setenta.
+2. **La tabla de mínimos legales de D14 omitía el excedente de EyM** que esos SBC sí causan, así
+   que las brechas eran mayores de lo que escribí.
+3. **El test de absorción del Art. 36 no probaba absorción**: usé un SBC que no dispara el
+   supuesto. El caso real existe y es población de verdad — en la **ZLFN** el salario mínimo
+   ($440.87) está por encima de 3 UMA, así que un trabajador de salario mínimo de frontera
+   causa excedente y absorción a la vez.
+
+### Decisiones tomadas sin Ricardo
+
+1. **D14 nueva** con el hallazgo completo; **D2, D3 y D4 ampliadas** con lo que el caso real
+   enseñó.
+2. **Límite conocido declarado, no implementado:** la fr. II del Art. 31 (ausencia mayor a 7
+   días libera de todas las cuotas) no está en el motor. Con 20 días de ausencia sigue cobrando
+   30 de EyM. La dirección del error es la conservadora y quedó fijada por test en vez de
+   adivinar.
+3. **Un solo predicado** de "trabajador de salario mínimo" compartido por CEAV y el Art. 36: es
+   una sola pregunta legal (D4) y no puede contestarse dos veces.
+4. `tablas_imss.py` partido en `tablas_imss.py` + `ceav.py` para no pasar de 300 líneas sin
+   recortar docstrings de fundamento.
+
+### Nota para quien siga
+
+`app/nomina_engine/cuotas.py` quedó en **300 líneas exactas**, sin margen. Lo primero que lo
+toque (F1-07) debe **partir el archivo**, no recortar docstrings de fundamento.
