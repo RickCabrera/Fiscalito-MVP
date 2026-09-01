@@ -120,7 +120,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
 - [x] **F1-01 · `tablas_imss.py` + `tablas_isr_periodicas.py` + `subsidio_empleo()`** —
   tablas 2026 versionadas con fuente; subsidio con transitorio de enero. *Listo cuando:*
   tests unitarios por tabla contra valores publicados.
-- [ ] **F1-02 · `integracion.py`** — factor de integración calculado desde
+- [x] **F1-02 · `integracion.py`** — factor de integración calculado desde
   (aguinaldo, vacaciones, prima), SBC fijo/variable/mixto, clamp 1 SM–25 UMA,
   `ConceptoIntegrable`, `requiere_aviso` con fecha límite (Art. 34). *Listo cuando:*
   la tabla de factores mínimos de ley de PLAN_NOMINA §2.2 pasa como test.
