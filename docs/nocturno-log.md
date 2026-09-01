@@ -77,3 +77,67 @@ nada**, dejando en disco la versión anterior. `wc -l` sobre esa versión previa
 conteo parecido al esperado y dio falsa confianza: reporté al revisor un contenido que nunca
 tocó el disco. **Verificar leyendo el archivo, no contando sus líneas.** Para archivos largos,
 usar la herramienta de escritura en vez del heredoc.
+
+---
+
+## F0-02 · `constants.py` a vigencias (2026-09-01, sesión nocturna)
+
+**Estado:** CERRADA. PR #9, mergeada a main el 2026-09-01 a las 11:54 UTC (05:54 hora local).
+CI verde al primer intento. Tests: 450 → 477.
+
+### Cambia el output de un endpoint ya desplegado
+
+`POST /api/v1/deducciones-personales` devuelve un `tope_global` distinto. **Dos causas
+independientes**, ninguna colateral del refactor:
+
+1. `UMA_DIARIA_2026` estaba en **117.22**; el valor oficial es **117.31** (INEGI, Comunicado
+   1/26; DOF 09-01-2026).
+2. El tope global se calculaba como `UMA diaria × 365`. El Art. 151 último párrafo LISR dice
+   "cinco veces el **valor anual** de la UMA", y ese valor anual es la magnitud que publica el
+   INEGI (Art. 4 fr. III de la Ley UMA), no una derivación por 365. La `knowledge_base` ya lo
+   tenía bien desde antes; el código no.
+
+**Efecto: $213,926.50 → $213,973.20.** La firma del endpoint no cambia. El campo `ejercicio`
+existe en el motor pero **no** se agregó al request: eso espera a `docs/api-contract.md` (S-03).
+
+### Decisiones abiertas para Ricardo
+
+1. **Tope de gastos funerarios — DECISIÓN PROVISIONAL.** El Art. 151 **fr. II** dice "elevado
+   al año", no "el valor anual de la UMA" como el último párrafo. Dos lecturas defendibles: el
+   valor anual publicado ($42,794.64 en 2026) o `diaria × 365` ($42,818.15). **Se tomó la
+   conservadora** (tope menor), que además es la que ya usaba
+   `knowledge_base/11_deducciones_personales.md`. Diferencia: **$23.51**. Marcado en el
+   docstring de `tope_gastos_funerarios()`. Pregunta para la contadora.
+2. **2024 quedó fuera** de las tablas de vigencia por falta de fuente verificada en el repo.
+   La declaración anual del ejercicio 2024 todavía es presentable, así que puede hacer falta.
+   Agregar un año es una línea con su cita del DOF; no se hizo de memoria a propósito.
+3. **Deuda documental no tocada:** el árbol de archivos de `apps/api/CLAUDE.md` no lista
+   `knowledge_base/nomina/` (F0-01) ni `tests/test_fixtures_nomina.py` (S-04). Sí actualicé el
+   renglón que mi propio diff volvió falso.
+
+### HALLAZGO DE PRIVACIDAD — no es de esta tarea, requiere decisión de Ricardo
+
+El revisor encontró, auditando archivos vecinos, que hay **un RFC de persona física real
+versionado en main**, en archivos trackeados y etiquetado como "caso real verificado con
+contador": `CADG620317EE0` (4 letras + fecha de nacimiento + homoclave), junto a RFC de
+contrapartes reales (`RIX150930NF1`, `MCP2404207Q2`, `BMS170308GT7`) ligados a montos de
+facturas reales.
+
+Aparece en `README.md` (líneas 144 y 275), `apps/api/CLAUDE.md` (110),
+`apps/api/tests/test_calculadora.py` (~1410–1482) y `apps/api/tests/test_caso_real_enero2026.py`
+(desde la línea 2).
+
+Contraste: las fixtures de nómina de S-04 **sí** están anonimizadas. El trabajo se hizo para
+nómina y nunca se hizo para el caso fiscal viejo. Contradice de frente la regla de `CLAUDE.md`
+sobre datos personales, y el `README.md` es el archivo más visible del repo.
+
+**No se tocó esta noche, a propósito:** limpiarlo de verdad implica reescribir historia, y el
+modo autónomo prohíbe `filter-repo` y force push. **Tarea propuesta para el backlog** (la
+decide Ricardo, no la agrego yo):
+
+> **S-09 · Anonimizar el caso real CADG620317EE0** — mismo tratamiento que S-04: RFC, nombres
+> y homoclaves sintéticos, montos reales, en `README.md`, `apps/api/CLAUDE.md` y los dos
+> archivos de tests. Decisión de Ricardo si basta con limpiar HEAD o hay que reescribir
+> historia (ver S-06, que ya plantea lo mismo para `apps/api/pfebrero/`). Nota: S-07 ya cubre
+> las demo-xmls del frontend y menciona "el caso real del backend" — puede que S-09 sea parte
+> de S-07 en vez de una tarea nueva.
