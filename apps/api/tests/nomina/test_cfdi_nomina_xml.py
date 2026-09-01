@@ -299,7 +299,6 @@ def _atributos_por_ruta(raiz: ET.Element) -> dict[str, dict[str, str]]:
         etiqueta = nodo.tag.split("}")[-1]
         if etiqueta == "TimbreFiscalDigital":
             return
-        hermanos = [h for h in nodo if h.tag == nodo.tag]  # noqa: F841
         plano[ruta] = dict(nodo.attrib)
         contador: dict[str, int] = {}
         for hijo in nodo:
@@ -364,6 +363,9 @@ class TestIdaYVuelta:
                 PartidaOtroPago("004", "D200", "SALDO A FAVOR", Decimal("250.00")),
             ),
         )
+        # `TipoNomina` cae en la misma clase: los 70 fixtures son "O" y el
+        # default también, así que cablearlo en duro no movería nada. El
+        # extraordinario —aguinaldo, finiquito, PTU— es justo el que vale.
         trabajador = replace(
             TRABAJADOR,
             salario_base_cotizacion=Decimal("300.00"),
@@ -378,6 +380,7 @@ class TestIdaYVuelta:
             date(2026, 4, 5),
             date(2026, 4, 5),
             Decimal("15"),
+            tipo_nomina="E",
             serie="DEMOSA",
             folio="1",
         )
@@ -388,6 +391,7 @@ class TestIdaYVuelta:
 
         nomina = raiz.find(".//n:Nomina", NS)
         assert nomina.attrib["NumDiasPagados"] == "15.000"
+        assert nomina.attrib["TipoNomina"] == "E"
 
         receptor = raiz.find(".//n:Receptor", NS)
         assert Decimal(receptor.attrib["SalarioBaseCotApor"]) == Decimal("300.00")
