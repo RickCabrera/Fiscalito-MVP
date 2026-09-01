@@ -90,6 +90,30 @@
 
 ---
 
+## Nómina y Seguridad Social (módulo `nomina/`, docs 20–26)
+
+Fuentes primarias de los valores del módulo de nómina. Agregadas en **F0-01**.
+
+| Documento | URL | Fecha | Qué acredita |
+|-----------|-----|-------|--------------|
+| INEGI — Comunicado de prensa 1/26 (UMA 2026) | https://www.inegi.org.mx/contenidos/saladeprensa/boletines/2026/uma/uma2026.pdf | 09/01/2026 | UMA 2026 diaria/mensual/anual, vigente 1-feb-2026 |
+| DOF — UMA 2026 | https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026 | 09/01/2026 | Publicación oficial de la UMA 2026 |
+| INEGI — Comunicado de prensa 1/25 (UMA 2025) | https://www.inegi.org.mx/contenidos/saladeprensa/boletines/2025/uma/uma2025.pdf | 09/01/2025 | UMA 2025, aplicable a **enero de 2026** |
+| CONASAMI — Resolución de salarios mínimos 2026 | https://www.gob.mx/conasami | 09/12/2025 (DOF) | SM general $315.04 y ZLFN $440.87, vigentes 1-ene-2026 |
+| DOF — Decreto que modifica el subsidio para el empleo | https://dof.gob.mx/nota_detalle.php?codigo=5777649&fecha=31/12/2025 | 31/12/2025 | Subsidio 2026: 15.02 % de la UMA mensual, transitorio de enero 15.59 %, tope $11,492.66 |
+| DOF — Reforma LSS y Ley del SAR (transición CEAV 2023–2030) | https://dof.gob.mx/nota_detalle.php?codigo=5608457&fecha=16/12/2020 | 16/12/2020 | Tabla CEAV patronal por año, incluido el renglón 2026 |
+| DOF — Acuerdo ACDO.AS2.HCT.290626/176.P.DIR (IMSS) | https://dof.gob.mx/ | 16/07/2026 | e.firma como único certificado; deroga el NPIE; transición a 90 días |
+| Ley del Seguro Social — Cámara de Diputados | https://www.diputados.gob.mx/LeyesBiblio/pdf/LSS.pdf | Vigente | Arts. 15, 27, 28, 30, 31, 34, 36, 39, 71–74, 106, 107, 147, 168, 211, 304-B |
+| RACERF (Reglamento LSS en materia de Afiliación, Clasificación, Recaudación y Fiscalización) | https://www.diputados.gob.mx/LeyesBiblio/regley/Reg_LSS_MACERF.pdf | Vigente | Art. 3 (prórroga por viernes o día inhábil), Art. 32 (prima de RT) |
+| Ley del Infonavit — Cámara de Diputados | https://www.diputados.gob.mx/LeyesBiblio/pdf/LInfonavit.pdf | Vigente | Art. 29 (aportación 5 %), Art. 35 (entero bimestral) |
+| Ley Federal del Trabajo — Cámara de Diputados | https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf | Vigente | Arts. 71, 74, 76, 80, 87, 117, 122, 127 |
+| SAT — Guía de llenado del complemento de nómina 1.2 | https://www.sat.gob.mx/consultas/97722/comprobante-de-nomina | Vigente | Estructura del CFDI de nómina, catálogos |
+
+> **Regla del módulo:** ningún valor de `nomina/` se documenta con una fuente secundaria como
+> único respaldo. Si solo hay secundaria, se marca `PENDIENTE VERIFICAR EN DOF` en la celda.
+
+---
+
 ## Leyes y Reglamentos de Referencia
 
 | Ordenamiento | Aplicación en el Sistema |
