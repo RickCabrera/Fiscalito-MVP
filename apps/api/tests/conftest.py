@@ -7,6 +7,7 @@ de pytest para datos comunes (perfiles, facturas).
 """
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -88,3 +89,25 @@ def factura_egreso_fixture() -> CFDI:
         iva_trasladado=800.00,
         metodo_pago="PUE",
     )
+
+
+# ============================================================
+# Fixtures de nómina (S-04) — caso real anonimizado
+# ============================================================
+
+_FIXTURES_NOMINA = Path(__file__).parent / "fixtures" / "nomina"
+
+
+@pytest.fixture
+def nomina_bimestre() -> list[Path]:
+    """Los 70 CFDI de nómina del bimestre marzo-abril, en orden cronológico."""
+    return sorted(_FIXTURES_NOMINA.glob("semana-*/*.xml"))
+
+
+@pytest.fixture
+def nomina_por_semana() -> dict[str, list[Path]]:
+    """Los CFDI agrupados por semana: 9, 9, 9, 8, 7, 7, 7, 7, 7."""
+    return {
+        carpeta.name: sorted(carpeta.glob("*.xml"))
+        for carpeta in sorted(_FIXTURES_NOMINA.glob("semana-*"))
+    }
