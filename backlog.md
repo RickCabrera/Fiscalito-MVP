@@ -163,8 +163,10 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   **Resultado:** los 6 XSD quedan versionados **byte-idénticos** a lo publicado por el SAT
   (6.1 MB, de los cuales `catCFDI.xsd` son 5.98 MB) y la resolución offline la hace un resolver
   de lxml, no una reescritura — así el SHA-256 de cada uno sigue verificando contra la fuente
-  oficial, y un test lo recalcula. El pre-recibo generado valida sin red, y **los totales
-  cuadran 70 de 70** alimentando el serializador con las partidas del propio CFDI timbrado. El
+  oficial, y un test lo recalcula. **Los 70 recibos del caso real se vuelven a emitir con el generador** y los
+  totales que escribe en el XML cuadran contra el timbrado en los 70, además de validar sin
+  red. Se lee del documento emitido, no del objeto de dominio: comparar propiedades del recibo
+  contra el fixture deja pasar un generador que escriba el atributo equivocado. El
   camino de **cálculo** (ISR y cuota obrera) sigue midiéndose donde lo dejaron §D14 y §D15;
   F1-05 no lo re-litiga.
 - [ ] **F1-06 · `calendario_laboral.py`** — obligaciones patronales (pago mensual día

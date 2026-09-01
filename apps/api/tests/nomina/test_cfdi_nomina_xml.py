@@ -63,8 +63,8 @@ TRABAJADOR = DatosTrabajador(
     tipo_contrato="01",
     tipo_regimen="02",
     numero_empleado="E-03",
-    departamento="OPERACIONES",
     puesto="OPERATIVO",
+    departamento="OPERACIONES",
     riesgo_puesto="2",
     periodicidad_pago="02",
     salario_base_cotizacion=Decimal("399.52"),
@@ -107,6 +107,77 @@ def _generar(recibo: Recibo) -> str:
     )
 
 
+def _generar_raiz(recibo: Recibo) -> ET.Element:
+    return ET.fromstring(_generar(recibo))
+
+
+def _datos_del_cfdi(ruta: Path):
+    """Emisor, receptor y periodo tal como vienen en el CFDI timbrado."""
+    raiz = ET.parse(ruta).getroot()
+    nomina = raiz.find(".//n:Nomina", NS)
+    emisor = raiz.find("cfdi:Emisor", NS).attrib
+    receptor = raiz.find("cfdi:Receptor", NS).attrib
+    n_emisor = nomina.find("n:Emisor", NS).attrib
+    r = nomina.find("n:Receptor", NS).attrib
+    patron = DatosPatron(
+        rfc=emisor["Rfc"],
+        nombre=emisor["Nombre"],
+        regimen_fiscal=emisor["RegimenFiscal"],
+        registro_patronal=n_emisor["RegistroPatronal"],
+        codigo_postal=raiz.attrib["LugarExpedicion"],
+        clave_entidad=r["ClaveEntFed"],
+    )
+    trabajador = DatosTrabajador(
+        rfc=receptor["Rfc"],
+        nombre=receptor["Nombre"],
+        curp=r["Curp"],
+        numero_seguridad_social=r["NumSeguridadSocial"],
+        codigo_postal=receptor["DomicilioFiscalReceptor"],
+        fecha_inicio_relacion_laboral=date.fromisoformat(r["FechaInicioRelLaboral"]),
+        antiguedad=r["Antigüedad"],
+        tipo_contrato=r["TipoContrato"],
+        tipo_regimen=r["TipoRegimen"],
+        numero_empleado=r["NumEmpleado"],
+        departamento=r.get("Departamento", ""),  # opcional: 61 de 70 lo traen
+        puesto=r["Puesto"],
+        riesgo_puesto=r["RiesgoPuesto"],
+        periodicidad_pago=r["PeriodicidadPago"],
+        salario_base_cotizacion=Decimal(r["SalarioBaseCotApor"]),
+        salario_diario_integrado=Decimal(r["SalarioDiarioIntegrado"]),
+        sindicalizado=r["Sindicalizado"],
+        tipo_jornada=r["TipoJornada"],
+    )
+    return patron, trabajador
+
+
+def _regenerar(ruta: Path) -> ET.Element:
+    """
+    Vuelve a emitir el CFDI del fixture con el generador y devuelve la raiz del
+    **XML emitido**.
+
+    Es lo que permite comparar contra lo que el generador escribio, y no contra
+    lo que el objeto de dominio calcula.
+    """
+    original = ET.parse(ruta).getroot()
+    nomina = original.find(".//n:Nomina", NS)
+    recibo, _ = _partidas_del_cfdi(ruta)
+    patron, trabajador = _datos_del_cfdi(ruta)
+    xml = generar_cfdi_nomina(
+        recibo,
+        patron,
+        trabajador,
+        datetime.fromisoformat(original.attrib["Fecha"]),
+        date.fromisoformat(nomina.attrib["FechaInicialPago"]),
+        date.fromisoformat(nomina.attrib["FechaFinalPago"]),
+        date.fromisoformat(nomina.attrib["FechaPago"]),
+        Decimal(nomina.attrib["NumDiasPagados"]),
+        tipo_nomina=nomina.attrib["TipoNomina"],
+        serie=original.attrib.get("Serie", ""),
+        folio=original.attrib.get("Folio", ""),
+    )
+    return ET.fromstring(xml)
+
+
 def _partidas_del_cfdi(ruta: Path):
     """Reconstruye el recibo a partir del CFDI timbrado, sin calcular nada."""
     nomina = ET.parse(ruta).getroot().find(".//n:Nomina", NS)
@@ -144,52 +215,62 @@ def _partidas_del_cfdi(ruta: Path):
     return Recibo(percepciones, deducciones, tuple(otros)), nomina
 
 
-def _recibos_del_caso_real():
-    for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
-        yield ruta, *_partidas_del_cfdi(ruta)
-
-
 class TestTotales:
     """
-    Los totales se comparan como `Decimal`, nunca como cadena: el caso real
-    emite `TotalOtrosPagos="0"` y el generador `"0.00"`, y las dos son válidas.
+    Los totales se leen del **XML que emite el generador**, no del objeto
+    `Recibo`.
+
+    Comparar propiedades del recibo contra el fixture prueba que la aritmetica
+    del dominio esta bien, pero deja pasar un generador que escriba
+    `TotalSueldos` donde va `TotalPercepciones`, o que emita un `Total` que
+    ignore el descuento. Estos tests deben ponerse en rojo ante esas mutaciones.
+
+    Se comparan como `Decimal`, nunca como cadena: el caso real emite
+    `TotalOtrosPagos="0"` y el generador `"0.00"`, y las dos son validas.
     """
 
     def test_hay_setenta_recibos(self):
-        assert len(list(_recibos_del_caso_real())) == 70
+        assert len(list(FIXTURES.glob("semana-*/*.xml"))) == 70
 
     def test_los_totales_del_complemento_cuadran_en_los_setenta(self):
-        for ruta, recibo, nomina in _recibos_del_caso_real():
-            atributos = nomina.attrib
-            assert recibo.total_percepciones == Decimal(atributos["TotalPercepciones"]), ruta
-            assert recibo.total_deducciones == Decimal(atributos["TotalDeducciones"]), ruta
-            assert recibo.total_otros_pagos == Decimal(atributos["TotalOtrosPagos"]), ruta
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            original = ET.parse(ruta).getroot().find(".//n:Nomina", NS).attrib
+            emitido = _regenerar(ruta).find(".//n:Nomina", NS).attrib
+            for attr in ("TotalPercepciones", "TotalDeducciones", "TotalOtrosPagos"):
+                assert Decimal(emitido[attr]) == Decimal(original[attr]), f"{ruta.name} {attr}"
 
     def test_los_totales_de_percepciones_cuadran_en_los_setenta(self):
-        for ruta, recibo, nomina in _recibos_del_caso_real():
-            nodo = nomina.find("n:Percepciones", NS).attrib
-            assert recibo.total_gravado == Decimal(nodo["TotalGravado"]), ruta
-            assert recibo.total_exento == Decimal(nodo["TotalExento"]), ruta
-            assert recibo.total_sueldos == Decimal(nodo["TotalSueldos"]), ruta
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            original = ET.parse(ruta).getroot().find(".//n:Percepciones", NS).attrib
+            emitido = _regenerar(ruta).find(".//n:Percepciones", NS).attrib
+            for attr in ("TotalSueldos", "TotalGravado", "TotalExento"):
+                assert Decimal(emitido[attr]) == Decimal(original[attr]), f"{ruta.name} {attr}"
 
     def test_los_totales_de_deducciones_cuadran_en_los_setenta(self):
-        for ruta, recibo, nomina in _recibos_del_caso_real():
-            nodo = nomina.find("n:Deducciones", NS)
-            if nodo is None:
-                assert recibo.total_deducciones == Decimal("0.00"), ruta
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            original = ET.parse(ruta).getroot().find(".//n:Deducciones", NS)
+            emitido = _regenerar(ruta).find(".//n:Deducciones", NS)
+            if original is None:
+                assert emitido is None, ruta
                 continue
-            esperado_isr = Decimal(nodo.attrib.get("TotalImpuestosRetenidos", "0"))
-            esperado_otras = Decimal(nodo.attrib.get("TotalOtrasDeducciones", "0"))
-            assert recibo.total_impuestos_retenidos == esperado_isr, ruta
-            assert recibo.total_otras_deducciones == esperado_otras, ruta
+            for attr in ("TotalImpuestosRetenidos", "TotalOtrasDeducciones"):
+                esperado = Decimal(original.attrib.get(attr, "0"))
+                assert Decimal(emitido.attrib.get(attr, "0")) == esperado, f"{ruta.name} {attr}"
 
     def test_los_totales_del_comprobante_cuadran_en_los_setenta(self):
         """`SubTotal = percepciones + otros pagos`, `Descuento = deducciones`."""
-        for ruta, recibo, _ in _recibos_del_caso_real():
-            comprobante = ET.parse(ruta).getroot().attrib
-            assert recibo.subtotal == Decimal(comprobante["SubTotal"]), ruta
-            assert recibo.descuento == Decimal(comprobante["Descuento"]), ruta
-            assert recibo.total == Decimal(comprobante["Total"]), ruta
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            original = ET.parse(ruta).getroot().attrib
+            emitido = _regenerar(ruta).attrib
+            for attr in ("SubTotal", "Descuento", "Total"):
+                assert Decimal(emitido[attr]) == Decimal(original[attr]), f"{ruta.name} {attr}"
+
+    def test_el_concepto_replica_los_totales_del_comprobante(self):
+        for ruta in sorted(FIXTURES.glob("semana-*/*.xml")):
+            emitido = _regenerar(ruta)
+            concepto = emitido.find(".//cfdi:Concepto", NS).attrib
+            assert Decimal(concepto["Importe"]) == Decimal(emitido.attrib["SubTotal"]), ruta
+            assert Decimal(concepto["Descuento"]) == Decimal(emitido.attrib["Descuento"]), ruta
 
 
 class TestValidacionXSD:
@@ -254,6 +335,53 @@ class TestNoEstaTimbrado:
 
     def test_el_comentario_de_cabecera_avisa(self):
         assert "PRE-RECIBO SIN TIMBRAR" in _generar(_recibo_ejemplo())
+
+
+class TestSeparacionYJubilacion:
+    """
+    Las claves que el caso real NO ejercita.
+
+    Las 70 fixtures solo traen `TipoPercepcion` 001 y 020, así que en ellas
+    `TotalSueldos == TotalPercepciones` siempre y el cuadre 70/70 no distingue
+    una propiedad de la otra. Un finiquito sí las separa, y esa rama estaría sin
+    cubrir si no fuera por estos tests.
+    """
+
+    def _recibo_con_finiquito(self) -> Recibo:
+        return Recibo(
+            percepciones=(
+                PartidaPercepcion("001", "P001", "SUELDO", Decimal("2000.00"), Decimal("0.00")),
+                PartidaPercepcion(
+                    "022", "P022", "PRIMA DE ANTIGÜEDAD", Decimal("500.00"), Decimal("300.00")
+                ),
+                PartidaPercepcion(
+                    "039", "P039", "JUBILACIÓN", Decimal("100.00"), Decimal("150.00")
+                ),
+            ),
+        )
+
+    def test_total_sueldos_excluye_separacion_y_jubilacion(self):
+        recibo = self._recibo_con_finiquito()
+        assert recibo.total_percepciones == Decimal("3050.00")
+        assert recibo.total_sueldos == Decimal("2000.00")
+        assert recibo.total_separacion_indemnizacion == Decimal("800.00")
+        assert recibo.total_jubilacion_pension_retiro == Decimal("250.00")
+
+    def test_el_xml_emite_los_totales_condicionales(self):
+        emitido = _generar_raiz(self._recibo_con_finiquito())
+        percepciones = emitido.find(".//n:Percepciones", NS).attrib
+        assert Decimal(percepciones["TotalSueldos"]) == Decimal("2000.00")
+        assert Decimal(percepciones["TotalSeparacionIndemnizacion"]) == Decimal("800.00")
+        assert Decimal(percepciones["TotalJubilacionPensionRetiro"]) == Decimal("250.00")
+
+    def test_sin_finiquito_esos_totales_no_se_emiten(self):
+        """Son condicionales: emitirlos en cero sería incorrecto."""
+        percepciones = _generar_raiz(_recibo_ejemplo()).find(".//n:Percepciones", NS).attrib
+        assert "TotalSeparacionIndemnizacion" not in percepciones
+        assert "TotalJubilacionPensionRetiro" not in percepciones
+
+    def test_un_recibo_con_finiquito_valida(self):
+        assert errores_de_validacion(_generar(self._recibo_con_finiquito())) == []
 
 
 class TestEstructura:

@@ -242,7 +242,6 @@ class DatosTrabajador:
     tipo_contrato: str
     tipo_regimen: str
     numero_empleado: str
-    departamento: str
     puesto: str
     riesgo_puesto: str
     periodicidad_pago: str
@@ -250,3 +249,5 @@ class DatosTrabajador:
     salario_diario_integrado: Decimal
     sindicalizado: str = "No"
     tipo_jornada: str = "01"
+    # Opcional en el complemento: 61 de los 70 recibos del caso real lo traen.
+    departamento: str = ""
