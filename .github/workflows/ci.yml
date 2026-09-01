@@ -43,5 +43,4 @@ jobs:
       - run: npm run build
       # Se activa al cerrar S-02 (lint frontend a cero; hoy 20 errores).
       # - run: npm run lint
-      # Se activa al cerrar S-05 (instalar Vitest; hoy no existe script "test").
-      # - run: npm test
+      - run: npm test
