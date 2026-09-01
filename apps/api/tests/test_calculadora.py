@@ -5,6 +5,9 @@ Ejecutar: pytest tests/ -v
 
 from datetime import date
 
+import pytest
+
+from app.exceptions import FiscalValidationError
 from app.fiscal_engine.calculadora import (
     calcular_declaracion,
     calcular_isr_general,
@@ -13,10 +16,7 @@ from app.fiscal_engine.calculadora import (
 )
 from app.fiscal_engine.calendario import _dias_habiles_extra, generar_calendario
 from app.fiscal_engine.comparador import calcular_todos_regimenes
-from app.fiscal_engine.deducciones_personales import (
-    TOPE_5_UMAS_ANUALES,
-    calcular_deducciones_personales,
-)
+from app.fiscal_engine.deducciones_personales import calcular_deducciones_personales
 from app.fiscal_engine.tablas_isr import TABLA_ISR_MENSUAL, generar_tabla_acumulada
 from app.schemas.fiscal import CFDI, PerfilContribuyente, PeriodicidadDeclaracion, TipoFactura
 
@@ -212,12 +212,44 @@ class TestDeduccionesPersonales:
             intereses_hipotecarios=100_000.00,
         )
         assert resultado.tope_tipo == "5_umas"
-        assert resultado.total_deducible == round(TOPE_5_UMAS_ANUALES, 2)
+        # Contra el literal, no contra la constante que produce el resultado:
+        # el test viejo comparaba con la misma constante y pasaba con cualquier
+        # valor, incluido el 117.22 mal. Fuente: 5 x UMA anual 2026 ($42,794.64,
+        # INEGI Comunicado 1/26) = $213,973.20 (Art. 151 ultimo parrafo LISR).
+        assert resultado.total_deducible == 213_973.20
         assert resultado.excedente_no_aprovechado > 0
+
+    def test_tope_5_umas_del_ejercicio_2025(self):
+        """El ejercicio determina que UMA topa: 5 x UMA anual 2025 = $206,367.60."""
+        resultado = calcular_deducciones_personales(
+            ingresos_anuales=2_000_000.00,
+            gastos_medicos=150_000.00,
+            intereses_hipotecarios=100_000.00,
+            ejercicio=2025,
+        )
+        assert resultado.tope_tipo == "5_umas"
+        assert resultado.total_deducible == 206_367.60
+
+    def test_ejercicio_sin_fuente_cargada_falla(self):
+        """No se extrapola una UMA: un ejercicio sin fuente oficial es un error."""
+        with pytest.raises(FiscalValidationError):
+            calcular_deducciones_personales(ingresos_anuales=500_000.00, ejercicio=2024)
+
+    def test_tope_gastos_funerarios(self):
+        """1 UMA anual del ejercicio (Art. 151 fr. II LISR): $42,794.64 en 2026."""
+        resultado = calcular_deducciones_personales(
+            ingresos_anuales=3_000_000.00,
+            funeral=60_000.00,
+        )
+        funerarios = next(
+            d for d in resultado.desglose if d.concepto == "Gastos funerarios"
+        )
+        assert funerarios.tope_aplicable == 42_794.64
+        assert funerarios.monto_aceptado == 42_794.64
 
     def test_tope_15_porciento_cuando_menor(self):
         """El 15% de ingresos es menor que 5 UMAs -> se aplica 15%."""
-        ingresos = 800_000.00  # 15% = $120,000 < $213,926.50
+        ingresos = 800_000.00  # 15% = $120,000 < $213,973.20
         resultado = calcular_deducciones_personales(
             ingresos_anuales=ingresos,
             gastos_medicos=100_000.00,

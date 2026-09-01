@@ -9,8 +9,9 @@ Fuente: Art. 151 LISR.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
-from app.fiscal_engine.tablas_isr import UMA_DIARIA_2026
+from app.constants import EJERCICIO_DEFAULT, uma_anual_vigente
 
 # Topes de colegiaturas por nivel educativo (Art. 1.8 Decreto)
 TOPES_COLEGIATURAS: dict[str, float] = {
@@ -21,8 +22,8 @@ TOPES_COLEGIATURAS: dict[str, float] = {
     "bachillerato": 24_500.00,
 }
 
-# Tope global: 5 UMAs anuales
-TOPE_5_UMAS_ANUALES: float = 5 * UMA_DIARIA_2026 * 365  # $213,926.50
+# Numero de UMA anuales del tope global (Art. 151 ultimo parrafo LISR)
+UMAS_TOPE_GLOBAL: int = 5
 
 # Tope de donativos: 7% de ingresos acumulables del ejercicio anterior
 TASA_TOPE_DONATIVOS: float = 0.07
@@ -30,8 +31,53 @@ TASA_TOPE_DONATIVOS: float = 0.07
 # Tope aportaciones voluntarias retiro: 10% de ingresos o 5 UMAs anuales
 TASA_TOPE_APORTACIONES_RETIRO: float = 0.10
 
-# Tope gastos funerarios: 1 UMA anual
-TOPE_FUNERAL: float = UMA_DIARIA_2026 * 365
+
+def _uma_anual_del_ejercicio(ejercicio: int) -> float:
+    """
+    Valor anual de la UMA del ejercicio, como float.
+
+    El motor fiscal viejo trabaja en float; `app.constants` es Decimal. La
+    coercion se hace aqui, explicita y en un solo lugar. `nomina_engine`
+    (PLAN_NOMINA §3.1) consume el Decimal directo, sin pasar por aqui.
+
+    El 31 de diciembre resuelve siempre a la UMA del propio ejercicio: la
+    UMA de un año rige hasta el 31 de enero del siguiente.
+    """
+    return float(uma_anual_vigente(date(ejercicio, 12, 31)))
+
+
+def tope_global_deducciones(ejercicio: int = EJERCICIO_DEFAULT) -> float:
+    """
+    Tope global de deducciones personales: 5 veces el valor ANUAL de la UMA.
+
+    Art. 151 ultimo parrafo LISR ("cinco veces el valor anual de la Unidad de
+    Medida y Actualizacion"). El valor anual es la magnitud que publica el
+    INEGI (Art. 4 fr. III de la Ley para Determinar el Valor de la UMA), NO
+    `UMA diaria x 365`: esa formula es una herencia del viejo "salario minimo
+    elevado al año" y da $214,090.75 en vez de los $213,973.20 correctos.
+    """
+    return round(UMAS_TOPE_GLOBAL * _uma_anual_del_ejercicio(ejercicio), 2)
+
+
+def tope_gastos_funerarios(ejercicio: int = EJERCICIO_DEFAULT) -> float:
+    """
+    Tope de gastos funerarios: 1 UMA anual (Art. 151 fr. II LISR).
+
+    DECISIÓN PROVISIONAL (nocturno): la fraccion II dice "elevado al año", no
+    "el valor anual de la UMA" como el ultimo parrafo. Las dos lecturas son
+    defendibles: el valor anual publicado por el INEGI ($42,794.64 en 2026) o
+    `diaria x 365` ($42,818.15). Se toma la primera porque es la mas
+    conservadora — tope menor, deduccion menor — y porque es la que ya usa
+    `knowledge_base/11_deducciones_personales.md`. Diferencia: $23.51.
+    Pendiente de confirmar con la contadora.
+    """
+    return round(_uma_anual_del_ejercicio(ejercicio), 2)
+
+# NO se exponen los topes como constantes de modulo. Una constante evaluada al
+# import congela el ejercicio por defecto, y el siguiente que la importe para
+# otro ejercicio obtiene un numero mal en silencio — que es exactamente el bug
+# que esta tarea vino a matar. Pide el tope por ejercicio:
+#   tope_global_deducciones(ejercicio) / tope_gastos_funerarios(ejercicio)
 
 
 @dataclass
@@ -66,14 +112,23 @@ def calcular_deducciones_personales(
     seguros_gastos_medicos: float = 0.0,
     transporte_escolar: float = 0.0,
     funeral: float = 0.0,
+    ejercicio: int = EJERCICIO_DEFAULT,
 ) -> ResultadoDeduccionesPersonales:
     """
     Calcula deducciones personales aplicando topes individuales y el tope global.
 
     El tope global es el MENOR entre:
-    - 5 UMAs anuales ($213,926.50 en 2026)
+    - 5 veces el valor anual de la UMA del ejercicio ($213,973.20 en 2026)
     - 15% de los ingresos totales del contribuyente
+
+    Args:
+        ejercicio: año fiscal al que corresponden las deducciones. Determina
+            que UMA se usa: el ejercicio 2025 se topa con la UMA 2025 y el
+            2026 con la UMA 2026. Un ejercicio sin fuente oficial cargada
+            levanta FiscalValidationError.
     """
+    tope_5_umas = tope_global_deducciones(ejercicio)
+    tope_funeral = tope_gastos_funerarios(ejercicio)
     desglose: list[DesgloseDeduccion] = []
 
     # 1. Gastos medicos (sin tope individual, solo tope global)
@@ -120,7 +175,7 @@ def calcular_deducciones_personales(
     ))
 
     # 5. Aportaciones voluntarias retiro (tope: 10% ingresos o 5 UMAs anuales)
-    tope_retiro = min(ingresos_anuales * TASA_TOPE_APORTACIONES_RETIRO, TOPE_5_UMAS_ANUALES)
+    tope_retiro = min(ingresos_anuales * TASA_TOPE_APORTACIONES_RETIRO, tope_5_umas)
     ret_aceptado = min(max(aportaciones_voluntarias_retiro, 0.0), tope_retiro)
     desglose.append(DesgloseDeduccion(
         concepto="Aportaciones voluntarias retiro",
@@ -148,11 +203,11 @@ def calcular_deducciones_personales(
     ))
 
     # 8. Gastos funerarios (tope: 1 UMA anual)
-    fun_aceptado = min(max(funeral, 0.0), TOPE_FUNERAL)
+    fun_aceptado = min(max(funeral, 0.0), tope_funeral)
     desglose.append(DesgloseDeduccion(
         concepto="Gastos funerarios",
         monto_solicitado=funeral,
-        tope_aplicable=TOPE_FUNERAL,
+        tope_aplicable=tope_funeral,
         monto_aceptado=fun_aceptado,
     ))
 
@@ -162,11 +217,11 @@ def calcular_deducciones_personales(
 
     # Tope global: el MENOR entre 5 UMAs anuales y 15% de ingresos
     tope_15_porciento = ingresos_anuales * 0.15
-    if tope_15_porciento < TOPE_5_UMAS_ANUALES:
+    if tope_15_porciento < tope_5_umas:
         tope_global = tope_15_porciento
         tope_tipo = "15_porciento"
     else:
-        tope_global = TOPE_5_UMAS_ANUALES
+        tope_global = tope_5_umas
         tope_tipo = "5_umas"
 
     total_deducible = min(total_antes_tope, tope_global)

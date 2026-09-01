@@ -5,7 +5,7 @@
 **Tipo**: Microservicio backend — motor de inteligencia fiscal
 **Parte de**: Ecosistema Fiscalito Store (hackaton Genius Arena 2026 - Track Capital One)
 **Autor principal**: Ricardo Cabrera
-**Estado**: MVP funcional con 93 tests pasando, 11 endpoints operativos
+**Estado**: MVP funcional con 477 tests pasando, 11 endpoints operativos
 
 ## PROPÓSITO
 
@@ -43,7 +43,8 @@ fiscal-agent-api/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI app + CORS + 9 routers + RequestLoggingMiddleware + FiscalAgentError handler
 │   ├── config.py               # Settings desde .env (LLM_PROVIDER, API keys, CORS_ORIGINS)
-│   ├── constants.py            # NOMBRES_MESES/BIMESTRES/REGIMEN, TOPE_RESICO_ANUAL, REGIMENES_ACUMULATIVOS
+│   ├── constants.py            # NOMBRES_MESES/BIMESTRES/REGIMEN, TOPE_RESICO_ANUAL, REGIMENES_ACUMULATIVOS,
+│   │                           # uma_vigente/uma_mensual_vigente/uma_anual_vigente, salario_minimo_vigente, ZonaSalarioMinimo
 │   ├── exceptions.py           # FiscalAgentError + FiscalValidationError (422) + FiscalCalculationError (500)
 │   ├── logging_config.py       # JSONFormatter + setup_logging (logs estructurados Cloud Run)
 │   ├── routes/
@@ -106,6 +107,7 @@ fiscal-agent-api/
     ├── __init__.py
     ├── conftest.py                  # Fixtures compartidas
     ├── test_calculadora.py          # Motor principal (clasificación, ISR/IVA, flujo efectivo, regímenes)
+    ├── test_constants_vigencias.py  # UMA y salario mínimo por fecha de vigencia
     ├── test_caso_real_enero2026.py  # Caso real CADG620317EE0 enero 2026
     └── test_clasificador_gastos.py  # Clasificador de gastos deducibles
 ```
@@ -227,8 +229,9 @@ monto_pago: float | None = None     # Monto pagado (solo tipo P)
 
 ### deducciones_personales.py — Deducciones Art. 151 LISR
 - `calcular_deducciones_personales()` — aplica topes individuales por concepto + tope global
-- Conceptos: gastos médicos, colegiaturas (con tope por nivel), intereses hipotecarios, donativos (7%), aportaciones retiro (10%), seguros médicos, transporte escolar, funerarios (1 UMA)
-- Tope global: menor entre 5 UMAs anuales ($213,926.50) y 15% de ingresos
+- Conceptos: gastos médicos, colegiaturas (con tope por nivel), intereses hipotecarios, donativos (7%), aportaciones retiro (10%), seguros médicos, transporte escolar, funerarios (1 UMA anual)
+- Tope global: menor entre 5 veces el valor anual de la UMA del ejercicio ($213,973.20 en 2026) y 15% de ingresos
+- Parámetro `ejercicio` (default `EJERCICIO_DEFAULT`): determina qué UMA topa. No es campo del request todavía.
 
 ### calendario.py — Calendario fiscal
 - `generar_calendario()` — genera obligaciones según contributor_type y régimen
@@ -276,8 +279,9 @@ monto_pago: float | None = None     # Monto pagado (solo tipo P)
 - `TASA_IVA`: 0.16 (16%)
 - `TASA_IVA_FRONTERA`: 0.08 (8%)
 - `TASA_RETENCION_IVA`: 2/3
-- `UMA_DIARIA_2026`: 117.22
-- `LIMITE_DEDUCCIONES_PERSONALES`: 5 UMAs anuales ($213,926.50)
+- **UMA y salario mínimo NO viven aquí**: se resuelven por fecha en `app/constants.py`
+  (`uma_vigente`, `uma_mensual_vigente`, `uma_anual_vigente`, `salario_minimo_vigente`).
+  La UMA cambia el 1 de febrero y el salario mínimo el 1 de enero — nunca capturarlos en una constante.
 
 ## SERVICIO LLM (services/llm_service.py)
 
@@ -293,7 +297,7 @@ monto_pago: float | None = None     # Monto pagado (solo tipo P)
 
 ## TESTS
 
-**93/93 pasando** (`pytest -q` desde `apps/api/`). `tests/conftest.py` expone fixtures compartidas. Toda lógica de cálculo nueva debe venir con tests.
+**477/477 pasando** (`pytest -q` desde `apps/api/`). `tests/conftest.py` expone fixtures compartidas. Toda lógica de cálculo nueva debe venir con tests.
 
 ## PERFILES DE CONTRIBUYENTE
 
@@ -331,7 +335,7 @@ El sistema soporta 5 tipos de contribuyente (enum `ContributorType`). El tipo af
 - **CFDI**: Factura electrónica XML
 - **RFC**: Registro Federal de Contribuyentes
 - **RESICO**: Régimen Simplificado de Confianza (tasas fijas 1%-2.5%)
-- **UMA**: Unidad de Medida y Actualización ($117.22/día en 2026)
+- **UMA**: Unidad de Medida y Actualización ($117.31/día del 1-feb-2026 al 31-ene-2027; en enero de 2026 rige la UMA 2025, $113.14)
 - **Deducción ciega**: Deducir 35% de ingresos sin comprobar gastos (solo arrendamiento)
 - **DIOT**: Declaración Informativa de Operaciones con Terceros
 
@@ -350,6 +354,7 @@ El sistema soporta 5 tipos de contribuyente (enum `ContributorType`). El tipo af
 - Correr `pytest tests/ -v` después de cada cambio
 - Lanzar `FiscalAgentError` / `FiscalValidationError` (422) / `FiscalCalculationError` (500) desde el dominio — NO usar `HTTPException` dentro del engine; el handler global en `main.py` las serializa a `{exito: false, error: ...}`
 - Reusar constantes de `app/constants.py` (`NOMBRES_REGIMEN`, `TOPE_RESICO_ANUAL`, `REGIMENES_ACUMULATIVOS`, etc.) en vez de redefinir literales
+- Pedir UMA y salario mínimo **por fecha** (`uma_vigente(fecha)`, `salario_minimo_vigente(fecha, zona)`), nunca hardcodear el valor del año: las dos magnitudes cambian en fechas distintas y enero mezcla las dos vigencias
 - Mantener el motor determinístico (tablas codificadas, no LLM para cálculos)
 
 ### NUNCA:

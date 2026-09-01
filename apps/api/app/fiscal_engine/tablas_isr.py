@@ -88,10 +88,12 @@ TASA_RETENCION_IVA = 2 / 3  # Retencion de 2/3 del IVA (personas morales a fisic
 # ============================================================
 # Deducciones personales (declaracion anual)
 # ============================================================
-
-LIMITE_DEDUCCIONES_PERSONALES_UMA = 5  # 5 UMAs anuales o 15% de ingresos
-UMA_DIARIA_2026 = 117.22  # Valor UMA 2026
-LIMITE_DEDUCCIONES_PERSONALES = LIMITE_DEDUCCIONES_PERSONALES_UMA * UMA_DIARIA_2026 * 365
+#
+# Los topes de deducciones personales YA NO viven aqui. Dependen de la UMA,
+# que cambia cada año y a mitad de enero, asi que se resuelven por fecha:
+#   app.constants.uma_anual_vigente(fecha)
+# El tope global de 5 UMA anuales lo calcula fiscal_engine/deducciones_personales.py
+# a partir del ejercicio. Ver knowledge_base/nomina/20_valores_referencia_2026.md.
 
 
 def generar_tabla_acumulada(meses: int) -> list[tuple[float, float, float, float]]:
