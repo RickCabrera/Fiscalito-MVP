@@ -6,7 +6,7 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 
 ## S — Saneamiento (deuda que estorba al bucle)
 
-- [ ] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
+- [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
   resto (111 total: E501, I001, F401, F541). Descomentar el paso `ruff check .` en
   `ci.yml`. *Listo cuando:* `ruff check .` sale limpio en local y corre en CI.
 - [ ] **S-02 · Lint frontend a cero y al CI** — corregir 20 errores + 8 warnings de
