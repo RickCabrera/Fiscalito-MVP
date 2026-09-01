@@ -12,6 +12,10 @@ dependencies = [
     "anthropic>=0.30.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.27.0",
+    # El Hikvision manda el evento en multipart cuando adjunta la foto, asi que
+    # el endpoint de asistencia tiene que poder leer form-data. Es dependencia
+    # de runtime, no de tests: el dispositivo real la ejerce en la demo.
+    "python-multipart>=0.0.9",
 ]
 
 [tool.setuptools.packages.find]

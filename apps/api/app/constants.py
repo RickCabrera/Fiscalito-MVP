@@ -74,6 +74,12 @@ REGIMENES_ACUMULATIVOS: set[str] = {"612", "606"}
 # un motor fiscal no debe cambiar de resultado segun el dia en que corre.
 EJERCICIO_DEFAULT: int = 2026
 
+# Cliente unico de la demo del checador (epica D). Existe porque el push del
+# Hikvision manda un cuerpo fijo que no puede llevar el id del cliente: la URL
+# se configura en el aparato y el JSON lo arma el. Desaparece con F1-09, cuando
+# la asistencia sea multi-cliente y persistente.
+CLIENTE_DEMO: str = "demo"
+
 
 class ZonaSalarioMinimo(str, Enum):
     """Zona geografica que determina el salario minimo aplicable."""
