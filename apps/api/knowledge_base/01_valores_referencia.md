@@ -29,7 +29,15 @@ $3,439.68 y $41,276.16). Vigencia: 1-feb-2025 → 31-ene-2026.*
 
 ### Uso de la UMA en el sistema Fiscalito
 
-- **Límite deducciones personales:** 5 UMAs anuales = $213,973.20 (usando UMA 2025 para declaración anual 2025) o $207,648.00 (algunas fuentes usan valor anterior)
+- **Límite deducciones personales:** 5 veces el **valor anual de la UMA del ejercicio**
+  (Art. 151 último párrafo LISR). El valor anual es el que publica el INEGI (Art. 4 fr. III
+  de la Ley para Determinar el Valor de la UMA), **no** `diaria × 365`:
+  - ejercicio **2026** → 5 × $42,794.64 = **$213,973.20**
+  - ejercicio **2025** → 5 × $41,273.52 = **$206,367.60**
+
+  *Corregido en F0-02: la línea anterior daba $213,973.20 pero lo atribuía a la UMA 2025, y
+  arrastraba un $207,648.00 sin fuente. El motor lo resuelve por ejercicio con
+  `app.constants.uma_anual_vigente()`.*
 - **Subsidio al empleo:** basado en salario mínimo y UMA
 - **Ingresos exentos:** límites expresados en UMAs
 
