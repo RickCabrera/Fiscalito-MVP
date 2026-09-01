@@ -36,7 +36,8 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-          cache-dependency-path: apps/store/package-lock.json
+          # El lock vivo es el del workspace root; el de apps/store era peso muerto.
+          cache-dependency-path: package-lock.json
       - run: npm ci
       # tsc + vite build: el gate mínimo de tipos del frontend
       - run: npm run build
