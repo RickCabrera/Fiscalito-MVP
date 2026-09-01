@@ -382,3 +382,14 @@ propósito. `subsidio == acreditado + no_entregado` se cumple siempre, pero
 **Pregunta para la contadora:** ¿es correcto que el subsidio de ese trabajador se pierda, o su
 software lo acredita/entrega de alguna forma? Afecta lo que F1-05 emita en `SubsidioCausado` y
 en el importe entregado del CFDI.
+
+### Cómo lo emite F1-05, y la pregunta que eso deja abierta
+
+El pre-recibo emite `OtroPago` clave **002** con `Importe="0.00"` y `SubsidioCausado` con el
+monto. **Hay precedente observado:** es exactamente lo que hacen los 70 CFDI del caso real.
+
+Pero la descripción de la clave 002 en el catálogo habla del subsidio *efectivamente entregado
+al trabajador*, y desde 2024 no se entrega nada — la contradicción que `knowledge_base/nomina/
+24_cfdi_nomina_12.md` §3 ya había anotado. **La validación XSD no verifica esta regla**, así
+que el verde de F1-05 no la responde: cómo timbrarlo sin rechazo es pregunta para la Guía de
+llenado vigente y para la contadora, y se cierra hasta F3 (§D7).

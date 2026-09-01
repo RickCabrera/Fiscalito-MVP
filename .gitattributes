@@ -1,0 +1,10 @@
+# Los XSD del SAT se guardan BYTE-IDENTICOS a lo publicado: sus SHA-256 estan
+# en tests/xsd/README.md y un test los recalcula. Vienen con CRLF, y con
+# `core.autocrlf=true` git los normalizaba a LF al commitear, asi que en un
+# checkout de Linux dejaban de coincidir con la fuente oficial y el test
+# tronaba en CI.
+#
+# `-text` le dice a git que no toque sus finales de linea en ninguna
+# plataforma. No es una excepcion cosmetica: es lo que hace que el hash
+# signifique algo.
+apps/api/tests/xsd/*.xsd -text
