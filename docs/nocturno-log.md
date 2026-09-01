@@ -296,3 +296,56 @@ causa. D2 deja de ser una suposición razonable y pasa a ser una decisión obser
 
 `app/nomina_engine/cuotas.py` quedó en **300 líneas exactas**, sin margen. Lo primero que lo
 toque (F1-07) debe **partir el archivo**, no recortar docstrings de fundamento.
+
+---
+
+## F1-04 · exenciones Art. 93, ISR y retención (2026-09-01, sesión nocturna)
+
+**Estado:** CERRADA. PR #13, mergeada a main. CI verde al primer intento. Tests: 715 → 774.
+
+### El resultado
+
+**El motor reproduce al centavo los 28 recibos de abril, completos**, y la exención cuadra en
+el 100 % de los 70. Marzo cuadra 6 de 35 y mayo 0 de 7, por causas que están en el CFDI y no
+en el motor.
+
+### Decisiones tomadas sin Ricardo
+
+1. **§D15 — la ambigüedad se deja abierta a propósito.** El subsidio que declara el CFDI en
+   marzo ($123.47) es compatible con **dos** bases que no se distinguen al centavo: el peso de
+   los considerandos del decreto ($536.22) y el transitorio de enero arrastrado sin refrescar
+   el 1 de febrero ($536.21). Las fixtures no traen recibos de enero para desempatar. **No se
+   afirma cuál fue.** La segunda lectura cruza con la pregunta 2 de §D14 (¿el software refresca
+   la UMA el 1-feb?) y sería el mismo fallo en dos conceptos independientes: vale la pena
+   preguntarlo así.
+2. **§D11 — el test del caso real USA `SBC × 30.4` como si estuviera decidida.** Es la única
+   lectura que reproduce a qué tres empleados el patrón dejó de dar subsidio en abril, y las
+   otras dos quedan refutadas por el dato. Pero es **n = 3 contra n = 4** con dos niveles
+   salariales, así que sigue PROVISIONAL: si la contadora dice otra cosa, el cuadre de abril
+   cambia.
+3. **§D16 nueva — el subsidio del trabajador de salario mínimo** no se acredita ni se entrega.
+   Es la lectura más conservadora de la interacción entre el Art. 96 último párrafo y el
+   decreto: ni crédito para el patrón ni efectivo para el trabajador. Afecta lo que F1-05 emita
+   en `SubsidioCausado`.
+4. **Lista blanca en vez de lista negra** para las exenciones. Solo las claves que se sabe que
+   no tienen exención se gravan al 100 %; cualquier otra levanta. Enumerar lo no implementado
+   deja fuera lo que se olvide, y aquí el silencio retiene de más **al trabajador**.
+5. **Límite conocido declarado:** el Art. 66 LFT acota el tiempo extra y el módulo no recibe
+   las horas. Ahí el error va a favor del trabajador y en contra del fisco — la dirección
+   contraria a la que el resto del módulo cuida.
+
+### Errores míos que el revisor cazó
+
+1. **Afirmé que el patrón usó el subsidio de los considerandos. No se puede saber**, y lo había
+   escrito en cuatro lugares y en el nombre de un test cuya aritmética pasaba con los dos
+   valores. Segunda vez en la noche que sobreinterpreto una coincidencia como causa.
+2. **El hueco de las exenciones seguía abierto** aunque yo lo daba por cerrado: enumeraba tres
+   claves y todo lo demás se gravaba en silencio, incluidas fracciones enteras del Art. 93.
+3. Un docstring de test afirmaba un invariante que la propiedad, a propósito, no evalúa en una
+   de sus ramas.
+
+### Nota para quien siga
+
+`app/nomina_engine/isr_nomina.py` quedó en **292 líneas**. F1-05 lo va a consumir: si lo toca,
+que **parta el archivo** en vez de recortar docstrings de fundamento. Es la segunda vez que
+pasa (`cuotas.py` quedó en 300 exactas).
