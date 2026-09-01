@@ -224,10 +224,20 @@ class TestArticulo36:
         assert resultado.total_obrero == Decimal("0.00")
         assert resultado.total_patron >= excedente.obrero
 
-    @pytest.mark.parametrize("sbc", ["315.04", "331.58"])
-    def test_invariante_total(self, sbc):
-        resultado = _cuotas(sbc)
+    @pytest.mark.parametrize(
+        "sbc,zona",
+        [
+            ("315.04", GENERAL),
+            ("331.58", GENERAL),
+            # ZLFN es el unico caso donde absorcion y excedente obrero conviven:
+            # si un peso se perdiera en el traspaso, seria aqui.
+            ("440.87", ZonaSalarioMinimo.ZLFN),
+        ],
+    )
+    def test_invariante_total(self, sbc, zona):
+        resultado = _cuotas(sbc, zona=zona)
         assert resultado.total == resultado.total_patron + resultado.total_obrero
+        assert resultado.total == sum(r.patron + r.obrero for r in resultado.ramos)
 
 
 class TestRedondeo:
