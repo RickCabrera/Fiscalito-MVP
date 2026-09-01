@@ -18,6 +18,12 @@ El ausentismo y la incapacidad **no reducen Enfermedades y Maternidad**
 en los demas ramos y 30 en EyM. Por eso se recibe `DiasDelPeriodo` y no un
 entero: un contador unico subcobraria EyM en silencio.
 
+**Limite conocido:** D3 habla de ausencias *de hasta 7 dias*. La fr. II del
+Art. 31 libera al patron de TODAS las cuotas cuando la ausencia excede ese
+plazo (con la baja del Art. 37), y eso **no esta implementado**: con 20 dias de
+ausencia el motor sigue cobrando 30 dias de EyM. La direccion del error es la
+conservadora —cobra de mas— y la conducta actual esta fijada por un test.
+
 ART. 36 LSS — EL PATRON ABSORBE, NO SE EXENTA
 ---------------------------------------------
 Cuando el trabajador es de salario minimo, la cuota obrera **se sigue

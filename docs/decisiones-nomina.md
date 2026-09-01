@@ -36,6 +36,15 @@ Aplicar el **Art. 31 LSS** literal: las ausencias de hasta 7 días al mes descue
 todos los ramos **excepto Enfermedades y Maternidad**; durante una incapacidad solo se cotiza
 EyM. Confirmar con la contadora.
 
+**Implementado en F1-03** con `DiasDelPeriodo` y `Ramo.se_reduce_por_ausentismo`.
+
+**Límite conocido, no implementado:** D3 habla de ausencias *de hasta 7 días*. La **fr. II del
+Art. 31** libera al patrón de **todas** las cuotas cuando la ausencia excede ese plazo (con la
+baja del Art. 37). Hoy, con 20 días de ausencia, el motor sigue cobrando 30 días de EyM. La
+dirección del error es la conservadora —cobra de más, no de menos— así que se dejó fijada por
+un test en vez de adivinar. **S-04 no puede validar nada de esto:** los 70 recibos traen
+`NumDiasPagados=7.000` y no hay ni una incapacidad.
+
 ## D4 · Quirk CEAV 2026 — PROVISIONAL
 
 Aplicar la tabla literal por rango de UMA. El salario mínimo exacto cae en **3.150%**. Los
@@ -178,20 +187,23 @@ vencimiento hacia adelante**, y presentar tarde un aviso afiliatorio cuesta de 2
 el dato timbrado, y esto explica por qué.**
 
 La deducción de IMSS (`TipoDeduccion=001`, cuota obrera) de los 70 CFDI **no se reproduce**
-desde el `SalarioBaseCotApor` del propio comprobante con las tasas de ley. Solo 2 de 9
-empleados cuadran.
+desde el `SalarioBaseCotApor` del propio comprobante con las tasas de ley. Cuadran **5 de los
+70 recibos**: un solo empleado, y solo desde abril.
 
-| Empleado | SBC timbrado | Deducción observada | Tasa obrera implícita |
-|---|---|---|---|
-| ...AA1 | 331.58 | 55.13 / 55.12 | **2.3752 %** ✅ |
-| ...AA2 | 357.44 | 57.09 | 2.2817 % |
-| ...AA3 | 399.52 | 68.10 / 68.09 | 2.4351 % |
-| ...AA4 | 399.05 | 66.63 | 2.3853 % |
-| ...AA5 | 343.00 | 57.28 | 2.3857 % |
-| ...AA6 | 346.11 | 57.06 | 2.3552 % |
-| ...AA7 | 387.23 | 64.46 | 2.3781 % |
-| ...AA8 | 331.58 | 55.13 / 55.12 | **2.3752 %** ✅ |
-| ...AA9 | 358.34 | 57.21 | 2.2808 % |
+| Empleado | SBC timbrado | Deducción observada | Motor (D2) | Recibos que cuadran |
+|---|---|---|---|---|
+| ...AA1 | 331.58 | 55.13 (4 recibos, solo marzo) | 55.12 | **0 de 4** |
+| ...AA2 | 357.44 | 57.09 | 59.58 | 0 de 3 |
+| ...AA3 | 399.52 | 68.10 (mar) · 68.09 (abr–may) | 67.75 | 0 de 9 |
+| ...AA4 | 399.05 | 66.63 | 67.67 | 0 de 9 |
+| ...AA5 | 343.00 | 57.28 | 57.02 | 0 de 9 |
+| ...AA6 | 346.11 | 57.06 | 57.55 | 0 de 9 |
+| ...AA7 | 387.23 | 64.46 | 65.36 | 0 de 9 |
+| ...AA8 | 331.58 | 55.13 (mar) · 55.12 (abr–may) | 55.12 | **5 de 9** |
+| ...AA9 | 358.34 | 57.21 | 59.76 | 0 de 9 |
+
+**El conteo honesto: 5 de los 70 recibos.** Un solo empleado, y solo en sus
+recibos de abril y mayo.
 
 La tasa obrera de ley es **2.3750 %** (EyM prestaciones en dinero 0.25 + EyM gastos médicos de
 pensionados 0.375 + IyV 0.625 + CEAV 1.125), más 0.40 % sobre el excedente de 3 UMA cuando
@@ -202,11 +214,11 @@ aplica.
 Tres empleados tienen una deducción **por debajo del mínimo legal** que impone su propio SBC
 timbrado:
 
-| Empleado | SBC | Mínimo legal (2.375 % × 7 días) | Observado | Diferencia |
+| Empleado | SBC | Mínimo legal (incluye el excedente que causa) | Observado | Diferencia |
 |---|---|---|---|---|
-| ...AA2 | 357.44 | 59.42 | 57.09 | **−2.33** |
-| ...AA6 | 346.11 | 57.54 | 57.06 | −0.48 |
-| ...AA9 | 358.34 | 59.57 | 57.21 | **−2.36** |
+| ...AA2 | 357.44 | 59.58 | 57.09 | **−2.49** |
+| ...AA6 | 346.11 | 57.55 | 57.06 | −0.49 |
+| ...AA9 | 358.34 | 59.76 | 57.21 | **−2.55** |
 
 **Ningún ramo omitido, ningún día faltante y ningún excedente puede hacer que un número baje.**
 Si la deducción es menor que el piso que impone el SBC, entonces la base con la que el patrón
@@ -224,14 +236,25 @@ determinó la cuota **no es el `SalarioBaseCotApor` que timbró**. Es la misma n
    abril, así que no se toma como explicación — pero es barato de confirmar.
 3. **¿Por qué cambió el orden de redondeo entre marzo y abril?** Ver §D2.
 
+### El corte marzo→abril lo explica casi todo lo que sí cuadra
+
+Los dos empleados con SBC **idéntico** ($331.58) cuadran distinto, y la diferencia no está en
+el trabajador sino en la fecha: `...AA8` cuadra en sus cinco recibos de abril y mayo, y
+`...AA1` no cuadra en ninguno porque **causó baja el 29 de marzo** y todos sus recibos caen en
+el periodo de redondeo agregado. Dos empleados con el mismo SBC y resultados opuestos según el
+mes es la prueba más limpia de que lo que cambió fue el criterio del software, no el dato del
+trabajador. Ver §D2.
+
 ### Qué se hizo en el código
 
 `cuotas.py` cuadra contra **la fórmula de ley**, ramo por ramo. En
-`tests/nomina/test_cuotas_caso_real.py` hay dos clases de test y **las dos pasan**, sin skips
-ni `xfail`: el cuadre estricto de los dos empleados que sí se reproducen (las nueve semanas), y
-la **caracterización** de los siete que no, con sus importes observados como literales. Si
-alguien "arregla" el motor y esos siete empiezan a cuadrar, el test truena y obliga a explicar
-qué cambió.
+`tests/nomina/test_cuotas_caso_real.py` los tests comparan contra **el importe timbrado**, no
+contra el motor, y **todos pasan**, sin skips ni `xfail`:
+
+- el cuadre de los **5 recibos** que se reproducen, afirmado como igualdad contra el CFDI y
+  como conjunto exacto sobre los 70 (si sube, alguien cambió el motor o las fixtures);
+- la **caracterización** de los que no, con el importe observado **y** el calculado como
+  literales, para que un cambio silencioso del motor tampoco pase.
 
 ### Lo que S-04 no cubre, para que nadie lo asuma
 

@@ -13,6 +13,7 @@ import pytest
 
 from app.constants import ZonaSalarioMinimo, uma_vigente
 from app.exceptions import FiscalValidationError
+from app.nomina_engine.ceav import CEAV_OBRERO
 from app.nomina_engine.cuotas import (
     DiasDelPeriodo,
     consolidado_bimestral,
@@ -48,7 +49,7 @@ def _tasa_obrera_de_ley(fecha=MARZO) -> Decimal:
     return sum(
         (r.obrero for r in cuotas_ramos_vigentes(fecha) if r.base is BaseCuota.SBC),
         start=Decimal("0"),
-    ) + Decimal("0.01125")  # CEAV obrera, que vive fuera de la tabla escalar
+    ) + CEAV_OBRERO[fecha.year]  # CEAV obrera, que vive fuera de la tabla escalar
 
 
 class TestBasesPorRamo:
@@ -148,6 +149,21 @@ class TestDiasYAusentismo:
         assert _ramo(resultado, "eym_cuota_fija").dias == 30
         assert _ramo(resultado, "ceav").dias == 25
 
+    def test_una_ausencia_mayor_a_siete_dias_sigue_cobrando_eym(self):
+        """
+        LÍMITE CONOCIDO. D3 habla de ausencias **de hasta 7 días**; la fr. II
+        del Art. 31 libera al patrón de todas las cuotas cuando la ausencia
+        excede ese plazo (con la baja del Art. 37). Eso NO está implementado:
+        con 20 días de ausencia el motor sigue cobrando 30 días de EyM.
+
+        La dirección del error es la conservadora —cobra de más, no de menos—
+        así que se deja fijada aquí en vez de adivinar. Ver `docs/decisiones-
+        nomina.md` §D3.
+        """
+        resultado = _cuotas(SBC_TIPICO, DiasDelPeriodo(30, dias_ausentismo=20))
+        assert _ramo(resultado, "eym_cuota_fija").dias == 30
+        assert _ramo(resultado, "invalidez_vida").dias == 10
+
     @pytest.mark.parametrize(
         "kwargs",
         [
@@ -191,13 +207,22 @@ class TestArticulo36:
 
     def test_absorbe_tambien_la_obrera_del_excedente_de_eym(self):
         """
-        El 0.40% del Art. 106 fr. II es la línea que se olvida. Bajo la lectura
-        literal de D4 este caso es inalcanzable —el salario mínimo está por
-        debajo de 3 UMA— pero la conducta queda fijada por si la contadora
-        responde la otra lectura.
+        El 0.40% del Art. 106 fr. II es la línea que se olvida al absorber.
+
+        El caso NO es hipotético: en la Zona Libre de la Frontera Norte el
+        salario mínimo ($440.87) está **por encima** de 3 UMA ($351.93), así
+        que un trabajador de salario mínimo de frontera causa excedente de EyM
+        y absorción del Art. 36 al mismo tiempo. Es población real.
         """
-        resultado = _cuotas("400.00")
-        assert _ramo(resultado, "eym_excedente").obrero > Decimal("0")
+        resultado = _cuotas(
+            "440.87", fecha=MARZO, zona=ZonaSalarioMinimo.ZLFN
+        )
+        assert resultado.absorbio_cuota_obrera is True
+        excedente = _ramo(resultado, "eym_excedente")
+        assert excedente.obrero > Decimal("0")
+        assert excedente.obrero == Decimal("2.49")
+        assert resultado.total_obrero == Decimal("0.00")
+        assert resultado.total_patron >= excedente.obrero
 
     @pytest.mark.parametrize("sbc", ["315.04", "331.58"])
     def test_invariante_total(self, sbc):
