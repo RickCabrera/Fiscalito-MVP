@@ -130,20 +130,35 @@ class TestPercepcionesSinExencion:
         assert resultado.gravado == Decimal("2212.00")
         assert resultado.exento == Decimal("0.00")
 
-    def test_los_premios_de_asistencia_van_gravados(self):
-        assert exentar(_p("049", "500.00"), _ctx()).gravado == Decimal("500.00")
-
-    @pytest.mark.parametrize("clave", ["005", "029", "023"])
-    def test_las_exenciones_no_implementadas_levantan_error(self, clave):
+    @pytest.mark.parametrize(
+        "clave",
+        [
+            "005",  # fondo de ahorro — previsión social, fr. VIII y IX
+            "029",  # vales de despensa — previsión social
+            "023",  # pagos por separación — fr. XIII
+            "014",  # subsidios por incapacidad — fr. III
+            "022",  # prima de antigüedad — fr. XIII
+            "054",  # becas — previsión social
+            "999",  # una clave que ni siquiera existe en el catálogo
+        ],
+    )
+    def test_toda_clave_no_clasificada_levanta_error(self, clave):
         """
-        Gravar de más es conservador **para el fisco**, no para el trabajador,
-        así que estas no se resuelven en silencio: la previsión social tiene un
-        tope conjunto de 7 UMA que no se puede repartir percepción por
-        percepción, y los pagos por separación dependen de la antigüedad.
+        LISTA BLANCA: solo las claves que se sabe que NO tienen exención se
+        gravan al 100 %. Cualquier otra levanta.
+
+        Enumerar las exenciones no implementadas una por una dejaría fuera las
+        que se olviden, y esas se gravarían en silencio. Y aquí el silencio es
+        el error peligroso: gravar de más es conservador **para el fisco**, no
+        para el trabajador, que es a quien se le retiene de más.
         """
         with pytest.raises(FiscalValidationError) as exc:
             exentar(_p(clave, "1000.00"), _ctx())
-        assert "no está implementada" in str(exc.value)
+        assert "no está clasificada" in str(exc.value)
+
+    @pytest.mark.parametrize("clave", ["001", "010", "038", "049"])
+    def test_las_claves_de_la_lista_blanca_se_gravan(self, clave):
+        assert exentar(_p(clave, "500.00"), _ctx()).gravado == Decimal("500.00")
 
     def test_importe_negativo(self):
         with pytest.raises(FiscalValidationError):
@@ -216,6 +231,49 @@ class TestRetencion:
     def test_base_negativa(self):
         with pytest.raises(FiscalValidationError):
             isr_retenido(Decimal("-1"), "02", MARZO, Decimal("5000.00"), 7)
+
+    @pytest.mark.parametrize("salario_minimo", [False, True])
+    @pytest.mark.parametrize(
+        "base,mensual",
+        [
+            ("2212.00", "10080.03"),  # subsidio parcial
+            ("300.00", "5000.00"),  # el subsidio supera al causado
+            ("2576.35", "12145.41"),  # sobre el tope, sin subsidio
+        ],
+    )
+    def test_el_invariante_se_cumple_en_las_dos_ramas(
+        self, base, mensual, salario_minimo
+    ):
+        """
+        `retenido == causado − acreditado` y `subsidio == acreditado +
+        no_entregado`, también cuando el Art. 96 fuerza la retención a cero.
+
+        Sin `acreditado` explícito, la rama del salario mínimo rompía el
+        invariante en silencio: el subsidio se contaba como acreditado contra
+        un ISR que nunca se retuvo, y el consumidor —F1-05, que va a emitir
+        `SubsidioCausado` y el importe entregado al CFDI— no podía detectarlo.
+        """
+        resultado = isr_retenido(
+            Decimal(base),
+            "02",
+            MARZO,
+            Decimal(mensual),
+            7,
+            es_trabajador_de_salario_minimo=salario_minimo,
+        )
+        assert resultado.invariante
+
+    def test_sin_retencion_el_subsidio_queda_integro_sin_entregar(self):
+        resultado = isr_retenido(
+            Decimal("2212.00"),
+            "02",
+            MARZO,
+            Decimal("10080.03"),
+            7,
+            es_trabajador_de_salario_minimo=True,
+        )
+        assert resultado.acreditado == Decimal("0.00")
+        assert resultado.subsidio_no_entregado == resultado.subsidio
 
 
 def test_la_uma_vigente_es_la_esperada():

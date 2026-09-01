@@ -5,9 +5,10 @@ ISR de sueldos y salarios: exenciones, base gravable y retencion.
     isr_causado   = tarifa del Art. 96 segun la periodicidad (tablas_isr_periodicas)
     isr_retenido  = max(isr_causado - subsidio, 0)
 
-Fuentes: LISR Arts. 93 (fr. I, III, VIII, IX, XIV) y 96; Decreto de
-desindexacion del salario minimo (DOF 27-01-2016) y Art. 26 apartado B
-constitucional, que es el eslabon por el que los topes que la ley expresa en
+Fuentes: LISR Art. 93 **fr. I y fr. XIV** (las unicas exenciones que este
+modulo implementa) y Art. 96; Decreto de desindexacion del salario minimo
+(DOF 27-01-2016) y Art. 26 apartado B constitucional, que es el eslabon por el
+que los topes que la ley expresa en
 "veces el salario minimo" se leen en UMA. Sin ese eslabon el aguinaldo exento
 seria $9,451.20 en vez de $3,519.30: un factor de 2.69.
 
@@ -49,24 +50,24 @@ TOPES_EN_UMA: dict[str, tuple[int, str]] = {
     "021": (15, "Art. 93 fr. XIV LISR — prima vacacional"),
 }
 
-# Percepciones con exencion en la ley que este modulo NO implementa, con la
-# razon. Se responde con un error explicito en vez de gravarlas al 100 % en
-# silencio: gravar de mas es conservador **para el fisco**, no para el
-# trabajador, asi que aqui el default silencioso no es aceptable.
-EXENCIONES_NO_IMPLEMENTADAS: dict[str, str] = {
-    "005": (
-        "fondo de ahorro: es previsión social (Art. 93 fr. VIII y IX) y su exención "
-        "depende del **conjunto** de la previsión social del trabajador, con el tope "
-        "común de 7 UMA. No se puede resolver percepción por percepción"
-    ),
-    "029": (
-        "vales de despensa: mismo caso que el fondo de ahorro — previsión social con "
-        "tope conjunto de 7 UMA (Art. 93 fr. VIII y IX)"
-    ),
-    "023": (
-        "pagos por separación: la exención del Art. 93 fr. XIII se calcula por año de "
-        "servicio y necesita la antigüedad y el motivo de la separación"
-    ),
+# Percepciones que NO tienen exencion en el Art. 93 y por tanto van 100 %
+# gravadas. Es una LISTA BLANCA a proposito: cualquier clave que no este aqui
+# ni tenga exencion implementada levanta error.
+#
+# El default invertido es la unica forma de cerrar el hueco. El Art. 93 tiene
+# fracciones enteras —prevision social (fr. VIII y IX, con tope CONJUNTO de
+# 7 UMA), pagos por separacion (fr. XIII), subsidios por incapacidad (fr. III),
+# jubilaciones (fr. IV y V), reembolso de gastos medicos (fr. VI)— cuyas claves
+# son muchas y cuyo calculo este modulo no implementa. Enumerarlas una por una
+# dejaria fuera las que se olviden, y esas se gravarian al 100 % en silencio.
+#
+# Y aqui el silencio es el error peligroso: gravar de mas es conservador **para
+# el fisco**, no para el trabajador, que es a quien se le retiene de mas.
+GRAVADAS_AL_100: dict[str, str] = {
+    "001": "Sueldos, salarios, rayas y jornales",
+    "010": "Premios por puntualidad",
+    "038": "Otros ingresos por salarios",
+    "049": "Premios por asistencia",
 }
 
 
@@ -133,10 +134,19 @@ def _horas_extra(p: Percepcion, ctx: ContextoExencion) -> PercepcionGravada:
 
     Al de salario minimo se le exenta el 100 % dentro de los limites de la LFT;
     a los demas, el 50 % sin exceder **5 UMA por semana** de servicios.
+
+    LIMITE CONOCIDO, no implementado: el Art. 66 LFT acota el tiempo extra a
+    3 horas diarias y 3 veces por semana, y lo que excede se paga al triple y
+    es 100 % gravado. Este modulo no recibe las horas, asi que no lo verifica.
+    Ojo con la direccion del error: aqui va **a favor del trabajador y en
+    contra del fisco**, la contraria a la que el resto del modulo cuida. Por
+    eso el fundamento devuelto no afirma que el limite se haya cumplido.
     """
     if ctx.es_trabajador_de_salario_minimo:
         return _exenta_todo(
-            p, "Art. 93 fr. I LISR — trabajador de salario mínimo, exento dentro de la LFT"
+            p,
+            "Art. 93 fr. I LISR — trabajador de salario mínimo (los límites de tiempo "
+            "extra del Art. 66 LFT no se verifican aquí)",
         )
     tope = redondear(uma_vigente(ctx.fecha) * 5 * ctx.semanas_del_periodo)
     exento = min(redondear(p.importe / 2), tope)
@@ -158,20 +168,12 @@ def exentar(percepcion: Percepcion, contexto: ContextoExencion) -> PercepcionGra
     la UMA del año anterior, asi que la misma percepcion exenta distinto.
 
     Raises:
-        FiscalValidationError: si el importe es negativo, o si la percepcion
-            tiene exencion en la ley pero este modulo no la implementa (ver
-            `EXENCIONES_NO_IMPLEMENTADAS`).
+        FiscalValidationError: si el importe es negativo, o si la clave no
+            esta clasificada — ver el comentario de `GRAVADAS_AL_100`.
     """
     if percepcion.importe < 0:
         raise FiscalValidationError(
             f"El importe de {percepcion.clave} no puede ser negativo: {percepcion.importe}."
-        )
-    motivo = EXENCIONES_NO_IMPLEMENTADAS.get(percepcion.clave)
-    if motivo is not None:
-        raise FiscalValidationError(
-            f"La percepción {percepcion.clave} tiene exención en la ley pero no está "
-            f"implementada — {motivo}. Gravarla al 100 % sería conservador para el "
-            f"fisco, no para el trabajador, así que no se hace en silencio."
         )
     if percepcion.clave == "019":
         return _horas_extra(percepcion, contexto)
@@ -186,13 +188,29 @@ def exentar(percepcion: Percepcion, contexto: ContextoExencion) -> PercepcionGra
         return _con_tope(
             percepcion, redondear(uma_vigente(contexto.fecha) * veces), fundamento
         )
-    return _grava_todo(percepcion, "Sin exención declarada en el Art. 93 LISR")
+    if percepcion.clave in GRAVADAS_AL_100:
+        return _grava_todo(percepcion, "Sin exención en el Art. 93 LISR")
+    raise FiscalValidationError(
+        f"La percepción {percepcion.clave} no está clasificada. Este módulo implementa "
+        f"las exenciones del Art. 93 fr. I y fr. XIV, y grava al 100 % solo las claves "
+        f"que sabe que no tienen exención ({', '.join(sorted(GRAVADAS_AL_100))}). Las "
+        f"demás fracciones —previsión social con tope conjunto de 7 UMA (fr. VIII y IX), "
+        f"pagos por separación (fr. XIII), subsidios por incapacidad (fr. III), "
+        f"jubilaciones (fr. IV y V), reembolso de gastos médicos (fr. VI)— no están "
+        f"implementadas. Gravarla al 100 % en silencio le retendría de más al trabajador."
+    )
 
 
 def base_gravable(
     percepciones: tuple[Percepcion, ...], contexto: ContextoExencion
 ) -> tuple[tuple[PercepcionGravada, ...], Decimal]:
-    """Desglose gravado/exento de cada percepcion, y la base gravable del periodo."""
+    """
+    Desglose gravado/exento de cada percepcion, y la base gravable del periodo.
+
+    La suma NO se re-redondea: los importes del CFDI ya vienen a 2 decimales y
+    §D2 redondea por concepto, no al agregar. Si el llamador arma percepciones
+    con mas decimales, redondearlas es su responsabilidad.
+    """
     desglose = tuple(exentar(p, contexto) for p in percepciones)
     return desglose, sum((d.gravado for d in desglose), start=Decimal("0"))
 
@@ -203,9 +221,30 @@ class ResultadoISR:
 
     causado: Decimal
     subsidio: Decimal
+    acreditado: Decimal
     retenido: Decimal
     subsidio_no_entregado: Decimal
     sin_retencion_por_salario_minimo: bool
+
+    @property
+    def invariante(self) -> bool:
+        """
+        Las dos reglas que el resultado siempre cumple.
+
+        1. **El subsidio no se pierde**: `subsidio == acreditado +
+           no_entregado`, en cualquier rama.
+        2. **El retenido**: normalmente `causado - acreditado`; cero cuando el
+           Art. 96 ultimo parrafo lo suprime.
+
+        La segunda regla NO es la misma en las dos ramas a proposito: la no
+        retencion del Art. 96 **no es un acreditamiento**. El ISR se causa
+        igual, simplemente no se retiene, y el subsidio queda integro sin
+        entregar porque no hubo ISR contra el cual aplicarlo.
+        """
+        subsidio_completo = self.subsidio == self.acreditado + self.subsidio_no_entregado
+        if self.sin_retencion_por_salario_minimo:
+            return subsidio_completo and self.retenido == Decimal("0.00")
+        return subsidio_completo and self.retenido == self.causado - self.acreditado
 
 
 def isr_retenido(
@@ -234,14 +273,20 @@ def isr_retenido(
     """
     causado = isr_periodo(base, clave_periodicidad, fecha)
     subsidio = subsidio_empleo(fecha, ingreso_gravado_mensual, dias_periodo)
-    acreditado = min(subsidio, causado)
-    retenido = causado - acreditado
-    if es_trabajador_de_salario_minimo:
-        retenido = Decimal("0.00")
+    # Sin retencion no hay ISR contra el cual acreditar, asi que el subsidio
+    # queda integro sin entregar. Devolver `acreditado` explicito es lo que
+    # permite a F1-05 emitir SubsidioCausado y el importe entregado sin tener
+    # que reconstruirlos, y lo que mantiene el invariante en las dos ramas.
+    acreditado = (
+        Decimal("0.00") if es_trabajador_de_salario_minimo else min(subsidio, causado)
+    )
     return ResultadoISR(
         causado=causado,
         subsidio=subsidio,
-        retenido=retenido,
+        acreditado=acreditado,
+        retenido=Decimal("0.00")
+        if es_trabajador_de_salario_minimo
+        else causado - acreditado,
         subsidio_no_entregado=subsidio - acreditado,
         sin_retencion_por_salario_minimo=es_trabajador_de_salario_minimo,
     )

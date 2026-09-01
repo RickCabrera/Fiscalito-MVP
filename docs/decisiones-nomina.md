@@ -294,24 +294,46 @@ no hay ni una incapacidad, así que **S-04 no puede validar §D3**. Y el subsidi
 viene con `Importe="0"` en todos, así que **tampoco va a cerrar §D11**.
 
 
-## D15 · El patrón usó el subsidio de los considerandos hasta marzo, y lo corrigió en abril
+## D15 · El subsidio declarado cambia de base en el corte marzo→abril
 
 **Hallazgo de F1-04, leído del propio CFDI.** El complemento de nómina declara el subsidio en
 `SubsidioAlEmpleo/@SubsidioCausado`, y ahí se ve el cambio:
 
-| Mes | `SubsidioCausado` | De dónde sale |
+| Mes | `SubsidioCausado` | Compatible con |
 |---|---|---|
-| marzo 2026 (35 recibos) | **$123.47** | $536.22 ÷ 30.4 × 7 |
-| abril 2026 (28 recibos) | **$123.34** | $535.65 ÷ 30.4 × 7 |
+| marzo 2026 (35 recibos) | **$123.47** | **dos** bases distintas — ver abajo |
+| abril 2026 (28 recibos) | **$123.34** | $535.65 ÷ 30.4 × 7 (la fórmula de feb–dic) |
 | mayo 2026 (7 recibos) | $103.73 y $127.05 | varía por empleado — ver abajo |
 
-**$536.22 es el importe que aparece únicamente en los considerandos del Decreto DOF
-31-12-2025 y que no reconcilia con su propia fórmula** (15.02 % × $3,566.22 = $535.65). Lo
-documentó F0-01 en `knowledge_base/nomina/20_valores_referencia_2026.md` §4, y F1-01 decidió
-por eso **calcular el subsidio desde el porcentaje del articulado y nunca copiar el peso**.
+### El $123.47 de marzo no permite elegir entre dos explicaciones
 
-El caso real confirma esa decisión de la mejor manera posible: **el patrón hizo la misma
-corrección**. Usó el peso de los considerandos hasta marzo y cambió a la fórmula desde abril.
+```
+redondear(536.22 / 30.4 × 7) = 123.47    <- el peso de los CONSIDERANDOS del decreto
+redondear(536.21 / 30.4 × 7) = 123.47    <- el TRANSITORIO DE ENERO (15.59% x UMA 2025)
+redondear(535.65 / 30.4 × 7) = 123.34    <- la fórmula de febrero en adelante
+```
+
+Los dos primeros son **indistinguibles al centavo**, y las fixtures no traen ningún recibo de
+enero ni ninguna exención que llegue a su tope, así que tampoco se puede despejar la UMA por
+otra vía. Las dos lecturas posibles del marzo del caso real son:
+
+1. el software usó el importe de los **considerandos** ($536.22), que no reconcilia con la
+   fórmula del articulado (15.02 % × $3,566.22 = $535.65) y que F0-01 documentó en
+   `knowledge_base/nomina/20_valores_referencia_2026.md` §4; **o**
+2. el software calculó el subsidio de **enero** con el transitorio (15.59 % × UMA 2025 =
+   $536.21) y **lo arrastró hasta marzo sin refrescarlo el 1 de febrero**.
+
+**La segunda cruza directamente con la pregunta 2 de §D14**, que ya le pregunta a la contadora
+si su software refresca la UMA el 1 de febrero para el excedente del Art. 106 fr. II o arrastra
+la del ejercicio anterior. Si fuera eso, sería **el mismo fallo de refresco del 1-feb en dos
+conceptos independientes** — una corroboración cruzada mucho más accionable que la primera
+lectura.
+
+**No hay dato que decida entre las dos.** Lo que sí es un hecho: desde abril el declarado es
+$123.34, que es lo que produce la fórmula del articulado y lo que calcula el motor.
+
+**Pregunta para la contadora:** ¿su software recalcula el subsidio el 1 de febrero, o arrastra
+el de enero? ¿Y de dónde tomó el importe que usó en marzo?
 
 ### Consecuencia sobre el cuadre de F1-04
 
@@ -321,8 +343,8 @@ corrección**. Usó el peso de los considerandos hasta marzo y cambió a la fór
 | **abril** | **28 de 28** |
 | mayo | 0 de 7 |
 
-Marzo falla por dos razones que se acumulan: la base del subsidio ($536.22) y que **el tope de
-ingresos todavía no mordía** — en marzo el patrón dio subsidio también a los tres empleados que
+Marzo falla por dos razones que se acumulan: la base del subsidio que declara el CFDI y que
+**el tope de ingresos todavía no mordía** — en marzo el patrón dio subsidio también a los tres empleados que
 en abril quedaron fuera (§D11). Mayo son 7 recibos de otra naturaleza.
 
 ### El CFDI de marzo se contradice a sí mismo

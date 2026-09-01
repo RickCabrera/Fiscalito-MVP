@@ -140,9 +140,10 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   (o con la regla de redondeo decidida en F0-03).
   **Resultado (ver `docs/decisiones-nomina.md` §D15):** el motor reproduce **al centavo los 28
   recibos de abril, completos**, y la exención cuadra en el 100 % de los recibos que la
-  ejercitan. Marzo cuadra 6 de 35 porque el patrón calculaba el subsidio con **$536.22** —el
-  importe de los *considerandos* del decreto, que no reconcilia con su fórmula— y todavía no
-  aplicaba el tope de ingresos; **desde abril usa $535.65, que es lo que calcula el motor**. Los
+  ejercitan. Marzo cuadra 6 de 35 porque el subsidio que declara el CFDI ahí es **$123.47**
+  —compatible con dos bases distintas que no se pueden distinguir al centavo, ver §D15— y
+  porque el tope de ingresos todavía no mordía; **desde abril el declarado es $123.34, que es
+  lo que calcula el motor**. Los
   7 recibos de mayo llevan lo que parece un ajuste mensual de ISR, fuera del alcance de esta
   tarea.
   **Huecos que le deja F1-01:** `tarifa_por_periodicidad()` levanta error para la

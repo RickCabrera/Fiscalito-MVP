@@ -4,16 +4,18 @@ ISR y exenciones contra el caso real de S-04.
 EL RESULTADO, EN UNA LÍNEA
 --------------------------
 **El motor reproduce al centavo los 28 recibos de abril, sin excepciones.**
-Marzo cuadra en 6 de 35 y mayo en 0 de 7, y las dos cosas tienen explicación
-documentada en §D15: en marzo el patrón calculaba el subsidio con **$536.22**
-—el importe de los *considerandos* del decreto, que no reconcilia con su propia
-fórmula— y todavía no aplicaba el tope de ingresos; desde abril usa **$535.65**,
-que es lo que da la fórmula y lo que calcula el motor. Los 7 recibos de mayo
-son de otra naturaleza (ver la clase de caracterización).
+Marzo cuadra en 6 de 35 y mayo en 0 de 7.
 
-O sea: **el patrón corrigió hacia lo que el motor ya hacía.** Esa es la mejor
-validación posible de la decisión de F1-01 de calcular el subsidio desde el
-porcentaje del articulado en vez de copiar el peso de los considerandos.
+Marzo falla por dos causas que se acumulan: el CFDI declara ahí un subsidio de
+**$123.47** en vez de los $123.34 que da la fórmula del articulado, y el tope
+de ingresos todavía no mordía. **Cuidado con la causa del $123.47**: es
+compatible con DOS bases que no se distinguen al centavo —el peso de los
+considerandos del decreto ($536.22) y el transitorio de enero arrastrado sin
+refrescar ($536.21)— y las fixtures no traen recibos de enero para desempatar.
+Ver §D15; no se afirma cuál fue.
+
+Lo que sí es un hecho es que desde abril el subsidio declarado es $123.34, que
+es exactamente lo que calcula el motor.
 
 LO QUE ESTE ARCHIVO NO PUEDE PROBAR
 -----------------------------------
@@ -184,10 +186,18 @@ class TestElSubsidioDeclaradoPorElCFDI:
     §D15. El CFDI declara `SubsidioCausado` y ahí se ve el cambio de base.
     """
 
-    def test_marzo_usa_el_importe_de_los_considerandos(self):
-        """$536.22 / 30.4 × 7 = $123.47 — el peso que NO reconcilia con la fórmula."""
+    def test_el_subsidio_de_marzo_no_es_el_de_la_formula(self):
+        """
+        $123.47 no es lo que da la fórmula del articulado ($123.34), y es
+        compatible con DOS bases que no se distinguen al centavo: el peso de
+        los considerandos ($536.22) y el transitorio de enero ($536.21)
+        arrastrado sin refrescar el 1 de febrero. Este test afirma la
+        ambigüedad, no una de las dos causas.
+        """
         assert SUBSIDIO_DECLARADO["2026-03"] == {Decimal("123.47")}
         assert redondear(Decimal("536.22") / DIAS_MES_FISCAL * 7) == Decimal("123.47")
+        assert redondear(Decimal("536.21") / DIAS_MES_FISCAL * 7) == Decimal("123.47")
+        assert redondear(Decimal("535.65") / DIAS_MES_FISCAL * 7) == Decimal("123.34")
 
     def test_abril_usa_el_que_da_la_formula_del_articulado(self):
         """$535.65 / 30.4 × 7 = $123.34 — lo que calcula el motor."""
