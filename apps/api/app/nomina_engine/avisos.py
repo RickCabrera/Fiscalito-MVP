@@ -33,12 +33,15 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from typing import TypeVar
 
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.dias_habiles import n_esimo_dia_habil_del_mes, sumar_dias_habiles
 from app.redondeo import redondear
 
 DIAS_HABILES_AVISO = 5
+
+_T = TypeVar("_T")
 
 
 class TipoSalario(str, Enum):
@@ -106,7 +109,8 @@ def fecha_limite_aviso_variable(bimestre_reportado: int, anio: int) -> date:
     return n_esimo_dia_habil_del_mes(anio, mes, DIAS_HABILES_AVISO)
 
 
-def _exigir(valor, nombre: str, motivo: str):
+def _exigir(valor: _T | None, nombre: str, motivo: str) -> _T:
+    """Exige un argumento opcional que este tipo de salario si necesita."""
     if valor is None:
         raise FiscalValidationError(f"Falta `{nombre}`: {motivo}")
     return valor
