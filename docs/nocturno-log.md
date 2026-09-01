@@ -141,3 +141,45 @@ decide Ricardo, no la agrego yo):
 > historia (ver S-06, que ya plantea lo mismo para `apps/api/pfebrero/`). Nota: S-07 ya cubre
 > las demo-xmls del frontend y menciona "el caso real del backend" — puede que S-09 sea parte
 > de S-07 en vez de una tarea nueva.
+
+---
+
+## F1-01 · tablas IMSS, tarifas ISR periódicas y subsidio (2026-09-01, sesión nocturna)
+
+**Estado:** CERRADA. PR #10, mergeada a main. CI verde al primer intento. Tests: 477 → 564.
+
+### Decisiones tomadas sin Ricardo
+
+1. **Las tarifas periódicas del Anexo 8 se generan, no se transcriben.** Se construyen de la
+   mensual (que ya estaba transcrita del PDF del DOF) con la regla `diaria = mensual / 30.4`
+   redondeada, luego `× días`. Los valores **publicados** están como literales en el test —
+   66 celdas de las tarifas diaria, semanal y quincenal, todas coinciden — y el docstring
+   declara que si un ejercicio futuro divergiera, ganan los literales.
+2. **Catorcenal y decenal levantan error en vez de entregar tabla.** La catorcenal no la
+   publica nadie; la decenal sí está publicada pero no se pudo verificar contra fuente. Ver D10.
+3. **RT y CEAV fuera de `CUOTAS_RAMOS`.** Su tasa patronal no es escalar, y meterlas con
+   `None` habría permitido que un consumidor las saltara en silencio.
+4. **`docs/nocturno-run.txt` sacado del control de versiones** y agregado al `.gitignore`. Se
+   había colado en un commit por un `git add -A`. Es salida del runner nocturno: cambia en cada
+   corrida y versionar el transcript de una sesión autónoma en este repo es un riesgo de
+   privacidad estructural.
+
+### Decisiones abiertas para Ricardo
+
+1. **D4 quedó afinada y la pregunta cambió.** Lo implementado es `SBC == 1 SM`, pero el SBC de
+   un trabajador de salario mínimo es `SM × factor de integración` ≈ 2.82 UMA, así que el
+   renglón de 3.150 % es **casi inalcanzable en la práctica**. La pregunta correcta para la
+   contadora: *¿el SUA lee "1.00 SM" como SBC igual al salario mínimo, o como trabajador que
+   percibe el salario mínimo con SBC integrado por encima?* Son **3.150 % vs 6.026 % para todos
+   los trabajadores de salario mínimo del país**. El código aplica la literal, la documenta y
+   la prueba; no adivina.
+2. **D10 · decenal y catorcenal** — la decenal se cierra transcribiendo sus 22 celdas del
+   Anexo 8 con su cita. La catorcenal necesita respuesta de la contadora.
+3. **D11 · base mensual del tope del subsidio** en nóminas semanales: ¿se proyecta o se acumula?
+   Bloquea el cuadre del ISR del caso real en F1-04.
+4. **Verificación de 30 segundos que vale la pena hacer:** los literales de la tarifa **diaria**
+   los transcribí de una fuente secundaria, y el revisor señaló con razón que desde dentro no
+   se puede distinguir una transcripción fiel de una copia de la salida del generador. Un
+   renglón del Anexo 8 2026 contra `PUBLICADA_DIARIA` en
+   `apps/api/tests/nomina/test_tablas_isr_periodicas.py` lo cierra. Sugerencia: el segundo
+   (`27.79 / 235.81 / 0.53`), que es donde el redondeo pesa más.
