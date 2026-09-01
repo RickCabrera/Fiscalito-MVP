@@ -135,7 +135,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
   producir. Se entregó el cuadre de esos 5 recibos contra el importe timbrado y la
   caracterización ejecutable del resto. **El cuadre completo queda pendiente de la contadora**,
   no del código.
-- [ ] **F1-04 · `isr_nomina.py`** — exenciones Art. 93, ISR Art. 96 periódico, subsidio
+- [x] **F1-04 · `isr_nomina.py`** — exenciones Art. 93, ISR Art. 96 periódico, subsidio
   con vigencia. *Listo cuando:* el ISR retenido de las fixtures S-04 cuadra al centavo
   (o con la regla de redondeo decidida en F0-03).
   **Resultado (ver `docs/decisiones-nomina.md` §D15):** el motor reproduce **al centavo los 28
