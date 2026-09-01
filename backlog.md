@@ -117,7 +117,7 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
 
 ## F1 — Motor `nomina_engine`
 
-- [ ] **F1-01 · `tablas_imss.py` + `tablas_isr_periodicas.py` + `subsidio_empleo()`** —
+- [x] **F1-01 · `tablas_imss.py` + `tablas_isr_periodicas.py` + `subsidio_empleo()`** —
   tablas 2026 versionadas con fuente; subsidio con transitorio de enero. *Listo cuando:*
   tests unitarios por tabla contra valores publicados.
 - [ ] **F1-02 · `integracion.py`** — factor de integración calculado desde
