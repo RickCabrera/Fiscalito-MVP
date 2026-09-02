@@ -17,9 +17,11 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import EmpleadosTab from '../components/cartera/EmpleadosTab';
+import { useCartera } from '../context/carteraStore';
 import { ArrowLeft, Info, Loader } from 'lucide-react';
 import ErrorAlert from '../components/common/ErrorAlert';
-import { envoltura, fila, tabla, td, tdNum, th, thNum, tituloSeccion } from '../components/nomina/estilosTabla';
+import { envoltura, fila, tabla, td, tdNum, th, thNum } from '../components/nomina/estilosTabla';
 import {
   etiquetaOrigen, obtenerCliente, primaComoPorcentaje,
   type ClienteDetalle,
@@ -52,9 +54,23 @@ function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: string; mono
  */
 type Resultado = { id: string; cliente?: ClienteDetalle; error?: string };
 
+/**
+ * G-01: la ficha gana un tab de **Empleados**, que es el editable y sale de la
+ * cartera del uid. El tab **Plantilla** es la vista de E-02/E-04, se queda
+ * intacta y **sigue siendo el default**: es el camino probado y el guion
+ * ensayado de la demo.
+ */
+type Vista = 'empleados' | 'plantilla';
+
 export default function ClienteDetallePage() {
   const { id } = useParams();
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  // **El default es Plantilla, no Empleados**, y es deliberado: es la vista que
+  // E-02/E-04 dejaron pulida y con la que está ensayada la demo. Cambiar el
+  // aterrizaje de la ficha la mañana de la demo sería mover el guion sin que
+  // Ricardo lo pida. Empleados está a un clic y visible.
+  const [vista, setVista] = useState<Vista>('plantilla');
+  const cartera = useCartera();
 
   useEffect(() => {
     if (!id) return;
@@ -74,10 +90,37 @@ export default function ClienteDetallePage() {
     return () => { cancelado = true; };
   }, [id]);
 
+  // Los empleados EDITABLES salen de la cartera, no de la ficha del backend.
+  const deLaCartera = id ? cartera.clientePorId(id) : null;
+  const empleadosCartera = deLaCartera?.empleados ?? [];
+
   const alDia = resultado !== null && resultado.id === id;
   const cliente = alDia ? resultado.cliente ?? null : null;
-  const error = alDia ? resultado.error ?? null : null;
-  const loading = !alDia;
+
+  /**
+   * **Son TRES estados, no dos.** La ficha del backend puede haber llegado,
+   * haber dado 404, o no haber llegado todavía. Confundir el tercero con el
+   * segundo hacía que la ficha de un cliente de DEMOSTRACIÓN abriera diciendo
+   * "este cliente lo diste de alta tú" durante toda la ventana del fetch —en
+   * una demo con red lenta, segundos en pantalla—, porque la cartera ya lo
+   * tenía y `loading` era `false`.
+   */
+  const fichaPendiente = !alDia;
+  const fichaNoExiste = alDia && cliente === null;
+
+  /**
+   * La cabecera se pinta con la ficha del backend cuando existe, y si no con la
+   * de la cartera. **Un cliente dado de alta por el contador no tiene ficha en
+   * el backend** —`GET /despacho/clientes/{id}` sólo conoce los tres de
+   * demostración—, y dejar que ese 404 apagara la pantalla habría dejado la
+   * mitad de G-03 en un callejón: se puede capturar un cliente y no se puede
+   * abrir.
+   */
+  const cabecera = cliente ?? deLaCartera;
+
+  // El error sólo sobrevive si el cliente TAMPOCO está en la cartera.
+  const error = fichaNoExiste && !deLaCartera ? resultado.error ?? null : null;
+  const loading = fichaPendiente && !deLaCartera;
 
   const hayFactorImplicito = cliente?.empleados.some((e) => e.factor_implicito) ?? false;
 
@@ -99,11 +142,11 @@ export default function ClienteDetallePage() {
 
       {error && <ErrorAlert message={error} />}
 
-      {cliente && (
+      {cabecera && (
         <>
           <div className="page-header animate-in">
-            <h1>{cliente.nombre}</h1>
-            <p>{cliente.giro} · {etiquetaOrigen(cliente.origen)}</p>
+            <h1>{cabecera.nombre}</h1>
+            <p>{cabecera.giro} · {etiquetaOrigen(cabecera.origen)}</p>
           </div>
 
           <div
@@ -113,23 +156,85 @@ export default function ClienteDetallePage() {
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20,
             }}
           >
-            <Dato etiqueta="Empleados" valor={String(cliente.num_empleados)} mono />
-            <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cliente.prima_riesgo)} mono />
+            {/* `??` y no `||`: con la cartera diciendo 0 empleados y el backend
+                diciendo 2, el `||` pintaba 2 — trataba un cero legítimo como
+                ausencia de dato. */}
+            <Dato
+              etiqueta="Empleados"
+              valor={String(deLaCartera ? empleadosCartera.length : cliente?.num_empleados ?? 0)}
+              mono
+            />
+            <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cabecera.prima_riesgo)} mono />
             <Dato
               etiqueta="Clase de riesgo"
               // "No aplica" sería falso: todo patrón tiene clase. Lo que no
               // aplica es haber DEDUCIDO su prima de una clase.
-              valor={cliente.clase_riesgo === null ? 'Autodeterminada (Art. 74)' : `${cliente.clase_riesgo} (supuesta)`}
+              valor={cabecera.clase_riesgo === null ? 'Autodeterminada (Art. 74)' : `${cabecera.clase_riesgo} (supuesta)`}
             />
             <Dato
               etiqueta="Quincena sugerida"
-              valor={`${cliente.periodo_sugerido.inicio} a ${cliente.periodo_sugerido.fin}`}
+              valor={`${cabecera.periodo_sugerido.inicio} a ${cabecera.periodo_sugerido.fin}`}
               mono
             />
           </div>
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
-            <h2 style={{ ...tituloSeccion, marginBottom: 'var(--space-sm)' }}>Plantilla</h2>
+            <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+              {([['empleados', 'Empleados'], ['plantilla', 'Plantilla']] as const).map(([v, texto]) => (
+                <button
+                  key={v}
+                  onClick={() => setVista(v)}
+                  aria-current={vista === v}
+                  style={{
+                    padding: 'var(--space-xs) var(--space-md)',
+                    background: vista === v ? 'var(--accent-active)' : 'transparent',
+                    color: vista === v ? 'var(--text-on-accent)' : 'var(--text-secondary)',
+                    border: `1px solid ${vista === v ? 'var(--accent-active)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-full)', cursor: 'pointer', fontSize: '0.85rem',
+                  }}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
+
+            {vista === 'empleados' && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                {cartera.motivoFallback && (
+                  <p style={{ margin: '0 0 var(--space-md)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {cartera.motivoFallback}
+                  </p>
+                )}
+                <EmpleadosTab
+                  empleados={empleadosCartera}
+                  soloLectura={cartera.soloLectura}
+                  onGuardar={(e) => cartera.guardarEmpleado(id as string, e)}
+                  onBorrar={(no) => cartera.borrarEmpleado(id as string, no)}
+                />
+              </div>
+            )}
+
+            {vista === 'plantilla' && fichaPendiente && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)' }}>
+                  <Loader size={18} className="spin" color="var(--accent-active)" />
+                  Cargando la plantilla...
+                </div>
+              </div>
+            )}
+
+            {vista === 'plantilla' && fichaNoExiste && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                  Este cliente lo diste de alta tú, así que no tiene ficha en el catálogo de
+                  demostración. La pestaña <strong>Empleados</strong> es la que lleva su
+                  plantilla.
+                </p>
+              </div>
+            )}
+
+            {vista === 'plantilla' && cliente && (
+            <>
             <div className="card" style={{ padding: 'var(--space-lg)' }}>
               <div style={envoltura}>
                 <table style={tabla(760)}>
@@ -203,6 +308,8 @@ export default function ClienteDetallePage() {
                 )}
               </span>
             </div>
+            </>
+            )}
           </div>
         </>
       )}

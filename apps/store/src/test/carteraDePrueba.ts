@@ -1,0 +1,40 @@
+/**
+ * Contexto de cartera por default para los tests de pantalla (G-03).
+ *
+ * POR QUÉ EXISTE Y POR QUÉ VIENE VACÍO
+ * ------------------------------------
+ * `CarteraProvider` habla con Firestore, y las pantallas que ya existían
+ * (E-02…E-07) no saben nada de eso. Sin este doble tendrían que montar el
+ * proveedor real, o sea abrir la red en tests que la tienen cerrada por default.
+ *
+ * Viene **vacío a propósito**: con la cartera sin ese cliente,
+ * `useNominaCliente` cae a los empleados de la ficha del backend, que es
+ * exactamente el camino que esas pantallas probaban antes de G-01. Así el doble
+ * no las cambia de significado — siguen midiendo lo mismo.
+ *
+ * Un test que quiera ejercitar la cartera pasa su propio `override`.
+ */
+
+import { vi } from 'vitest';
+import type { CarteraContextType } from '../context/carteraStore';
+
+export function carteraDePrueba(
+  override: Partial<CarteraContextType> = {},
+): CarteraContextType {
+  return {
+    clientes: [],
+    loading: false,
+    origen: 'backend',
+    motivoFallback: null,
+    soloLectura: true,
+    error: null,
+    clientePorId: () => null,
+    guardarCliente: vi.fn().mockResolvedValue(undefined),
+    borrarCliente: vi.fn().mockResolvedValue(undefined),
+    guardarEmpleado: vi.fn().mockResolvedValue(undefined),
+    borrarEmpleado: vi.fn().mockResolvedValue(undefined),
+    sembrar: vi.fn().mockResolvedValue(undefined),
+    recargar: vi.fn(),
+    ...override,
+  };
+}

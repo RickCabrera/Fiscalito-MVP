@@ -94,6 +94,83 @@ plan, un revisor de entregable, un PR. **PR #25, mergeada.**
   de los seis ramos que sí descuentan — incluye Cesantía y Vejez, que vive en `ceav.py` y se
   había omitido. Solo texto: `git diff -- apps/api/app/` vacío.
 
+## G — Épica de cartera (2026-09-02, MODO RÁPIDO)
+
+Pedida por Ricardo la mañana de la demo, **no venía del backlog**. Una rama, un plan, un
+revisor de plan, un revisor de entregable, un PR. El endpoint de SBC llevó **revisor aparte**,
+que es la excepción que Ricardo dejó en pie. Regla del día: **la demo funciona en TODO
+momento**; los 3 clientes demo y sus empleados se mantienen como semilla y no hay migraciones
+destructivas.
+
+- [ ] **G-01 · Empleados por cliente** — *Listo cuando:* doy de alta un empleado nuevo y aparece
+  en el cálculo de nómina de ese cliente.
+- [ ] **G-02 · Vinculación con el checador** — *Listo cuando:* un empleado sin `employeeNo` se
+  marca visiblemente como "no vinculado al checador" y sus checadas no se pierden en silencio.
+  **Entregada a medias a propósito:** la pantalla de dispositivos por cliente (marca, modelo,
+  IP, puerto, último serial) **se recortó** — es colección nueva, CRUD nuevo y pantalla nueva,
+  no cambia ningún número, y los datos del Hikvision ya están en `docs/D-DEMO-CHECADOR.md`.
+  Se prefirió entregar dos tareas completas a tres a medias.
+- [ ] **G-03 · Multi-tenant real** — *Listo cuando:* dos cuentas distintas ven carteras
+  distintas. **Su criterio está condicionado a que `firestore.rules` esté desplegado**, y
+  desplegarlo es acción de Ricardo: mientras no lo esté, la app cae al catálogo del backend
+  para que la demo no se rompa, y las dos cuentas ven los mismos tres clientes. El archivo
+  está versionado en la raíz del repo, **y `firebase.json` se dejó intacto a propósito** para
+  no cambiar la semántica de `firebase deploy`.
+
+**Dos cosas que quedaron abiertas y son acción de Ricardo, no de código:**
+
+1. **La receta para desplegar `firestore.rules` no funciona como está escrita.** El encabezado
+   del archivo dice `firebase deploy --only firestore:rules`, pero `firebase.json` vive en
+   `apps/store/` y las reglas en la raíz, y ese `firebase.json` **no tiene bloque `firestore`**
+   (se dejó intacto a propósito: agregárselo haría que un `firebase deploy` pelado publicara
+   también las reglas y pudiera romper producción). Para desplegarlas hace falta decidir entre
+   agregar ese bloque —asumiendo el riesgo— o poner un `firebase.json` en la raíz.
+   **G-03 entero cuelga de ese despliegue**: sin reglas, la app cae al catálogo del backend y
+   dos cuentas ven los mismos tres clientes.
+2. **Colisión de nomenclatura con F1-09.** Está referenciada en `api-contract.md`,
+   `D-DEMO-CHECADOR.md`, `decisiones-nomina.md` y `nocturno-log.md` como dueña de "persistencia
+   Firestore / alta de clientes". **G-01 y G-03 se comieron esa parte.** No aparece en
+   `backlog.md`, así que es deuda de nomenclatura y no de código; hay que decidir si F1-09 se
+   redefine o se cierra.
+
+3. **La periodicidad de pago quedó fija en quincenal, y es un número mal que ya venía de
+   antes.** El periodo que la app propone es siempre `quincena(hoy)`, y **nadie valida que la
+   duración del periodo case con la `clave_periodicidad` del cliente**: `periodo.py` sólo
+   comprueba que todas las incidencias midan lo mismo. Un cliente marcado **Mensual (05)**
+   recibiría la tarifa mensual del Art. 96 sobre una base de 15-16 días —**ISR subestimado en
+   silencio**, con recibo creíble— y uno **Semanal (02)**, la semanal sobre 16 días.
+   **Catorcenal (03)** ni siquiera puede calcular: no hay tarifa publicada (§D10) y el motor
+   levanta. Por eso el selector del alta de cliente ofrece **sólo quincenal**, deshabilitado y
+   con la razón en pantalla. Abrir las otras tres exige que el motor rechace un periodo cuya
+   duración no case con la clave — es tarea propia, y toca a la contadora.
+
+4. **Deuda declarada: dos archivos rebasan el tope de 300 líneas** de
+   `apps/store/CLAUDE.md`, que está en la sección NUNCA. `ModalEmpleado.tsx` nació por encima
+   (no creció hasta ahí) y `useNominaCliente.ts` pasó de 226 a ~420. **No se extrajeron a
+   propósito y con el visto bueno del revisor:** el archivo a partir es justo el que contiene
+   las guardas del cierre, y hacerlo a las puertas del merge podía borrarlas con la suite en
+   verde — que es exactamente lo que pasó dos veces en esta corrida. Se difiere **con las
+   guardas ya pinneadas por tests**, no antes. Tarea propia.
+
+5. **¿Cómo se calcula un cliente mensual con un periodo PARCIAL** (alta o baja a mitad de
+   mes)? Tabla mensual del Art. 96 sobre base parcial, o prorrateo. No está en
+   `docs/decisiones-nomina.md` —D10 cubre las claves sin tarifa y D11 el tope del subsidio— y
+   roza lo que `PLAN_NOMINA.md` §5 dejó para la contadora. Hoy la guarda lo **bloquea**, que
+   es lo conservador, y el mensaje lo dice explícitamente en vez de culpar a la periodicidad.
+
+6. **Hueco preexistente que sigue abierto:** nadie detecta el caso simétrico —cliente
+   quincenal al que el operador le arrastra las fechas a un mes completo—, que aplicaría la
+   tarifa quincenal sobre base mensual. Los dos inputs de fecha son libres y `periodo.py` sólo
+   compara las incidencias entre sí. La guarda de G-03 cubre una sola dirección y lo dice.
+
+**Decisión de arquitectura que necesita la firma de Ricardo:** G-01 pedía CRUD de empleados en
+el backend y G-03 pedía la cartera en Firestore. Eso son dos dueños del mismo dato. Se
+construyó el modelo, la semilla y el cálculo en el backend, y el CRUD contra Firestore desde el
+front. **No se construyeron POST/PUT/DELETE de empleados en el backend**, porque `apps/api`
+está declarado *stateless* y no tiene `firebase-admin`: la única persistencia posible hoy sería
+otro almacén en RAM, que haría literalmente falso el criterio de G-01 después de cualquier
+reinicio — o sea, a media demo.
+
 ## S — Saneamiento (deuda que estorba al bucle)
 
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el

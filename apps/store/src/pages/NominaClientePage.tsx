@@ -51,12 +51,27 @@ export default function NominaClientePage() {
     // siempre —para que el paso 4 exista en pantalla desde el principio— y
     // `disabled` es una propiedad del DOM, no una garantía del handler.
     if (!nomina || !cliente) return;
-    exportarNominaPDF(nomina, cliente);
+    exportarNominaPDF(nomina, cliente, n.sinVincular);
   };
 
   // Los estados se derivan en cascada: un paso está bloqueado mientras no
   // exista lo que produce el anterior.
-  const estadoPaso2: EstadoPaso = cierre ? 'listo' : cliente ? 'disponible' : 'bloqueado';
+  /**
+   * El paso 2 espera también a la CARTERA, no sólo a la ficha.
+   *
+   * La ficha llega del backend (round-trip local) antes que Firestore (hasta
+   * 2500 ms). En esa ventana `deLaCartera` es `null`, así que el cierre usaría
+   * las llaves del catálogo en vez de las del aparato: para un empleado con
+   * número propio, cero checadas encontradas. Y cuando la cartera llega, la
+   * plantilla vuelve a cuadrar por `empleado_no` y nada levanta — sale un recibo
+   * con faltas de más, en silencio. Es el mismo bug de G-02 entrando por la
+   * puerta del tiempo.
+   */
+  const estadoPaso2: EstadoPaso = cierre
+    ? 'listo'
+    : cliente && !n.carteraCargando
+      ? 'disponible'
+      : 'bloqueado';
   const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
   const estadoPaso4: EstadoPaso = nomina ? 'disponible' : 'bloqueado';
 
@@ -71,6 +86,26 @@ export default function NominaClientePage() {
         <AvisoNomina severidad="error" conIcono={false}>
           <strong style={{ color: 'var(--danger)' }}>No se pudo completar la operación.</strong>{' '}
           {n.error}
+        </AvisoNomina>
+      )}
+
+      {/* G-02: el conteo sale de la CARTERA, no del flujo de checadas.
+          `empleados_desconocidos` (TablaIncidencias, herencia D-04) responde la
+          pregunta contraria —un employeeNo que checó y no está en la
+          plantilla—. Los dos conjuntos no se tocan, y con sólo uno de los dos
+          hay gente que desaparece del cálculo sin que nadie lo note. */}
+      {n.sinVincular > 0 && (
+        <AvisoNomina severidad="advertencia">
+          <strong>
+            {n.sinVincular}{' '}
+            {n.sinVincular === 1
+              ? 'empleado no está vinculado al checador'
+              : 'empleados no están vinculados al checador'}
+            .
+          </strong>{' '}
+          Sin <code>employeeNo</code> no hay forma de atribuirle sus checadas, así que{' '}
+          {n.sinVincular === 1 ? 'no entra' : 'no entran'} en este cálculo. Captura su número
+          del aparato en la ficha del cliente, pestaña Empleados.
         </AvisoNomina>
       )}
 
@@ -89,7 +124,11 @@ export default function NominaClientePage() {
         titulo="Cerrar quincena"
         descripcion="Convierte las checadas en días trabajados, faltas y retardos."
         estado={estadoPaso2}
-        motivoBloqueo="Espera a que cargue la plantilla del cliente."
+        motivoBloqueo={
+          n.carteraCargando
+            ? 'Cargando tu cartera… El cierre espera a saber con qué números del checador buscar.'
+            : 'Espera a que cargue la plantilla del cliente.'
+        }
       >
         <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
           <label style={{ flex: '0 1 190px' }}>
@@ -126,7 +165,7 @@ export default function NominaClientePage() {
           <button
             className="btn-primary"
             onClick={n.pedirCierre}
-            disabled={n.ocupado || !cliente || !n.inicio || !n.fin}
+            disabled={n.ocupado || !cliente || !n.inicio || !n.fin || n.carteraCargando}
             style={ACCION}
           >
             <CalendarCheck size={16} /> Cerrar quincena

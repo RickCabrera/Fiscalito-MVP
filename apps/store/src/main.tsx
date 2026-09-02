@@ -12,6 +12,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { ClienteActivoProvider } from './context/ClienteActivoContext';
+import { CarteraProvider } from './context/CarteraContext';
 import { AgentProvider } from './agent/AgentContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './AppRoutes';
@@ -24,11 +25,17 @@ function App() {
         <ProfileProvider>
           {/* DEMO E-02: la cartera sólo se carga para un perfil de contador. */}
           <ClienteActivoProvider>
+            {/* G-03: la cartera por uid. Va DENTRO del cliente activo porque
+                el selector del header sigue leyendo de aquel. Ningún tool del
+                agente la consume todavía; el orden respecto de `AgentProvider`
+                es indiferente hoy. */}
+            <CarteraProvider>
             <AgentProvider>
               <BrowserRouter>
                 <AppRoutes />
               </BrowserRouter>
             </AgentProvider>
+            </CarteraProvider>
           </ClienteActivoProvider>
         </ProfileProvider>
       </AuthProvider>

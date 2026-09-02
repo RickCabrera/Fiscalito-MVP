@@ -16,6 +16,36 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 
+// G-03: las pantallas piden la cartera. El doble viene vacío, así que
+// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
+// camino que estas pruebas medían antes de G-01.
+vi.mock('../context/carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  // La LISTA de clientes sale de la cartera (G-03), así que el doble trae
+  // clientes: con el vacío por default, `/app/clientes` pinta el estado "cartera
+  // vacía" y la prueba dejaría de medir lo que dice medir.
+  const CLIENTES = [
+    {
+      id: 'demo', nombre: 'Cliente Demo',
+      giro: 'Servicios', origen: 'sintetico',
+      prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04',
+      zona: 'general',
+      periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
+      empleados: [],
+    },
+  ];
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        clientes: CLIENTES,
+        origen: 'firestore',
+        soloLectura: false,
+        clientePorId: (id: string) => CLIENTES.find((c) => c.id === id) ?? null,
+      }),
+  };
+});
+
+
 const perfilBase: UserProfile = {
   contributorType: null,
   rfc: 'XAXX010101000',

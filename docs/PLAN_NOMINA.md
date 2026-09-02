@@ -344,8 +344,15 @@ ReciboResponse{ percepciones (gravado/exento), isr_causado, subsidio, isr_reteni
 
 **Firestore:**
 
+> **CORREGIDO EN G-03 (2026-09-02): el árbol real es `users/{uid}`, no `contadores/{uid}`.**
+> `ProfileContext` ya guarda el perfil del contador en `users/{uid}` y
+> `declaracionesHistory` cuelga `declaraciones` de ahí. Partir la cartera a otro árbol
+> obligaría a dos reglas de seguridad para el mismo dueño y a migrar el perfil, que no era
+> de esa tarea. El esquema de abajo se lee con `users/` en lugar de `contadores/`. Las reglas
+> propuestas viven en `firestore.rules`, en la raíz del repo, **sin desplegar**.
+
 ```
-contadores/{uid}
+users/{uid}                          # antes decía `contadores/{uid}`
   perfil: {nombre, cedula?, despacho?, rfc?, telefono, onboardingComplete, plan}
   clientes/{clienteId}
     datos: Cliente (ver schema) + {activo, numEmpleados, updatedAt}
@@ -357,7 +364,7 @@ contadores/{uid}
     historial/{docId}             # equivalente a users/{uid}/declaraciones actual (categoría: sbc|cuotas|recibo|calendario)
 ```
 
-**Security rules:** `request.auth.uid == contadorId` en toda la subcolección. Futuro: `miembros/{uid}` con roles.
+**Security rules:** `request.auth.uid == uid` en toda la subcolección (ver `firestore.rules`). Futuro: `miembros/{uid}` con roles.
 
 **Rutas:**
 

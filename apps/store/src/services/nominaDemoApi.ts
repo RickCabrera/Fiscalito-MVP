@@ -137,6 +137,23 @@ export interface NominaPeriodo {
   advertencias: string[];
 }
 
+/**
+ * La plantilla tal como viaja en `POST /nomina/calcular-periodo`.
+ *
+ * Son los cinco campos que el backend espera, con su nombre y su tipo. Existe
+ * como tipo propio para que quien la arme **no tenga que fabricar un
+ * `EmpleadoCliente` completo** rellenando campos que no conoce: un `factor: '0'`
+ * o un `factor_implicito: false` inventados son afirmaciones falsas sobre
+ * números que no existen, viajando con el tipo que la ficha y el PDF consumen.
+ */
+export interface EmpleadoNominaRequest {
+  empleado_no: string;
+  nombre: string;
+  salario_diario: string;
+  salario_diario_integrado: string;
+  zona: string;
+}
+
 // ── Transporte ──
 
 async function pedir<T>(ruta: string, opciones?: RequestInit): Promise<T> {
@@ -194,6 +211,9 @@ export function calcularNomina(
   periodo: PeriodoNomina,
   incidencias: IncidenciasEmpleado[],
   ficha: ClienteDetalle,
+  /** La plantilla que entra al cálculo. Explícita desde G-01: puede venir de la
+   *  cartera del despacho y no de la ficha del backend. */
+  empleados: EmpleadoNominaRequest[],
 ): Promise<NominaPeriodo> {
   return pedir('/nomina/calcular-periodo', {
     method: 'POST',
@@ -215,13 +235,7 @@ export function calcularNomina(
       // se pueden calcular. Los campos salen tal cual de la ficha: son un
       // superconjunto compatible de `EmpleadoNominaSchema` y remapearlos aquí
       // sería mover datos fiscales desde la UI.
-      empleados: ficha.empleados.map((e) => ({
-        empleado_no: e.empleado_no,
-        nombre: e.nombre,
-        salario_diario: e.salario_diario,
-        salario_diario_integrado: e.salario_diario_integrado,
-        zona: e.zona,
-      })),
+      empleados,
     }),
   });
 }

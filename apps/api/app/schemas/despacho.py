@@ -109,3 +109,22 @@ class ClienteDetalle(ClienteResumen):
 class ClientesResponse(BaseModel):
     exito: bool = True
     clientes: tuple[ClienteResumen, ...]
+
+
+class PrimasDeRiesgoResponse(BaseModel):
+    """
+    Primas medias por clase, **con su fecha de vigencia**.
+
+    La fecha no es adorno: la tabla del Art. 73 es por año y el motor la lee con
+    `tabla_del_anio`. Una copia sin fecha —como la que estuvo un rato en
+    `ModalCliente.tsx`— propone las primas del año pasado en cuanto cambia el
+    año, sin que nada falle.
+    """
+
+    fecha: date
+    minima: Decimal = Field(description="Art. 72 LSS.")
+    maxima: Decimal = Field(description="Art. 72 LSS.")
+    medias_por_clase: dict[str, Decimal] = Field(
+        description="Clase (1-5) → prima media. Aplica a EMPRESA NUEVA (Art. 73)."
+    )
+    fundamento: str

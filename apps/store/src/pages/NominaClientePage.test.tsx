@@ -19,6 +19,15 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+// G-03: las pantallas piden la cartera. El doble viene vacío, así que
+// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
+// camino que estas pruebas medían antes de G-01.
+vi.mock('../context/carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  return { useCartera: () => carteraDePrueba() };
+});
+
+
 const setClienteId = vi.fn();
 vi.mock('../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
@@ -232,7 +241,11 @@ describe('NominaClientePage', () => {
     stubApi();
     montar();
     fireEvent.click(await esperarPlantilla());
-    expect(await screen.findByText(/Checadas de empleados que no están en la plantilla/)).toBeTruthy();
+    // G-02 cambió el texto: son NÚMEROS DEL CHECADOR, no empleados. Desde que
+    // las dos llaves pueden diferir, el aviso tenía que dejar de hablar de
+    // "empleados que no están en la plantilla" — puede ser alguien que sí está
+    // y a quien no se le ha capturado su `employeeNo`.
+    expect(await screen.findByText(/Números del checador que no corresponden a nadie/)).toBeTruthy();
     expect(screen.getByText(/E-99/)).toBeTruthy();
     expect(screen.getByText('PERSONA DOS')).toBeTruthy();
   });
