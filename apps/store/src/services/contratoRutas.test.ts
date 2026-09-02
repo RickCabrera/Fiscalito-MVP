@@ -41,10 +41,28 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import rutasBackend from './rutasBackend.json';
+/**
+ * R-07: `carteraBackend` pide el ID token ANTES de llamar a `fetch`, así que sin
+ * sesión no llega a construir ninguna URL y este archivo no podría medirla.
+ *
+ * El doble también resuelve el otro problema: `services/firebase.ts` llama a
+ * `getAuth()` al importarse y eso **lanza sin las llaves de Firebase** — local
+ * verde, CI rojo. Ver `sinLlavesDeFirebase.test.ts`.
+ */
+vi.mock('./firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
+
 import * as despachoApi from './despachoApi';
 import * as nominaDemoApi from './nominaDemoApi';
 import * as fiscalAgentApi from './fiscalAgentApi';
 import * as carteraApi from './carteraApi';
+// R-07: el cliente del CRUD con el backend como dueño. Un revisor lo encontró
+// AUSENTE de este archivo — un módulo entero con cinco funciones que pegan al
+// backend entró por debajo del test que existe para impedir exactamente eso.
+import * as carteraBackend from './carteraBackend';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -137,6 +155,15 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
         [],
       ),
   },
+  'carteraBackend.ts': {
+    cargarCartera: () => carteraBackend.cargarCartera('uid-1'),
+    guardarCliente: () =>
+      carteraBackend.guardarCliente('uid-1', { id: 'mio' } as never),
+    borrarCliente: () => carteraBackend.borrarCliente('uid-1', 'mio'),
+    guardarEmpleado: () =>
+      carteraBackend.guardarEmpleado('uid-1', 'mio', { empleado_no: 'E-01' } as never),
+    borrarEmpleado: () => carteraBackend.borrarEmpleado('uid-1', 'mio', 'E-01'),
+  },
   'carteraApi.ts': {
     obtenerEmpleadosSemilla: () => carteraApi.obtenerEmpleadosSemilla('demo'),
     integrarSBC: () => carteraApi.integrarSBC({ salario_diario: '500.00', fecha: '2026-09-01' }),
@@ -173,6 +200,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'nominaDemoApi.ts': nominaDemoApi,
   'fiscalAgentApi.ts': fiscalAgentApi,
   'carteraApi.ts': carteraApi,
+  'carteraBackend.ts': carteraBackend,
 };
 
 /**
@@ -190,6 +218,10 @@ const HELPERS_PUROS = new Set([
   'tipoParaCalendario',
   'estaVinculado',
   'contarSinVincular',
+  // `sembrarDemo` del backend LANZA a propósito: no existe ese endpoint, y
+  // darle uno que copia salarios de terceros a la cuenta de quien llame sería
+  // la escalada que R-06 vino a cerrar. No pega a ninguna URL.
+  'sembrarDemo',
 ]);
 
 function funcionesQueDeberianPegar(modulo: Record<string, unknown>): string[] {

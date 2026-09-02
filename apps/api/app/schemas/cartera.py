@@ -80,6 +80,14 @@ class EmpleadosCarteraResponse(BaseModel):
     sin_vincular: int = Field(
         description="Cuántos NO tienen `employee_no`. Sus checadas no se pueden atribuir."
     )
+    ilegibles: tuple[str, ...] = Field(
+        default=(),
+        description="Empleados guardados que **no pasan la validación actual** —un NSS de "
+        "una versión anterior, un campo que falta— y por eso NO vienen en `empleados`. Se "
+        "reportan en vez de tumbar la respuesta: un documento legado dejaba la cartera "
+        "completa en cero. Y se reportan en vez de esconderse, porque un empleado que queda "
+        "fuera del cálculo en silencio es el modo de falla que la épica G viene evitando.",
+    )
     empleados: tuple[EmpleadoCarteraSchema, ...]
 
 

@@ -428,7 +428,7 @@ NSS de trabajadores de terceros. El uid sale del token verificado.
 | 401 | falta `Authorization`, está mal formado, o el token no es válido |
 | 404 | el cliente no está en **tu** cartera |
 | 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL) |
-| 503 | **el backend no tiene credenciales de Firebase.** El mensaje dice qué falta |
+| 500 | un documento guardado por una versión anterior no pasa la validación de lectura |
 
 ### `GET /api/v1/cartera/clientes`
 Los clientes de quien hace el request. `{exito, total, clientes[]}`.
@@ -449,10 +449,17 @@ mismo id. Hay un test contra el emulador que lo fija, y el doble en memoria **no
 puede** cazar ese bug.
 
 ### `GET /api/v1/cartera/clientes/{cliente_id}/empleados`
-**Ésta es la fuente que el cálculo de nómina lee**, y es lo que hace verdadero el
-criterio de R-07. Distinta de `/despacho/clientes/{id}/empleados`, que es la
-SEMILLA de demostración y no la cartera de nadie.
-`{exito, cliente_id, total, sin_vincular, empleados[]}`.
+La plantilla del cliente, leída de la cartera que este CRUD escribe. Distinta de
+`/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la
+cartera de nadie. `{exito, cliente_id, total, sin_vincular, empleados[]}`.
+
+> **Todavía nadie la consume para calcular.** Una versión anterior de este
+> documento decía "ésta es la fuente que el cálculo de nómina lee, y es lo que
+> hace verdadero el criterio de R-07". **Era falso.** `routes/nomina.py` no se
+> tocó: `POST /nomina/calcular-periodo` sigue recibiendo `empleados` en el
+> cuerpo. El tercer criterio de R-07 **no se cumple**, y encender el interruptor
+> no lo cambia — sólo mueve de dónde saca el navegador la plantilla que sigue
+> mandando. Cerrar esa costura es tarea propia.
 
 ### `PUT /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}`
 El `empleado_no` de la URL es la llave del **cálculo**; `employee_no`, en el

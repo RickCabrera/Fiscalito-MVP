@@ -10,10 +10,19 @@ cliente, "afirmar un cliente y calcular otro" cabe en un JSON — y el guard del
 backend no puede atraparlo, porque `cliente` y `empleados` vendrían coherentes
 entre sí y ser de otro. Es el bloqueante que E-03 dejó anotado.
 
-Con el backend como dueño, la plantilla deja de ser un dato de entrada: se lee
-de la misma fuente que el CRUD escribe. Ese es el criterio de R-07 —"el cálculo
-de nómina lee la misma fuente"— y por eso esta tarea lleva revisor de motor
-aunque no toque una fórmula.
+Este módulo construye **la mitad** de eso: el CRUD y su dueño.
+
+**LA OTRA MITAD NO ESTÁ CONSTRUIDA, Y HAY QUE DECIRLO AQUÍ.** El tercer criterio
+de R-07 —"el cálculo de nómina lee la misma fuente"— **no se cumple**, ni con el
+interruptor apagado ni encendido. `routes/nomina.py` no se tocó:
+`POST /nomina/calcular-periodo` sigue recibiendo `empleados` en el cuerpo y el
+front sigue armándolo con `plantillaDeNomina`. Encender `VITE_CARTERA_BACKEND`
+sólo cambia de dónde saca el navegador esa plantilla; **el agujero que este
+docstring describe sigue abierto igual que antes.**
+
+Una versión anterior de este comentario afirmaba lo contrario. Era falso, y lo
+encontró el revisor de motor. Que el cálculo lea `listar_empleados` en vez de
+creerle al cuerpo es tarea propia, anotada en el backlog.
 
 QUÉ **NO** ESTÁ AQUÍ
 --------------------
@@ -34,6 +43,7 @@ abierto (S-00b), y eso **no cambia** aquí.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from pydantic import ValidationError
 
 from app.auth_firebase import cliente_firestore, usuario_actual
 from app.exceptions import FiscalAgentError
@@ -145,10 +155,12 @@ async def borrar_cliente(
     response_model=EmpleadosCarteraResponse,
     responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
     summary="La plantilla de un cliente del despacho",
-    description="**Ésta es la fuente que el cálculo de nómina lee**, y es lo que hace "
-    "verdadero el criterio de R-07. Distinta de "
-    "`/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la "
-    "cartera de nadie.",
+    description="La plantilla del cliente, leída de la cartera que este mismo CRUD "
+    "escribe. Distinta de `/despacho/clientes/{id}/empleados`, que es la SEMILLA de "
+    "demostración y no la cartera de nadie. "
+    "**Todavía NADIE la consume para calcular.** `POST /nomina/calcular-periodo` sigue "
+    "recibiendo la plantilla en el cuerpo, así que el tercer criterio de R-07 —*el "
+    "cálculo lee la misma fuente*— **no se cumple**. Es tarea propia, y está anotada.",
 )
 async def listar_empleados(
     cliente_id: str,
@@ -159,7 +171,24 @@ async def listar_empleados(
         raise FiscalAgentError(
             f"El cliente {cliente_id!r} no está en tu cartera.", status_code=404
         )
-    empleados = [EmpleadoCarteraSchema(**e) for e in repo.listar_empleados(uid, cliente_id)]
+    # **La lectura NO es estricta, y esto costó un bloqueo.** La primera versión
+    # hacía `EmpleadoCarteraSchema(**e)` a secas: un documento guardado por una
+    # versión anterior de la app —un NSS de 9 dígitos, un campo que faltaba—
+    # producía un **500**, y como el front pide los empleados de todos los
+    # clientes dentro de un `Promise.all`, un solo documento legado dejaba la
+    # cartera COMPLETA en cero. El endpoint de clientes ya era laxo por esta
+    # razón exacta; éste no lo era, y es el que más duele.
+    #
+    # Los que no pasan se **reportan**, no se esconden: quedar fuera del cálculo
+    # en silencio es el modo de falla que toda la épica G viene evitando.
+    empleados: list[EmpleadoCarteraSchema] = []
+    ilegibles: list[str] = []
+    for crudo in repo.listar_empleados(uid, cliente_id):
+        try:
+            empleados.append(EmpleadoCarteraSchema(**crudo))
+        except ValidationError:
+            ilegibles.append(str(crudo.get("empleado_no", "?")))
+
     return EmpleadosCarteraResponse(
         cliente_id=cliente_id,
         total=len(empleados),
@@ -167,6 +196,7 @@ async def listar_empleados(
         # depende de que alguien se acuerde de filtrar es un aviso que un día no
         # sale.
         sin_vincular=sum(1 for e in empleados if not e.vinculado_al_checador),
+        ilegibles=tuple(ilegibles),
         empleados=tuple(empleados),
     )
 

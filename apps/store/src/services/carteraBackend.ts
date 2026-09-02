@@ -20,6 +20,7 @@
  */
 
 import { auth } from './firebase';
+import { conPeriodoAlDia } from './carteraFirestore';
 import { cuerpoDeError, detalleDelError } from './errorApi';
 import type { EmpleadoCartera, ClienteCartera } from './carteraApi';
 import type { CarteraCargada } from './carteraFirestore';
@@ -81,7 +82,15 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
         return { ...c, empleados } as ClienteCartera;
       }),
     );
-    return { clientes: conEmpleados, origen: 'firestore', error: null };
+    // **El mismo refresco de periodo que hace el camino de Firestore.** Sin
+    // esto los dos caminos NO producían el mismo `ClienteCartera[]`: el backend
+    // devolvía el snapshot guardado, y `periodo_sugerido` alimenta la
+    // `fecha_pago` que va al motor — de la que dependen UMA, salario mínimo, la
+    // tarifa del Anexo 8 y el transitorio de enero del subsidio (§D18). Dos
+    // semanas después de sembrar, cada cliente arrancaría con una quincena
+    // vencida. `carteraFirestore` documenta ese modo de falla y lo repara al
+    // leer; este camino lo reintroducía. Lo midió el revisor de motor.
+    return { clientes: await conPeriodoAlDia(conEmpleados), origen: 'firestore', error: null };
   } catch (e) {
     const detalle = e instanceof Error ? e.message : 'error desconocido';
     return { clientes: [], origen: 'firestore', error: `No se pudo leer tu cartera: ${detalle}` };

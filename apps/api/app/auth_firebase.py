@@ -117,9 +117,22 @@ def _app_firebase() -> Any:
         return firebase_admin.initialize_app(_credencial_anonima(), {"projectId": proyecto})
 
     try:
+        # **`google.auth.default()` se fuerza AQUÍ, a propósito.**
+        # `credentials.ApplicationDefault()` es perezosa: `initialize_app` no
+        # lanza aunque no haya credenciales, y el error salía después dentro de
+        # `verify_id_token`, donde el `except` genérico lo convertía en un 401
+        # —"tu sesión no es válida"— tras 12 segundos de espera al metadata
+        # server. O sea que el 503 documentado NUNCA ocurría, y quien encendiera
+        # el interruptor se habría pasado la tarde depurando Firebase Auth.
+        # Lo midió el revisor de motor. Se resuelve al inicializar, una vez.
+        import google.auth
+
+        google.auth.default()
         return firebase_admin.initialize_app(
             credentials.ApplicationDefault(), {"projectId": proyecto}
         )
+    except CredencialesFaltantes:
+        raise
     except Exception as exc:  # noqa: BLE001 — el SDK lanza varios tipos distintos
         logger.warning("Sin credenciales de Firebase: %s", type(exc).__name__)
         raise CredencialesFaltantes() from exc
@@ -132,26 +145,55 @@ def cliente_firestore() -> Any:
     return firestore.client(_app_firebase())
 
 
+def sin_verificar_activo() -> bool:
+    """
+    Si el atajo que **no verifica el token** está encendido.
+
+    EXIGE DOS VARIABLES, Y ESO ES EL PUNTO
+    --------------------------------------
+    La primera versión de esto sólo miraba `FIRESTORE_EMULATOR_HOST`, y un
+    revisor lo marcó: si esa variable aparece por cualquier vía —un `.env` local
+    copiado al servidor, un compose heredado, una plantilla de despliegue— la
+    API queda **completamente abierta**. `Authorization: Bearer <uid-de-la-
+    víctima>` leería y escribiría la cartera de cualquiera, y los uid de Firebase
+    no son secretos. Un solo `os.environ.get` separaba "autenticado" de
+    "cualquiera con curl".
+
+    Ahora hace falta **además** `PERMITIR_TOKEN_SIN_VERIFICAR=1`, que no tiene
+    ninguna otra razón de existir y que nadie copia por accidente. Y se grita al
+    log: un servicio que dejó de autenticar no puede hacerlo en silencio.
+    """
+    if not os.environ.get("FIRESTORE_EMULATOR_HOST"):
+        return False
+    if os.environ.get("PERMITIR_TOKEN_SIN_VERIFICAR") != "1":
+        return False
+    logger.error(
+        "AUTENTICACION DESACTIVADA: PERMITIR_TOKEN_SIN_VERIFICAR=1 con emulador. "
+        "Cualquiera puede leer y escribir la cartera de cualquier uid. "
+        "Esto NUNCA debe estar puesto fuera de una corrida de tests."
+    )
+    return True
+
+
 def uid_del_token(token: str) -> str:
     """
     Verifica el ID token y devuelve el uid.
 
-    **Con el emulador el token NO se verifica**, y hay que decirlo: el emulador
-    de Firestore no trae emulador de Auth, así que no hay llaves contra las que
-    validar. Los tests pasan el uid como token literal. Eso es seguro porque el
-    emulador sólo existe cuando `FIRESTORE_EMULATOR_HOST` está puesto —una
-    variable que nadie define en producción— pero es una puerta y por eso se
-    nombra aquí en vez de esconderse en un `if`.
+    Con el atajo de pruebas encendido —**dos** variables, ver
+    `sin_verificar_activo`— el token se toma como el uid literal, porque el
+    emulador de Firestore no trae emulador de Auth y no hay llaves contra las
+    que validar.
     """
-    if os.environ.get("FIRESTORE_EMULATOR_HOST"):
+    if sin_verificar_activo():
         return token
 
     from firebase_admin import auth as auth_admin
 
+    # `_app_firebase()` FUERA del try: si levanta `CredencialesFaltantes`, tiene
+    # que salir como 503 y no disfrazarse del 401 genérico de abajo.
+    app = _app_firebase()
     try:
-        return str(auth_admin.verify_id_token(token, app=_app_firebase())["uid"])
-    except CredencialesFaltantes:
-        raise
+        return str(auth_admin.verify_id_token(token, app=app)["uid"])
     except Exception as exc:  # noqa: BLE001 — el SDK lanza varios tipos distintos
         # El detalle del SDK NO se propaga: distingue "token expirado" de "token
         # de otro proyecto" y eso le sirve a quien sondea, no al usuario.

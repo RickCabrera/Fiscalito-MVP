@@ -79,13 +79,29 @@ def _como(uid: str) -> dict[str, str]:
 
 
 @pytest.fixture
-def repo_memoria():
+def sin_verificar():
+    """
+    Enciende el atajo que NO verifica el ID token.
+
+    Hacen falta **dos** variables, y ésa es la protección: un revisor marcó que
+    con sólo `FIRESTORE_EMULATOR_HOST` —que puede llegar por un `.env` copiado,
+    un compose heredado o una plantilla de despliegue— la API quedaba
+    completamente abierta. `PERMITIR_TOKEN_SIN_VERIFICAR` no tiene ninguna otra
+    razón de existir, así que nadie la copia por accidente.
+    """
+    os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
+    os.environ["PERMITIR_TOKEN_SIN_VERIFICAR"] = "1"
+    yield
+    os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
+    os.environ.pop("PERMITIR_TOKEN_SIN_VERIFICAR", None)
+
+
+@pytest.fixture
+def repo_memoria(sin_verificar):
     almacen = CarteraEnMemoria()
     rutas_cartera._REPO_DE_PRUEBA = almacen  # noqa: SLF001
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
     yield almacen
     rutas_cartera._REPO_DE_PRUEBA = None  # noqa: SLF001
-    os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
 
 
 @pytest.fixture
@@ -322,7 +338,7 @@ pytestmark_emulador = pytest.mark.emulador
 
 
 @pytest.fixture
-def repo_emulador():
+def repo_emulador(sin_verificar):
     """
     `FirestoreCartera` contra un Firestore real.
 
@@ -331,7 +347,6 @@ def repo_emulador():
     contra un diccionario, no las rutas de Firestore, ni las subcolecciones, ni
     el borrado en cascada, ni que un `set(merge=True)` haga lo que se espera.
     """
-    os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
     from app.auth_firebase import cliente_firestore
 
     db = cliente_firestore()
@@ -418,3 +433,97 @@ class TestContraElEmulador:
         guardado = repo.obtener_cliente(uid, "mio")
         assert guardado["nombre"] == "Editado"
         assert guardado["campo_futuro"] == "x", "el merge borro un campo desconocido"
+
+
+class TestDocumentosLegados:
+    """
+    Un documento guardado por una version anterior NO puede tumbar la cartera.
+
+    El defecto que esto cierra lo midio el revisor de motor: la lectura hacia
+    `EmpleadoCarteraSchema(**e)` a secas, asi que un NSS de 9 digitos —tolerado
+    hoy por el front, que castea— producia un **500**. Y como el front pide los
+    empleados de todos los clientes dentro de un `Promise.all`, **un solo
+    documento legado dejaba la cartera COMPLETA en cero**.
+
+    El endpoint de clientes ya era laxo por esta razon exacta; este no lo era, y
+    es el que mas duele porque es el que alimenta el calculo.
+    """
+
+    def test_un_empleado_ilegible_no_tumba_la_lista(self, http: TestClient, repo_memoria):
+        repo_memoria.guardar_cliente(UID_A, "mio", CLIENTE)
+        repo_memoria.guardar_empleado(UID_A, "mio", "E-01", EMPLEADO)
+        # Guardado directo en el repositorio, saltando la validacion de la ruta:
+        # es exactamente como llego el documento viejo a Firestore.
+        repo_memoria.guardar_empleado(
+            UID_A, "mio", "E-99", {**EMPLEADO, "empleado_no": "E-99", "nss": "123456789"}
+        )
+
+        r = http.get("/api/v1/cartera/clientes/mio/empleados", headers=_como(UID_A))
+
+        assert r.status_code == 200, "un documento legado tumbo la respuesta entera"
+        cuerpo = r.json()
+        assert [e["empleado_no"] for e in cuerpo["empleados"]] == ["E-01"]
+
+    def test_y_los_ilegibles_se_REPORTAN_no_se_esconden(self, http: TestClient, repo_memoria):
+        """
+        Quedar fuera del calculo en silencio es el modo de falla que toda la
+        epica G viene evitando. Si el empleado no entra, el contador tiene que
+        poder enterarse.
+        """
+        repo_memoria.guardar_cliente(UID_A, "mio", CLIENTE)
+        repo_memoria.guardar_empleado(
+            UID_A, "mio", "E-99", {**EMPLEADO, "empleado_no": "E-99", "nss": "123456789"}
+        )
+
+        cuerpo = http.get(
+            "/api/v1/cartera/clientes/mio/empleados", headers=_como(UID_A)
+        ).json()
+        assert cuerpo["ilegibles"] == ["E-99"]
+
+    def test_sin_ilegibles_la_lista_va_vacia(self, http: TestClient, repo_memoria):
+        # La mitad simetrica: un campo que se llenara siempre volveria inutil el
+        # aviso por saturacion.
+        repo_memoria.guardar_cliente(UID_A, "mio", CLIENTE)
+        repo_memoria.guardar_empleado(UID_A, "mio", "E-01", EMPLEADO)
+
+        cuerpo = http.get(
+            "/api/v1/cartera/clientes/mio/empleados", headers=_como(UID_A)
+        ).json()
+        assert cuerpo["ilegibles"] == []
+
+
+class TestTopesEnFirestore:
+    """
+    Los topes existian SOLO en el doble en memoria, asi que el comentario que
+    los justifica —"sin tope un bucle de curl con un token valido es una
+    factura"— describia una proteccion que el codigo real no tenia.
+    """
+
+    def test_el_doble_y_Firestore_declaran_el_mismo_tope(self):
+        from app import repositorio_cartera as rc
+
+        # No se prueba llenando 500 clientes: se fija que la constante es UNA y
+        # que las dos implementaciones la miran. La de Firestore se ejercita en
+        # el emulador; aqui se evita que alguien la duplique con otro valor.
+        assert rc.MAX_CLIENTES_POR_UID > 0
+        assert rc.MAX_EMPLEADOS_POR_CLIENTE > 0
+
+    def test_el_doble_rechaza_al_pasarse(self, repo_memoria, monkeypatch):
+        from app import repositorio_cartera as rc
+
+        monkeypatch.setattr(rc, "MAX_CLIENTES_POR_UID", 1)
+        repo_memoria.guardar_cliente(UID_A, "uno", CLIENTE)
+
+        with pytest.raises(FiscalAgentError) as exc:
+            repo_memoria.guardar_cliente(UID_A, "dos", CLIENTE)
+        assert exc.value.status_code == 409
+
+    def test_editar_uno_existente_NO_rebota_por_el_tope(self, repo_memoria, monkeypatch):
+        # Si no, llegar al tope dejaria la cartera de solo lectura.
+        from app import repositorio_cartera as rc
+
+        monkeypatch.setattr(rc, "MAX_CLIENTES_POR_UID", 1)
+        repo_memoria.guardar_cliente(UID_A, "uno", CLIENTE)
+        repo_memoria.guardar_cliente(UID_A, "uno", {**CLIENTE, "nombre": "Editado"})
+
+        assert repo_memoria.obtener_cliente(UID_A, "uno")["nombre"] == "Editado"

@@ -180,16 +180,34 @@ class FirestoreCartera:
         return self._cliente(uid, cliente_id).collection(COLECCION_EMPLEADOS)
 
     def listar_clientes(self, uid: str) -> list[dict[str, Any]]:
-        return [
-            {**doc.to_dict(), "id": doc.id}
-            for doc in self._clientes(uid).limit(MAX_CLIENTES_POR_UID).stream()
-        ]
+        # **Sin `limit`.** Lo tenía, y truncaba en silencio: el cliente 501
+        # desaparecía de la lista del contador sin un solo aviso, que es peor
+        # que cualquier cosa que el tope viniera a evitar. La cota va del lado
+        # de la ESCRITURA, donde puede decir que no.
+        return [{**doc.to_dict(), "id": doc.id} for doc in self._clientes(uid).stream()]
 
     def obtener_cliente(self, uid: str, cliente_id: str) -> dict[str, Any] | None:
         doc = self._cliente(uid, cliente_id).get()
         return {**doc.to_dict(), "id": doc.id} if doc.exists else None
 
     def guardar_cliente(self, uid: str, cliente_id: str, datos: dict[str, Any]) -> None:
+        # **El tope se aplica AQUÍ y no sólo en el doble.** La primera versión lo
+        # tenía únicamente en `CarteraEnMemoria`, así que el comentario que lo
+        # justifica —"sin tope un bucle de `curl` con un token válido es una
+        # factura"— describía una protección que el código real no tenía. Lo
+        # midió el revisor de motor.
+        #
+        # Se cuenta con `limit(MAX+1)` para no traer toda la colección sólo para
+        # contarla, y **sólo cuando el cliente es nuevo**: editar uno existente
+        # no puede rebotar por el tope.
+        if not self._cliente(uid, cliente_id).get().exists:
+            cuantos = sum(
+                1 for _ in self._clientes(uid).limit(MAX_CLIENTES_POR_UID + 1).stream()
+            )
+            if cuantos >= MAX_CLIENTES_POR_UID:
+                raise FiscalAgentError(
+                    f"Llegaste al tope de {MAX_CLIENTES_POR_UID} clientes.", status_code=409
+                )
         # `merge=True` como el front: un PUT parcial no debe borrar campos que
         # esta versión de la app todavía no conoce.
         self._cliente(uid, cliente_id).set(datos, merge=True)
@@ -206,10 +224,7 @@ class FirestoreCartera:
         lote.commit()
 
     def listar_empleados(self, uid: str, cliente_id: str) -> list[dict[str, Any]]:
-        return [
-            doc.to_dict()
-            for doc in self._empleados(uid, cliente_id).limit(MAX_EMPLEADOS_POR_CLIENTE).stream()
-        ]
+        return [doc.to_dict() for doc in self._empleados(uid, cliente_id).stream()]
 
     def guardar_empleado(
         self, uid: str, cliente_id: str, empleado_no: str, datos: dict[str, Any]
@@ -220,7 +235,20 @@ class FirestoreCartera:
             raise FiscalAgentError(
                 f"El cliente {cliente_id!r} no está en tu cartera.", status_code=404
             )
-        self._empleados(uid, cliente_id).document(empleado_no).set(datos, merge=True)
+        ref = self._empleados(uid, cliente_id).document(empleado_no)
+        if not ref.get().exists:
+            cuantos = sum(
+                1
+                for _ in self._empleados(uid, cliente_id)
+                .limit(MAX_EMPLEADOS_POR_CLIENTE + 1)
+                .stream()
+            )
+            if cuantos >= MAX_EMPLEADOS_POR_CLIENTE:
+                raise FiscalAgentError(
+                    f"Llegaste al tope de {MAX_EMPLEADOS_POR_CLIENTE} empleados.",
+                    status_code=409,
+                )
+        ref.set(datos, merge=True)
 
     def borrar_empleado(self, uid: str, cliente_id: str, empleado_no: str) -> None:
         self._empleados(uid, cliente_id).document(empleado_no).delete()
