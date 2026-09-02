@@ -25,12 +25,7 @@ from app.demo_nomina import (
 )
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.cuotas import Consolidado
-from app.nomina_engine.integracion import (
-    clamp_sbc,
-    dias_vacaciones_de_ley,
-    factor_integracion,
-    sbc_fijo,
-)
+from app.nomina_engine.integracion import clamp_sbc, factor_integracion, sbc_fijo
 from app.nomina_engine.periodo import (
     EmpleadoPeriodo,
     IncidenciasPeriodo,
@@ -39,6 +34,7 @@ from app.nomina_engine.periodo import (
     calcular_periodo,
 )
 from app.schemas.declaraciones import ErrorResponse
+from app.schemas.empleado import vacaciones_efectivas
 from app.schemas.nomina import (
     CalcularPeriodoRequest,
     CalcularPeriodoResponse,
@@ -290,10 +286,13 @@ async def integrar_sbc(req: SBCRequest) -> SBCResponse:
     # Los días de vacaciones se resuelven ANTES de llamar al motor y se
     # devuelven: si el motor recibiera 0 y aplicara el de ley por su cuenta, la
     # pantalla no podría decir con cuántos días integró.
-    dias_vacaciones = (
-        req.dias_vacaciones
-        if req.dias_vacaciones > 0
-        else dias_vacaciones_de_ley(req.anios_servicio_cumplidos)
+    #
+    # La convención "0 = los de ley" se pide a `PrestacionesSchema`, no se
+    # reescribe aquí. Tenerla en dos lugares es la misma segunda verdad que este
+    # endpoint existe para evitar, sólo que movida de TypeScript a Python: el día
+    # que alguien cambie el centinela a `None`, cambiaría una sola.
+    dias_vacaciones = vacaciones_efectivas(
+        req.dias_vacaciones, req.anios_servicio_cumplidos
     )
 
     # `factor_integracion` levanta `FiscalValidationError` con aguinaldo < 15 y

@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.constants import ZonaSalarioMinimo
 from app.nomina_engine.tablas_imss import PRIMA_RT_MAXIMA, PRIMA_RT_MINIMA
@@ -254,6 +254,14 @@ class SBCRequest(BaseModel):
     contra esa clase de deriva.
     """
 
+    # `extra="forbid"` porque el silencio aquí subintegra. Sin esto, un front
+    # que mandara `conceptos` —que esta ruta NO acepta (§D5: el motor no decide
+    # qué integra)— recibiría un SBC calculado sólo sobre el salario, sin
+    # ninguna señal. Subintegrar es la dirección peligrosa: cuotas de menos y
+    # crédito fiscal del IMSS. Es la misma deriva silenciosa que se rechazó en
+    # `fecha` y en el clamp, al revés.
+    model_config = ConfigDict(extra="forbid")
+
     salario_diario: Decimal = Field(gt=0)
     fecha: date = Field(
         description="Fecha contra la que se miden piso y tope. Obligatoria a "
@@ -263,9 +271,10 @@ class SBCRequest(BaseModel):
     anios_servicio_cumplidos: int = Field(
         default=0,
         ge=0,
-        le=60,
         description="Antigüedad cumplida. Decide los días de vacaciones de ley "
-        "cuando no se capturan (Art. 76 LFT).",
+        "cuando no se capturan (Art. 76 LFT). **Sin tope superior**: el docstring "
+        "de `dias_vacaciones_de_ley` advierte que la regla no es una tabla "
+        "cerrada y que un trabajador con 37 años de antigüedad existe.",
     )
     dias_aguinaldo: int = Field(default=15, ge=0)
     dias_vacaciones: int = Field(

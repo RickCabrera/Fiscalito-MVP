@@ -87,6 +87,27 @@ class EstatusEnrolamiento(str, Enum):
     ENROLADO = "enrolado"
 
 
+def vacaciones_efectivas(dias_capturados: int, anios_servicio_cumplidos: int) -> int:
+    """
+    Los días de vacaciones capturados, o los de ley si se dejaron en 0.
+
+    **Vive aquí y no en dos lados.** Es una convención de captura —"0 significa
+    los que le tocan"—, no una regla fiscal: el Art. 76 sigue entero en
+    `dias_vacaciones_de_ley`. Pero tenerla duplicada en el schema y en la ruta
+    del SBC sería la misma segunda verdad que ese endpoint existe para evitar,
+    sólo que movida de TypeScript a Python: el día que alguien cambie el
+    centinela a `None`, cambiaría una sola.
+
+    Es función suelta y no método del schema porque `POST /nomina/sbc` la
+    necesita **sin** la validación del schema: ahí los rangos los tiene que
+    rechazar el MOTOR, para que el 422 traiga su mensaje (el que explica que 25
+    no es 0.25) y no el genérico de pydantic.
+    """
+    if dias_capturados > 0:
+        return dias_capturados
+    return dias_vacaciones_de_ley(anios_servicio_cumplidos)
+
+
 class PrestacionesSchema(BaseModel):
     """
     Las prestaciones con las que se integra el SBC (Art. 27 LSS).
@@ -117,10 +138,8 @@ class PrestacionesSchema(BaseModel):
     )
 
     def vacaciones_efectivas(self, anios_servicio_cumplidos: int) -> int:
-        """Los días capturados, o los de ley si se dejaron en 0."""
-        if self.dias_vacaciones > 0:
-            return self.dias_vacaciones
-        return dias_vacaciones_de_ley(anios_servicio_cumplidos)
+        """Los días capturados, o los de ley. Delega: una sola implementación."""
+        return vacaciones_efectivas(self.dias_vacaciones, anios_servicio_cumplidos)
 
 
 class EmpleadoCarteraSchema(BaseModel):

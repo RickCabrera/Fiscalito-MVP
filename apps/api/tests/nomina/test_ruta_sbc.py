@@ -156,13 +156,17 @@ class TestLaFechaEsObligatoria:
 
 
 class TestLoQueLaRutaNoHace:
-    def test_no_acepta_conceptos_integrables(self, cliente_http):
+    def test_rechaza_conceptos_integrables_en_vez_de_ignorarlos(self, cliente_http):
         """
         §D5: el motor no decide qué integra, el catálogo es dato y
         `ConceptoIntegrable.monto_diario` es *la porción que integra, ya
-        calculada por el llamador*. Si el front mandara una despensa completa,
-        sobreintegraría. Fuera de alcance de esta corrida: se ignora, no se
-        adivina.
+        calculada por el llamador*. Esta ruta no los acepta.
+
+        **Y los RECHAZA en vez de ignorarlos.** Ignorarlos devolvería 200 con un
+        SBC calculado sólo sobre el salario —o sea, **subintegrado**— sin
+        ninguna señal. Subintegrar es la dirección peligrosa: cuotas de menos y
+        crédito fiscal del IMSS. Es la misma deriva silenciosa que se rechazó en
+        `fecha` y en el clamp, sólo que al revés.
         """
         r = cliente_http.post(
             RUTA,
@@ -172,9 +176,7 @@ class TestLoQueLaRutaNoHace:
                 "conceptos": [{"clave": "029", "monto_diario": "50.00", "integra": True}],
             },
         )
-        assert r.status_code == 200
-        # El SBC es el del salario solo: el concepto no se integró por su cuenta.
-        assert r.json()["sbc"] == pedir(cliente_http)["sbc"]
+        assert r.status_code == 422
 
     def test_no_devuelve_explicacion_de_llm(self, cliente_http):
         # Aquí no hay nada que explicar que no sea el número, y el LLM nunca
@@ -205,3 +207,88 @@ class TestFundamento:
         fundamento = pedir(cliente_http)["fundamento"]
         for articulo in ("27", "28", "30", "76", "80", "87"):
             assert articulo in fundamento
+
+
+class TestLaZonaSeUsa:
+    """
+    El paso de `zona` a `clamp_sbc`, que no estaba probado por nada.
+
+    Sin esto, un `ZonaSalarioMinimo.GENERAL` hardcodeado en la ruta pasaba los
+    24 tests: todos usaban el default. A un patrón de la franja fronteriza se le
+    diría que su SBC está por encima del piso cuando está por debajo — y con
+    `piso_aplicado: false` se pierden además el Art. 36 (el patrón absorbe la
+    cuota obrera) y el renglón de 3.150% de CEAV.
+    """
+
+    def test_la_frontera_tiene_un_piso_mas_alto_que_el_resto_del_pais(self, cliente_http):
+        general = pedir(cliente_http, zona="general")
+        frontera = pedir(cliente_http, zona="zlfn")
+        assert Decimal(frontera["piso"]) > Decimal(general["piso"])
+        assert frontera["piso"] == str(
+            salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.ZLFN)
+        )
+
+    def test_un_salario_entre_los_dos_pisos_solo_se_acota_en_la_frontera(
+        self, cliente_http
+    ):
+        """
+        El caso que delataría un `zona` hardcodeado: el mismo salario, dos
+        respuestas distintas. Si la ruta ignorara la zona, serían iguales.
+        """
+        piso_general = salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.GENERAL)
+        piso_frontera = salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.ZLFN)
+        salario = str(((piso_general + piso_frontera) / 2).quantize(Decimal("0.01")))
+
+        assert pedir(cliente_http, salario_diario=salario, zona="general")[
+            "piso_aplicado"
+        ] is False
+        assert pedir(cliente_http, salario_diario=salario, zona="zlfn")[
+            "piso_aplicado"
+        ] is True
+
+
+class TestElClampEnLaIgualdad:
+    """
+    `clamp_sbc` usa `<` y `>` estrictos: caer EXACTAMENTE en el piso no es
+    acotar. Sin esto, un cambio a `<=` pasaría inadvertido y marcaría como
+    acotados SBC que la ley deja pasar tal cual.
+    """
+
+    def test_un_sbc_exactamente_en_el_piso_no_se_reporta_como_acotado(
+        self, cliente_http
+    ):
+        piso = salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.GENERAL)
+        factor = factor_integracion(15, dias_vacaciones_de_ley(0), Decimal("0.25"))
+        salario = (piso / factor).quantize(Decimal("0.01"))
+        cuerpo = pedir(cliente_http, salario_diario=str(salario))
+        # El redondeo a centavos puede no dar el piso exacto; sólo se afirma
+        # cuando sí cae justo, que es el caso que interesa.
+        if Decimal(cuerpo["sbc_sin_acotar"]) == piso:
+            assert cuerpo["piso_aplicado"] is False
+            assert cuerpo["sbc"] == cuerpo["sbc_sin_acotar"]
+
+
+class TestFilaDorada:
+    """
+    Una fila con LITERALES, en la frontera que consume el front.
+
+    Los demás tests comparan la respuesta contra el motor llamado desde el test:
+    prueban el cableado —un argumento intercambiado, una zona perdida, un
+    `clamp_sbc` olvidado— pero no cachan un cambio en el motor, porque esperado y
+    real se mueven juntos. Estos números son los que se verificaron a mano contra
+    la API viva, y son los que hacen el SBC del modal reproducible por inspección.
+    """
+
+    def test_los_numeros_del_modal_son_estos(self, cliente_http):
+        cuerpo = pedir(
+            cliente_http, salario_diario="500.00", fecha="2026-09-01",
+            anios_servicio_cumplidos=3,
+        )
+        assert cuerpo["factor"] == "1.0521"
+        assert cuerpo["dias_vacaciones_aplicados"] == 16
+        assert cuerpo["sbc_sin_acotar"] == "526.05"
+        assert cuerpo["sbc"] == "526.05"
+        assert cuerpo["piso"] == "315.04"
+        assert cuerpo["tope"] == "2932.75"
+        assert cuerpo["piso_aplicado"] is False
+        assert cuerpo["tope_aplicado"] is False
