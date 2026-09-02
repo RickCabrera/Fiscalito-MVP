@@ -41,12 +41,12 @@ export default function NominaDelClienteActivo() {
       {error && <ErrorAlert message={error} />}
 
       {!loading && !error && (
-        <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+        <div className="card" style={{ padding: 'var(--space-2xl) var(--space-lg)', textAlign: 'center' }}>
           <Users size={24} color="var(--text-muted)" />
           <div style={{ fontSize: '1.05rem', fontWeight: 600, margin: '12px 0 8px' }}>
             Elige un cliente primero
           </div>
-          <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
+          <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
             No hay ningún cliente activo, así que no hay nómina que calcular.
           </p>
           <Link to="/app/clientes" style={{ color: 'var(--accent-active)', fontSize: '0.9rem' }}>
