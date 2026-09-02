@@ -11,7 +11,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { esContador, getSidebarLinks, getTabsForProfile, rutaInicial, type TabFiscalito } from './navigation';
+import {
+  esContador,
+  esRutaDeNomina,
+  getSidebarLinks,
+  getTabsForProfile,
+  navActivo,
+  rutaInicial,
+  type SidebarLink,
+  type TabFiscalito,
+} from './navigation';
 import type { ContributorType } from './contributorProfiles';
 
 const CONTRIBUYENTES: (ContributorType | null)[] = [
@@ -58,6 +67,65 @@ describe('getSidebarLinks', () => {
     for (const tipo of CONTRIBUYENTES) {
       expect(esContador(tipo)).toBe(false);
     }
+  });
+});
+
+describe('navActivo (E-06)', () => {
+  const del = (id: string): SidebarLink =>
+    getSidebarLinks('contador').find((l) => l.id === id)!;
+
+  /**
+   * EL CASO QUE VALE EL BLOQUE. La nómina cuelga de `/app/clientes/{id}/nomina`
+   * desde E-03 y el `to` de "Clientes" es prefijo de esa ruta: con la
+   * coincidencia por prefijo de `NavLink`, el sidebar encendía la sección
+   * equivocada en la pantalla que se proyecta en la demo.
+   */
+  it('en la nómina de un cliente: Nómina sí, Clientes no', () => {
+    expect(navActivo(del('nomina'), '/app/clientes/taller/nomina')).toBe(true);
+    expect(navActivo(del('clientes'), '/app/clientes/taller/nomina')).toBe(false);
+  });
+
+  it('en la cartera y en la ficha: Clientes sí, Nómina no', () => {
+    for (const ruta of ['/app/clientes', '/app/clientes/taller']) {
+      expect(navActivo(del('clientes'), ruta)).toBe(true);
+      expect(navActivo(del('nomina'), ruta)).toBe(false);
+    }
+  });
+
+  it('`/app/nomina` también enciende Nómina: sólo resuelve el cliente y redirige', () => {
+    expect(navActivo(del('nomina'), '/app/nomina')).toBe(true);
+    expect(navActivo(del('clientes'), '/app/nomina')).toBe(false);
+  });
+
+  it('nunca hay dos entradas encendidas a la vez', () => {
+    const rutas = ['/app/clientes', '/app/clientes/demo', '/app/clientes/demo/nomina',
+      '/app/nomina', '/app/profile'];
+    for (const ruta of rutas) {
+      const encendidas = getSidebarLinks('contador').filter((l) => navActivo(l, ruta));
+      expect(encendidas.length, `ruta ${ruta}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('el query string del destino no participa de la comparación', () => {
+    // El enlace de Calendario del contador lleva `?tab=`; el tab lo resuelve la
+    // pantalla, no el resaltado.
+    const calendario = del('calendario');
+    expect(navActivo(calendario, calendario.to.split('?')[0])).toBe(true);
+  });
+
+  it('`end` sigue significando coincidencia exacta', () => {
+    const dashboard = getSidebarLinks(null).find((l) => l.id === 'dashboard')!;
+    expect(navActivo(dashboard, '/app')).toBe(true);
+    expect(navActivo(dashboard, '/app/historial')).toBe(false);
+  });
+
+  it('esRutaDeNomina reconoce las dos formas y nada más', () => {
+    expect(esRutaDeNomina('/app/nomina')).toBe(true);
+    expect(esRutaDeNomina('/app/clientes/demo/nomina')).toBe(true);
+    expect(esRutaDeNomina('/app/clientes/demo')).toBe(false);
+    expect(esRutaDeNomina('/app/clientes')).toBe(false);
+    // Un cliente que se llamara "nomina" no debe confundir a nadie.
+    expect(esRutaDeNomina('/app/clientes/nomina')).toBe(false);
   });
 });
 

@@ -1,8 +1,9 @@
-import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar } from 'lucide-react';
-import { getSidebarLinks, type NavId } from '../services/navigation';
+import { esContador, getSidebarLinks, navActivo, type NavId } from '../services/navigation';
+import { useClienteActivo } from '../context/clienteActivoStore';
 // DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
 import SelectorCliente from './SelectorCliente';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
@@ -24,6 +25,11 @@ export default function AppLayout() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { isOnboardingComplete, loading: profileLoading, profile } = useProfile();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // E-06: el sidebar de un despacho dice EN QUÉ CLIENTE está. El contexto se
+  // lee siempre (los hooks no pueden ir tras un `if`) y sólo se pinta para un
+  // contador; para un contribuyente la cartera está vacía.
+  const { cliente } = useClienteActivo();
 
   if (authLoading || profileLoading) {
     return (
@@ -47,6 +53,10 @@ export default function AppLayout() {
   };
 
   const links = getSidebarLinks(profile.contributorType);
+  const esDespacho = esContador(profile.contributorType);
+  /** Nombre del cliente bajo la entrada "Nómina": es de quién es esa nómina. */
+  const subEtiqueta = (id: NavId): string | null =>
+    esDespacho && id === 'nomina' && cliente ? cliente.nombre : null;
 
   const sidebarBase: React.CSSProperties = {
     background: 'var(--bg-surface)',
@@ -69,22 +79,46 @@ export default function AppLayout() {
           </div>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {links.map((link) => (
-            <NavLink key={link.id} to={link.to} end={link.end}
-              className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 20px', margin: '0 12px',
-                borderRadius: 'var(--radius-sm)',
-                color: isActive ? 'var(--accent-active)' : 'var(--text-primary)',
-                background: isActive ? 'var(--accent-active-bg)' : 'transparent',
-                fontSize: '0.9rem', fontWeight: isActive ? 600 : 400,
-                transition: 'all 0.2s', textDecoration: 'none',
-              })}
-            >
-              {ICONOS[link.id]}{link.label}
-            </NavLink>
-          ))}
+          {links.map((link) => {
+            // E-06: el resaltado lo decide `navActivo`, no `NavLink`. Con
+            // `NavLink` la nómina de un cliente (`/app/clientes/{id}/nomina`)
+            // encendía "Clientes" y dejaba "Nómina" apagada — y el
+            // `aria-current` habría seguido diciendo "Clientes" aunque el color
+            // cambiara, que es por lo que tampoco basta con pisar el estilo.
+            const activo = navActivo(link, pathname);
+            const cliente = subEtiqueta(link.id);
+            return (
+              <Link key={link.id} to={link.to}
+                aria-current={activo ? 'page' : undefined}
+                className={`nav-item${activo ? ' nav-item-active' : ''}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 20px', margin: '0 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  color: activo ? 'var(--accent-active)' : 'var(--text-primary)',
+                  background: activo ? 'var(--accent-active-bg)' : 'transparent',
+                  fontSize: '0.9rem', fontWeight: activo ? 600 : 400,
+                  transition: 'all 0.2s', textDecoration: 'none',
+                }}
+              >
+                {ICONOS[link.id]}
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  {link.label}
+                  {cliente && (
+                    // `data-cliente` marca lo que NO es la etiqueta del enlace:
+                    // el test de E-01 asserta la lista exacta de entradas del
+                    // sidebar y tiene que poder descontar este renglón.
+                    <span data-cliente="" style={{
+                      fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-secondary)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {cliente}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            );
+          })}
         </nav>
         <div style={{ padding: '16px 12px', borderTop: '1px solid var(--border)', marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 8px', textAlign: 'center' }}>
@@ -107,21 +141,28 @@ export default function AppLayout() {
           <span className="gradient-text" style={{ fontSize: '1.1rem', fontWeight: 800 }}>F</span>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-          {links.map((link) => (
-            <NavLink key={link.id} to={link.to} end={link.end}
-              title={link.label}
-              className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
-              style={({ isActive }) => ({
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 44, height: 44, borderRadius: 'var(--radius-sm)',
-                color: isActive ? 'var(--accent-active)' : 'var(--text-primary)',
-                background: isActive ? 'var(--accent-active-bg)' : 'transparent',
-                transition: 'all 0.2s', textDecoration: 'none',
-              })}
-            >
-              {ICONOS[link.id]}
-            </NavLink>
-          ))}
+          {links.map((link) => {
+            const activo = navActivo(link, pathname);
+            const cliente = subEtiqueta(link.id);
+            return (
+              <Link key={link.id} to={link.to}
+                // Sin espacio para el nombre del cliente, va en el tooltip: en
+                // móvil es la única pista de a qué cliente lleva.
+                title={cliente ? `${link.label} · ${cliente}` : link.label}
+                aria-current={activo ? 'page' : undefined}
+                className={`nav-item${activo ? ' nav-item-active' : ''}`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 44, height: 44, borderRadius: 'var(--radius-sm)',
+                  color: activo ? 'var(--accent-active)' : 'var(--text-primary)',
+                  background: activo ? 'var(--accent-active-bg)' : 'transparent',
+                  transition: 'all 0.2s', textDecoration: 'none',
+                }}
+              >
+                {ICONOS[link.id]}
+              </Link>
+            );
+          })}
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
           <ThemeToggle mini />

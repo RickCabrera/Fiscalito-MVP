@@ -54,6 +54,56 @@ export function esContador(tipo: ContributorType | null): boolean {
   return tipo === 'contador';
 }
 
+// ────────────────────────────────────────────────────────────
+// Qué entrada del sidebar va resaltada (E-06)
+// ────────────────────────────────────────────────────────────
+
+/** `/app/clientes/{id}/nomina`, la ruta real de la pantalla desde E-03. */
+const RE_NOMINA_DE_CLIENTE = /^\/app\/clientes\/[^/]+\/nomina\/?$/;
+
+/**
+ * Si la ruta ES la nómina, viva donde viva.
+ *
+ * `/app/nomina` sólo resuelve el cliente activo y redirige, así que las dos
+ * formas tienen que contar. `/app/nomina-demo` NO está aquí y no es un olvido:
+ * es un `<Navigate>` (`AppRoutes.tsx`), nunca se pinta un sidebar sobre esa
+ * ruta, y un caso de prueba inalcanzable no prueba nada.
+ */
+export function esRutaDeNomina(pathname: string): boolean {
+  return pathname === '/app/nomina' || RE_NOMINA_DE_CLIENTE.test(pathname);
+}
+
+function bajoLaRuta(pathname: string, destino: string): boolean {
+  return pathname === destino || pathname.startsWith(`${destino}/`);
+}
+
+/**
+ * Si un enlace del sidebar debe verse activo en esta ruta.
+ *
+ * POR QUÉ NO LO DECIDE `NavLink`
+ * ------------------------------
+ * La nómina cuelga de `/app/clientes/{id}/nomina`, así que el `isActive` de
+ * `NavLink` marcaba **Clientes** —su `to` es prefijo de la ruta— y dejaba
+ * **Nómina** apagado: el sidebar señalaba la sección equivocada justo en la
+ * pantalla de la demo. Aquí la nómina se queda la ruta y Clientes la suelta.
+ *
+ * Es función pura del par (enlace, pathname): se prueba sin jsdom, y
+ * `AppLayout` la usa también para el `aria-current`, que si no seguiría
+ * anunciando "Clientes" aunque el color cambiara.
+ */
+export function navActivo(link: SidebarLink, pathname: string): boolean {
+  if (link.id === 'nomina') return esRutaDeNomina(pathname);
+  // Clientes cubre la cartera y la ficha, pero NO la nómina del cliente: dos
+  // entradas encendidas a la vez no señalan nada.
+  if (link.id === 'clientes') {
+    return bajoLaRuta(pathname, '/app/clientes') && !esRutaDeNomina(pathname);
+  }
+  // El resto conserva la semántica de `NavLink`: `end` compara exacto y el
+  // query string del destino no participa (el tab lo resuelve la pantalla).
+  const destino = link.to.split('?')[0];
+  return link.end ? pathname === destino : bajoLaRuta(pathname, destino);
+}
+
 /** Links del sidebar para el perfil dado. `null` (perfil sin tipo) ve el de contribuyente. */
 export function getSidebarLinks(tipo: ContributorType | null): SidebarLink[] {
   return esContador(tipo) ? LINKS_CONTADOR : LINKS_CONTRIBUYENTE;
