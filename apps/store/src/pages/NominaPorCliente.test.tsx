@@ -15,7 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
 const setClienteId = vi.fn();
 const estadoContexto = { clienteId: 'taller' as string | null };
@@ -213,35 +213,32 @@ describe('panel sin checadas', () => {
      * advertencia del backend llega hasta abajo, bajo Cuotas por ramo, después
      * de que alguien ya leyó los totales.
      */
-    vi.stubGlobal('confirm', vi.fn(() => true));
     stubApi({ diasTrabajados: 0 });
     montar('taller');
 
     await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    // Sin checadas en el periodo, primero pregunta.
+    fireEvent.click(await screen.findByRole('button', { name: 'Cerrar de todos modos' }));
 
     const aviso = await screen.findByRole('alert');
     expect(aviso.textContent).toContain('Ningún empleado tiene checadas en este periodo');
     expect(aviso.textContent).toContain('no será de ceros');
   });
 
-  it('pide confirmación antes de cerrar con el panel vacío', async () => {
-    const confirmar = vi.fn(() => false);
-    vi.stubGlobal('confirm', confirmar);
+  it('pide confirmación antes de cerrar sin checadas, y cancelar no cierra', async () => {
     const llamadas = stubApi({ eventos: [] });
     montar('taller');
 
     await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
 
-    expect(confirmar).toHaveBeenCalledTimes(1);
-    // Dijo que no: no se cerró nada.
+    expect(await screen.findByRole('alertdialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(llamadas.some((l) => l.url.includes('cerrar-periodo'))).toBe(false);
   });
 
-  it('con checadas en el panel no pregunta nada', async () => {
-    const confirmar = vi.fn(() => true);
-    vi.stubGlobal('confirm', confirmar);
+  it('con checadas en el periodo no pregunta nada', async () => {
     stubApi({
       eventos: [{ empleado_no: 'taller-1', timestamp: '2026-08-17T08:05:00-06:00', tipo: 'entrada', fuente: 'simulado', serial_no: 1, raw: null }],
     });
@@ -250,7 +247,209 @@ describe('panel sin checadas', () => {
     await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
 
-    expect(confirmar).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  /**
+   * EL MODO DE FALLA MÁS PROBABLE DE LA DEMO, y no es el panel vacío: sembrar
+   * el día 15 y demostrar el 16 son dos quincenas distintas
+   * (`demo_nomina.quincena()` lo advierte). `obtenerEventos` no manda `desde`,
+   * así que el panel se ve LLENO, ninguna checada cae en el periodo, y sin esto
+   * `cerrar_periodo` marcaría falta todos los días sin preguntar nada.
+   */
+  it('pregunta también cuando el panel está lleno pero de otra quincena', async () => {
+    stubApi({
+      eventos: [{ empleado_no: 'taller-1', timestamp: '2026-07-17T08:05:00-06:00', tipo: 'entrada', fuente: 'simulado', serial_no: 1, raw: null }],
+    });
+    montar('taller');
+
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+
+    expect(await screen.findByRole('alertdialog')).toBeTruthy();
+  });
+
+  it('navegar a otro cliente no deja la ficha ni las checadas del anterior', async () => {
+    /**
+     * EL CASO QUE VALE EL ARCHIVO, y es la cuarta vez que este patrón aparece
+     * en la épica. Entre el cambio de ruta y la llegada de la ficha nueva, un
+     * `cliente` a secas conservaba el viejo: la URL y el selector dicen
+     * "Taller", el encabezado seguía diciendo el nombre anterior y **los
+     * botones seguían habilitados**, así que "Cerrar quincena" en esa ventana
+     * cerraba el periodo del cliente que ya no se está viendo.
+     *
+     * Lo mismo con las checadas: el panel enseñaba las del cliente anterior
+     * bajo el encabezado del nuevo.
+     */
+    // TODO lo del segundo cliente se queda colgado: es la ventana exacta en la
+    // que la pantalla podría seguir enseñando lo del primero.
+    const pendientes: Array<(v: unknown) => void> = [];
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      const responder = (cuerpo: unknown) =>
+        Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(cuerpo) });
+      const esDeDemo = url.includes('demo');
+
+      if (!esDeDemo && !url.includes('cerrar-periodo')) {
+        return new Promise((res) => { pendientes.push(res); });
+      }
+      if (url.includes('despacho/clientes')) return responder(ficha('demo', 'Cliente Demo'));
+      if (url.includes('asistencia/eventos')) {
+        return responder({
+          eventos: [{ empleado_no: 'demo-1', timestamp: '2026-08-17T08:05:00-06:00', tipo: 'entrada', fuente: 'simulado', serial_no: 1, raw: null }],
+        });
+      }
+      if (url.includes('cerrar-periodo')) {
+        const enviado = JSON.parse((init?.body as string) ?? '{}');
+        return responder({
+          cliente: enviado.cliente,
+          periodo: { inicio: '2026-08-16', fin: '2026-08-31' },
+          incidencias: (enviado.empleados as string[]).map((e) => incidencia(e, 10)),
+          empleados_desconocidos: [],
+        });
+      }
+      throw new Error(`ruta no stubbeada: ${url}`);
+    }));
+
+    function Navegador() {
+      const navegar = useNavigate();
+      return (
+        <button onClick={() => navegar('/app/clientes/taller/nomina')}>ir al taller</button>
+      );
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/app/clientes/demo/nomina']}>
+        <Navegador />
+        <Routes>
+          <Route path="/app/clientes/:id/nomina" element={<NominaClientePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // El primer cliente cargó: nombre, su checada en el panel, y se cierra el
+    // periodo para que haya también una tabla de incidencias que arrastrar.
+    expect(await screen.findByText(/Nómina de Cliente Demo/)).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('08:05').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    expect(await screen.findByText('PERSONA UNA')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('ir al taller'));
+
+    // Con todo lo del taller pendiente: ni el nombre viejo, ni sus checadas, ni
+    // su cierre, ni botones vivos.
+    await waitFor(() => expect(pendientes.length).toBeGreaterThan(0));
+    expect(screen.queryByText(/Nómina de Cliente Demo/)).toBeNull();
+    expect(screen.queryAllByText('08:05')).toHaveLength(0);
+    expect(screen.queryByText('PERSONA UNA')).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: /Cerrar quincena/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it('el cierre y la nómina del cliente anterior no quedan bajo el nuevo', async () => {
+    /**
+     * Complemento del anterior: aquí la ficha del segundo cliente **sí** carga,
+     * así que el guard de "cliente todavía null" no tapa nada. Si el cierre y
+     * la nómina no se derivaran del id de la ruta, la tabla de incidencias y
+     * los recibos del cliente anterior se quedarían pintados bajo el nombre del
+     * nuevo — que es exactamente la mentira que persigue toda la épica.
+     */
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      const responder = (cuerpo: unknown) =>
+        Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(cuerpo) });
+
+      if (url.includes('despacho/clientes')) {
+        const id = url.split('/').pop()!;
+        return responder(ficha(id, `Cliente ${id}`));
+      }
+      if (url.includes('asistencia/eventos')) {
+        // Cada cliente con SUS checadas: si todas dijeran `demo-1`, el panel del
+        // taller lo mostraría legítimamente y la aserción mediría otra cosa.
+        const suyo = url.includes('cliente=demo') ? 'demo-1' : 'taller-1';
+        return responder({
+          eventos: [{ empleado_no: suyo, timestamp: '2026-08-17T08:05:00-06:00', tipo: 'entrada', fuente: 'simulado', serial_no: 1, raw: null }],
+        });
+      }
+      if (url.includes('cerrar-periodo')) {
+        const enviado = JSON.parse((init?.body as string) ?? '{}');
+        return responder({
+          cliente: enviado.cliente,
+          periodo: { inicio: '2026-08-16', fin: '2026-08-31' },
+          incidencias: (enviado.empleados as string[]).map((e) => incidencia(e, 10)),
+          empleados_desconocidos: [],
+        });
+      }
+      if (url.includes('calcular-periodo')) return responder(NOMINA_VACIA);
+      throw new Error(`ruta no stubbeada: ${url}`);
+    }));
+
+    function Navegador() {
+      const navegar = useNavigate();
+      return <button onClick={() => navegar('/app/clientes/taller/nomina')}>ir al taller</button>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/app/clientes/demo/nomina']}>
+        <Navegador />
+        <Routes>
+          <Route path="/app/clientes/:id/nomina" element={<NominaClientePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    expect(await screen.findByText('PERSONA UNA')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
+    await waitFor(() => expect(screen.getByText(/Calculado con fecha de pago/)).toBeTruthy());
+
+    fireEvent.click(screen.getByText('ir al taller'));
+
+    // La ficha del taller carga, así que la pantalla es utilizable — pero sin
+    // nada del cliente anterior.
+    expect(await screen.findByText(/Nómina de Cliente taller/)).toBeTruthy();
+    // Se asserta sobre el NÚMERO del empleado, no sobre su nombre: los dos
+    // clientes de la fixture tienen gente llamada igual, y una incidencia
+    // arrastrada de `demo` se pintaría con el número `demo-1` porque
+    // `TablaIncidencias` no lo encontraría en la plantilla del taller.
+    expect(screen.queryByText('demo-1')).toBeNull();
+    expect(screen.queryByText(/Calculado con fecha de pago/)).toBeNull();
+  });
+
+  it('el error de un cliente no se queda pegado al siguiente', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('despacho/clientes/fantasma')) {
+        return Promise.resolve({
+          ok: false, status: 404,
+          json: () => Promise.resolve({ exito: false, error: "El cliente 'fantasma' no está en la cartera" }),
+        });
+      }
+      if (url.includes('despacho/clientes')) {
+        const id = url.split('/').pop()!;
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ficha(id, `Cliente ${id}`)) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ eventos: [] }) });
+    }));
+
+    function Navegador() {
+      const navegar = useNavigate();
+      return <button onClick={() => navegar('/app/clientes/taller/nomina')}>ir al taller</button>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/app/clientes/fantasma/nomina']}>
+        <Navegador />
+        <Routes>
+          <Route path="/app/clientes/:id/nomina" element={<NominaClientePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/no está en la cartera/)).toBeTruthy();
+    fireEvent.click(screen.getByText('ir al taller'));
+
+    expect(await screen.findByText(/Nómina de Cliente taller/)).toBeTruthy();
+    expect(screen.queryByText(/no está en la cartera/)).toBeNull();
   });
 
   it('no avisa cuando todos trabajaron', async () => {

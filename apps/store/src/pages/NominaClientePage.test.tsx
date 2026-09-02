@@ -283,6 +283,9 @@ describe('NominaClientePage', () => {
     fireEvent.change(screen.getByDisplayValue('2026-08-16'), { target: { value: '2026-01-16' } });
     fireEvent.change(screen.getByDisplayValue('2026-08-31'), { target: { value: '2026-01-31' } });
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    // Las checadas del panel son de agosto y el periodo ahora es de enero: la
+    // pantalla pregunta antes de cerrar, y con razón.
+    fireEvent.click(await screen.findByRole('button', { name: 'Cerrar de todos modos' }));
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 

@@ -83,18 +83,50 @@ function fechaDePago(
   return sinTocar ? sugerido.fecha_pago : null;
 }
 
+/**
+ * La ficha se guarda JUNTO CON el id que la produjo, igual que en
+ * `ClienteDetallePage`.
+ *
+ * Con un `cliente` a secas, entre el cambio de ruta y la llegada de la ficha
+ * nueva la pantalla conserva la vieja: la URL y el selector dicen "Taller", el
+ * encabezado dice "Servicios Administrativos Integrales" y **los botones siguen
+ * habilitados**, así que "Cerrar quincena" en esa ventana cierra el periodo del
+ * cliente anterior. Derivar `cliente` del id lo vuelve imposible por
+ * construcción, en vez de depender de que la promesa resuelva rápido.
+ */
+type FichaCargada = { id: string; cliente: ClienteDetalle };
+
+/**
+ * Un dato que pertenece a UN cliente.
+ *
+ * Todo lo de la pantalla se etiqueta con el id que lo produjo y se **deriva**
+ * comparándolo con el de la ruta, en vez de limpiarse en un efecto. Dos razones:
+ * un `setState` síncrono dentro de un efecto dispara renders en cascada (y el
+ * lint lo marca), y sobre todo esto no puede "olvidarse de limpiar" una pieza
+ * nueva: si no lleva el id, no se pinta.
+ */
+type DeCliente<T> = { id: string; valor: T };
+
+function suyo<T>(dato: DeCliente<T> | null, clienteId: string, vacio: T): T {
+  return dato && dato.id === clienteId ? dato.valor : vacio;
+}
+
 export default function NominaClientePage() {
   const { id: clienteId = '' } = useParams();
   const { clienteId: activo, setClienteId } = useClienteActivo();
-  const [cliente, setCliente] = useState<ClienteDetalle | null>(null);
-  const [eventos, setEventos] = useState<EventoChecada[]>([]);
-  const [cierre, setCierre] = useState<CierrePeriodo | null>(null);
-  const [nomina, setNomina] = useState<NominaPeriodo | null>(null);
+  const [cargada, setCargada] = useState<FichaCargada | null>(null);
+  const [eventosDe, setEventosDe] = useState<DeCliente<EventoChecada[]> | null>(null);
+  const [cierreDe, setCierreDe] = useState<DeCliente<CierrePeriodo | null> | null>(null);
+  const [nominaDe, setNominaDe] = useState<DeCliente<NominaPeriodo | null> | null>(null);
   const [inicio, setInicio] = useState('');
   const [fin, setFin] = useState('');
   const [errorPanel, setErrorPanel] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorDe, setErrorDe] = useState<DeCliente<string | null> | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  // La confirmación es estado, no `window.confirm`: E-04 sólo tiene que pintar
+  // el diálogo, sin reescribir el flujo async de `alCerrar`. Guarda el id del
+  // cliente al que corresponde, para que no sobreviva a un cambio de cliente.
+  const [confirmarPara, setConfirmarPara] = useState<string | null>(null);
 
   // El contexto SIGUE a la ruta. Al revés, el header afirmaría un cliente y la
   // pantalla calcularía otro.
@@ -108,14 +140,13 @@ export default function NominaClientePage() {
     obtenerCliente(clienteId)
       .then((c) => {
         if (cancelado) return;
-        setCliente(c);
+        setCargada({ id: clienteId, cliente: c });
         setInicio(c.periodo_sugerido.inicio);
         setFin(c.periodo_sugerido.fin);
-        // Lo del cliente anterior no se queda en pantalla bajo otro nombre.
-        setCierre(null);
-        setNomina(null);
       })
-      .catch((e: Error) => { if (!cancelado) setError(e.message); });
+      .catch((e: Error) => {
+        if (!cancelado) setErrorDe({ id: clienteId, valor: e.message });
+      });
     return () => { cancelado = true; };
   }, [clienteId]);
 
@@ -123,7 +154,7 @@ export default function NominaClientePage() {
     if (!clienteId) return;
     obtenerEventos(clienteId)
       .then((r) => {
-        setEventos(r.eventos);
+        setEventosDe({ id: clienteId, valor: r.eventos });
         setErrorPanel(null);
       })
       .catch((e: Error) => setErrorPanel(e.message));
@@ -135,33 +166,37 @@ export default function NominaClientePage() {
     return () => clearInterval(id);
   }, [refrescar]);
 
+  const alPedirCierre = () => {
+    if (!cliente) return;
+    // Sin checadas EN EL PERIODO, `cerrar_periodo` marca falta todo día
+    // laborable y el cálculo NO sale en ceros: cada quien cobra los días no
+    // laborables, así que la nómina se ve completa y creíble con la ausencia
+    // escondida. Mejor preguntar que enseñar eso enfrente de alguien.
+    if (sinChecadasEnElPeriodo) {
+      setConfirmarPara(cliente.id);
+      return;
+    }
+    void alCerrar();
+  };
+
   const alCerrar = async () => {
     if (!cliente) return;
-    // Sin checadas, `cerrar_periodo` marca falta TODO día laborable y el
-    // cálculo NO sale en ceros: cada quien cobra los días no laborables del
-    // periodo, así que la nómina se ve completa y creíble con la ausencia
-    // escondida. Mejor preguntar que enseñar eso enfrente de alguien.
-    if (eventos.length === 0) {
-      const seguir = window.confirm(
-        `No hay checadas de ${cliente.nombre} en el panel. Si cierras el periodo, ` +
-        'todos los días laborables se marcarán como falta y la nómina saldrá con ' +
-        'sólo los días de descanso pagados. ¿Cerrar de todos modos?',
-      );
-      if (!seguir) return;
-    }
+    const id = cliente.id;
+    setConfirmarPara(null);
     setOcupado(true);
-    setError(null);
+    setErrorDe(null);
     try {
-      setNomina(null);
-      setCierre(
-        await cerrarPeriodo(
-          cliente.id,
+      setNominaDe({ id, valor: null });
+      setCierreDe({
+        id,
+        valor: await cerrarPeriodo(
+          id,
           cliente.empleados.map((e) => e.empleado_no),
           { inicio, fin },
         ),
-      );
+      });
     } catch (e) {
-      setError((e as Error).message);
+      setErrorDe({ id, valor: (e as Error).message });
     } finally {
       setOcupado(false);
     }
@@ -169,25 +204,52 @@ export default function NominaClientePage() {
 
   const alCalcular = async () => {
     if (!cliente || !cierre) return;
+    const id = cliente.id;
     setOcupado(true);
-    setError(null);
+    setErrorDe(null);
     try {
       // Las incidencias van verbatim: `dias_periodo`, `faltas` y
       // `dias_ausentismo` alimentan la base de cuotas y los días pagados.
-      setNomina(
-        await calcularNomina(
-          cliente.id,
+      setNominaDe({
+        id,
+        valor: await calcularNomina(
+          id,
           { inicio, fin, fecha_pago: fechaDePago(cliente, inicio, fin) },
           cierre.incidencias,
           cliente,
         ),
-      );
+      });
     } catch (e) {
-      setError((e as Error).message);
+      setErrorDe({ id, valor: (e as Error).message });
     } finally {
       setOcupado(false);
     }
   };
+
+  const cliente = cargada?.id === clienteId ? cargada.cliente : null;
+  // Cada pieza se deriva del cliente de la RUTA: nada del anterior se pinta.
+  const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
+  const cierre = suyo(cierreDe, clienteId, null);
+  const nomina = suyo(nominaDe, clienteId, null);
+  const error = suyo(errorDe, clienteId, null);
+  const confirmarCierre = confirmarPara === clienteId;
+  const cargandoCliente = cliente === null && error === null;
+
+  /**
+   * Checadas que caen DENTRO del periodo que se va a cerrar.
+   *
+   * No basta con `eventos.length === 0`: `obtenerEventos` no manda `desde` —a
+   * propósito, ver `nominaDemoApi`— así que el panel trae todo lo que haya en
+   * memoria. Sembrar el día 15 y demostrar el 16 son **dos quincenas
+   * distintas** (lo advierte `demo_nomina.quincena()`): habría checadas en el
+   * panel, ninguna en el periodo, y `cerrar_periodo` marcaría falta todos los
+   * días sin que nadie preguntara nada.
+   */
+  const checadasEnElPeriodo = eventos.filter((e) => {
+    const dia = e.timestamp.slice(0, 10);
+    return dia >= inicio && dia <= fin;
+  }).length;
+  const sinChecadasEnElPeriodo = checadasEnElPeriodo === 0;
 
   // Empleados sin UNA SOLA checada: es "a este cliente nadie le sembró", no
   // "ausentismo prolongado". Los dos se ven igual en la tabla de incidencias, y
@@ -217,7 +279,9 @@ export default function NominaClientePage() {
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>
           {cliente
             ? `${cliente.giro} · ${etiquetaOrigen(cliente.origen)} · ${cliente.num_empleados} empleados`
-            : 'Cargando el cliente...'}
+            : cargandoCliente
+              ? 'Cargando el cliente...'
+              : 'No se pudo cargar el cliente'}
         </p>
       </header>
 
@@ -228,6 +292,27 @@ export default function NominaClientePage() {
         >
           {error}
         </p>
+      )}
+
+      {confirmarCierre && cliente && (
+        <div
+          role="alertdialog"
+          aria-label="Confirmar cierre sin checadas"
+          style={{ ...CAJA, borderColor: 'var(--warning)', display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              No hay checadas de <strong>{cliente.nombre}</strong> entre {inicio} y {fin}. Si
+              cierras el periodo, todos los días laborables se marcarán como falta y la nómina
+              saldrá con <strong>sólo los días de descanso pagados</strong>, no en ceros.
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => void alCerrar()}>Cerrar de todos modos</button>
+            <button onClick={() => setConfirmarPara(null)}>Cancelar</button>
+          </div>
+        </div>
       )}
 
       <PanelChecador eventos={eventos} error={errorPanel} />
@@ -247,7 +332,7 @@ export default function NominaClientePage() {
             De ella dependen la UMA, el salario mínimo y la tarifa vigentes.
           </p>
         )}
-        <button onClick={alCerrar} disabled={ocupado || !cliente || !inicio || !fin}>
+        <button onClick={alPedirCierre} disabled={ocupado || !cliente || !inicio || !fin}>
           <CalendarCheck size={16} /> Cerrar quincena
         </button>
         <button onClick={alCalcular} disabled={ocupado || !cierre}>

@@ -19,6 +19,8 @@ import type { NominaPeriodo } from './nominaDemoApi';
 
 /** Texto que jsPDF fue recibiendo, para poder asertar sobre el documento. */
 const textos: string[] = [];
+/** Nombres de archivo con los que se guardó. */
+const guardados: string[] = [];
 
 vi.mock('jspdf', () => {
   class FakeDoc {
@@ -38,7 +40,7 @@ vi.mock('jspdf', () => {
     rect() { return this; }
     line() { return this; }
     addPage() { return this; }
-    save() { return this; }
+    save(nombre: string) { guardados.push(nombre); return this; }
     text(t: string | string[]) {
       textos.push(Array.isArray(t) ? t.join(' ') : t);
       return this;
@@ -87,6 +89,7 @@ function nomina(origenPlantilla: string): NominaPeriodo {
 
 afterEach(() => {
   textos.length = 0;
+  guardados.length = 0;
 });
 
 describe('banda de demostración', () => {
@@ -124,6 +127,18 @@ describe('de quién es la nómina', () => {
   it('el caso real anonimizado va etiquetado como tal', () => {
     exportarNominaPDF(nomina('request'), cliente('demo', 'Cliente Demo', 'fixtures-s04'));
     expect(textos.some((t) => t.includes('Caso real anonimizado'))).toBe(true);
+  });
+});
+
+describe('nombre del archivo', () => {
+  it('lleva el cliente, para que tres nóminas no caigan con el mismo nombre', () => {
+    exportarNominaPDF(nomina('request'), cliente('taller', 'Taller Nogal', 'sintetico'));
+    exportarNominaPDF(nomina('request'), cliente('cafeteria', 'Cafeteria', 'sintetico'));
+
+    expect(guardados).toEqual([
+      'Fiscalito_Nomina_taller_2026-08-16_2026-08-31.pdf',
+      'Fiscalito_Nomina_cafeteria_2026-08-16_2026-08-31.pdf',
+    ]);
   });
 });
 

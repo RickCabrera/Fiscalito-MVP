@@ -139,5 +139,9 @@ export function exportarNominaPDF(data: NominaPeriodo, cliente: ClienteDetalle):
   }
 
   addFooter(doc);
-  doc.save(`Fiscalito_Nomina_${data.periodo.inicio}_${data.periodo.fin}.pdf`);
+  // El cliente va en el NOMBRE del archivo: sin él, los tres clientes exportan
+  // el mismo nombre para la misma quincena y caen en Descargas como
+  // `…(1)`, `…(2)`, sin que ninguno diga de quién es hasta abrirlo.
+  const idArchivo = cliente.id.replace(/[^A-Za-z0-9_-]/g, '_');
+  doc.save(`Fiscalito_Nomina_${idArchivo}_${data.periodo.inicio}_${data.periodo.fin}.pdf`);
 }
