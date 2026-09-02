@@ -1,0 +1,138 @@
+"""
+Endpoint del calendario patronal de la cartera (E-07).
+
+QUÉ PRUEBA ESTO Y QUÉ NO
+------------------------
+Las **fechas** las prueba `tests/nomina/test_calendario_laboral.py` contra la
+tabla publicada del doc 25. Aquí se prueba que el router sea **traductor y no
+motor**: que no recalcule nada, que etiquete cada obligación con su cliente, que
+el orden sea el que la pantalla espera, y que la respuesta diga qué rango cubre
+y qué NO cubre.
+"""
+
+from __future__ import annotations
+
+from datetime import date
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.despacho_demo import CLIENTES
+from app.main import app
+from app.nomina_engine.calendario_laboral import calendario_patronal
+
+RUTA = "/api/v1/despacho/calendario"
+
+
+@pytest.fixture
+def cliente_http() -> TestClient:
+    return TestClient(app)
+
+
+def pedir(cliente_http: TestClient, anio: int = 2026) -> dict:
+    respuesta = cliente_http.get(RUTA, params={"anio_de_las_cuotas": anio})
+    assert respuesta.status_code == 200, respuesta.text
+    return respuesta.json()
+
+
+class TestFormaDeLaRespuesta:
+    def test_trae_las_obligaciones_de_toda_la_cartera(self, cliente_http):
+        cuerpo = pedir(cliente_http)
+        por_cliente = calendario_patronal(2026)
+        assert cuerpo["total_obligaciones"] == len(por_cliente) * len(CLIENTES)
+        assert {o["cliente_id"] for o in cuerpo["obligaciones"]} == {c.id for c in CLIENTES}
+
+    def test_cada_obligacion_dice_de_qué_cliente_es(self, cliente_http):
+        nombres = {c.id: c.nombre for c in CLIENTES}
+        for o in pedir(cliente_http)["obligaciones"]:
+            assert o["cliente_nombre"] == nombres[o["cliente_id"]]
+
+    def test_vienen_ordenadas_por_fecha(self, cliente_http):
+        fechas = [o["fecha_limite"] for o in pedir(cliente_http)["obligaciones"]]
+        assert fechas == sorted(fechas)
+
+    def test_el_router_no_recalcula_ninguna_fecha(self, cliente_http):
+        """
+        **Traductor, no motor.** El conjunto de fechas que devuelve el endpoint
+        para un cliente tiene que ser exactamente el del motor: si alguna vez
+        difieren, es que el router se puso a decidir plazos por su cuenta.
+        """
+        del_motor = {o.fecha_limite.isoformat() for o in calendario_patronal(2026)}
+        del_endpoint = {
+            o["fecha_limite"]
+            for o in pedir(cliente_http)["obligaciones"]
+            if o["cliente_id"] == CLIENTES[0].id
+        }
+        assert del_endpoint == del_motor
+
+
+class TestRangoQueCubre:
+    def test_dice_desde_cuándo_y_hasta_cuándo(self, cliente_http):
+        """
+        Un calendario pedido por AÑO DE LAS CUOTAS empieza en febrero y termina
+        en enero del año siguiente. Sin estos dos campos, la pantalla enseñaría
+        un enero vacío sin poder explicar por qué.
+        """
+        cuerpo = pedir(cliente_http)
+        assert cuerpo["cubre_desde"] == "2026-02-17"
+        assert cuerpo["cubre_hasta"].startswith("2027-01")
+
+    def test_no_incluye_nada_que_venza_antes_de_febrero(self, cliente_http):
+        for o in pedir(cliente_http)["obligaciones"]:
+            assert o["fecha_limite"] >= "2026-02-01"
+
+
+class TestLoQueNoCubre:
+    def test_las_advertencias_viajan_en_el_cuerpo(self, cliente_http):
+        """
+        Y no sólo en la documentación: la pantalla las imprime tal cual, así que
+        no puede quedarse desincronizada de lo que el backend realmente omite.
+        """
+        advertencias = " ".join(pedir(cliente_http)["advertencias"]).lower()
+        assert "isn" in advertencias
+        assert "condicional" in advertencias
+
+    def test_las_condicionales_traen_nota(self, cliente_http):
+        condicionales = [o for o in pedir(cliente_http)["obligaciones"] if o["condicional"]]
+        assert condicionales, "ninguna obligación salió condicional"
+        for o in condicionales:
+            assert o["nota"], o["clave"]
+
+
+class TestReglasDePlazoDistinguibles:
+    def test_el_isr_y_las_cuotas_de_marzo_no_se_fundieron(self, cliente_http):
+        """
+        El par que el doc 25 §4 pide no confundir, visto desde la API: mismo mes,
+        dos fechas, y `regimen_de_plazo` diciendo cuál regla produjo cada una.
+        """
+        marzo = {
+            o["clave"]: o
+            for o in pedir(cliente_http)["obligaciones"]
+            if o["cliente_id"] == CLIENTES[0].id and o["periodo_cubierto"] == "marzo 2026"
+        }
+        assert marzo["imss_mensual"]["fecha_limite"] == "2026-04-20"
+        assert marzo["isr_retenido"]["fecha_limite"] == "2026-04-17"
+        assert marzo["imss_mensual"]["regimen_de_plazo"] == "imss"
+        assert marzo["isr_retenido"]["regimen_de_plazo"] == "sat"
+
+    def test_la_prima_de_rt_no_se_etiqueta_como_prorrogable(self, cliente_http):
+        prima = next(
+            o for o in pedir(cliente_http)["obligaciones"] if o["clave"] == "prima_rt"
+        )
+        assert prima["regimen_de_plazo"] == "imss_sin_prorroga"
+        assert "sábado" in prima["nota"]
+
+
+class TestValidacion:
+    @pytest.mark.parametrize("anio", [1999, 2101])
+    def test_un_ano_fuera_de_rango_falla_con_el_sobre_del_proyecto(self, cliente_http, anio):
+        respuesta = cliente_http.get(RUTA, params={"anio_de_las_cuotas": anio})
+        assert respuesta.status_code == 422
+        cuerpo = respuesta.json()
+        assert cuerpo["exito"] is False
+        assert "fuera de rango" in cuerpo["error"]
+
+    def test_sin_parametro_usa_el_ano_en_curso(self, cliente_http):
+        respuesta = cliente_http.get(RUTA)
+        assert respuesta.status_code == 200
+        assert respuesta.json()["anio_de_las_cuotas"] == date.today().year
