@@ -852,3 +852,102 @@ mutación y no una relectura.
 **§D18** — si el cliente paga corrido y no el último día del periodo, el default está mal para
 las quincenas de enero ($282.22 contra $281.92 de subsidio). D-07 **enseña el número** en vez
 de asumirlo, que es lo correcto, pero no lo cierra. Sigue siendo pregunta para la contadora.
+
+---
+
+## E-01 · perfil de contador y navegación del despacho (2026-09-02)
+
+**PR #20, mergeada por Ricardo. Tests: 28 → 90 en el front.**
+**CI verde al primer intento** (Backend 28 s, Frontend 1 m 2 s).
+`npm run build` limpio · `npm test` → `90 passed` · `npx eslint .` → 20 errores / 8 warnings,
+**la línea base preexistente de S-02**, sin ningún archivo nuevo entre ellos. Backend intacto:
+`git diff --stat main..feat/E-01 -- apps/api docs/api-contract.md` sale vacío.
+
+Sesión **interactiva**, no nocturna: Ricardo cambió la prioridad a media tarde (demo del
+2026-09-02) y autorizó el arranque. La Épica E entera desplaza a S-03 y siguientes.
+
+### DOS BLOQUEANTES QUE EL REVISOR CAZÓ EN EL PLAN, Y QUE NO SE VEN EN CI
+
+**1. `fiscalAgentApi.ts:17` espeja a mano el enum de `app/schemas/fiscal.py:49`.** No importa
+`ContributorType`: repite la unión literal. Agregar `'contador'` rompía `tsc` en 6 call sites.
+El arreglo tentador —ensanchar el campo a `string`— está prohibido por el protocolo y además
+**cambia un error de compilación por un 422 en vivo**.
+
+**2. `POST /api/v1/calendario` valida contra un set de 5 tipos** (`app/routes/calendario.py:19`)
+y responde **400** con cualquier otro. "Calendario" es uno de los cuatro enlaces del contador:
+el sidebar se veía perfecto y el primer clic enfrente del cliente pintaba un banner de error.
+
+Los dos se resuelven con funciones de frontera en `fiscalAgentApi.ts`, **junto a la unión que
+protegen** para que no puedan desincronizarse en silencio: `tipoParaApi` (contador → `null`) y
+`tipoParaCalendario` (contador → `'independiente'`). Los dos son `Record<ContributorType, ...>`
+**exhaustivos a propósito**: el día que E-02+ agregue un séptimo tipo, el build falla y obliga a
+decidir qué se le manda al backend.
+
+### Decisiones tomadas sin Ricardo
+
+1. **`getTabsForProfile` estaba DUPLICADA** —copias idénticas en `DashboardPage.tsx` y
+   `FiscalitoServicePage.tsx`, verificado carácter por carácter— y el sidebar ni siquiera salía
+   de ahí: eran 5 links hardcodeados en `AppLayout`. Se creó `services/navigation.ts` como
+   fuente única de las dos cosas y **se borraron las dos copias**. La rama de contador va
+   PRIMERO: un despacho tiene régimen 612 o 626 y si se evaluara después caería en la rama de
+   RESICO o de Actividad Empresarial y vería pre-declaración, DIOT y retenciones.
+2. **`/app/clientes` entra como stub en E-01.** El sidebar del contador lo enlaza y no hay
+   catch-all bajo `/app`: sin ruta, el área de contenido queda en blanco. E-02 reemplaza el
+   cuerpo de la página.
+3. **El agente se niega a calcular pre-declaraciones en una cuenta de despacho**, con la guarda
+   ANTES de la de RFC. El chat de voz flota sobre todas las pantallas y esa tool no pasa por el
+   filtro de tabs: sin la guarda, "calcula la predeclaración" se habría calculado sobre el RFC
+   del despacho creyendo que era el del cliente.
+4. **`allowedRegimens` del contador se limitó a 612 y 626.** 601 (General de Ley PM) es un
+   código que nada aguas abajo maneja.
+5. **Decisión de dominio → `docs/decisiones-nomina.md` D21**, no sólo un comentario en el
+   código: qué muestra "Calendario" para un despacho. Ver abajo.
+
+### Decisión abierta para Ricardo
+
+**D21 — "Calendario" muestra hoy las obligaciones PROPIAS del despacho**, no el calendario
+patronal de sus clientes. La alternativa (día 17 del IMSS, bimestral, avisos de variables) es
+**F1-06, que no existe**. Si la respuesta es ésa, el enlace del sidebar cambia de destino y la
+tarea que lo habilita es F1-06, no una de la Épica E. **E-02 y E-03 no pueden asumir que
+"Calendario" ya significa algo patronal.**
+
+### Verificación
+
+**13 mutaciones, 13 en rojo.** Tres sobrevivieron en su primer intento, y las tres eran código
+nuevo de E-01 sin red:
+
+1. **La guarda del agente** contra cuentas de despacho no tenía test.
+2. **Quitar `nombreDespacho` del `handleSave` de `ProfilePage`** no rompía nada visible:
+   `setProfile` hace `{...profile, ...data}`, así que el valor viejo sobrevive, el formulario
+   sigue mostrando lo tecleado y la pantalla dice **"Guardado correctamente"**. Pérdida
+   silenciosa con mensaje de éxito, en la pantalla donde un contador corrige el nombre de su
+   despacho minutos antes de proyectar.
+3. **El copy y el back-link** de la única pantalla de Fiscalito que ve el contador: sin test, el
+   back-link lo devolvía al marketplace de contribuyente.
+
+Las tres tienen test ahora (`ProfilePage.test.tsx`, `FiscalitoServicePage.test.tsx`), y el
+segundo cubre además el deep-link `?tab=declaracion`, que degrada al calendario.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador.** La ruta está detrás de Firebase Auth y del gate de
+  onboarding. Recorrido manual mínimo antes de la demo: crear cuenta de contador → ver los 4
+  enlaces → **clic en Calendario** (el que traía el 400; ninguna prueba lo ejercita contra la
+  API viva) → clic en Clientes → teclear `/app` para ver el redirect.
+- **El registro de la ruta en `main.tsx` no lo cubre ningún test**: llama a `createRoot` al
+  importarse y no es montable en jsdom. Verificado a mano. **E-02 extrae el árbol de `<Routes>`
+  a `AppRoutes.tsx`** —Ricardo lo aprobó— y con eso queda cubierto.
+- **Fuera de alcance, declarado:** `/app/historial`, `/app/store`, `/app/store/:serviceId` y
+  `/app/admin` siguen alcanzables por URL para un contador.
+
+### Para el handoff de E-02 y E-03
+
+- `getStatsForType` (`DashboardPage.tsx`) no tiene rama de contador; hoy es inalcanzable sólo
+  por el redirect. Se activa el día que el contador tenga dashboard propio.
+- `getSidebarLinks(tipo)` es función pura **sólo del tipo de perfil**, y el enlace `nomina`
+  apunta a `/app/nomina-demo` fijo. Cuando E-03 meta la nómina dentro del cliente, esa URL
+  depende del cliente activo: hay que decidir al planear si la función gana un segundo
+  argumento o si la ruta queda fija y lee el cliente del contexto.
+- **E-02/E-03 no deben reusar `PerfilContribuyente` con el perfil del despacho** para calcular
+  por un cliente: el sujeto del cálculo es el cliente, y por eso `TIPO_API['contador']` es
+  `null`.
