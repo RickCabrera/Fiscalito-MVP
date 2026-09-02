@@ -16,6 +16,8 @@
 
 import type { ClienteDetalle } from './despachoApi';
 
+import { cuerpoDeError, detalleDelError } from './errorApi';
+
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
 const V1 = `${BASE_URL}/api/v1`;
 
@@ -144,14 +146,10 @@ async function pedir<T>(ruta: string, opciones?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     // El handler de dominio responde `{exito: false, error: "..."}`; las
-    // validaciones de FastAPI, `{detail: [...]}`. Se intentan las dos antes de
-    // caer al código, para que la pantalla muestre la causa y no un número.
-    const cuerpo = await res.json().catch(() => null);
-    const detalle =
-      (cuerpo && typeof cuerpo.error === 'string' && cuerpo.error) ||
-      (cuerpo && Array.isArray(cuerpo.detail) && cuerpo.detail[0]?.msg) ||
-      `El servidor respondió ${res.status}`;
-    throw new Error(detalle);
+    // validaciones de FastAPI, `{detail: [...]}`; y una ruta que el backend no
+    // conoce, `{detail: "Not Found"}` — que es un caso distinto y merece un
+    // mensaje distinto. Las tres formas viven en `errorApi.ts`.
+    throw new Error(detalleDelError(res, await cuerpoDeError(res)));
   }
   return res.json() as Promise<T>;
 }

@@ -68,7 +68,7 @@ export default function TablaIncidencias({
               <th style={thNum}>Retardos</th>
               <th
                 style={thNum}
-                title="Informativo. La base de cuotas la decide el motor por ramo (Art. 31 LSS)."
+                title="Informativo. Cada ramo del IMSS usa su propia base de días: Enfermedades y Maternidad se cobra íntegro aunque haya faltas (Art. 31 LSS)."
               >
                 Días cotizados*
               </th>
@@ -93,10 +93,21 @@ export default function TablaIncidencias({
         </table>
       </div>
 
+      {/* El texto va en POSITIVO y ACOTADO, y las dos cosas son deliberadas.
+          En positivo: "el ausentismo no reduce EyM" se leía como "EyM no se
+          toma en cuenta", que es lo contrario de la verdad.
+          Acotado a 7 días: la fr. II del Art. 31 libera al patrón de TODAS las
+          cuotas cuando la ausencia excede ese plazo, y el motor no lo
+          implementa (`docs/decisiones-nomina.md` §D3: con 20 días de ausencia
+          sigue cobrando 30 de EyM, de más y a propósito). Una frase
+          incondicional sería clara y falsa, que en un proyector es peor que
+          confusa y falsa. */}
       <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
-        * <strong>Informativo.</strong> La base de las cuotas del IMSS la determina el motor
-        por ramo: el ausentismo no reduce Enfermedades y Maternidad (Art. 31 LSS). Este
-        número no alimenta ningún cálculo de esta pantalla.
+        * <strong>Informativo:</strong> no alimenta ningún cálculo de esta pantalla. Cada
+        ramo del IMSS cobra sobre su propia base de días. Con ausencias de hasta 7 días,{' '}
+        <strong>Enfermedades y Maternidad se cobra íntegro</strong> — las faltas no lo
+        reducen (Art. 31 LSS). Invalidez y Vida, Guarderías, Retiro, Infonavit y Riesgos
+        de Trabajo sí descuentan esos días.
       </p>
     </section>
   );

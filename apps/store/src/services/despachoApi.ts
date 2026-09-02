@@ -8,6 +8,8 @@
  * es quien tiene el fundamento legal y los tests que lo verifican.
  */
 
+import { cuerpoDeError, detalleDelError } from './errorApi';
+
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
 const V1 = `${BASE_URL}/api/v1`;
 
@@ -54,18 +56,15 @@ export interface ClienteDetalle extends ClienteResumen {
  * Lee el error del cuerpo si el backend lo mandó en su sobre habitual
  * (`{exito: false, error}`). El 404 de la ficha usa ese mismo sobre a
  * propósito, así que aquí hay un solo camino para todos los errores.
+ *
+ * La traducción vive en `errorApi.ts` porque `nominaDemoApi.ts` necesita la
+ * misma y un mensaje con dos redacciones distintas es un mensaje que nadie
+ * mantiene. Ahí está documentado por qué un 404 con `detail` string no es el
+ * mismo 404 que uno con sobre propio.
  */
 async function leer<T>(res: Response, queFallo: string): Promise<T> {
   if (!res.ok) {
-    let detalle = `HTTP ${res.status}`;
-    try {
-      const cuerpo = await res.json();
-      if (typeof cuerpo?.error === 'string') detalle = cuerpo.error;
-      else if (typeof cuerpo?.detail === 'string') detalle = cuerpo.detail;
-    } catch {
-      // Cuerpo no-JSON: nos quedamos con el código.
-    }
-    throw new Error(`${queFallo}: ${detalle}`);
+    throw new Error(`${queFallo}: ${detalleDelError(res, await cuerpoDeError(res))}`);
   }
   return res.json() as Promise<T>;
 }

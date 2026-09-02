@@ -1,0 +1,121 @@
+{
+  "_generado_por": "apps/api/scripts/exportar_rutas.py",
+  "_no_editar_a_mano": "Regenera con `cd apps/api && python scripts/exportar_rutas.py`. Lo verifica tests/test_rutas_publicadas.py.",
+  "_para_que_sirve": "Contrato de rutas entre apps/api y apps/store. apps/store/src/services/contratoRutas.test.ts afirma que cada URL que el front construye está aquí.",
+  "rutas": [
+    {
+      "path": "/api/v1/agente/predeclaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/cerrar-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/eventos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/eventos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calendario",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/comparar-regimenes",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/deducciones-personales",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/calendario",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/clientes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/clientes/{cliente_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/diot",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/estado-cuenta",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/multi-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/calcular-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/demo/plantilla",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/pre-declaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/pre-declaracion-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/retenciones-terceros",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    }
+  ]
+}

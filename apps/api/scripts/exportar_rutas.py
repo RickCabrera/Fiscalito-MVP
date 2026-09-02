@@ -1,0 +1,87 @@
+"""
+Exporta las rutas que la API publica a `apps/store/src/services/rutasBackend.json`.
+
+POR QUÉ EXISTE
+--------------
+El 2026-09-02 el calendario patronal dio 404 en el navegador. No era un bug de
+path —la ruta existía y respondía 200—, pero el episodio dejó ver un agujero
+real: **nada compara lo que el front pide contra lo que el backend publica**. El
+test de backend de E-07 pega al router montado pero *hardcodea* la ruta, y los
+tests de front stubbean `fetch`. Las dos mitades pueden estar verdes con paths
+distintos cada una.
+
+Este archivo es la mitad del puente. La otra mitad son dos tests:
+
+- `apps/api/tests/test_rutas_publicadas.py` — que el JSON no se quede viejo
+  respecto de `app.main:app`.
+- `apps/store/src/services/contratoRutas.test.ts` — que cada función del front
+  arme una URL que esté en el JSON.
+
+Ninguno de los dos parsea el lenguaje del otro, y cada uno falla en el job de
+CI donde está el culpable.
+
+USO
+---
+    cd apps/api && python scripts/exportar_rutas.py
+
+No se corre en CI: el test de arriba **falla** si el JSON quedó desactualizado y
+dice este comando. Regenerarlo automáticamente convertiría una divergencia real
+en un archivo que se arregla solo.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from app.main import app
+
+# Verbos que FastAPI agrega solo y que nadie llama desde el front.
+METODOS_IGNORADOS = frozenset({"HEAD", "OPTIONS"})
+
+DESTINO = Path(__file__).resolve().parents[3] / "apps/store/src/services/rutasBackend.json"
+
+
+def rutas_publicadas() -> list[dict[str, Any]]:
+    """
+    Las rutas de la app real, ordenadas y estables.
+
+    Se excluyen las que FastAPI monta por su cuenta (`/docs`, `/openapi.json`,
+    `/redoc`…): no son contrato con el front y cambian con la versión del
+    framework, lo que haría fallar el test por una razón que no es la nuestra.
+    """
+    fuera = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+    rutas = []
+    for r in app.routes:
+        path = getattr(r, "path", None)
+        metodos = getattr(r, "methods", None)
+        if not path or not metodos or path in fuera:
+            continue
+        visibles = sorted(set(metodos) - METODOS_IGNORADOS)
+        if visibles:
+            rutas.append({"path": path, "metodos": visibles})
+    return sorted(rutas, key=lambda r: (r["path"], r["metodos"]))
+
+
+def contenido() -> str:
+    documento = {
+        "_generado_por": "apps/api/scripts/exportar_rutas.py",
+        "_no_editar_a_mano": (
+            "Regenera con `cd apps/api && python scripts/exportar_rutas.py`. "
+            "Lo verifica tests/test_rutas_publicadas.py."
+        ),
+        "_para_que_sirve": (
+            "Contrato de rutas entre apps/api y apps/store. "
+            "apps/store/src/services/contratoRutas.test.ts afirma que cada URL "
+            "que el front construye está aquí."
+        ),
+        "rutas": rutas_publicadas(),
+    }
+    return json.dumps(documento, indent=2, ensure_ascii=False) + "\n"
+
+
+if __name__ == "__main__":
+    DESTINO.write_text(contenido(), encoding="utf-8")
+    # Sin flechas ni acentos: la consola de Windows es cp1252 y reventaria.
+    print(f"{len(rutas_publicadas())} rutas -> {DESTINO}")

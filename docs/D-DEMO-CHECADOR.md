@@ -203,10 +203,25 @@ la empresa y es suyo. Dejarlo escrito antes de la demo, no después.
 3. **Siembra y demuestra el mismo día.** El simulador y la pantalla piden la
    **última quincena ya terminada**. Si siembras el día 15 y demuestras el 16,
    son dos quincenas distintas y el panel sale vacío o con faltas de todos.
+4. **La API que quedó corriendo puede ser de antes del último merge.** Como el
+   punto 2 prohíbe `--reload`, un `uvicorn` levantado hace días sigue sirviendo
+   los endpoints de **su** commit: los viejos responden 200 y los nuevos dan
+   404 `{"detail":"Not Found"}`, que en pantalla se lee como un error de red
+   cualquiera. Pasó de verdad el 2026-09-02 con `/api/v1/despacho/calendario`,
+   que nació en el PR #24. Lo detecta el **paso 0** de abajo.
+   **El orden importa y no es negociable:** el chequeo y el relanzamiento van
+   *antes* de sembrar, porque reiniciar después borra las 194 checadas (punto 2).
 
 ### Los comandos
 
 ```bash
+# 0. PRE-FLIGHT: ¿la API que responde conoce las rutas de este commit?
+#    Se pregunta por la ruta MÁS NUEVA. Si sale 404, el proceso es viejo:
+#    mátalo y relánzalo AHORA, antes del paso 2. Después de sembrar, ya no.
+curl -s -o /dev/null -w "%{http_code}\n" \
+  "http://localhost:8000/api/v1/despacho/calendario?anio_de_las_cuotas=2026"
+# 200 = al día. 404 = proceso viejo. 000 = no hay nada escuchando (paso 1).
+
 # 1. API (déjala corriendo, SIN --reload)
 cd apps/api
 .venv/Scripts/python.exe -m uvicorn app.main:app --port 8000
@@ -348,6 +363,12 @@ Si algo de eso falla, es cosmético y se arregla sin tocar cálculo.
 - **El panel dice "0 checadas" después de re-correr el simulador.** El almacén
   deduplica por `(empleado, serialNo)`: la segunda corrida es un no-op. Corre
   con `--serial-base 5000000` para volver a sembrar sin reiniciar la API.
+- **Una pantalla dice "el backend en ... no reconoce esta ruta".** No es un
+  fallo de red: el backend contestó, y contestó que no conoce la llamada. Son
+  dos causas y el mensaje no elige: o el proceso es de antes del último merge
+  (modo de falla 4 — corre el paso 0 y relanza **antes** de sembrar), o
+  `VITE_FISCAL_AGENT_URL` apunta a otro backend. La URL sale en el propio
+  mensaje; con eso se distinguen.
 - **Las cuotas no son "lo que se paga al mes".** Son lo devengado en la
   quincena. Decirlo así si sale la pregunta.
 - **Un cliente sin sembrar NO da una nómina en ceros.** Da una nómina completa:
