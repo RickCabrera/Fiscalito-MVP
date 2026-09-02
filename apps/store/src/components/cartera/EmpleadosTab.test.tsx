@@ -130,3 +130,51 @@ describe('EmpleadosTab · tabla', () => {
     expect(primeraFila.textContent).toContain('E-42');
   });
 });
+
+describe('EmpleadosTab · el NSS por verificar se VE (R-03)', () => {
+  /**
+   * ESTOS DOS TESTS SON EL PRECIO DE UNA DECISIÓN, NO UN ADORNO.
+   *
+   * `nss.ts` deja guardar un NSS cuyo dígito verificador no casa, en vez de
+   * bloquearlo, porque bloquearlo empujaría al contador a teclear uno que sí
+   * pase Luhn — un número inventado junto a datos reales. Toda esa defensa
+   * descansa en una sola frase: *"advertir no es callar: el empleado lleva
+   * insignia Por verificar en la tabla"*.
+   *
+   * Sin estos tests esa frase no la sostiene nada: borrar la insignia dejaba la
+   * suite entera en verde, y "advierte y guarda" se convertía en "guarda
+   * callado" — que es exactamente la conducta que la desviación NO quiso
+   * autorizar. Un revisor lo mutó y sobrevivió.
+   */
+
+  it('marca el NSS cuyo dígito verificador no coincide', () => {
+    // 12345678900: los 10 de payload dan verificador 3, no 0.
+    pintar([emp({ nss: '12345678900' })]);
+
+    const fila = screen.getByText('12345678900').closest('tr') as HTMLElement;
+    expect(within(fila).getByText(/Por verificar/i)).toBeTruthy();
+  });
+
+  it('NO marca un NSS bien formado', () => {
+    // La mitad simétrica: sin ella, una insignia que se pintara SIEMPRE pasaría
+    // el test de arriba y volvería inútil el aviso por saturación.
+    pintar([emp({ nss: '12345678903' })]);
+
+    const fila = screen.getByText('12345678903').closest('tr') as HTMLElement;
+    expect(within(fila).queryByText(/Por verificar/i)).toBeNull();
+  });
+
+  it('pinta el NSS que tiene el empleado, no un guion', () => {
+    // Mata la mutación de una columna que nunca muestra el valor: sin esto, un
+    // `{false ? (...)}` en la celda dejaba la suite verde.
+    pintar([emp({ nss: '12345678903' })]);
+    expect(screen.getByText('12345678903')).toBeTruthy();
+  });
+
+  it('sin NSS no inventa insignia ni valor', () => {
+    // La semilla del backend llega con `nss: ''` y así se queda: "vacío cuando
+    // no se conoce, y nunca inventado".
+    pintar([emp({ nss: '' })]);
+    expect(screen.queryByText(/Por verificar/i)).toBeNull();
+  });
+});

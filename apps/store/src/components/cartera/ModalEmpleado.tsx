@@ -14,13 +14,18 @@
  * dejar que el backend use `today()`— es lo que hace que el número sea
  * reproducible y que la pantalla pueda decir contra qué se midió.
  *
- * NO SE PIDE EL NSS EN ESTA CORRIDA
- * ---------------------------------
- * El modelo lo tiene (`EmpleadoCartera.nss`) y el backend lo acepta, pero el
- * formulario **no lo muestra**. Este modal se abre enfrente de gente durante una
- * demo, y teclear el NSS real de un trabajador lo escribiría en un Firestore
- * cuyas reglas todavía nadie ha revisado. Es la opción conservadora y está
- * anotada como decisión abierta para Ricardo.
+ * EL NSS (R-03)
+ * -------------
+ * G-01 lo dejó fuera con esta razón: "teclear el NSS real de un trabajador lo
+ * escribiría en un Firestore cuyas reglas todavía nadie ha revisado". **R-01
+ * eliminó esa razón** —las reglas se revisaron, se probaron con diez casos y se
+ * desplegaron— así que el campo vuelve. El orden de la corrida no fue casual.
+ *
+ * La validación vive en `services/nss.ts`, no aquí. Lo único que este archivo
+ * decide es qué se pinta: **la longitud bloquea el guardado y el dígito
+ * verificador sólo advierte**, con la razón completa en el encabezado de ese
+ * módulo (bloquear el verificador empujaría al contador a teclear uno que pase
+ * Luhn, o sea a inventar un NSS y ponerlo junto a datos reales).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,6 +36,7 @@ import {
   type SBCResponse,
   type TipoContrato,
 } from '../../services/carteraApi';
+import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 
@@ -152,6 +158,9 @@ export default function ModalEmpleado({
     };
   }, [clave, salarioValido, salario, fechaAlta, datos.zona, dias_aguinaldo, dias_vacaciones, prima_vacacional]);
 
+  /** Vacío es válido: es la salida del contador que no tiene el número. */
+  const nss = useMemo(() => validarNSS(datos.nss), [datos.nss]);
+
   const llaveRepetida = useMemo(
     () => esAlta && existentes.includes(datos.empleado_no.trim()),
     [esAlta, existentes, datos.empleado_no],
@@ -177,6 +186,8 @@ export default function ModalEmpleado({
     sbc !== null &&
     !llaveRepetida &&
     !numeroDeAparatoRepetido &&
+    // `advertencia` NO bloquea: ver `services/nss.ts`.
+    nss.puedeGuardar &&
     !guardando;
 
   async function guardar() {
@@ -192,6 +203,8 @@ export default function ModalEmpleado({
         // recalcula ni se redondea aquí.
         salario_diario_integrado: sbc.sbc,
         employee_no: datos.employee_no?.trim() || null,
+        // Normalizado: se captura con espacios y guiones, se guarda en dígitos.
+        nss: normalizarNSS(datos.nss),
       });
       onCerrar();
     } catch (e) {
@@ -298,6 +311,50 @@ export default function ModalEmpleado({
             </select>
           </Campo>
         </div>
+
+        {/* R-03. Opcional a propósito, y el placeholder lo dice: es la salida
+            para quien no tiene el número, y es lo que hace seguro rechazar por
+            longitud sin acorralar a nadie. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+          <Campo label="NSS (opcional)">
+            <input
+              style={{
+                ...campo,
+                // `border` completo y no `borderColor`: `campoInput` usa el
+                // atajo, y mezclar atajo con propiedad larga hace que React
+                // avise y que el borde dependa del orden de las claves.
+                border:
+                  nss.gravedad === 'ok'
+                    ? campo.border
+                    : `1px solid var(--${nss.gravedad === 'error' ? 'danger' : 'warning'})`,
+              }}
+              inputMode="numeric"
+              // Sin `maxLength`: truncar en silencio un pegado largo puede
+              // dejar 11 dígitos con aspecto de buenos. La longitud la juzga
+              // `validarNSS`, que sí lo dice.
+              value={datos.nss}
+              onChange={(e) => set('nss', e.target.value)}
+              placeholder="Si no lo tienes, déjalo vacío"
+              aria-invalid={nss.gravedad === 'error'}
+              aria-describedby={nss.motivo ? 'nss-motivo' : undefined}
+            />
+          </Campo>
+        </div>
+
+        {nss.motivo && (
+          <p
+            id="nss-motivo"
+            // `alert` sólo cuando impide guardar. Una advertencia que se anuncia
+            // como error entrena a ignorarlas.
+            role={nss.gravedad === 'error' ? 'alert' : 'status'}
+            style={{
+              margin: 0, fontSize: '0.82rem',
+              color: nss.gravedad === 'error' ? 'var(--danger)' : 'var(--warning)',
+            }}
+          >
+            {nss.motivo}
+          </p>
+        )}
 
         <fieldset style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm)' }}>
           <legend style={{ ...etiqueta, marginBottom: 0, padding: '0 6px' }}>
