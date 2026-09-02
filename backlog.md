@@ -96,21 +96,21 @@ plan, un revisor de entregable, un PR. **PR #25, mergeada.**
 
 ## G — Épica de cartera (2026-09-02, MODO RÁPIDO)
 
-Pedida por Ricardo la mañana de la demo, **no venía del backlog**. Una rama, un plan, un
+**PR #26, mergeada.** Pedida por Ricardo la mañana de la demo, **no venía del backlog**. Una rama, un plan, un
 revisor de plan, un revisor de entregable, un PR. El endpoint de SBC llevó **revisor aparte**,
 que es la excepción que Ricardo dejó en pie. Regla del día: **la demo funciona en TODO
 momento**; los 3 clientes demo y sus empleados se mantienen como semilla y no hay migraciones
 destructivas.
 
-- [ ] **G-01 · Empleados por cliente** — *Listo cuando:* doy de alta un empleado nuevo y aparece
+- [x] **G-01 · Empleados por cliente** — *Listo cuando:* doy de alta un empleado nuevo y aparece
   en el cálculo de nómina de ese cliente.
-- [ ] **G-02 · Vinculación con el checador** — *Listo cuando:* un empleado sin `employeeNo` se
+- [x] **G-02 · Vinculación con el checador** — *Listo cuando:* un empleado sin `employeeNo` se
   marca visiblemente como "no vinculado al checador" y sus checadas no se pierden en silencio.
   **Entregada a medias a propósito:** la pantalla de dispositivos por cliente (marca, modelo,
   IP, puerto, último serial) **se recortó** — es colección nueva, CRUD nuevo y pantalla nueva,
   no cambia ningún número, y los datos del Hikvision ya están en `docs/D-DEMO-CHECADOR.md`.
   Se prefirió entregar dos tareas completas a tres a medias.
-- [ ] **G-03 · Multi-tenant real** — *Listo cuando:* dos cuentas distintas ven carteras
+- [x] **G-03 · Multi-tenant real** — *Listo cuando:* dos cuentas distintas ven carteras
   distintas. **Su criterio está condicionado a que `firestore.rules` esté desplegado**, y
   desplegarlo es acción de Ricardo: mientras no lo esté, la app cae al catálogo del backend
   para que la demo no se rompa, y las dos cuentas ven los mismos tres clientes. El archivo
