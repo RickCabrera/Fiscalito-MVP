@@ -8,10 +8,9 @@
  * 1. `cargarCartera` **nunca lanza**: si Firestore truena, tarda o devuelve
  *    vacío, vuelve con el catálogo del backend y el motivo. El primer pintado
  *    no depende de Firestore.
- * 2. La **siembra corre después y en segundo plano**. No es precondición de
- *    renderizar: si falla, el contador ya está viendo su cartera.
- * 3. Sólo se recarga desde Firestore si la siembra escribió algo. Recargar
- *    siempre convertiría un fallo de escritura en un parpadeo.
+ * 2. La **siembra ya no corre sola**: es `sembrar()`, detrás de un botón. Ver
+ *    su docstring — escribir salarios de terceros en un Firestore cuyas reglas
+ *    nadie ha revisado no debe ser efecto colateral de un login.
  *
  * SÓLO CARGA PARA UN CONTADOR, igual que `ClienteActivoContext`: un
  * contribuyente no tiene cartera y pedirla dispararía trabajo inútil en cada
@@ -149,11 +148,17 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
           guardarClienteFs(uid as string, {
             ...c,
             // Un cliente nuevo no trae periodo sugerido y sin él su nómina
-            // arrancaría con las fechas vacías. Se COPIA del catálogo en vez de
-            // calcularlo aquí: el sugerido es `quincena(hoy)` —la última ya
-            // terminada, igual para todos los clientes— y esa regla vive en
-            // `demo_nomina.quincena()`. Replicarla en TypeScript sería una
-            // segunda verdad sobre qué periodo se está calculando.
+            // arrancaría con las fechas vacías. Se copia del que ya está en la
+            // cartera en vez de calcularlo aquí: `quincena(hoy)` vive en
+            // `demo_nomina.py` y replicarla en TypeScript sería una segunda
+            // verdad sobre qué periodo se calcula.
+            //
+            // **Y lo copiado puede estar vencido**, que es distinto de lo que
+            // decía este comentario antes: lo que hay en Firestore es un
+            // snapshot del momento de sembrar, no `quincena(hoy)` reevaluado.
+            // Por eso `cargarCartera` refresca el periodo de TODA la cartera
+            // contra el backend al leerla; esto sólo tiene que dejar algo
+            // coherente mientras tanto.
             periodo_sugerido: c.periodo_sugerido.inicio
               ? c.periodo_sugerido
               : estado.clientes[0]?.periodo_sugerido ?? c.periodo_sugerido,

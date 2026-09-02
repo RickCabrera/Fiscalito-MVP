@@ -66,6 +66,12 @@ vi.mock('../context/carteraStore', async () => {
       carteraDePrueba({
         clientes: estado.clientes,
         loading: estado.loading,
+        // El error y el reintento son de la CARTERA, que es la fuente de lo que
+        // se pinta. Antes colgaban del cliente activo, así que `cartera.error`
+        // no se renderizaba en ningún lado y un fallo del proveedor se veía
+        // como "la cartera está vacía — revisa que la API esté corriendo".
+        error: estado.error,
+        recargar,
         origen: 'firestore',
         soloLectura: false,
         clientePorId: (id: string) => estado.clientes.find((c) => c.id === id) ?? null,

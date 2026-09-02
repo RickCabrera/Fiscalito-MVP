@@ -45,6 +45,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { obtenerClientes, obtenerCliente, type ClienteResumen } from './despachoApi';
+import { CLIENTE_DEMO } from './nominaDemoApi';
 import {
   obtenerEmpleadosSemilla,
   type EmpleadoCartera,
@@ -157,7 +158,8 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
   if (!uid) return respaldo('No hay sesión: se muestra el catálogo de demostración.');
 
   try {
-    const clientes = await conTimeout(leerDeFirestore(uid), 'La cartera de Firestore');
+    const guardados = await conTimeout(leerDeFirestore(uid), 'La cartera de Firestore');
+    const clientes = await conPeriodoAlDia(guardados);
     if (clientes.length === 0) {
       // NO es lo mismo que un error, y por eso se trata igual: unas reglas que
       // permitan leer y nieguen escribir dejan la cartera vacía sin lanzar
@@ -171,6 +173,30 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
   }
 }
 
+/**
+ * Refresca el periodo sugerido de la cartera contra el backend.
+ *
+ * **El periodo sugerido es DERIVADO, no dato del cliente.** Es
+ * `quincena(hoy)` —la última quincena ya terminada— y el backend lo reevalúa en
+ * cada request. Lo que quedó escrito en Firestore es un snapshot del momento de
+ * sembrar: dos semanas después, cada cliente nacería con una quincena vencida,
+ * el panel saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una
+ * razón que nadie entendería.
+ *
+ * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde,
+ * se queda el snapshot, que es peor que estar al día pero mejor que no tener
+ * cartera.
+ */
+async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCartera[]> {
+  if (clientes.length === 0) return clientes;
+  try {
+    const { periodo_sugerido } = await obtenerCliente(CLIENTE_DEMO);
+    return clientes.map((c) => ({ ...c, periodo_sugerido }));
+  } catch {
+    return clientes;
+  }
+}
+
 // ── Siembra ──
 
 /**
@@ -181,10 +207,13 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
  * Devuelve `true` sólo si escribió algo.
  */
 export async function sembrarDemo(uid: string): Promise<boolean> {
-  const existentes = await getDocs(clientesRef(uid));
+  // Con cota, como todo lo demás de este archivo. Sin ella, unas reglas que
+  // cuelguen en vez de negar dejaban al contador clickeando un botón que no
+  // hacía nada, para siempre y sin mensaje.
+  const existentes = await conTimeout(getDocs(clientesRef(uid)), 'La lectura de tu cartera');
   if (!existentes.empty) return false;
 
-  const semilla = await carteraDelBackend();
+  const semilla = await conTimeout(carteraDelBackend(), 'El catálogo de demostración');
   const lote = writeBatch(db);
   for (const cliente of semilla) {
     const { empleados, ...datos } = cliente;
@@ -193,7 +222,7 @@ export async function sembrarDemo(uid: string): Promise<boolean> {
       lote.set(empleadoRef(uid, cliente.id, e.empleado_no), e);
     }
   }
-  await lote.commit();
+  await conTimeout(lote.commit(), 'La escritura de tu cartera');
   return true;
 }
 

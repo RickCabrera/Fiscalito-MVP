@@ -70,6 +70,7 @@ export default function ModalCliente({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [primas, setPrimas] = useState<PrimasDeRiesgo | null>(null);
+  const [errorPrimas, setErrorPrimas] = useState(false);
 
   // Las primas medias las trae el MOTOR, con su fecha de vigencia. Copiarlas
   // aquí las dejaría sin año, sin fuente y sin test: en 2027 propondrían las de
@@ -78,7 +79,11 @@ export default function ModalCliente({
     let cancelado = false;
     obtenerPrimasDeRiesgo(new Date().toISOString().slice(0, 10))
       .then((p) => !cancelado && setPrimas(p))
-      .catch(() => undefined);
+      // **No se traga el error.** Sin las primas no hay con qué acotar la de
+      // este cliente, y dejarlo pasar en silencio permitiría guardar 5.4355 en
+      // vez de 0.0054355 — justo el error que el aviso de abajo existe para
+      // evitar, multiplicando Riesgos de Trabajo por mil.
+      .catch(() => !cancelado && setErrorPrimas(true));
     return () => { cancelado = true; };
   }, []);
 
@@ -96,6 +101,8 @@ export default function ModalCliente({
     datos.id.trim() !== '' &&
     datos.nombre.trim() !== '' &&
     datos.prima_riesgo !== '' &&
+    // Sin los límites del Art. 72 no se guarda: la validación no se evapora.
+    primas !== null &&
     !primaFueraDeRango &&
     !idRepetido &&
     !guardando;
@@ -219,6 +226,13 @@ export default function ModalCliente({
             </select>
           </div>
         </div>
+
+        {errorPrimas && (
+          <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
+            No se pudieron cargar los límites de la prima de Riesgos de Trabajo (Art. 72 LSS),
+            así que no se puede validar lo que captures. Revisa que la API esté corriendo.
+          </p>
+        )}
 
         {primaFueraDeRango && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>

@@ -14,13 +14,57 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteDetalle } from '../services/despachoApi';
 
-// G-03: las pantallas piden la cartera. El doble viene vacío, así que
-// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
-// camino que estas pruebas medían antes de G-01.
+/**
+ * G-03: la cartera del doble es **configurable**, y por default viene POBLADA
+ * con el cliente de demostración.
+ *
+ * Con el doble vacío —como estaba— las ramas nuevas de esta pantalla
+ * (`cabecera`, el error derivado, los tres estados de la ficha) sólo se
+ * ejercitaban con `deLaCartera === null`, que es justo el caso que NO ocurre
+ * después de sembrar. Esa ceguera dejó pasar dos defectos: la ficha de un
+ * cliente de demostración abría diciendo "este cliente lo diste de alta tú"
+ * durante toda la ventana del fetch, y el conteo de empleados pintaba el número
+ * del backend cuando la cartera decía 0.
+ */
+const enCartera = {
+  clientes: [] as Array<Record<string, unknown>>,
+};
+
 vi.mock('../context/carteraStore', async () => {
   const { carteraDePrueba } = await import('../test/carteraDePrueba');
-  return { useCartera: () => carteraDePrueba() };
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        clientes: enCartera.clientes as never,
+        origen: 'firestore',
+        soloLectura: false,
+        clientePorId: (id: string) =>
+          (enCartera.clientes.find((c) => c.id === id) as never) ?? null,
+      }),
+  };
 });
+
+/** El cliente de demostración tal como queda en la cartera después de sembrar. */
+function enLaCartera(empleados: number) {
+  return {
+    id: 'demo',
+    nombre: 'Servicios Administrativos Integrales',
+    giro: 'Servicios administrativos',
+    origen: 'fixtures-s04',
+    prima_riesgo: '0.0054355',
+    clase_riesgo: null,
+    clave_periodicidad: '04',
+    zona: 'general',
+    periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
+    empleados: Array.from({ length: empleados }, (_, i) => ({
+      empleado_no: `E-0${i + 1}`, nombre: `EMPLEADO ${i + 1}`, puesto: '',
+      salario_diario: '316.00', salario_diario_integrado: '331.58', zona: 'general',
+      fecha_alta: null, tipo_contrato: 'indeterminado',
+      prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+      nss: '', employee_no: `E-0${i + 1}`, enrolamiento: 'enrolado',
+    })),
+  };
+}
 
 
 const CASO_REAL: ClienteDetalle = {
@@ -86,6 +130,7 @@ function montar(id: string) {
 afterEach(() => {
   respuesta.actual = CASO_REAL;
   respuesta.falla = null;
+  enCartera.clientes = [];
   cleanup();
 });
 
@@ -182,5 +227,46 @@ describe('tabs de la ficha (G-01)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Empleados' })).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Empleados' }));
     expect(screen.getByRole('button', { name: 'Empleados' }).getAttribute('aria-current')).toBe('true');
+  });
+});
+
+
+describe('la ficha con la cartera POBLADA (el estado real tras sembrar)', () => {
+  it('un cliente de demostración NO dice "lo diste de alta tú" mientras carga', async () => {
+    // El defecto: con la cartera poblada, `loading` era false y `cliente` aún
+    // null, así que la ficha de Servicios Administrativos Integrales abría con
+    // el mensaje de "cliente propio" durante toda la ventana del fetch. En una
+    // demo con red lenta y proyector, segundos en pantalla.
+    enCartera.clientes = [enLaCartera(2)];
+    montar('demo');
+    expect(screen.queryByText(/lo diste de alta t/i)).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy(),
+    );
+    expect(screen.queryByText(/lo diste de alta t/i)).toBeNull();
+  });
+
+  it('un cliente que sólo existe en la cartera sí lo dice, y no muere', async () => {
+    // El caso legítimo del mensaje: no hay ficha en el backend y no la habrá.
+    respuesta.falla = 'El cliente no está en la cartera de la demo.';
+    enCartera.clientes = [{ ...enLaCartera(1), id: 'mio', nombre: 'Tortilleria Lopez' }];
+    montar('mio');
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Tortilleria Lopez' })).toBeTruthy());
+    expect(screen.getByText(/lo diste de alta t/i)).toBeTruthy();
+    // Y NO se pinta el error del 404: el cliente existe.
+    expect(screen.queryByText(/no está en la cartera de la demo/i)).toBeNull();
+  });
+
+  it('el conteo de empleados sale de la cartera, incluido el cero', async () => {
+    // Con `||`, una cartera de 0 empleados pintaba el número del backend.
+    enCartera.clientes = [enLaCartera(0)];
+    montar('demo');
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy(),
+    );
+    // "Empleados" aparece dos veces: la etiqueta del dato y el tab. La del
+    // dato es un div; el tab es un button.
+    const etiqueta = screen.getAllByText('Empleados').find((el) => el.tagName === 'DIV');
+    expect(etiqueta?.parentElement?.textContent).toBe('Empleados0');
   });
 });

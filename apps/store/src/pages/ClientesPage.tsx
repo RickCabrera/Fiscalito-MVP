@@ -89,12 +89,19 @@ export default function ClientesPage() {
   // selector del header). La LISTA sale de la cartera, que es donde el alta
   // escribe: pintarla desde el backend hacía que un cliente recién capturado
   // no apareciera nunca, sin error y sin mensaje.
-  const { clienteId, error, setClienteId, recargar } = useClienteActivo();
+  const { clienteId, setClienteId } = useClienteActivo();
   const cartera = useCartera();
   const clientes = cartera.clientes;
   const loading = cartera.loading;
+  // El error y el reintento son de la CARTERA, que es lo que se pinta. Colgarlos
+  // del cliente activo dejaba `cartera.error` sin renderizar en ningún lado y
+  // hacía que un fallo del proveedor se viera como "la cartera está vacía —
+  // revisa que la API esté corriendo", un diagnóstico equivocado.
+  const error = cartera.error;
+  const recargar = cartera.recargar;
   const [modalAbierto, setModalAbierto] = useState(false);
   const [errorSembrar, setErrorSembrar] = useState<string | null>(null);
+  const [sembrando, setSembrando] = useState(false);
   const [editando, setEditando] = useState<Omit<ClienteCartera, 'empleados'> | null>(null);
   const navigate = useNavigate();
 
@@ -127,13 +134,19 @@ export default function ClientesPage() {
           <button
             className="btn-primary"
             style={{ marginTop: 'var(--space-sm)' }}
+            disabled={sembrando}
             onClick={() => {
-              cartera.sembrar().catch((e: unknown) =>
-                setErrorSembrar(e instanceof Error ? e.message : 'No se pudo guardar la cartera'),
-              );
+              setSembrando(true);
+              setErrorSembrar(null);
+              cartera
+                .sembrar()
+                .catch((e: unknown) =>
+                  setErrorSembrar(e instanceof Error ? e.message : 'No se pudo guardar la cartera'),
+                )
+                .finally(() => setSembrando(false));
             }}
           >
-            Guardar esta cartera en mi cuenta
+            {sembrando ? 'Guardando…' : 'Guardar esta cartera en mi cuenta'}
           </button>
           {errorSembrar && (
             <div role="alert" style={{ marginTop: 'var(--space-xs)', color: 'var(--danger)' }}>

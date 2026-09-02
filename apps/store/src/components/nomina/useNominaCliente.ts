@@ -42,7 +42,8 @@ import {
 } from '../../services/nominaDemoApi';
 import { useCartera } from '../../context/carteraStore';
 import { plantillaDeNomina } from './plantillaDeNomina';
-import { contarSinVincular } from '../../services/carteraApi';
+import { incidenciasConLlaveDeCalculo, llavesParaElCierre } from './llavesDelCierre';
+import { contarSinVincular, type EmpleadoCartera } from '../../services/carteraApi';
 import { obtenerCliente, type ClienteDetalle } from '../../services/despachoApi';
 import { useClienteActivo } from '../../context/clienteActivoStore';
 
@@ -85,6 +86,14 @@ export function useNominaCliente(clienteId: string) {
   const [fin, setFin] = useState('');
   const [errorPanel, setErrorPanel] = useState<string | null>(null);
   const [errorDe, setErrorDe] = useState<DeCliente<string | null> | null>(null);
+  /**
+   * El error de CARGAR la ficha, aparte del de las operaciones.
+   *
+   * Compartir estado con `errorDe` haría que anular el de carga —cuando el
+   * cliente sí está en la cartera— tapara también un fallo real de cerrar o
+   * calcular. Son dos cosas distintas y sólo una se puede descartar.
+   */
+  const [errorCargaDe, setErrorCargaDe] = useState<DeCliente<string | null> | null>(null);
   const [ocupado, setOcupado] = useState(false);
   // La confirmación es estado, no `window.confirm`. Guarda el id del cliente al
   // que corresponde, para que no sobreviva a un cambio de cliente.
@@ -121,18 +130,19 @@ export function useNominaCliente(clienteId: string) {
         if (cancelado) return;
         // Un cliente dado de alta por el contador **no tiene ficha en el
         // backend**: `GET /despacho/clientes/{id}` sólo conoce los tres de
-        // demostración. Antes de G-03 eso era imposible; ahora es lo normal, y
-        // dejar prendido el error apagaría la pantalla entera de un cliente
-        // que sí existe. La cartera tiene todo lo que hace falta para calcular
-        // —prima, periodicidad, zona, periodo sugerido y plantilla—, así que se
-        // usa esa. El error sólo sobrevive si el cliente tampoco está ahí.
+        // demostración. Antes de G-03 eso era imposible; ahora es lo normal.
+        //
+        // El error se GUARDA siempre y se DECIDE al leer (ver `error`, abajo).
+        // Consultar la cartera aquí dejaba el error latcheado para siempre
+        // cuando el 404 ganaba la carrera —lo normal en una recarga directa: el
+        // 404 es un round-trip local y la cartera es Firestore con 2500 ms de
+        // tope—, porque el efecto no vuelve a correr cuando la cartera llega.
         const suyoEnCartera = carteraRef.current.clientePorId(clienteId);
         if (suyoEnCartera) {
           setInicio(suyoEnCartera.periodo_sugerido.inicio);
           setFin(suyoEnCartera.periodo_sugerido.fin);
-          return;
         }
-        setErrorDe({ id: clienteId, valor: e.message });
+        setErrorCargaDe({ id: clienteId, valor: e.message });
       });
     return () => { cancelado = true; };
   }, [clienteId]);
@@ -184,26 +194,6 @@ export function useNominaCliente(clienteId: string) {
     };
   }, [fichaBackend, clienteId, cartera]);
 
-  const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
-  const cierre = suyo(cierreDe, clienteId, null);
-  const nomina = suyo(nominaDe, clienteId, null);
-  const error = suyo(errorDe, clienteId, null);
-
-  /**
-   * Checadas que caen DENTRO del periodo que se va a cerrar.
-   *
-   * No basta con `eventos.length === 0`: `obtenerEventos` no manda `desde` —a
-   * propósito, ver `nominaDemoApi`— así que el panel trae todo lo que haya en
-   * memoria. Sembrar el día 15 y demostrar el 16 son **dos quincenas
-   * distintas** (lo advierte `demo_nomina.quincena()`): habría checadas en el
-   * panel, ninguna en el periodo, y `cerrar_periodo` marcaría falta todos los
-   * días sin que nadie preguntara nada.
-   */
-  const sinChecadasEnElPeriodo = !eventos.some((e) => {
-    const dia = e.timestamp.slice(0, 10);
-    return dia >= inicio && dia <= fin;
-  });
-
   // G-01/G-02: los empleados del CÁLCULO salen de la cartera del uid, no de la
   // ficha del backend. Si esto siguiera leyendo `cliente.empleados`, un alta
   // nueva no entraría a la nómina y el criterio de G-01 fallaría en silencio.
@@ -222,12 +212,59 @@ export function useNominaCliente(clienteId: string) {
   const empleadosCartera = deLaCartera?.empleados ?? null;
   const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
 
+  const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
+  const cierre = suyo(cierreDe, clienteId, null);
+  const nomina = suyo(nominaDe, clienteId, null);
+  /**
+   * **Derivado, no latcheado.** El error de CARGA sólo cuenta si el cliente
+   * tampoco está en la cartera: si la cartera llega después del 404 —lo normal
+   * en una recarga directa, porque el 404 es un round-trip local y la cartera
+   * es Firestore con 2500 ms de tope—, esto se auto-sana. Guardarlo ya resuelto
+   * lo dejaba pegado para siempre, porque el efecto no vuelve a correr.
+   *
+   * El error de las OPERACIONES (cerrar, calcular) no se descarta nunca.
+   */
+  const error =
+    suyo(errorDe, clienteId, null) ??
+    (deLaCartera ? null : suyo(errorCargaDe, clienteId, null));
+
+  /**
+   * Checadas que caen DENTRO del periodo que se va a cerrar.
+   *
+   * No basta con `eventos.length === 0`: `obtenerEventos` no manda `desde` —a
+   * propósito, ver `nominaDemoApi`— así que el panel trae todo lo que haya en
+   * memoria. Sembrar el día 15 y demostrar el 16 son **dos quincenas
+   * distintas** (lo advierte `demo_nomina.quincena()`): habría checadas en el
+   * panel, ninguna en el periodo, y `cerrar_periodo` marcaría falta todos los
+   * días sin que nadie preguntara nada.
+   */
+  const sinChecadasEnElPeriodo = !eventos.some((e) => {
+    const dia = e.timestamp.slice(0, 10);
+    return dia >= inicio && dia <= fin;
+  });
+
   // La decisión de quién entra vive en `plantillaDeNomina`, que se prueba
   // directo: es la que carga los dos criterios de la épica.
   const plantilla: EmpleadoNominaRequest[] = useMemo(
     () => plantillaDeNomina(cliente?.empleados ?? [], empleadosCartera),
     [cliente, empleadosCartera],
   );
+
+  /**
+   * El cierre vuelve con la llave del checador; los recibos se indexan por la
+   * del cálculo. Sin cartera no hay con qué traducir y se deja tal cual: es el
+   * camino del catálogo de demostración, donde las dos llaves coinciden.
+   */
+  const incidenciasDelCierre = (
+    resultado: CierrePeriodo,
+    deLaCarteraAhora: EmpleadoCartera[] | null,
+  ): CierrePeriodo =>
+    deLaCarteraAhora
+      ? {
+          ...resultado,
+          incidencias: incidenciasConLlaveDeCalculo(resultado.incidencias, deLaCarteraAhora),
+        }
+      : resultado;
 
   const cerrar = async () => {
     if (!cliente) return;
@@ -239,10 +276,14 @@ export function useNominaCliente(clienteId: string) {
       setNominaDe({ id, valor: null });
       setCierreDe({
         id,
-        valor: await cerrarPeriodo(
-          id,
-          plantilla.map((e) => e.empleado_no),
-          { inicio, fin },
+        // **La llave del CHECADOR**, no la del cálculo: `cerrar_periodo` casa
+        // `evento.empleado_no` —el `employeeNoString` del aparato— contra esta
+        // lista. Mandar la interna hacía que un empleado con llaves distintas
+        // no encontrara ni una de sus checadas: falta todo el periodo, menos
+        // días pagados y menores cuotas, en silencio.
+        valor: incidenciasDelCierre(
+          await cerrarPeriodo(id, llavesParaElCierre(plantilla, empleadosCartera), { inicio, fin }),
+          empleadosCartera,
         ),
       });
     } catch (e) {

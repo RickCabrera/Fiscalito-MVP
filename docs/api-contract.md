@@ -271,6 +271,51 @@ filtrar es un aviso que un día no sale.
 
 **404** — cliente desconocido, con el sobre `{"exito": false, "error": "..."}`.
 
+### `GET /api/v1/despacho/primas-de-riesgo` (G-03)
+
+Las primas **medias** por clase de riesgo (Art. 73 LSS), con sus límites (Art. 72) y su fecha de
+vigencia.
+
+**Por qué existe.** El formulario de alta de cliente necesita proponer una prima al elegir clase.
+Copiar esa tabla a TypeScript la dejaba **sin año, sin fuente y sin test**: en el motor vive en
+`nomina_engine/tablas_imss.py` indexada por año y se lee con `prima_media_clase(clase, fecha)`,
+o sea con función de vigencia. La copia del front habría propuesto las primas del año anterior en
+silencio en cuanto cambiara el año.
+
+**Query**
+
+| Parámetro | Tipo | Default | Para qué |
+|---|---|---|---|
+| `fecha` | `date` | hoy | Vigencia de la tabla. Es por año. |
+
+**Respuesta 200**
+
+```json
+{
+  "fecha": "2026-09-01",
+  "minima": "0.005",
+  "maxima": "0.15",
+  "medias_por_clase": {
+    "1": "0.0054355",
+    "2": "0.0113065",
+    "3": "0.0259840",
+    "4": "0.0465325",
+    "5": "0.0758875"
+  },
+  "fundamento": "Arts. 72 y 73 LSS. La prima real se autodetermina en febrero (Art. 74)."
+}
+```
+
+`minima` y `maxima` **no son informativos**: el formulario acota contra ellos. Teclear `5.4355`
+en vez de `0.0054355` multiplica Riesgos de Trabajo por mil, y ese es el error que el rango
+existe para atajar.
+
+**Las medias son un punto de partida, no la prima del cliente.** Aplican a *empresa nueva*; la
+prima real **la autodetermina el patrón cada febrero** con su siniestralidad del ejercicio
+anterior (Art. 74 LSS), y por eso es dato de entrada y no se deduce del giro (§D22).
+
+**422** — año fuera del rango que cubre la tabla, con el sobre `{"exito": false, "error": "..."}`.
+
 ### `GET /api/v1/despacho/calendario` (E-07)
 
 Obligaciones **patronales** de todos los clientes de la cartera, ordenadas por fecha límite y

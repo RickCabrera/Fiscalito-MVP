@@ -98,6 +98,17 @@ export default function ClienteDetallePage() {
   const cliente = alDia ? resultado.cliente ?? null : null;
 
   /**
+   * **Son TRES estados, no dos.** La ficha del backend puede haber llegado,
+   * haber dado 404, o no haber llegado todavía. Confundir el tercero con el
+   * segundo hacía que la ficha de un cliente de DEMOSTRACIÓN abriera diciendo
+   * "este cliente lo diste de alta tú" durante toda la ventana del fetch —en
+   * una demo con red lenta, segundos en pantalla—, porque la cartera ya lo
+   * tenía y `loading` era `false`.
+   */
+  const fichaPendiente = !alDia;
+  const fichaNoExiste = alDia && cliente === null;
+
+  /**
    * La cabecera se pinta con la ficha del backend cuando existe, y si no con la
    * de la cartera. **Un cliente dado de alta por el contador no tiene ficha en
    * el backend** —`GET /despacho/clientes/{id}` sólo conoce los tres de
@@ -108,8 +119,8 @@ export default function ClienteDetallePage() {
   const cabecera = cliente ?? deLaCartera;
 
   // El error sólo sobrevive si el cliente TAMPOCO está en la cartera.
-  const error = alDia && !deLaCartera ? resultado.error ?? null : null;
-  const loading = !alDia && !deLaCartera;
+  const error = fichaNoExiste && !deLaCartera ? resultado.error ?? null : null;
+  const loading = fichaPendiente && !deLaCartera;
 
   const hayFactorImplicito = cliente?.empleados.some((e) => e.factor_implicito) ?? false;
 
@@ -145,7 +156,14 @@ export default function ClienteDetallePage() {
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20,
             }}
           >
-            <Dato etiqueta="Empleados" valor={String(empleadosCartera.length || cliente?.num_empleados || 0)} mono />
+            {/* `??` y no `||`: con la cartera diciendo 0 empleados y el backend
+                diciendo 2, el `||` pintaba 2 — trataba un cero legítimo como
+                ausencia de dato. */}
+            <Dato
+              etiqueta="Empleados"
+              valor={String(deLaCartera ? empleadosCartera.length : cliente?.num_empleados ?? 0)}
+              mono
+            />
             <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cabecera.prima_riesgo)} mono />
             <Dato
               etiqueta="Clase de riesgo"
@@ -196,7 +214,16 @@ export default function ClienteDetallePage() {
               </div>
             )}
 
-            {vista === 'plantilla' && !cliente && (
+            {vista === 'plantilla' && fichaPendiente && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)' }}>
+                  <Loader size={18} className="spin" color="var(--accent-active)" />
+                  Cargando la plantilla...
+                </div>
+              </div>
+            )}
+
+            {vista === 'plantilla' && fichaNoExiste && (
               <div className="card" style={{ padding: 'var(--space-lg)' }}>
                 <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                   Este cliente lo diste de alta tú, así que no tiene ficha en el catálogo de
