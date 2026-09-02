@@ -257,6 +257,38 @@ describe('R-06 · el cliente que NO está en la cartera de esta cuenta', () => {
     expect(result.current.error).toContain('no está en la cartera de tu cuenta');
   });
 
+  it('`cerrar` —la TERCERA puerta— tampoco cierra un cliente ajeno', async () => {
+    /**
+     * `cerrar` se exporta y el diálogo de confirmación la llama **directo**
+     * ("Cerrar de todos modos", `NominaClientePage`), sin pasar por
+     * `pedirCierre`. Escribí "cerrar una sola de las dos puertas deja la otra
+     * abierta" y eran tres; un revisor encontró la que faltaba.
+     *
+     * El camino es el mismo que hace alcanzable la guarda de `calcular`: se
+     * pide el cierre con el cliente presente y sin checadas —lo que abre el
+     * diálogo—, la cartera se recarga sin él, y el diálogo sigue en pantalla
+     * porque `confirmarPara` apunta al mismo id. El clic mandaba al backend la
+     * ficha COMPLETA del catálogo, sin filtrar vinculados.
+     *
+     * No llega a `calcular-periodo`, así que no sale un recibo con ISR mal.
+     * Pero sí un cierre con el conjunto de empleados equivocado, que es el
+     * insumo del cálculo.
+     */
+    estadoCartera.tieneAlCliente = true;
+    const { result, llamadas, rerender } = await montarHook(false); // sin checadas
+    act(() => result.current.pedirCierre());
+    await waitFor(() => expect(result.current.confirmarCierre).toBe(true));
+
+    estadoCartera.tieneAlCliente = false;
+    rerender();
+    await waitFor(() => expect(result.current.ajenoALaCartera).toBe(true));
+    // El diálogo sigue vivo: es lo que hace el camino alcanzable.
+    expect(result.current.confirmarCierre).toBe(true);
+
+    await act(async () => { await result.current.cerrar(); });
+    expect(llamadas.some((u) => u.includes('cerrar-periodo'))).toBe(false);
+  });
+
   it('con el cliente EN la cartera, `ajenoALaCartera` es falso y sí se cierra', async () => {
     // La mitad simétrica. Sin ella, una guarda que bloqueara SIEMPRE pasaría
     // los dos tests de arriba y dejaría la nómina inservible.

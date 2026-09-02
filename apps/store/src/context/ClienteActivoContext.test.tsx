@@ -87,6 +87,11 @@ function Sonda() {
       <span data-testid="id">{clienteId ?? 'sin-cliente'}</span>
       <span data-testid="nombre">{cliente?.nombre ?? 'sin-nombre'}</span>
       <span data-testid="total">{clientes.length}</span>
+      {/* Lo que `SelectorCliente` pinta en la barra: nombre y conteo. Cambiar
+          la fuente de ese número (backend → cartera) sin mirarlo dejaba dos
+          mutaciones vivas. */}
+      <span data-testid="empleados">{clientes.map((c) => c.num_empleados).join(',')}</span>
+      <span data-testid="origenes">{clientes.map((c) => c.origen).join(',')}</span>
       <span data-testid="loading">{String(loading)}</span>
     </div>
   );
@@ -116,6 +121,21 @@ describe('ClienteActivoContext', () => {
     await waitFor(() => expect(screen.getByTestId('id').textContent).toBe('demo'));
     expect(screen.getByTestId('nombre').textContent).toBe('Servicios Administrativos Integrales');
     expect(screen.getByTestId('total').textContent).toBe('2');
+  });
+
+  it('proyecta la cartera al resumen que consume el selector superior', async () => {
+    /**
+     * `SelectorCliente` pinta `{nombre} · {num_empleados} empleados`, y R-06
+     * cambió de dónde sale ese número: antes lo daba el backend, ahora se
+     * cuenta de los empleados que trae la cartera. Sin este test, dos
+     * mutaciones sobrevivían —`num_empleados: 0` y `origen: 'propio'`— y la
+     * barra superior mentiría sin que nada avisara. El `origen` importa porque
+     * es lo que decide si un cliente es de demostración.
+     */
+    montar();
+    await waitFor(() => expect(screen.getByTestId('total').textContent).toBe('2'));
+    expect(screen.getByTestId('empleados').textContent).toBe('9,4');
+    expect(screen.getByTestId('origenes').textContent).toBe('fixtures-s04,sintetico');
   });
 
   it('respeta el cliente que quedó guardado de la sesión anterior', async () => {

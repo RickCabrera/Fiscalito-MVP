@@ -111,6 +111,9 @@ function montar() {
 }
 
 afterEach(() => {
+  // En `afterEach` y no al final del cuerpo: si una aserción revienta antes,
+  // `DEV=false` se filtra a los tests siguientes del archivo.
+  vi.unstubAllEnvs();
   estado.clientes = CARTERA;
   estado.clienteId = 'demo';
   estado.loading = false;
@@ -194,6 +197,34 @@ describe('estados que no son la lista feliz', () => {
     estado.clientes = [];
     montar();
     expect(screen.queryByText(/Aún no tienes clientes/)).toBeNull();
+  });
+
+  it('una cuenta NORMAL no tiene el botón de sembrar la demostración', () => {
+    /**
+     * La mutación que sobrevivía: quitar el gate `cuentaDeDesarrollo` del botón
+     * dejaba las 442 pruebas en verde. La causa está en el doble de este mismo
+     * archivo — en jsdom `import.meta.env.DEV` es `true`, así que **todos** los
+     * tests de esta pantalla corren como cuenta de desarrollo y la rama de
+     * producción no se ejercía en ningún lado.
+     *
+     * Sin el gate, una cuenta cualquiera puede copiarse a su Firestore el
+     * salario de nueve trabajadores de un tercero con un clic.
+     */
+    vi.stubEnv('DEV', false);
+    estado.clientes = [];
+    montar();
+
+    expect(screen.queryByRole('button', { name: /clientes de demostración/i })).toBeNull();
+    // Pero sí puede crear el suyo: el vacío no es un callejón.
+    expect(screen.getByRole('button', { name: /Crear el primer cliente/ })).toBeTruthy();
+  });
+
+  it('una cuenta de desarrollo SÍ lo tiene', () => {
+    // La mitad simétrica: sin ella, un gate que bloqueara siempre pasaría el
+    // test de arriba y dejaría la demo sin forma de sembrarse.
+    estado.clientes = [];
+    montar();
+    expect(screen.getByRole('button', { name: /clientes de demostración/i })).toBeTruthy();
   });
 
   it('un fallo de lectura NO enseña clientes de demostración', () => {

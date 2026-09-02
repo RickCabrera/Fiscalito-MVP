@@ -368,7 +368,18 @@ export function useNominaCliente(clienteId: string) {
     // propio, y cuando la cartera llegue la plantilla vuelve a cuadrar por
     // `empleado_no`, así que nada levanta — recibo con faltas de más y en
     // silencio. Es el bug de G-02 entrando por la puerta del tiempo.
-    if (cartera.loading) return;
+    // SON TRES PUERTAS, NO DOS, y este comentario decía que eran dos.
+    // `cerrar` se exporta y el diálogo de confirmación la llama DIRECTO
+    // ("Cerrar de todos modos"), sin pasar por `pedirCierre`. El camino es
+    // real: se pide el cierre con el cliente presente, la cartera se recarga
+    // sin él —otra pestaña lo borró, o `recargar()`—, `confirmarPara` sigue
+    // apuntando al mismo id y el diálogo sigue en pantalla. El clic mandaba al
+    // backend la ficha COMPLETA del catálogo, sin filtrar vinculados.
+    //
+    // No produce un recibo con ISR mal —esa puerta sí estaba cerrada— pero sí
+    // un cierre con el conjunto de empleados equivocado, que es el insumo del
+    // cálculo.
+    if (cartera.loading || ajenoALaCartera) return;
     const id = cliente.id;
     setConfirmarPara(null);
     setOcupado(true);

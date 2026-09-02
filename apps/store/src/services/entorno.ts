@@ -10,6 +10,17 @@
  * de otra persona no está viendo una demostración: está viendo datos que no son
  * suyos.
  *
+ * ESTE FLAG ES SÓLO DEL CLIENTE, Y HAY QUE DECIRLO
+ * -------------------------------------------------
+ * `GET /api/v1/despacho/clientes/{id}` sigue sirviendo el caso real a
+ * cualquiera. Una cuenta de producción que entre por URL a
+ * `/app/clientes/demo/nomina` **sigue haciendo el fetch** de esa ficha con los
+ * nueve salarios: no se pintan —la pestaña está oculta y el cliente filtrado—
+ * pero viajan por la red y quedan en el heap del navegador.
+ *
+ * Dicho sin adorno: **R-06 esconde el mock de la UI, no lo saca del flujo.**
+ * Sacarlo del flujo exige que el backend sepa quién pregunta, y eso es R-07.
+ *
  * NO SE BORRA NADA
  * ----------------
  * Las fixtures, sus tests y `GET /despacho/clientes/{id}` **se quedan enteros**:

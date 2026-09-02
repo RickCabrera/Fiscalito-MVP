@@ -136,6 +136,9 @@ function montar(id: string) {
 }
 
 afterEach(() => {
+  // En `afterEach`: si una asercion revienta antes, `DEV=false` se filtraria
+  // a los tests siguientes del archivo.
+  vi.unstubAllEnvs();
   respuesta.actual = CASO_REAL;
   respuesta.falla = null;
   enCartera.clientes = [];
@@ -247,7 +250,6 @@ describe('tabs de la ficha (G-01)', () => {
     // Y el contenido tampoco se cuela por otro lado: ningún salario del caso
     // real en el DOM.
     expect(screen.queryByText('316.00')).toBeNull();
-    vi.unstubAllEnvs();
   });
 
   it('el tab Empleados está visible y a un clic', async () => {

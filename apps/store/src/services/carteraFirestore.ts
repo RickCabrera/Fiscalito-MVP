@@ -203,6 +203,19 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
  * el panel saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una
  * razón que nadie entendería.
  *
+ * OJO CON LO QUE ESTO REALMENTE HACE, porque no es lo que el nombre sugiere:
+ * copia la quincena del cliente `demo` a **todos** los clientes de la cartera,
+ * sin mirar su `clave_periodicidad`. Hoy es inofensivo porque `ModalCliente`
+ * ofrece sólo quincenal —deshabilitado, con la razón en pantalla— y porque
+ * `periodicidadNoCuadra` frena el cálculo. El día que se abran las otras claves
+ * (está en el backlog, sección G) ésta es la puerta que queda abierta, y la que
+ * produciría la tarifa mensual del Art. 96 sobre base de 15-16 días.
+ *
+ * Y significa que **el periodo de todo cliente real sale hoy de
+ * `GET /despacho/clientes/demo`**: es la quinta costura con el catálogo de
+ * demostración, y R-06 no la corta. Cuando F2 borre el catálogo hay que decidir
+ * de dónde sale `quincena(hoy)`.
+ *
  * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde
  * —o se cuelga, de ahí el `conTimeout`— se queda el snapshot, que es peor que
  * estar al día pero mejor que no tener cartera. Sin la cota, una API colgada

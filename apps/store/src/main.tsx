@@ -30,11 +30,11 @@ function App() {
               para "qué clientes existen". */}
           <CarteraProvider>
             <ClienteActivoProvider>
-            <AgentProvider>
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
-            </AgentProvider>
+              <AgentProvider>
+                <BrowserRouter>
+                  <AppRoutes />
+                </BrowserRouter>
+              </AgentProvider>
             </ClienteActivoProvider>
           </CarteraProvider>
         </ProfileProvider>

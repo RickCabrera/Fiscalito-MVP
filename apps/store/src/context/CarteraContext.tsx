@@ -39,6 +39,7 @@ import {
   sembrarDemo,
   type OrigenCartera,
 } from '../services/carteraFirestore';
+import { esClienteDemo, esCuentaDeDesarrollo } from '../services/entorno';
 import { CarteraContext } from './carteraStore';
 
 /**
@@ -71,6 +72,7 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
 
   const [estado, setEstado] = useState<Estado>(INICIAL);
   const [intento, setIntento] = useState(0);
+  const cuentaDeDesarrollo = esCuentaDeDesarrollo(user?.email);
 
   useEffect(() => {
     if (!habilitado) return;
@@ -135,15 +137,40 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
     [soloLectura],
   );
 
+  /**
+   * R-06(b): los clientes de DEMOSTRACIÓN sólo existen para una cuenta de
+   * desarrollo, **incluso si ya están escritos en su Firestore**.
+   *
+   * Se filtra aquí y no en la pantalla porque la cartera alimenta cuatro cosas
+   * —la lista, el selector superior, la ficha y la nómina— y filtrar en una
+   * sola dejaba a las otras tres enseñándolos. Y hace falta de verdad: no basta
+   * con que R-06 quite el fallback. Cualquier cuenta donde se haya clickeado
+   * "Guardar esta cartera en mi cuenta" durante G-03 o la demo **ya tiene los
+   * tres escritos**, y sin este filtro los seguiría viendo en producción — el
+   * del caso real incluido, con el salario de nueve personas.
+   *
+   * **No se borran de Firestore.** Ocultar es reversible y borrar no; si hay
+   * que limpiarlos, es una decisión de Ricardo y una tarea propia.
+   */
+  const visibles = useMemo(
+    () =>
+      cuentaDeDesarrollo
+        ? estado.clientes
+        : estado.clientes.filter((c) => !esClienteDemo(c.origen)),
+    [estado.clientes, cuentaDeDesarrollo],
+  );
+
   const valor = useMemo(
     () => ({
-      clientes: alDia ? estado.clientes : [],
+      clientes: alDia ? visibles : [],
       loading: cargando,
       origen: estado.origen,
       soloLectura,
       error: alDia ? estado.error : null,
-      clientePorId: (id: string) =>
-        (alDia ? estado.clientes.find((c) => c.id === id) : null) ?? null,
+      // Por `visibles`, no por `estado.clientes`: si la ficha resolviera un
+      // cliente que la lista oculta, se podría entrar a su nómina por URL y el
+      // filtro sería decorativo.
+      clientePorId: (id: string) => (alDia ? visibles.find((c) => c.id === id) : null) ?? null,
       guardarCliente: (c: Omit<ClienteCartera, 'empleados'>) =>
         escribir(() =>
           guardarClienteFs(uid as string, {
@@ -167,13 +194,15 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
             // haría que el alta de un cliente real dependiera del endpoint del
             // catálogo demo, que es la costura que R-06 viene a cortar.
             //
-            // `conPeriodoAlDia` ya repara esto al LEER, con cota y tolerando el
-            // fallo. Y la pantalla de nómina avisa cuando el periodo llega
-            // vacío, que es donde las fechas se usan y donde el operador puede
-            // hacer algo: sus dos inputs son libres.
+            // `conPeriodoAlDia` lo repara al LEER, con cota y tolerando el
+            // fallo, así que el hueco sólo se ve con el backend caído o lento.
+            // Y cuando se ve, **la pantalla de nómina lo dice**: bloquea el paso
+            // 2 con el motivo y pide capturar las fechas, que sus dos inputs son
+            // libres. Eso hubo que construirlo — este comentario afirmaba que
+            // ya avisaba y no era cierto.
             periodo_sugerido: c.periodo_sugerido.inicio
               ? c.periodo_sugerido
-              : estado.clientes[0]?.periodo_sugerido ?? c.periodo_sugerido,
+              : visibles[0]?.periodo_sugerido ?? c.periodo_sugerido,
           }),
         ),
       borrarCliente: (id: string) => escribir(() => borrarClienteFs(uid as string, id)),
@@ -184,7 +213,7 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
       sembrar,
       recargar,
     }),
-    [estado, alDia, cargando, soloLectura, uid, escribir, sembrar, recargar],
+    [estado, visibles, alDia, cargando, soloLectura, uid, escribir, sembrar, recargar],
   );
 
   return <CarteraContext.Provider value={valor}>{children}</CarteraContext.Provider>;
