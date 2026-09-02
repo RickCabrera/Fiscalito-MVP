@@ -70,6 +70,27 @@ class CredencialesFaltantes(FiscalAgentError):
         )
 
 
+def _credencial_anonima() -> Any:
+    """
+    Credencial vacía para el emulador.
+
+    `firebase_admin` comprueba `isinstance` contra su propia `credentials.Base`,
+    así que **hay que heredar de verdad**: una clase con el mismo método no
+    pasa. Se construye aquí dentro y no a nivel de módulo porque su razón de ser
+    es local —el emulador no autentica— y porque una credencial anónima
+    paseándose por el resto del código es la clase de cosa que alguien reusa por
+    accidente contra producción.
+    """
+    from firebase_admin import credentials as creds
+    from google.auth.credentials import AnonymousCredentials
+
+    class _Anonima(creds.Base):
+        def get_credential(self) -> Any:
+            return AnonymousCredentials()
+
+    return _Anonima()
+
+
 @lru_cache(maxsize=1)
 def _app_firebase() -> Any:
     """
@@ -86,16 +107,14 @@ def _app_firebase() -> Any:
 
     proyecto = os.environ.get("FIREBASE_PROJECT_ID", PROYECTO_POR_DEFECTO)
 
-    # Con el emulador no hay credenciales que buscar: se declara anónimo a
-    # propósito, porque pedirle credenciales reales a un emulador sería exigir
-    # justo lo que el emulador existe para no necesitar.
+    # Con el emulador no hay credenciales que buscar, y hay que decirlo
+    # explícitamente: `initialize_app(None)` **no** significa "sin
+    # credenciales", significa "búscalas con ADC" — y entonces el SDK se va a
+    # preguntarle al metadata server de GCE y tarda un minuto en rendirse.
+    # `firebase_admin` sólo acepta una subclase de `credentials.Base`, así que
+    # la anónima de `google.auth` se envuelve.
     if os.environ.get("FIRESTORE_EMULATOR_HOST"):
-        return firebase_admin.initialize_app(
-            credentials.AnonymousCredentials()
-            if hasattr(credentials, "AnonymousCredentials")
-            else None,
-            {"projectId": proyecto},
-        )
+        return firebase_admin.initialize_app(_credencial_anonima(), {"projectId": proyecto})
 
     try:
         return firebase_admin.initialize_app(

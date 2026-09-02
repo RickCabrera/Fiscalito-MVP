@@ -413,6 +413,71 @@ F1-09 registre RFC, entidad y personalidad.
 
 ---
 
+## Cartera del despacho — el backend como dueño del dato (R-07)
+
+**El único grupo de rutas del repo que EXIGE autenticación.** El resto de
+`/api/v1` sigue abierto (S-00b) y eso no cambia aquí.
+
+`Authorization: Bearer <ID token de Firebase>`. **No hay parámetro de uid en
+ninguna ruta**: pasarlo por el cuerpo o por la URL haría que cualquiera leyera la
+cartera de cualquiera cambiando un renglón, y esta cartera guarda el salario y el
+NSS de trabajadores de terceros. El uid sale del token verificado.
+
+| Código | Cuándo |
+|---|---|
+| 401 | falta `Authorization`, está mal formado, o el token no es válido |
+| 404 | el cliente no está en **tu** cartera |
+| 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL) |
+| 503 | **el backend no tiene credenciales de Firebase.** El mensaje dice qué falta |
+
+### `GET /api/v1/cartera/clientes`
+Los clientes de quien hace el request. `{exito, total, clientes[]}`.
+Los documentos van tal como están guardados: no se tipan estrictamente al leer,
+porque una cartera escrita por una versión anterior puede traer campos que el
+modelo actual no conoce, y rechazarla dejaría al contador sin sus clientes por un
+campo de más.
+
+### `PUT /api/v1/cartera/clientes/{cliente_id}`
+Alta o edición, idempotente. El `id` del cuerpo **debe** coincidir con el de la
+URL: adivinar cuál vale escribiría el cliente equivocado. El `id` no se guarda
+dentro del documento — ya es su nombre.
+
+### `DELETE /api/v1/cartera/clientes/{cliente_id}`
+**Borra en cascada.** Firestore no lo hace solo: sin esto los empleados quedarían
+huérfanos —con su salario y su NSS— y reaparecerían al recrear un cliente con el
+mismo id. Hay un test contra el emulador que lo fija, y el doble en memoria **no
+puede** cazar ese bug.
+
+### `GET /api/v1/cartera/clientes/{cliente_id}/empleados`
+**Ésta es la fuente que el cálculo de nómina lee**, y es lo que hace verdadero el
+criterio de R-07. Distinta de `/despacho/clientes/{id}/empleados`, que es la
+SEMILLA de demostración y no la cartera de nadie.
+`{exito, cliente_id, total, sin_vincular, empleados[]}`.
+
+### `PUT /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}`
+El `empleado_no` de la URL es la llave del **cálculo**; `employee_no`, en el
+cuerpo, es la del **checador** y puede ser nula. Son distintas, y fundirlas es el
+defecto que G-02 vino a arreglar.
+
+El **NSS** se valida con la misma política que el front: 11 dígitos o vacío, **sin
+exigir el dígito verificador** (§D25 de `docs/decisiones-nomina.md`). Vacío
+siempre se acepta, y eso es lo que hace seguro bloquear por longitud.
+
+### `DELETE /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}`
+
+### Estado: **el interruptor está APAGADO**
+
+El front sigue escribiendo Firestore directo. Lo que falta para encenderlo no es
+código: son **credenciales** (`GOOGLE_APPLICATION_CREDENTIALS` o ADC), y
+encenderlo sin ellas daría 503 en todo el CRUD. Se enciende con
+`VITE_CARTERA_BACKEND=1` en `apps/store/.env` **después** de comprobar que
+`GET /api/v1/cartera/clientes` responde 200. **No hay migración de datos**: las
+rutas de Firestore son las mismas de los dos lados.
+
+**Dispositivos NO están aquí.** R-04 los dejó viviendo en Firestore escritos por
+el front; meterlos en la misma corrida haría nacer la colección con dos dueños
+dentro del mismo día, que es el problema que R-07 cierra. Es tarea propia.
+
 ## Nómina (épica D — demo)
 
 > ⚠️ **DEMO — sin autenticación, no desplegar.** La auth de todo `/api/v1` es S-00b.

@@ -29,6 +29,32 @@
       ]
     },
     {
+      "path": "/api/v1/cartera/clientes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/empleados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
       "path": "/api/v1/comparar-regimenes",
       "metodos": [
         "POST"
