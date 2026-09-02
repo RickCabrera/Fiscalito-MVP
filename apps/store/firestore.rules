@@ -1,0 +1,106 @@
+// Reglas de seguridad de Firestore - Fiscalito (G-03, desplegadas en R-01).
+//
+// DESPLEGADO. Este archivo ES lo que esta vivo en el proyecto `fiscalito-mvp`.
+// ---------------------------------------------------------------------------
+// Se despliega asi, y el `firebase.json` de al lado ya trae el bloque
+// `firestore` que lo referencia (`"rules": "firestore.rules"`):
+//
+//     cd apps/store
+//     firebase deploy --only firestore:rules --project fiscalito-mvp
+//
+// OJO: por tener ese bloque, un `firebase deploy` PELADO publica tambien estas
+// reglas, no solo el sitio. Es el riesgo que G-03 evito a proposito y que R-01
+// asume por decision de Ricardo. Antes de tocar este archivo, lee lo de abajo.
+//
+// POR QUE VIVE AQUI Y NO EN LA RAIZ DEL REPO
+// ---------------------------------------------------------------------------
+// Hasta R-01 vivia en la raiz, y la seccion G del backlog dejo anotado que la
+// receta de despliegue "no funciona como esta escrita". La razon concreta,
+// comprobada: el Firebase CLI **rechaza** una ruta que salga del directorio del
+// proyecto. Con `"rules": "../../firestore.rules"` el deploy muere con
+//     Error: ../../firestore.rules is outside of project directory
+// Las dos salidas eran mover el archivo aqui o poner un segundo `firebase.json`
+// en la raiz. Se movio el archivo: dos `firebase.json` en un monorepo es la
+// clase de cosa que hace que alguien despliegue el equivocado.
+//
+// QUE HABIA VIVO ANTES DE R-01, Y POR QUE LA CARTERA NO FUNCIONABA
+// ---------------------------------------------------------------------------
+// Nadie en este repo habia leido las reglas vivas: no estaban versionadas. Se
+// leyeron el 2026-09-02 (API `firebaserules.googleapis.com`, release unico
+// `cloud.firestore`, actualizado 2026-03-30) y decian, completas:
+//
+//     match /users/{userId} {
+//       allow read, write: if request.auth != null && request.auth.uid == userId;
+//       match /declaraciones/{docId} {
+//         allow read, write: if request.auth != null && request.auth.uid == userId;
+//       }
+//     }
+//
+// O sea: el documento del perfil y `declaraciones`, y NADA MAS. Las reglas de
+// Firestore **no heredan hacia subcolecciones**, asi que todo el arbol que
+// estrenaron G-01 y G-03 -`users/{uid}/clientes/**` y sus `empleados/**`-
+// estaba DENEGADO. Esa es la causa raiz del banner de permisos, de que
+// "Guardar esta cartera en mi cuenta" fallara, y de que `cargarCartera` cayera
+// SIEMPRE al catalogo del backend (con lo que dos cuentas veian los mismos tres
+// clientes, que es el criterio de G-03 sin cumplir).
+//
+// Desplegar esto es **estrictamente ampliar**: lo que tenia acceso lo conserva.
+//
+// VERIFICACION (no es una afirmacion de buena fe)
+// ---------------------------------------------------------------------------
+// Este archivo se corrio contra el evaluador oficial de Firebase
+// (`POST projects/fiscalito-mvp:test`, el mismo motor que la consola) con diez
+// casos. Los diez pasan:
+//
+//     ALLOW  perfil propio `users/u1` (get y create)  <- lo que ya estaba vivo
+//     ALLOW  `users/u1/declaraciones/d1`              <- lo que ya estaba vivo
+//     ALLOW  `users/u1/clientes/demo`
+//     ALLOW  `users/u1/clientes/demo/empleados/E-01`  <- salario y NSS
+//     ALLOW  `users/u1/clientes/demo/dispositivos/d1` <- la coleccion de R-04
+//     DENY   empleado de OTRO uid (get y update)
+//     DENY   cliente sin sesion
+//     DENY   una coleccion fuera de `users/`
+//
+// Los dos primeros importan mas de lo que parece: confirman que en
+// `rules_version = '2'` el comodin recursivo casa **cero** segmentos, o sea que
+// `match /users/{uid}/{document=**}` SI cubre el documento `users/{uid}` donde
+// vive el perfil. Si no lo cubriera, desplegar esto habria dejado sin perfil a
+// todos los usuarios. No se supuso: se probo.
+//
+// LO QUE PROTEGEN Y POR QUE IMPORTA MAS QUE ANTES
+// ---------------------------------------------------------------------------
+// Hasta G-01, `users/{uid}` guardaba datos del propio titular (RFC, regimen).
+// Ahora guarda, bajo `clientes/{id}/empleados/{id}`, **el salario y el NSS de
+// terceros**: los trabajadores de los clientes del despacho. Es una escalada
+// real de sensibilidad, y es la razon por la que R-03 no pudo pedir el NSS
+// hasta que estas reglas estuvieran vivas.
+//
+// EL ADMIN SDK NO PASA POR AQUI
+// ---------------------------------------------------------------------------
+// Cuando R-07 encienda el backend como dueno del dato, `firebase-admin`
+// **ignora** estas reglas por diseno: son credenciales privilegiadas. Estas
+// reglas siguen siendo la defensa del acceso directo desde el navegador, que es
+// el unico que hoy escribe. No son la defensa del backend; esa es la
+// verificacion del ID token en `app/auth_firebase.py`.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Todo lo del usuario cuelga de su uid, y sólo él lo toca.
+    // El comodín `{document=**}` alcanza las subcolecciones —`declaraciones`,
+    // `clientes`, y `clientes/*/empleados`— sin tener que enumerarlas: una
+    // regla por subcolección es una regla que alguien olvida agregar.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Nada más es accesible. Sin esta negación explícita, una colección nueva
+    // creada por error quedaría con el default del proyecto, que puede ser
+    // permisivo si alguna vez estuvo en "modo de prueba".
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
