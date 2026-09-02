@@ -51,11 +51,6 @@ export default function EmpleadosPage() {
       </div>
 
       <div className="card" style={{ padding: 'var(--space-lg)' }}>
-        {cartera.motivoFallback && (
-          <p style={{ margin: '0 0 var(--space-md)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {cartera.motivoFallback}
-          </p>
-        )}
         <EmpleadosTab
           empleados={empleados}
           soloLectura={cartera.soloLectura}

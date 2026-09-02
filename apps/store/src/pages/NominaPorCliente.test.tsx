@@ -17,12 +17,46 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
-// G-03: las pantallas piden la cartera. El doble viene vacío, así que
-// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
-// camino que estas pruebas medían antes de G-01.
+// R-06: la plantilla sale SÓLO de la cartera del usuario. El doble vacío que
+// tenía este archivo hacía que `useNominaCliente` cayera a los empleados de la
+// ficha del backend, y ese fallback ya no existe: una cartera que no contiene al
+// cliente significa "no es tuyo" y la pantalla se niega a calcular.
+//
+// El doble modela lo que pasa después de R-06 —el contador abre un cliente de su
+// cartera— y **espeja los empleados de `ficha(id)`**, con la misma llave
+// `${id}-1` / `${id}-2`, para que la plantilla que sale sea idéntica y estas
+// pruebas sigan midiendo lo suyo: que el request lleve el cliente de la ruta y
+// SUS empleados, y que cambiar de cliente no arrastre nada del anterior.
 vi.mock('../context/carteraStore', async () => {
   const { carteraDePrueba } = await import('../test/carteraDePrueba');
-  return { useCartera: () => carteraDePrueba() };
+  const empleado = (no: string, nombre: string, sd: string, sdi: string) => ({
+    empleado_no: no, nombre, puesto: 'Puesto', salario_diario: sd,
+    salario_diario_integrado: sdi, zona: 'general', fecha_alta: '2021-02-01',
+    tipo_contrato: 'indeterminado' as const,
+    prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+    nss: '', employee_no: no, enrolamiento: 'enrolado' as const,
+  });
+  const cliente = (id: string) => ({
+    id, nombre: id, giro: 'Giro de prueba', origen: 'sintetico',
+    prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04',
+    zona: 'general',
+    periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' },
+    empleados: [
+      empleado(`${id}-1`, 'PERSONA UNA', '520.00', '548.50'),
+      empleado(`${id}-2`, 'PERSONA DOS', '445.00', '467.56'),
+    ],
+  });
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        origen: 'firestore',
+        soloLectura: false,
+        // 'fantasma' NO está en la cartera a propósito: es el único id con el que
+    // se puede ejercitar el camino del 404 que la cartera no rescata, y desde
+    // R-06 también el de "este cliente no es de tu cuenta".
+    clientePorId: (id: string) => (id === 'fantasma' ? null : cliente(id)),
+      }),
+  };
 });
 
 

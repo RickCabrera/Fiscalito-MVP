@@ -23,20 +23,20 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <ProfileProvider>
-          {/* DEMO E-02: la cartera sólo se carga para un perfil de contador. */}
-          <ClienteActivoProvider>
-            {/* G-03: la cartera por uid. Va DENTRO del cliente activo porque
-                el selector del header sigue leyendo de aquel. Ningún tool del
-                agente la consume todavía; el orden respecto de `AgentProvider`
-                es indiferente hoy. */}
-            <CarteraProvider>
-            <AgentProvider>
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
-            </AgentProvider>
-            </CarteraProvider>
-          </ClienteActivoProvider>
+          {/* R-06: LA CARTERA VA POR FUERA. El orden estaba al revés porque el
+              selector del header leía el catálogo del backend por su cuenta;
+              ahora `ClienteActivoProvider` deriva sus resúmenes de la cartera,
+              así que tiene que estar dentro o el hook revienta. Un solo origen
+              para "qué clientes existen". */}
+          <CarteraProvider>
+            <ClienteActivoProvider>
+              <AgentProvider>
+                <BrowserRouter>
+                  <AppRoutes />
+                </BrowserRouter>
+              </AgentProvider>
+            </ClienteActivoProvider>
+          </CarteraProvider>
         </ProfileProvider>
       </AuthProvider>
     </ThemeProvider>

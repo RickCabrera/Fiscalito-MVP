@@ -67,9 +67,25 @@ export default function NominaClientePage() {
    * con faltas de más, en silencio. Es el mismo bug de G-02 entrando por la
    * puerta del tiempo.
    */
+  /**
+   * R-06: dos motivos NUEVOS por los que el paso 2 puede estar bloqueado, y los
+   * dos se veían igual —botón muerto, sin una palabra— porque `estadoPaso2`
+   * valía `'disponible'` y `PasoNomina` sólo pinta `motivoBloqueo` cuando está
+   * bloqueado.
+   *
+   * 1. **El cliente no es de esta cuenta.** Peor que mudo: el botón quedaba
+   *    ENCENDIDO, en color, y el clic no hacía nada. Es exactamente lo que este
+   *    archivo critica de la corrida G ("el botón quedó vivo, en gris, sin
+   *    impedir nada"), y estaba aquí mismo.
+   * 2. **El cliente no tiene periodo sugerido.** Le pasa al primer cliente de
+   *    una cuenta nueva cuando el backend no respondió al leer la cartera: dos
+   *    campos de fecha vacíos, botón apagado y ningún motivo. `CarteraContext`
+   *    afirmaba en un comentario que "la pantalla de nómina avisa"; no avisaba.
+   */
+  const sinPeriodo = Boolean(cliente) && (!n.inicio || !n.fin);
   const estadoPaso2: EstadoPaso = cierre
     ? 'listo'
-    : cliente && !n.carteraCargando
+    : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo
       ? 'disponible'
       : 'bloqueado';
   const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
@@ -125,9 +141,17 @@ export default function NominaClientePage() {
         descripcion="Convierte las checadas en días trabajados, faltas y retardos."
         estado={estadoPaso2}
         motivoBloqueo={
-          n.carteraCargando
-            ? 'Cargando tu cartera… El cierre espera a saber con qué números del checador buscar.'
-            : 'Espera a que cargue la plantilla del cliente.'
+          n.ajenoALaCartera
+            ? 'Este cliente no está en la cartera de tu cuenta, así que su nómina no se ' +
+              'puede calcular aquí: la plantilla saldría del catálogo de demostración y no ' +
+              'de tus empleados. Ábrelo desde tu lista de clientes.'
+            : sinPeriodo
+              ? 'Este cliente todavía no tiene un periodo sugerido — captura las fechas de ' +
+                'inicio y fin arriba y el paso se habilita. (Pasa con el primer cliente de ' +
+                'una cuenta cuando el servicio no respondió al cargar la cartera.)'
+              : n.carteraCargando
+                ? 'Cargando tu cartera… El cierre espera a saber con qué números del checador buscar.'
+                : 'Espera a que cargue la plantilla del cliente.'
         }
       >
         <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
@@ -165,7 +189,15 @@ export default function NominaClientePage() {
           <button
             className="btn-primary"
             onClick={n.pedirCierre}
-            disabled={n.ocupado || !cliente || !n.inicio || !n.fin || n.carteraCargando}
+            // `ajenoALaCartera` va TAMBIÉN aquí y no sólo en el badge del
+            // paso. Ponerlo sólo en el letrero dejaba el botón encendido, en
+            // color, sin hacer nada — que es exactamente lo que el encabezado
+            // de este archivo critica de la corrida G, reintroducido a tres
+            // líneas de distancia. El handler ya lo bloquea; esto es que se vea.
+            disabled={
+              n.ocupado || !cliente || !n.inicio || !n.fin ||
+              n.carteraCargando || n.ajenoALaCartera
+            }
             style={ACCION}
           >
             <CalendarCheck size={16} /> Cerrar quincena

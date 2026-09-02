@@ -19,6 +19,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import { useCartera } from '../context/carteraStore';
+import { useAuth } from '../context/AuthContext';
+import { esCuentaDeDesarrollo } from '../services/entorno';
 import { ArrowLeft, Info, Loader } from 'lucide-react';
 import ErrorAlert from '../components/common/ErrorAlert';
 import { envoltura, fila, tabla, td, tdNum, th, thNum } from '../components/nomina/estilosTabla';
@@ -56,20 +58,28 @@ type Resultado = { id: string; cliente?: ClienteDetalle; error?: string };
 
 /**
  * G-01: la ficha gana un tab de **Empleados**, que es el editable y sale de la
- * cartera del uid. El tab **Plantilla** es la vista de E-02/E-04, se queda
- * intacta y **sigue siendo el default**: es el camino probado y el guion
- * ensayado de la demo.
+ * cartera del uid.
+ *
+ * R-06: el tab **Plantilla** —el histórico del caso real, construido de un CFDI
+ * timbrado con montos reales anonimizados— **sólo se pinta en cuentas de
+ * desarrollo**, y el default pasa a Empleados. En G-01 el default era Plantilla
+ * a propósito, para no mover el guion de la demo la mañana de la demo; esa
+ * demo ya pasó.
+ *
+ * **Las fixtures y sus tests no se tocan.** Se oculta una pestaña de la UI: el
+ * caso real sigue siendo la verificación del motor contra la realidad y es lo
+ * único que demuestra que los números cuadran al centavo.
  */
 type Vista = 'empleados' | 'plantilla';
 
 export default function ClienteDetallePage() {
   const { id } = useParams();
   const [resultado, setResultado] = useState<Resultado | null>(null);
-  // **El default es Plantilla, no Empleados**, y es deliberado: es la vista que
-  // E-02/E-04 dejaron pulida y con la que está ensayada la demo. Cambiar el
-  // aterrizaje de la ficha la mañana de la demo sería mover el guion sin que
-  // Ricardo lo pida. Empleados está a un clic y visible.
-  const [vista, setVista] = useState<Vista>('plantilla');
+  const { user } = useAuth();
+  const verPlantilla = esCuentaDeDesarrollo(user?.email);
+  // R-06: una cuenta de producción aterriza en SU plantilla editable, no en el
+  // histórico de un tercero.
+  const [vista, setVista] = useState<Vista>(verPlantilla ? 'plantilla' : 'empleados');
   const cartera = useCartera();
 
   useEffect(() => {
@@ -180,7 +190,10 @@ export default function ClienteDetallePage() {
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
             <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
-              {([['empleados', 'Empleados'], ['plantilla', 'Plantilla']] as const).map(([v, texto]) => (
+              {(verPlantilla
+                ? ([['empleados', 'Empleados'], ['plantilla', 'Plantilla']] as const)
+                : ([['empleados', 'Empleados']] as const)
+              ).map(([v, texto]) => (
                 <button
                   key={v}
                   onClick={() => setVista(v)}
@@ -200,11 +213,6 @@ export default function ClienteDetallePage() {
 
             {vista === 'empleados' && (
               <div className="card" style={{ padding: 'var(--space-lg)' }}>
-                {cartera.motivoFallback && (
-                  <p style={{ margin: '0 0 var(--space-md)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {cartera.motivoFallback}
-                  </p>
-                )}
                 <EmpleadosTab
                   empleados={empleadosCartera}
                   soloLectura={cartera.soloLectura}

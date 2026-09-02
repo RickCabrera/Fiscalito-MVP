@@ -11,12 +11,19 @@
  * contexto nuevo en vez de ensanchar el viejo: quien necesita empleados los pide
  * aquí, y quien sólo necesita el cliente en foco sigue con el otro.
  *
- * **Eran CUATRO las costuras que leían el backend por su cuenta**, no tres: la
- * lista de `ClientesPage`, la ficha del cliente, `useNominaCliente` y el
- * proveedor del cliente activo. Las tres primeras pasan por aquí. La cuarta
- * —`ClienteActivoContext`— **sigue leyendo el backend a propósito**: sólo
+ * **Eran CUATRO las costuras que leían el backend por su cuenta.** Las tres
+ * primeras —la lista de `ClientesPage`, la ficha del cliente y
+ * `useNominaCliente`— pasaron por aquí en G-03. La cuarta, el proveedor del
+ * cliente activo, se dejó fuera "a propósito" con este argumento: *sólo
  * necesita resúmenes para el selector del header, y el cliente en foco existe
- * en las dos fuentes.
+ * en las dos fuentes*.
+ *
+ * **Esa última frase era verdadera sólo por el fallback**, y R-06 lo eliminó.
+ * Sin el fallback, una cuenta nueva veía su lista correctamente vacía y el
+ * selector de arriba mostrando los tres clientes de demostración, con
+ * `/app/nomina` llevando a `demo`. Así que la cuarta costura también pasa por
+ * aquí: `ClienteActivoContext` deriva sus resúmenes de esta cartera, y por eso
+ * `CarteraProvider` va **por fuera** de él en `main.tsx`.
  *
  * Que la lista faltara no era un detalle: se pintaba desde el backend mientras
  * el alta escribía aquí, así que un cliente recién capturado **no aparecía
@@ -33,8 +40,6 @@ export interface CarteraContextType {
   loading: boolean;
   /** `backend` = se está viendo el catálogo de demostración, sin escritura. */
   origen: OrigenCartera;
-  /** Por qué se cayó al backend, si pasó. La pantalla lo dice, no lo esconde. */
-  motivoFallback: string | null;
   /** `true` cuando no se puede escribir: la cartera no es del usuario. */
   soloLectura: boolean;
   error: string | null;

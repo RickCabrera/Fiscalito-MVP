@@ -1,5 +1,5 @@
 /**
- * La cartera del despacho en Firestore, por uid (G-03).
+ * La cartera del despacho en Firestore, por uid (G-03, R-06).
  *
  * `users/{uid}/clientes/{clienteId}` y `.../empleados/{empleadoId}`.
  *
@@ -10,29 +10,34 @@
  * `declaracionesHistory` la subcolección `declaraciones`. Migrar el perfil a
  * otro árbol no es de esta tarea, y tener el perfil en un árbol y la cartera en
  * otro obligaría a dos reglas de seguridad distintas para el mismo dueño.
- * §3.3 se corrigió en el mismo PR para que la próxima sesión no escriba reglas
- * para el árbol equivocado.
  *
- * EL BACKEND PINTA PRIMERO. FIRESTORE ES OVERLAY.
- * -----------------------------------------------
- * Regla de Ricardo: la demo funciona en TODO momento. El modo de falla
- * peligroso NO es que Firestore truene —eso se atrapa— sino que **devuelva
- * vacío**: con unas reglas que permitan leer y nieguen escribir, la siembra
- * nunca se escribe, la lectura no lanza, y queda una app que se ve bien y no
- * tiene clientes. Por eso:
+ * R-06: EL CATÁLOGO DEL BACKEND DEJA DE HACERSE PASAR POR LA CARTERA
+ * ------------------------------------------------------------------
+ * G-03 puso aquí un fallback deliberado: si Firestore fallaba **o devolvía
+ * vacío**, se mostraba el catálogo de demostración del backend para que la demo
+ * nunca se rompiera. Este archivo lo declaraba, con todas sus letras: *"el
+ * fallback DERROTA el criterio de G-03 — dos cuentas distintas ven los mismos
+ * tres clientes"*.
  *
- * 1. Cero devuelto se trata **igual** que error: se cae al catálogo del backend.
- * 2. Toda lectura lleva **timeout duro**. Ningún `await` sin cota en el camino
- *    de la demo.
- * 3. Sembrar **no es precondición de renderizar**: corre en segundo plano.
+ * La demo pasó y R-01 desplegó las reglas, así que la razón de aquel fallback ya
+ * no existe y su costo sí. Ahora:
  *
- * CONSECUENCIA QUE HAY QUE DECIR EN VOZ ALTA
- * ------------------------------------------
- * Con el fallback puesto, una segunda cuenta cuyas reglas nieguen el acceso cae
- * al backend y ve **los mismos tres clientes**. O sea: el fallback **derrota el
- * criterio de G-03** ("dos cuentas distintas ven carteras distintas"). Gana la
- * demo, porque Ricardo lo puso primero. G-03 sólo se cumple con las reglas de
- * `firestore.rules` desplegadas, y eso es acción suya.
+ * - **Cero clientes es cero clientes.** Una cartera vacía se devuelve como
+ *   vacía y ESCRIBIBLE (`origen: 'firestore'`), para que la pantalla diga "aún
+ *   no tienes clientes, crea el primero". Confundir "no tienes" con "hubo un
+ *   error" era lo que impedía que una cuenta nueva pudiera empezar.
+ * - **Un fallo es un fallo.** Si Firestore niega, tarda o revienta, se devuelve
+ *   el error para que la pantalla lo diga y ofrezca reintentar. **No se
+ *   sustituye por datos de otra persona**, que es lo que hacía antes.
+ * - `carteraDelBackend()` **no se borra**: pasa a ser exclusivamente la fuente
+ *   de la SIEMBRA, y sembrar es un botón visible sólo en cuentas de desarrollo.
+ *
+ * LAS COTAS SE QUEDAN, Y NO SON DECORACIÓN
+ * ----------------------------------------
+ * Ningún `await` sin tope. El modo de falla peligroso de Firestore no es
+ * reventar —eso se atrapa— sino **colgarse**: sin cota, el proveedor no resuelve
+ * nunca, `loading` se queda en `true` para siempre y la pantalla no llega ni a
+ * poder decir que algo salió mal.
  */
 
 import {
@@ -72,8 +77,12 @@ export type OrigenCartera = 'firestore' | 'backend';
 export interface CarteraCargada {
   clientes: ClienteCartera[];
   origen: OrigenCartera;
-  /** Por qué se cayó al backend, cuando pasó. `null` = todo bien. */
-  motivoFallback: string | null;
+  /**
+   * Por qué no se pudo leer la cartera. `null` = se leyó bien (aunque esté
+   * vacía: **vacía no es un error**, y confundirlos fue lo que impidió que una
+   * cuenta nueva pudiera empezar).
+   */
+  error: string | null;
 }
 
 function conTimeout<T>(promesa: Promise<T>, que: string, ms = TIMEOUT_MS): Promise<T> {
@@ -118,8 +127,11 @@ async function leerDeFirestore(uid: string): Promise<ClienteCartera[]> {
 /**
  * El catálogo del backend, en la forma de la cartera.
  *
- * Es el camino **probado** —E-02 y E-03 corren sobre él y tiene tests— y por eso
- * es el fallback y también la semilla.
+ * **Desde R-06 es SÓLO la semilla.** Dejó de ser el respaldo de `cargarCartera`:
+ * un catálogo con los clientes de otra persona no puede sustituir a una cartera
+ * que no se pudo leer. Se sigue usando —lo dispara el botón de sembrar, visible
+ * sólo en cuentas de desarrollo— porque es el camino probado, con tests de E-02
+ * y E-03 encima.
  */
 export async function carteraDelBackend(): Promise<ClienteCartera[]> {
   const resumenes = await obtenerClientes();
@@ -152,47 +164,32 @@ export async function carteraDelBackend(): Promise<ClienteCartera[]> {
  * cartera del backend y el motivo. Que la pantalla decida qué decir.
  */
 export async function cargarCartera(uid: string | null): Promise<CarteraCargada> {
-  // El respaldo TAMPOCO puede lanzar. La versión anterior hacía
-  // `await carteraDelBackend()` a pelo: con la API caída, `cargarCartera`
-  // rechazaba pese a que su docstring prometía lo contrario, y el proveedor
-  // caía a `clientes: []` — la pantalla vacía que todo este diseño existe para
-  // evitar, con el fallback puesto y todo.
-  const respaldo = async (motivo: string): Promise<CarteraCargada> => {
-    try {
-      return {
-        clientes: await conTimeout(
-          carteraDelBackend(),
-          'El catálogo de demostración',
-          TIMEOUT_RESPALDO_MS,
-        ),
-        origen: 'backend',
-        motivoFallback: motivo,
-      };
-    } catch (e) {
-      const porQue = e instanceof Error ? e.message : 'error desconocido';
-      return {
-        clientes: [],
-        origen: 'backend',
-        motivoFallback: `${motivo} Y el catálogo de demostración tampoco respondió (${porQue}).`,
-      };
-    }
-  };
+  const vacia = (error: string | null): CarteraCargada => ({
+    clientes: [],
+    // `firestore` aunque esté vacía: es la cartera del usuario, y por lo tanto
+    // ESCRIBIBLE. `CarteraContext` deriva `soloLectura` de este campo, así que
+    // devolver `backend` aquí haría que el botón "crea tu primer cliente"
+    // rebotara con "esta cartera es el catálogo de demostración". Es una
+    // palabra, y es la tarea entera.
+    origen: 'firestore',
+    error,
+  });
 
-  if (!uid) return respaldo('No hay sesión: se muestra el catálogo de demostración.');
+  if (!uid) return vacia(null);
 
   try {
     const guardados = await conTimeout(leerDeFirestore(uid), 'La cartera de Firestore');
+    // Cero clientes NO es un error, y ya no se trata como tal. Antes se caía al
+    // catálogo del backend "por si acaso", y el resultado era que una cuenta
+    // nueva nunca podía verse a sí misma vacía.
     const clientes = await conPeriodoAlDia(guardados);
-    if (clientes.length === 0) {
-      // NO es lo mismo que un error, y por eso se trata igual: unas reglas que
-      // permitan leer y nieguen escribir dejan la cartera vacía sin lanzar
-      // nada, y una app que se ve bien y no tiene clientes es peor que un error.
-      return respaldo('Tu cartera está vacía: se muestra el catálogo de demostración.');
-    }
-    return { clientes, origen: 'firestore', motivoFallback: null };
+    return { clientes, origen: 'firestore', error: null };
   } catch (e) {
     const detalle = e instanceof Error ? e.message : 'error desconocido';
-    return respaldo(`No se pudo leer tu cartera (${detalle}).`);
+    // **No se sustituye por el catálogo de demostración.** Enseñar los clientes
+    // de otra persona cuando falla la lectura de los tuyos es peor que una
+    // pantalla vacía con un botón de reintentar: se ve bien, y es mentira.
+    return vacia(`No se pudo leer tu cartera: ${detalle}`);
   }
 }
 
@@ -205,6 +202,19 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
  * sembrar: dos semanas después, cada cliente nacería con una quincena vencida,
  * el panel saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una
  * razón que nadie entendería.
+ *
+ * OJO CON LO QUE ESTO REALMENTE HACE, porque no es lo que el nombre sugiere:
+ * copia la quincena del cliente `demo` a **todos** los clientes de la cartera,
+ * sin mirar su `clave_periodicidad`. Hoy es inofensivo porque `ModalCliente`
+ * ofrece sólo quincenal —deshabilitado, con la razón en pantalla— y porque
+ * `periodicidadNoCuadra` frena el cálculo. El día que se abran las otras claves
+ * (está en el backlog, sección G) ésta es la puerta que queda abierta, y la que
+ * produciría la tarifa mensual del Art. 96 sobre base de 15-16 días.
+ *
+ * Y significa que **el periodo de todo cliente real sale hoy de
+ * `GET /despacho/clientes/demo`**: es la quinta costura con el catálogo de
+ * demostración, y R-06 no la corta. Cuando F2 borre el catálogo hay que decidir
+ * de dónde sale `quincena(hoy)`.
  *
  * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde
  * —o se cuelga, de ahí el `conTimeout`— se queda el snapshot, que es peor que
@@ -236,6 +246,9 @@ async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCarte
  * Devuelve `true` sólo si escribió algo.
  */
 export async function sembrarDemo(uid: string): Promise<boolean> {
+  // Quién puede llamar aquí lo decide la PANTALLA (`esCuentaDeDesarrollo`), no
+  // este módulo: la comprobación necesita el email de la sesión y esto es un
+  // servicio sin contexto. Se dice para que quede claro que no es un descuido.
   // Con cota, como todo lo demás de este archivo. Sin ella, unas reglas que
   // cuelguen en vez de negar dejaban al contador clickeando un botón que no
   // hacía nada, para siempre y sin mensaje.

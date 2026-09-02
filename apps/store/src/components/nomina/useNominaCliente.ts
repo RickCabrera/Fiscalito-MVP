@@ -82,8 +82,20 @@ export function useNominaCliente(clienteId: string) {
   const [eventosDe, setEventosDe] = useState<DeCliente<EventoChecada[]> | null>(null);
   const [cierreDe, setCierreDe] = useState<DeCliente<CierrePeriodo | null> | null>(null);
   const [nominaDe, setNominaDe] = useState<DeCliente<NominaPeriodo | null> | null>(null);
-  const [inicio, setInicio] = useState('');
-  const [fin, setFin] = useState('');
+  /**
+   * El periodo PERTENECE A UN CLIENTE, con el mismo patrón `DeCliente` que ya
+   * usan la ficha, las checadas, el cierre y la nómina de este archivo.
+   *
+   * Eran dos `useState` sueltos, y funcionaba **por accidente**: durante la
+   * ventana en que la ficha del cliente nuevo viajaba, `cliente` valía `null`
+   * —la cartera venía vacía en ese camino— y el botón quedaba deshabilitado por
+   * esa otra razón. R-06 puebla la cartera, así que `cliente` ya resuelve al
+   * instante desde ella y esa protección de rebote desapareció: quedaban las
+   * fechas del cliente ANTERIOR con el botón vivo, y cerrar ahí habría cerrado
+   * el periodo equivocado. Lo cazó el test de navegación entre clientes, que
+   * existe justo para esto.
+   */
+  const [periodoDe, setPeriodoDe] = useState<DeCliente<{ inicio: string; fin: string }> | null>(null);
   const [errorPanel, setErrorPanel] = useState<string | null>(null);
   const [errorDe, setErrorDe] = useState<DeCliente<string | null> | null>(null);
   /**
@@ -126,8 +138,10 @@ export function useNominaCliente(clienteId: string) {
         // Se limpia el error de carga: navegar A → B → A tras un reinicio de la
         // API dejaba pintado el error viejo de A aunque la ficha ya llegó bien.
         setErrorCargaDe(null);
-        setInicio(c.periodo_sugerido.inicio);
-        setFin(c.periodo_sugerido.fin);
+        setPeriodoDe({
+          id: clienteId,
+          valor: { inicio: c.periodo_sugerido.inicio, fin: c.periodo_sugerido.fin },
+        });
       })
       .catch((e: Error) => {
         if (cancelado) return;
@@ -142,8 +156,13 @@ export function useNominaCliente(clienteId: string) {
         // tope—, porque el efecto no vuelve a correr cuando la cartera llega.
         const suyoEnCartera = carteraRef.current.clientePorId(clienteId);
         if (suyoEnCartera) {
-          setInicio(suyoEnCartera.periodo_sugerido.inicio);
-          setFin(suyoEnCartera.periodo_sugerido.fin);
+          setPeriodoDe({
+            id: clienteId,
+            valor: {
+              inicio: suyoEnCartera.periodo_sugerido.inicio,
+              fin: suyoEnCartera.periodo_sugerido.fin,
+            },
+          });
         }
         setErrorCargaDe({ id: clienteId, valor: e.message });
       });
@@ -210,10 +229,36 @@ export function useNominaCliente(clienteId: string) {
   // —con todos, vinculados o no— y `sinVincular` vale 0, así que tampoco sale
   // el aviso. Entrar directo a la nómina con el proveedor frío y cerrar en esa
   // ventana calcularía una plantilla distinta a la de un segundo después.
-  const deLaCartera =
-    clienteId && !cartera.loading ? cartera.clientePorId(clienteId) : null;
+  // R-06: SON TRES ESTADOS, NO DOS. Hasta aquí se distinguía "cargando" de
+  // "cargada", y con el fallback de G-03 daba igual: `clientePorId('demo')`
+  // siempre devolvía algo porque el catálogo del backend poblaba la cartera.
+  //
+  // Quitado ese fallback, aparece el tercero: **cargada, y el cliente NO está
+  // en ella**. Entrar por URL a `/app/clientes/demo/nomina` desde una cuenta
+  // cuya cartera no tiene `demo` daba `clientePorId → null`, y entonces
+  // `plantillaDeNomina` caía a `deLaFicha` — la ficha COMPLETA del backend, sin
+  // filtrar `estaVinculado`— con `sinVincular` en 0, así que **el aviso tampoco
+  // salía**. Un conjunto distinto de empleados entrando a
+  // `POST /nomina/calcular-periodo`, en silencio.
+  //
+  // No es hipotético: es el modo de falla que el comentario de arriba describe
+  // y que la guarda de `cartera.loading` existía para evitar, reaparecido por
+  // otra puerta.
+  const carteraLista = Boolean(clienteId) && !cartera.loading;
+  const deLaCartera = carteraLista ? cartera.clientePorId(clienteId as string) : null;
+  /**
+   * El cliente no es de esta cuenta. **No se calcula.**
+   *
+   * Distinto de "la cartera está cargando" (ahí se espera) y de "el cliente
+   * está y no tiene empleados" (ahí se calcula con cero, que es correcto).
+   */
+  const ajenoALaCartera = carteraLista && deLaCartera === null;
   const empleadosCartera = deLaCartera?.empleados ?? null;
   const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
+
+  const { inicio, fin } = suyo(periodoDe, clienteId, { inicio: '', fin: '' });
+  const setInicio = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio: v, fin } });
+  const setFin = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio, fin: v } });
 
   const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
   const cierre = suyo(cierreDe, clienteId, null);
@@ -323,7 +368,18 @@ export function useNominaCliente(clienteId: string) {
     // propio, y cuando la cartera llegue la plantilla vuelve a cuadrar por
     // `empleado_no`, así que nada levanta — recibo con faltas de más y en
     // silencio. Es el bug de G-02 entrando por la puerta del tiempo.
-    if (cartera.loading) return;
+    // SON TRES PUERTAS, NO DOS, y este comentario decía que eran dos.
+    // `cerrar` se exporta y el diálogo de confirmación la llama DIRECTO
+    // ("Cerrar de todos modos"), sin pasar por `pedirCierre`. El camino es
+    // real: se pide el cierre con el cliente presente, la cartera se recarga
+    // sin él —otra pestaña lo borró, o `recargar()`—, `confirmarPara` sigue
+    // apuntando al mismo id y el diálogo sigue en pantalla. El clic mandaba al
+    // backend la ficha COMPLETA del catálogo, sin filtrar vinculados.
+    //
+    // No produce un recibo con ISR mal —esa puerta sí estaba cerrada— pero sí
+    // un cierre con el conjunto de empleados equivocado, que es el insumo del
+    // cálculo.
+    if (cartera.loading || ajenoALaCartera) return;
     const id = cliente.id;
     setConfirmarPara(null);
     setOcupado(true);
@@ -351,6 +407,19 @@ export function useNominaCliente(clienteId: string) {
 
   const calcular = async () => {
     if (!cliente || !cierre) return;
+    // R-06. Misma guarda que en `pedirCierre`, y no es redundante: se puede
+    // llegar aquí con un cierre viejo en estado y la cartera ya resuelta a "no
+    // es tuyo". Cerrar una sola de las dos puertas deja la otra abierta.
+    if (ajenoALaCartera) {
+      setErrorDe({
+        id: cliente.id,
+        valor:
+          'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
+          'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
+          'Ábrelo desde tu lista de clientes.',
+      });
+      return;
+    }
     if (periodicidadNoCuadra) {
       setErrorDe({
         id: cliente.id,
@@ -396,6 +465,13 @@ export function useNominaCliente(clienteId: string) {
     sinVincular,
     /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
     carteraCargando: cartera.loading,
+    /**
+     * R-06: el cliente no está en la cartera de esta cuenta. **No se calcula.**
+     * Sin esto, la plantilla caía a la ficha del backend sin filtrar
+     * vinculados y con el aviso apagado — otro conjunto de empleados entrando
+     * al cálculo, en silencio.
+     */
+    ajenoALaCartera,
     eventos,
     cierre,
     nomina,
@@ -413,7 +489,9 @@ export function useNominaCliente(clienteId: string) {
     // los días no laborables, así que la nómina se ve completa y creíble con la
     // ausencia escondida. Mejor preguntar que enseñar eso enfrente de alguien.
     pedirCierre: () => {
-      if (!cliente || cartera.loading) return;
+      // La guarda va en la ACCIÓN, no en el badge del paso. En la corrida G se
+      // puso en el letrero y el botón quedó vivo, en gris, sin impedir nada.
+      if (!cliente || cartera.loading || ajenoALaCartera) return;
       if (sinChecadasEnElPeriodo) setConfirmarPara(cliente.id);
       else void cerrar();
     },

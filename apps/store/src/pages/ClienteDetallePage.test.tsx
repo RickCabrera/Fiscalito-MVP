@@ -14,6 +14,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteDetalle } from '../services/despachoApi';
 
+// R-06: las pantallas leen la cuenta para decidir si ven los datos de
+// demostración. En jsdom `import.meta.env.DEV` es `true`, así que el doble
+// basta con existir: la cuenta cuenta como de desarrollo y los tests de la
+// demo siguen midiendo lo mismo que medían.
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { uid: 'uid-demo', email: 'demo@ejemplo.mx' }, loading: false }),
+}));
+
 /**
  * G-03: la cartera del doble es **configurable**, y por default viene POBLADA
  * con el cliente de demostración.
@@ -128,6 +136,9 @@ function montar(id: string) {
 }
 
 afterEach(() => {
+  // En `afterEach`: si una asercion revienta antes, `DEV=false` se filtraria
+  // a los tests siguientes del archivo.
+  vi.unstubAllEnvs();
   respuesta.actual = CASO_REAL;
   respuesta.falla = null;
   enCartera.clientes = [];
@@ -210,16 +221,35 @@ describe('cliente que no existe', () => {
 });
 
 describe('tabs de la ficha (G-01)', () => {
-  it('abre en Plantilla: no se cambia el guion ensayado de la demo', async () => {
-    // El default es deliberado. Plantilla es la vista que E-02/E-04 dejaron
-    // pulida y con la que está ensayada la demo; mover el aterrizaje de la
-    // ficha la mañana de la demo sería cambiar el guion sin que nadie lo pida.
-    // Si alguien lo invierte, esta prueba lo dice en vez de dejarlo pasar como
-    // un cambio de estilo.
+  it('una cuenta de desarrollo abre en Plantilla', async () => {
+    // En jsdom `import.meta.env.DEV` es `true`, así que ésta es la rama de
+    // desarrollo. El default de G-01 era Plantilla para no mover el guion de la
+    // demo; se conserva para quien la necesita.
     montar('demo');
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Plantilla' }).getAttribute('aria-current')).toBe('true'),
     );
+  });
+
+  it('una cuenta normal NO tiene la pestaña Plantilla, y abre en Empleados', async () => {
+    /**
+     * R-06. La pestaña Plantilla enseña el histórico del caso real: un CFDI
+     * timbrado con montos reales anonimizados de nueve personas. Una cuenta de
+     * producción no tiene por qué verlo.
+     *
+     * **Las fixtures y sus tests no se tocan** — son la verificación del motor
+     * contra la realidad. Lo que se oculta es una pestaña.
+     */
+    vi.stubEnv('DEV', false);
+    montar('demo');
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Empleados' }).getAttribute('aria-current')).toBe('true'),
+    );
+    expect(screen.queryByRole('button', { name: 'Plantilla' })).toBeNull();
+    // Y el contenido tampoco se cuela por otro lado: ningún salario del caso
+    // real en el DOM.
+    expect(screen.queryByText('316.00')).toBeNull();
   });
 
   it('el tab Empleados está visible y a un clic', async () => {

@@ -19,12 +19,42 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-// G-03: las pantallas piden la cartera. El doble viene vacío, así que
-// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
-// camino que estas pruebas medían antes de G-01.
+// R-06: la cartera del usuario es la ÚNICA fuente de la plantilla. Antes este
+// doble venía vacío y `useNominaCliente` caía a los empleados de la ficha del
+// backend; quitado ese fallback, una cartera vacía significa "este cliente no
+// es tuyo" y la pantalla se niega a calcular — que es lo correcto, y lo prueba
+// `useNominaCliente.guardas.test.ts`.
+//
+// Así que el doble modela lo que pasa de verdad después de R-06: el contador
+// abre un cliente QUE ESTÁ en su cartera. Los empleados son los mismos dos de
+// la ficha y vienen vinculados, de modo que la plantilla que sale es idéntica y
+// estas pruebas siguen midiendo lo que medían: qué pide la pantalla, qué manda
+// y qué pinta.
 vi.mock('../context/carteraStore', async () => {
   const { carteraDePrueba } = await import('../test/carteraDePrueba');
-  return { useCartera: () => carteraDePrueba() };
+  const empleado = (no: string, sd: string, sdi: string) => ({
+    empleado_no: no, nombre: `PERSONA ${no}`, puesto: '', salario_diario: sd,
+    salario_diario_integrado: sdi, zona: 'general', fecha_alta: null,
+    tipo_contrato: 'indeterminado' as const,
+    prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+    nss: '', employee_no: no, enrolamiento: 'enrolado' as const,
+  });
+  const CLIENTE = {
+    id: 'demo', nombre: 'Cliente De Prueba', giro: 'Servicios', origen: 'fixtures-s04',
+    prima_riesgo: '0.0271830', clase_riesgo: null, clave_periodicidad: '07',
+    zona: 'general',
+    periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' },
+    empleados: [empleado('E-01', '316.00', '331.58'), empleado('E-02', '326.84', '357.44')],
+  };
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        clientes: [CLIENTE],
+        origen: 'firestore',
+        soloLectura: false,
+        clientePorId: (id: string) => (id === CLIENTE.id ? CLIENTE : null),
+      }),
+  };
 });
 
 
