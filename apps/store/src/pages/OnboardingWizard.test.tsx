@@ -83,62 +83,92 @@ describe('OnboardingWizard — perfil de despacho', () => {
     expect(screen.queryByText('Numero de empleados')).toBeNull();
   });
 
-  it('solo ofrece los regímenes que el despacho puede tener', () => {
+  /**
+   * E-05: SOLO tres campos. Un despacho no declara por sí mismo en esta app,
+   * así que pedirle RFC, régimen, actividad o CP era pedirle datos que nada usa
+   * — y hacerle creer que la app le calcularía su propia declaración.
+   */
+  it('no le pide RFC, régimen, actividad ni código postal', () => {
     montar();
     elegirContador();
 
-    const opciones = Array.from(screen.getAllByRole('option')).map((o) => (o as HTMLOptionElement).value);
-    expect(opciones).toEqual(['', '612', '626']);
+    expect(screen.queryByPlaceholderText('XAXX010101000')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByText('Actividad economica')).toBeNull();
+    expect(screen.queryByText(/Codigo postal/)).toBeNull();
+
+    expect(screen.getByText('Nombre del despacho')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Tu nombre completo')).toBeTruthy();
+    expect(screen.getByPlaceholderText('10 digitos')).toBeTruthy();
+  });
+
+  it('su wizard tiene TRES pasos, no cuatro', () => {
+    montar();
+    elegirContador();
+
+    // La barra de progreso no puede anunciar un paso que nadie va a recorrer.
+    // "Datos del despacho" sale dos veces —barra y encabezado del paso—, así
+    // que se cuenta en vez de exigir uno solo.
+    expect(screen.getAllByText('Datos del despacho').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Datos fiscales')).toBeNull();
+    expect(screen.queryByText('Datos personales')).toBeNull();
   });
 
   /**
-   * LA TRANSICIÓN, no el estado. Asertar solo "deshabilitado con el despacho
-   * vacío" pasaría por razones equivocadas (RFC corto, régimen sin elegir): el
-   * test exige que el ÚNICO campo que falta sea el del despacho, y que llenarlo
-   * habilite el botón.
+   * LA TRANSICIÓN, no el estado. Asertar sólo "deshabilitado con todo vacío"
+   * pasaría por la razón equivocada: el test exige que falte exactamente el
+   * nombre del despacho, y que llenarlo habilite el botón.
    */
-  it('el nombre del despacho es lo único que falta para avanzar', () => {
+  it('el nombre del contador y el del despacho son obligatorios; el teléfono no', () => {
     montar();
     elegirContador();
 
-    fireEvent.change(screen.getByPlaceholderText('XAXX010101000'), { target: { value: 'XAXX010101000' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '612' } });
-
+    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), {
+      target: { value: 'Contadora Demo' },
+    });
     expect(botonSiguiente().disabled).toBe(true);
 
     fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), {
       target: { value: 'Despacho Demo' },
     });
-
     expect(botonSiguiente().disabled).toBe(false);
   });
 
-  it('guarda el nombre del despacho y entra a la pantalla de clientes', async () => {
+  it('llega al botón de terminar y CREA la cuenta', async () => {
+    /**
+     * LA REGRESIÓN QUE VALE ESTE TEST. El wizard tenía `step < 3` cableado para
+     * decidir si pintaba "Siguiente" o "Comenzar". Con tres pasos el último
+     * índice es 2, así que el contador se quedaba en "Confirmar" viendo
+     * "Siguiente" y `handleFinish` NUNCA se ejecutaba: no se creaba la cuenta y
+     * nada fallaba visiblemente.
+     */
     montar();
     elegirContador();
 
-    fireEvent.change(screen.getByPlaceholderText('XAXX010101000'), { target: { value: 'XAXX010101000' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '612' } });
+    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Contadora Demo' } });
     fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), {
       target: { value: 'Despacho Demo' },
     });
+    fireEvent.change(screen.getByPlaceholderText('10 digitos'), { target: { value: '5551234567' } });
     fireEvent.click(botonSiguiente());
 
-    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Contadora Demo' } });
-    fireEvent.click(botonSiguiente());
-
-    // Paso 4: el resumen enseña el despacho antes de guardar.
+    // Paso 3: el resumen enseña el despacho y NO inventa un RFC en blanco.
     expect(screen.getByText('Despacho')).toBeTruthy();
     expect(screen.getByText('Despacho Demo')).toBeTruthy();
+    expect(screen.queryByText('RFC')).toBeNull();
+    expect(screen.queryByText('Regimen')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Comenzar/ }));
 
     await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
     expect(setProfile.mock.calls[0][0]).toMatchObject({
       contributorType: 'contador',
+      nombre: 'Contadora Demo',
       nombreDespacho: 'Despacho Demo',
-      rfc: 'XAXX010101000',
-      regimen: '612',
+      telefono: '5551234567',
+      // Vacíos y presentes: el perfil tiene forma fija y `setProfile` mergea.
+      rfc: '',
+      regimen: '',
       onboardingComplete: true,
     });
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/clientes'));

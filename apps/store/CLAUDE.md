@@ -291,11 +291,29 @@ Los dos mapas son `Record<ContributorType, ...>` exhaustivos a proposito: un tip
 el build y obliga a decidir que se le manda al backend.
 
 ### Wizard de onboarding (post-registro)
-Despues de registrarse, el usuario pasa por un wizard de 4 pasos en `OnboardingWizard.tsx`:
+
+Los pasos **dependen del tipo** (E-05). Un contribuyente recorre cuatro:
 1. **Tipo de cuenta** — card selector visual con iconos (incluye Despacho / Contador)
-2. **Datos fiscales** — RFC + regimen (filtrado por tipo) + campos PYME (nombre negocio, num empleados) + campo contador (nombre del despacho)
+2. **Datos fiscales** — RFC + regimen (filtrado por tipo) + campos PYME (nombre negocio, num empleados)
 3. **Datos personales** — nombre completo, telefono, actividad economica, codigo postal
-4. **Confirmacion** — resumen de todo lo configurado con boton "Comenzar"
+4. **Confirmacion** — resumen con boton "Comenzar"
+
+Un **despacho** recorre tres, y se le piden SOLO tres campos: **Tipo → Datos del despacho
+(nombre del contador, nombre del despacho, telefono) → Confirmacion**. Nada de RFC, regimen,
+actividad ni codigo postal: no declara por si mismo en esta app, el sujeto del calculo es su
+cliente (§D21).
+
+**TODO se decide contra la lista de ids de paso, nunca contra el indice** —el render, `canNext`,
+"Atras" y cual es el ultimo paso—. Con `step < 3` cableado, un wizard de tres pasos dejaba al
+contador en "Confirmar" viendo "Siguiente" y `handleFinish` no corria nunca: no se creaba la
+cuenta y nada fallaba visiblemente.
+
+En `ProfilePage`, un despacho **no ve el selector de los otros cinco tipos** ni los campos
+fiscales. La condicion cuelga de `profile.contributorType` (el GUARDADO), no del estado local:
+si colgara del local, un contribuyente que clickeara "Despacho / Contador" por curiosidad veria
+desaparecer el selector en ese mismo render y quedaria encerrado sin haber guardado nada.
+`handleSave` sigue mandando los campos que ya no se pintan, para no repetir la perdida
+silenciosa que cazo la mutacion de E-01.
 
 El wizard guarda en Firestore y se puede editar despues en ProfilePage.
 
