@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
+import type { ClienteResumen } from '../services/despachoApi';
 
 const perfilBase: UserProfile = {
   contributorType: null,
@@ -47,13 +48,13 @@ vi.mock('../context/ProfileContext', () => ({
 
 // La cartera tiene sus propios tests; aquí sólo se necesita el cliente activo,
 // que desde E-06 el sidebar imprime bajo la entrada "Nómina".
-const clienteActivo = {
-  actual: {
-    id: 'taller', nombre: 'Taller Mecánico Nogal', giro: 'Reparación', origen: 'sintetico',
-    num_empleados: 12, prima_riesgo: '0.0259840', clase_riesgo: 3,
-    clave_periodicidad: '04', zona: 'general',
-  } as { id: string; nombre: string } | null,
+const TALLER: ClienteResumen = {
+  id: 'taller', nombre: 'Taller Mecánico Nogal', giro: 'Reparación', origen: 'sintetico',
+  num_empleados: 12, prima_riesgo: '0.0259840', clase_riesgo: 3,
+  clave_periodicidad: '04', zona: 'general',
 };
+
+const clienteActivo: { actual: ClienteResumen | null } = { actual: TALLER };
 
 vi.mock('../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
@@ -123,11 +124,7 @@ function enlacesDelSidebar(container: HTMLElement): string[] {
 
 afterEach(() => {
   perfilMock.actual = perfilBase;
-  clienteActivo.actual = {
-    id: 'taller', nombre: 'Taller Mecánico Nogal', giro: 'Reparación', origen: 'sintetico',
-    num_empleados: 12, prima_riesgo: '0.0259840', clase_riesgo: 3,
-    clave_periodicidad: '04', zona: 'general',
-  };
+  clienteActivo.actual = TALLER;
   cleanup();
 });
 
