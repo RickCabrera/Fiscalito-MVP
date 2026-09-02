@@ -8,6 +8,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { fmtMoney } from '../../utils/format';
 import type { NominaPeriodo, PorcionConsolidada } from '../../services/nominaDemoApi';
+import { td, tdNum, tdNumFuerte, tituloSeccion } from './estilosTabla';
 
 const NOMBRE_RAMO: Record<string, string> = {
   eym_cuota_fija: 'Enfermedades y Maternidad — cuota fija',
@@ -24,37 +25,45 @@ const NOMBRE_RAMO: Record<string, string> = {
 
 function Bloque({ titulo, porcion }: { titulo: string; porcion: PorcionConsolidada }) {
   return (
-    <div style={{ flex: '1 1 260px' }}>
-      <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{titulo}</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-        <tbody>
-          {Object.entries(porcion.por_ramo).map(([clave, monto]) => (
-            <tr key={clave}>
-              <td style={{ padding: '3px 0' }}>{NOMBRE_RAMO[clave] ?? clave}</td>
-              <td style={{ textAlign: 'right' }}>{fmtMoney(Number(monto))}</td>
+    <div style={{ flex: '1 1 300px', minWidth: 0 }}>
+      <h3
+        style={{
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+          color: 'var(--text-muted)',
+          margin: '0 0 var(--space-xs)',
+        }}
+      >
+        {titulo}
+      </h3>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 280, borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <tbody>
+            {Object.entries(porcion.por_ramo).map(([clave, monto]) => (
+              <tr key={clave}>
+                <td style={{ ...td, color: 'var(--text-secondary)' }}>
+                  {NOMBRE_RAMO[clave] ?? clave}
+                </td>
+                <td style={tdNum}>{fmtMoney(Number(monto))}</td>
+              </tr>
+            ))}
+            <tr style={{ borderTop: '2px solid var(--border-active)' }}>
+              <td style={{ ...td, fontWeight: 700 }}>Patronal</td>
+              <td style={tdNumFuerte}>{fmtMoney(Number(porcion.total_patron))}</td>
             </tr>
-          ))}
-          <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 700 }}>
-            <td style={{ padding: '5px 0' }}>Patronal</td>
-            <td style={{ textAlign: 'right' }}>{fmtMoney(Number(porcion.total_patron))}</td>
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 export default function CuotasPorRamo({ nomina }: { nomina: NominaPeriodo }) {
   return (
-    <section
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 20,
-      }}
-    >
-      <h2 style={{ fontSize: '1rem', marginTop: 0 }}>Cuotas devengadas en el periodo</h2>
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <h2 style={tituloSeccion}>Cuotas devengadas en el periodo</h2>
 
       {/* Es la diferencia entre informar y engañar: una quincena trae media
           mensualidad de EyM/IyV, no el entero del Art. 39. Viene del backend
@@ -65,13 +74,15 @@ export default function CuotasPorRamo({ nomina }: { nomina: NominaPeriodo }) {
           role="note"
           style={{
             display: 'flex',
-            gap: 8,
+            gap: 'var(--space-xs)',
             alignItems: 'flex-start',
+            margin: 0,
             background: 'var(--warning-bg)',
             border: '1px solid var(--warning-border)',
-            borderRadius: 8,
-            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-sm) var(--space-md)',
             fontSize: '0.85rem',
+            color: 'var(--text-primary)',
           }}
         >
           <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -79,7 +90,7 @@ export default function CuotasPorRamo({ nomina }: { nomina: NominaPeriodo }) {
         </p>
       ))}
 
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-xl)', flexWrap: 'wrap' }}>
         <Bloque titulo="Ramos de entero mensual" porcion={nomina.porcion_mensual} />
         <Bloque titulo="Ramos de entero bimestral" porcion={nomina.porcion_bimestral} />
       </div>

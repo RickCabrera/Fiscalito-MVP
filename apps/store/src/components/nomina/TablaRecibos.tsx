@@ -2,6 +2,9 @@
 
 import { fmtMoney } from '../../utils/format';
 import type { NominaPeriodo, ReciboNomina } from '../../services/nominaDemoApi';
+import { envoltura, fila, tabla, td, tdNum, tdNumFuerte, th, thNum, tituloSeccion } from './estilosTabla';
+
+const MONO_FAMILY = "'JetBrains Mono', monospace";
 
 function isr(recibo: ReciboNomina): number {
   return recibo.deducciones
@@ -14,58 +17,69 @@ export default function TablaRecibos({ nomina }: { nomina: NominaPeriodo }) {
     nomina.recibos.reduce((suma, r) => suma + obtener(r), 0);
 
   return (
-    <section
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 20,
-      }}
-    >
-      <h2 style={{ fontSize: '1rem', marginTop: 0 }}>Recibos</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-            <th style={{ padding: '4px 0' }}>Empleado</th>
-            <th>SBC</th>
-            <th>Días pagados</th>
-            <th style={{ textAlign: 'right' }}>Percepciones</th>
-            <th style={{ textAlign: 'right' }}>ISR</th>
-            <th style={{ textAlign: 'right' }}>Cuota obrera</th>
-            <th style={{ textAlign: 'right' }}>Neto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {nomina.recibos.map((r) => (
-            <tr key={r.empleado_no}>
-              <td style={{ padding: '4px 0' }}>
-                {r.nombre} <span style={{ color: 'var(--text-muted)' }}>({r.empleado_no})</span>
-              </td>
-              <td>{fmtMoney(Number(r.sbc))}</td>
-              <td>{r.dias_pagados}</td>
-              <td style={{ textAlign: 'right' }}>{fmtMoney(Number(r.total_percepciones))}</td>
-              <td style={{ textAlign: 'right' }}>{fmtMoney(isr(r))}</td>
-              <td style={{ textAlign: 'right' }}>{fmtMoney(Number(r.cuota_obrera))}</td>
-              <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(Number(r.neto))}</td>
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <header style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+        <h2 style={tituloSeccion}>Recibos</h2>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+          {nomina.recibos.length} empleados
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          Neto del periodo{' '}
+          <strong
+            style={{
+              color: 'var(--text-primary)',
+              fontFamily: MONO_FAMILY,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {fmtMoney(total((r) => Number(r.neto)))}
+          </strong>
+        </span>
+      </header>
+      <div style={envoltura}>
+        <table style={tabla(820)}>
+          <thead>
+            <tr>
+              <th style={th}>Empleado</th>
+              <th style={thNum}>SBC</th>
+              <th style={thNum}>Días pagados</th>
+              <th style={thNum}>Percepciones</th>
+              <th style={thNum}>ISR</th>
+              <th style={thNum}>Cuota obrera</th>
+              <th style={thNum}>Neto</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 700 }}>
-            <td style={{ padding: '6px 0' }}>Totales</td>
-            <td />
-            <td />
-            <td style={{ textAlign: 'right' }}>
-              {fmtMoney(total((r) => Number(r.total_percepciones)))}
-            </td>
-            <td style={{ textAlign: 'right' }}>{fmtMoney(total(isr))}</td>
-            <td style={{ textAlign: 'right' }}>
-              {fmtMoney(total((r) => Number(r.cuota_obrera)))}
-            </td>
-            <td style={{ textAlign: 'right' }}>{fmtMoney(total((r) => Number(r.neto)))}</td>
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {nomina.recibos.map((r, i) => (
+              <tr key={r.empleado_no} style={fila(i)}>
+                <td style={td}>
+                  {r.nombre}{' '}
+                  <span style={{ color: 'var(--text-muted)' }}>({r.empleado_no})</span>
+                </td>
+                <td style={tdNum}>{fmtMoney(Number(r.sbc))}</td>
+                <td style={tdNum}>{r.dias_pagados}</td>
+                <td style={tdNum}>{fmtMoney(Number(r.total_percepciones))}</td>
+                <td style={tdNum}>{fmtMoney(isr(r))}</td>
+                <td style={tdNum}>{fmtMoney(Number(r.cuota_obrera))}</td>
+                <td style={tdNumFuerte}>{fmtMoney(Number(r.neto))}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ borderTop: '2px solid var(--border-active)' }}>
+              <td style={{ ...td, fontWeight: 700 }}>Totales</td>
+              <td />
+              <td />
+              <td style={tdNumFuerte}>
+                {fmtMoney(total((r) => Number(r.total_percepciones)))}
+              </td>
+              <td style={tdNumFuerte}>{fmtMoney(total(isr))}</td>
+              <td style={tdNumFuerte}>{fmtMoney(total((r) => Number(r.cuota_obrera)))}</td>
+              <td style={tdNumFuerte}>{fmtMoney(total((r) => Number(r.neto)))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </section>
   );
 }

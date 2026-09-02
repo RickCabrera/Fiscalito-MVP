@@ -1,6 +1,19 @@
 /** Tabla de incidencias del periodo (D-07). DEMO: se borra en F2. */
 
 import type { CierrePeriodo, EmpleadoDemo } from '../../services/nominaDemoApi';
+import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from './estilosTabla';
+
+const num: React.CSSProperties = {
+  ...td,
+  textAlign: 'right',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontVariantNumeric: 'tabular-nums',
+};
+const numMarcado: React.CSSProperties = {
+  ...num,
+  fontWeight: 700,
+  color: 'var(--warning)',
+};
 
 export default function TablaIncidencias({
   cierre,
@@ -13,16 +26,12 @@ export default function TablaIncidencias({
     empleados.find((e) => e.empleado_no === numero)?.nombre ?? numero;
 
   return (
-    <section
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 20,
-      }}
-    >
-      <h2 style={{ fontSize: '1rem', marginTop: 0 }}>
-        Incidencias · {cierre.periodo.inicio} a {cierre.periodo.fin}
+    <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <h2 style={tituloSeccion}>
+        Incidencias{' '}
+        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
+          · {cierre.periodo.inicio} a {cierre.periodo.fin}
+        </span>
       </h2>
 
       {/* Herencia de D-04: si esto no se pinta, un alta con el employeeNo
@@ -32,11 +41,13 @@ export default function TablaIncidencias({
         <p
           role="alert"
           style={{
+            margin: 0,
             background: 'var(--warning-bg)',
             border: '1px solid var(--warning-border)',
-            borderRadius: 8,
-            padding: '8px 12px',
-            fontSize: '0.9rem',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-sm) var(--space-md)',
+            fontSize: '0.88rem',
+            color: 'var(--text-primary)',
           }}
         >
           <strong>Checadas de empleados que no están en la plantilla:</strong>{' '}
@@ -45,36 +56,44 @@ export default function TablaIncidencias({
         </p>
       )}
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-        <thead>
-          <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-            <th style={{ padding: '4px 0' }}>Empleado</th>
-            <th>Días del periodo</th>
-            <th>Laborables</th>
-            <th>Trabajados</th>
-            <th>Faltas</th>
-            <th>Retardos</th>
-            <th title="Informativo. La base de cuotas la decide el motor por ramo (Art. 31 LSS).">
-              Días cotizados*
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {cierre.incidencias.map((i) => (
-            <tr key={i.empleado_no}>
-              <td style={{ padding: '4px 0' }}>{nombre(i.empleado_no)}</td>
-              <td>{i.dias_periodo}</td>
-              <td>{i.dias_laborables}</td>
-              <td>{i.dias_trabajados}</td>
-              <td style={{ fontWeight: i.faltas > 0 ? 700 : 400 }}>{i.faltas}</td>
-              <td style={{ fontWeight: i.retardos > 0 ? 700 : 400 }}>{i.retardos}</td>
-              <td style={{ color: 'var(--text-muted)' }}>{i.dias_cotizados}</td>
+      <div style={envoltura}>
+        <table style={tabla(720)}>
+          <thead>
+            <tr>
+              <th style={th}>Empleado</th>
+              <th style={thNum}>Días del periodo</th>
+              <th style={thNum}>Laborables</th>
+              <th style={thNum}>Trabajados</th>
+              <th style={thNum}>Faltas</th>
+              <th style={thNum}>Retardos</th>
+              <th
+                style={thNum}
+                title="Informativo. La base de cuotas la decide el motor por ramo (Art. 31 LSS)."
+              >
+                Días cotizados*
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {cierre.incidencias.map((i, idx) => (
+              <tr key={i.empleado_no} style={fila(idx)}>
+                <td style={td}>{nombre(i.empleado_no)}</td>
+                <td style={num}>{i.dias_periodo}</td>
+                <td style={num}>{i.dias_laborables}</td>
+                <td style={num}>{i.dias_trabajados}</td>
+                {/* Falta y retardo son el dato que se busca en esta tabla: se
+                    marcan con color semántico además del peso, para que salten
+                    a la vista en un proyector. */}
+                <td style={i.faltas > 0 ? numMarcado : num}>{i.faltas}</td>
+                <td style={i.retardos > 0 ? numMarcado : num}>{i.retardos}</td>
+                <td style={{ ...num, color: 'var(--text-muted)' }}>{i.dias_cotizados}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 0 }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
         * <strong>Informativo.</strong> La base de las cuotas del IMSS la determina el motor
         por ramo: el ausentismo no reduce Enfermedades y Maternidad (Art. 31 LSS). Este
         número no alimenta ningún cálculo de esta pantalla.
