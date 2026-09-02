@@ -219,15 +219,20 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   llego a empleados y dispositivos del cliente activo en un clic. **PR #29.** Las
   pestañas dentro de la ficha se quedan, como autorizaste. `EmpleadosPage` **reusa**
   `EmpleadosTab`, no lo copia.
-- [ ] **R-06 · Sacar el mock del flujo de producción** — la pestaña Plantilla tras flag de
+- [x] **R-06 · Sacar el mock del flujo de producción** — la pestaña Plantilla tras flag de
   desarrollo (sin borrar fixtures ni sus tests), los clientes de demostración sólo en
   cuentas de desarrollo, y el catálogo de sólo-lectura deja de hacerse pasar por la
   cartera. *Listo cuando:* una cuenta nueva ve una app vacía y funcional, sin datos que no
-  sean suyos. **PR abierta.** Cerró **cuatro** costuras, no tres: la que faltaba era
+  sean suyos. **PR #30.** Cerró **cuatro** costuras, no tres: la que faltaba era
   `ClienteActivoContext`, que alimentaba el selector superior desde el catálogo del
   backend — sin tocarla, una cuenta nueva habría visto su lista vacía **y el selector
   mostrando los tres clientes de demostración**. Lleva revisor de motor: quitar el fallback
-  podía cambiar quién entra a `POST /nomina/calcular-periodo`.
+  podía cambiar quién entra a `POST /nomina/calcular-periodo`. **Dos decisiones abiertas
+  para ti:** (i) las cuentas donde ya se clickeó "Guardar esta cartera en mi cuenta"
+  **siguen teniendo los tres clientes demo escritos en su Firestore** — el filtro los oculta
+  pero no los borra, y borrar es irreversible; (ii) el flag es **sólo del cliente**: el
+  backend sigue sirviendo la ficha del caso real a cualquiera, así que R-06 esconde el mock
+  de la UI pero no lo saca del flujo. Eso último lo cierra R-07.
 - [ ] **R-07 · Backend dueño del dato** — `firebase-admin` en `apps/api`; el CRUD de
   clientes y empleados pasa a endpoints del backend. Decisión tomada por Ricardo: el
   servicio deja de ser stateless. *Listo cuando:* alta/edición/baja de empleado pasa por el
