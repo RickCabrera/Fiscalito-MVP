@@ -126,7 +126,7 @@ export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Dat
         <h1>Calendario patronal</h1>
         <p>
           Lo que hay que enterar, presentar o pagar por los clientes del despacho.{' '}
-          {datos && (
+          {datos && datos.cubre_desde && datos.cubre_hasta && (
             <>Vencimientos del <strong>{datos.cubre_desde}</strong> al{' '}
             <strong>{datos.cubre_hasta}</strong> — son las obligaciones de las cuotas de{' '}
             {datos.anio_de_las_cuotas}, y las de diciembre vencen en enero del año siguiente.</>
@@ -184,8 +184,17 @@ export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Dat
                 />
               )}
             </header>
+            {/* La key separa LO MISMO que `agrupar`: en cuanto F1-09 registre el
+                tipo de salario o la personalidad, dos renglones del mismo día
+                pueden compartir clave y periodo y diferir sólo en
+                `condicional`/`nota` — y React recibiría dos hijos con la misma
+                key. Es el bug que la clave de agrupamiento existe para evitar. */}
             {renglones.map((r) => (
-              <FilaObligacion key={`${r.obligacion.clave}-${r.obligacion.periodo_cubierto}`} renglon={r} />
+              <FilaObligacion
+                key={[r.obligacion.clave, r.obligacion.periodo_cubierto,
+                      r.obligacion.condicional, r.obligacion.nota].join('|')}
+                renglon={r}
+              />
             ))}
           </section>
         );

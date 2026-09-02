@@ -16,7 +16,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 
 const perfilBase: UserProfile = {
@@ -61,10 +61,16 @@ const { default: FiscalitoServicePage } = await import('./FiscalitoServicePage')
 // El tab de pre-declaracion (el del contribuyente) usa useAgent.
 const { AgentProvider } = await import('../agent/AgentContext');
 
+/** Sonda del query string vivo. `window.location` no sirve con MemoryRouter. */
+function SondaQuery() {
+  return <span data-testid="query">{useLocation().search}</span>;
+}
+
 function montar(ruta = '/app/store/fiscalito/use') {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <AgentProvider>
+        <SondaQuery />
         <Routes>
           <Route path="/app/store/fiscalito/use" element={<FiscalitoServicePage />} />
           <Route path="/app/calendario" element={<div>calendario patronal</div>} />
@@ -105,6 +111,24 @@ describe('FiscalitoServicePage — cuenta de despacho', () => {
       'Estado de cuenta', 'Multi-periodo', 'Calendario fiscal']) {
       expect(screen.queryByText(oculto)).toBeNull();
     }
+  });
+
+  it('un contribuyente con un ?tab= que no le toca queda con el query limpio', () => {
+    /**
+     * COBERTURA QUE SE PERDIÓ AL REESCRIBIR ESTE ARCHIVO. El efecto que limpia
+     * el query lo recorría antes un contador con `?tab=declaracion`; desde E-07
+     * el contador se sale por el `return` del propio efecto, así que el CUERPO
+     * quedó sin ejercitar: sustituirlo por un no-op no rompía nada. Aquí lo
+     * recorre quien de verdad lo usa hoy.
+     */
+    perfilMock.actual = { ...perfilBase, contributorType: 'independiente', regimen: '626' };
+    montar('/app/store/fiscalito/use?tab=diot');
+
+    // DIOT no aplica a un RESICO: el tab degrada y el query se limpia.
+    expect(screen.queryByText('DIOT')).toBeNull();
+    // La sonda lee `useLocation`, no `window.location`: con `MemoryRouter` el
+    // segundo está siempre vacío y la aserción no probaría nada.
+    expect(screen.getByTestId('query').textContent).toBe('');
   });
 
   it('el contribuyente conserva sus tabs y su back-link', () => {

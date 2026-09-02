@@ -201,10 +201,13 @@ async def calendario_de_la_cartera(
     # que la pantalla pueda agrupar sin reordenar.
     obligaciones.sort(key=lambda o: (o.fecha_limite, o.clave, o.cliente_nombre))
 
+    # Sin obligaciones no hay rango que anunciar. Hoy es inalcanzable —`CLIENTES`
+    # es constante y no vacía— pero la pantalla SÍ pinta un estado vacío, y una
+    # de las dos mitades sobraría: indexar aquí sería un 500 en ese camino.
     return CalendarioPatronalResponse(
         anio_de_las_cuotas=anio_de_las_cuotas,
-        cubre_desde=obligaciones[0].fecha_limite,
-        cubre_hasta=obligaciones[-1].fecha_limite,
+        cubre_desde=obligaciones[0].fecha_limite if obligaciones else None,
+        cubre_hasta=obligaciones[-1].fecha_limite if obligaciones else None,
         total_obligaciones=len(obligaciones),
         obligaciones=tuple(obligaciones),
         advertencias=ADVERTENCIAS_CALENDARIO,

@@ -112,10 +112,11 @@ export interface ObligacionPatronal {
 
 export interface CalendarioPatronal {
   anio_de_las_cuotas: number;
-  /** Primer vencimiento. NO es el 1 de enero: las cuotas de enero vencen en febrero. */
-  cubre_desde: string;
-  /** Último vencimiento, en enero del año siguiente. */
-  cubre_hasta: string;
+  /** Primer vencimiento. NO es el 1 de enero: las cuotas de enero vencen en
+   *  febrero. `null` sólo con la lista vacía. */
+  cubre_desde: string | null;
+  /** Último vencimiento, en enero del año siguiente. `null` con la lista vacía. */
+  cubre_hasta: string | null;
   total_obligaciones: number;
   obligaciones: ObligacionPatronal[];
   /** Lo que la respuesta no cubre, redactado por el backend. */

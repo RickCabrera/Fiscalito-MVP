@@ -72,15 +72,19 @@ class CalendarioPatronalResponse(BaseModel):
 
     exito: bool = True
     anio_de_las_cuotas: int
-    cubre_desde: date = Field(
+    cubre_desde: date | None = Field(
+        default=None,
         description="Primer vencimiento de la respuesta. **No es el 1 de enero**: las cuotas de "
         "enero vencen en febrero, así que un calendario pedido por año de las cuotas empieza "
         "en febrero. Va en el cuerpo para que la pantalla pueda decir qué rango está "
-        "enseñando en vez de mostrar un enero vacío sin explicación."
+        "enseñando en vez de mostrar un enero vacío sin explicación. `null` sólo si no hay "
+        "obligaciones — hoy imposible con una cartera no vacía, pero la pantalla ya pinta ese "
+        "estado y las dos mitades tienen que coincidir.",
     )
-    cubre_hasta: date = Field(
+    cubre_hasta: date | None = Field(
+        default=None,
         description="Último vencimiento, que cae en **enero del año siguiente** (las cuotas de "
-        "diciembre)."
+        "diciembre). `null` con la lista vacía.",
     )
     total_obligaciones: int
     obligaciones: tuple[ObligacionPatronalSchema, ...]

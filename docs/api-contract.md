@@ -232,7 +232,9 @@ fundamentos y los tests que los contrastan contra la tabla publicada de
 **`anio_de_las_cuotas` no es "el año del calendario".** Las cuotas de diciembre de 2026 vencen
 en enero de 2027 y **sí** vienen; las de diciembre de 2025, que vencen en enero de 2026, **no**.
 Por eso la respuesta trae `cubre_desde` y `cubre_hasta`: una pantalla que muestre "2026" sin
-decir el rango enseñaría un enero vacío sin poder explicarlo.
+decir el rango enseñaría un enero vacío sin poder explicarlo. Los dos son `null` **sólo** si no
+hay obligaciones — hoy inalcanzable con la cartera estática, pero la pantalla ya pinta ese
+estado y las dos mitades tienen que coincidir.
 
 ```json
 {
