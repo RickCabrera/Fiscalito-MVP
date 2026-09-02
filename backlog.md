@@ -203,17 +203,20 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   IMSS publicada y el XSD del SAT timbra con `[0-9]{1,15}` sin exigir verificador.
   Decisión **ABIERTA** en `docs/decisiones-nomina.md` §D25 con dos preguntas para la
   contadora; se revierte con la constante `BLOQUEA_VERIFICADOR`.
-- [ ] **R-04 · Pantalla de dispositivos biométricos** — recortada en G-02, se restaura.
+- [x] **R-04 · Pantalla de dispositivos biométricos** — recortada en G-02, se restaura.
   Listar, agregar/editar (nombre, IP, serial) y enrolamiento de empleados por dispositivo
   usando la vinculación por `employeeNo` de G-02. *Listo cuando:* doy de alta un
   dispositivo y veo qué empleados están enrolados. **PR abierta.** Cierra el tercer lado
   del triángulo de G-02 (enrolado-fantasma) y un cuarto que nadie cubría: el vinculado
   que no está en ningún aparato, que entra al cálculo y saldría con falta en todos los
   días laborables. **La pantalla no afirma cuántas checadas mandó cada aparato** porque
-  `EventoChecada` no identifica el dispositivo; lo dice al pie.
-- [ ] **R-05 · Empleados y Dispositivos en la navegación lateral** — entradas propias junto
+  `EventoChecada` no identifica el dispositivo; lo dice al pie. **PR #29.** Decisión ABIERTA
+  para ti: el almacén de checadas es memoria del proceso, así que "sin checadas" significa
+  "no hay checadas en la memoria del backend, que se borra al reiniciar". Acotar la insignia
+  a un periodo, relativizar el copy o esperar a F1-09 es decisión de producto.
+- [x] **R-05 · Empleados y Dispositivos en la navegación lateral** — entradas propias junto
   a Clientes/Nómina/Calendario/Perfil, operando sobre el cliente activo. *Listo cuando:*
-  llego a empleados y dispositivos del cliente activo en un clic. **PR abierta.** Las
+  llego a empleados y dispositivos del cliente activo en un clic. **PR #29.** Las
   pestañas dentro de la ficha se quedan, como autorizaste. `EmpleadosPage` **reusa**
   `EmpleadosTab`, no lo copia.
 - [ ] **R-06 · Sacar el mock del flujo de producción** — la pestaña Plantilla tras flag de
