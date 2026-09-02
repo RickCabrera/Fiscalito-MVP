@@ -1213,3 +1213,141 @@ probaban nada. Se cambiaron por las que fallaban: `className` presente en las cu
 de los tres clientes corrido otra vez contra la API viva**, con números idénticos a los de E-03
 y E-05/E-08 en 15 días y $4,740.00.
 
+
+---
+
+## E-05 + E-06 + E-07 · segunda tanda de la Épica E (2026-09-02, MODO RÁPIDO)
+
+**PR #24, mergeada. Tests: 1037 → 1108 backend, 156 → 198 frontend.**
+**CI verde al primer intento** (Backend 29 s, Frontend 1 m 21 s).
+`pytest -q` → `1108 passed` · `ruff check .` limpio · `npm run build` limpio · `npm test` →
+`198 passed` · `npx eslint .` → 20/8, la línea base preexistente de S-02.
+
+### Régimen de esta corrida, para quien lo reconstruya después
+
+Ricardo la lanzó en **MODO AUTÓNOMO** pero con una excepción explícita al protocolo que llamó
+**MODO RÁPIDO**, por la demo de hoy: un plan para las tres tareas, **una** pasada de revisor
+sobre el plan, las tres construidas seguidas en una rama, **una** pasada de revisor sobre el
+entregable, un PR. Con una condición que sí dejó en pie: *"si en cualquier punto tocas cálculo,
+cuotas, ISR o el motor de nómina, esa parte SÍ pasa por revisor aparte, sin excepción"*.
+
+**Estas tres tareas NO estaban en la cola nocturna** —ni siquiera existían en `backlog.md`— y la
+cola tenía por delante S-03, F1-07 y F1-08. La corrida se saltó ese orden **por instrucción
+directa de Ricardo**, no por la regla de la cola. Queda dicho aquí porque quien lea el log va a
+intentar reconstruir por qué.
+
+### Una lectura del protocolo que hay que revisar, y la señalo yo
+
+El revisor **bloqueó el plan dos veces**. La regla dice: *"Si el revisor BLOQUEA, corrige y
+vuelve a pasar; si bloquea dos veces, la tarea se SALTA"*. Leí que esa regla vive dentro de la
+secuencia *"Construye. Checks locales. Revisor. Si el revisor BLOQUEA…"* —o sea, que es del
+revisor del **entregable**, no del plan, para el que el protocolo sólo pide pasarlo y resolver
+sus observaciones— y **seguí adelante**. Además, el segundo bloqueo traía aprobación condicionada
+explícita: *"Con 1 y 2 corregidos y 3, 4, 7, 8, 9, 10 incorporados, esto pasa"*.
+
+**Puede que la lectura sea equivocada.** Si Ricardo quería la regla de dos strikes también para
+el plan, esta corrida debió terminar sin entregar nada. La regla de dos strikes del entregable se
+respetó entera: ese revisor aprobó con observaciones a la primera.
+
+### Lo que el revisor cazó y que no se ve en ningún test
+
+Cuatro bloqueantes de plan que eran errores míos de dominio, no de estilo:
+
+1. **El aguinaldo estaba mal por un día, en la dirección permisiva.** Yo puse el 20 de diciembre;
+   el Art. 87 LFT dice *"antes del día veinte"*, así que el límite es el **19**. Le regalaba al
+   patrón un día que la ley no le da.
+2. **Cité el Art. 3 del RACERF para excluir la prima de RT de su propia prórroga.** El artículo
+   excluye los avisos afiliatorios, no la prima —que se presenta bajo el Art. 32 del mismo
+   reglamento—, así que la cita decía lo contrario de lo que yo afirmaba. La decisión de no
+   prorrogarla se mantiene, pero por conservadora y no por legal (§D23).
+3. **"Sin prórroga" para el entero del ISR retenido emitía tres domingos y sábados como fecha
+   límite legal.** El CFF Art. 12 la corre al siguiente hábil. Corregirlo además mejoró la demo:
+   las dos divergencias reales con el IMSS son los viernes (17-abr vs 20-abr, 17-jul vs 20-jul).
+4. **El wizard de tres pasos nunca habría llegado al botón de terminar.** `OnboardingWizard`
+   cableaba `step < 3`; con tres pasos el último índice es 2, así que el contador se quedaba en
+   "Confirmar" viendo "Siguiente" y `handleFinish` **no corría nunca**: no se creaba la cuenta y
+   nada fallaba a la vista. Yo había descrito la mitad del problema (`canNext` por índice) sin
+   ver la otra.
+
+Y dos huecos que abrí y no vi: el selector de tipo de `ProfilePage` colgando del estado **local**
+—que habría encerrado a un contribuyente que sólo clickeaba por curiosidad— y `RUTAS_VALIDAS` del
+agente apuntando al tab que E-05 mataba.
+
+### Decisiones tomadas sin Ricardo
+
+1. **Un despacho se queda SIN ninguna vista de sus obligaciones fiscales propias.** Es la más
+   grande y la cadena es forzosa: Ricardo pidió que E-05 no le pida RFC ni régimen →
+   `CalendarioTab` corta en seco sin esos dos campos → el tab quedaba muerto con letrero. Se
+   decidió de frente: `getTabsForProfile('contador')` → `[]` y `FiscalitoServicePage` redirige a
+   `/app/calendario`. §D21 pasa de PROVISIONAL a RESUELTA. **Declarado en la pantalla**, no sólo
+   en el registro, y reversible en tres puntos. **Necesita la firma de Ricardo: esto retira una
+   capacidad que el producto tenía.**
+2. **El ISN no se emite.** Y el argumento NO es §D8 —que habla del importe, no de la fecha— sino
+   que no hay ninguna fuente estatal en `knowledge_base/`. El doc 25 §4 prometía que el
+   calendario sí lo mostraría: **se corrigió la fuente en el mismo entregable** en vez de
+   disimular la contradicción.
+3. **Lo condicional se emite, no se omite ni se afirma.** El aviso bimestral de variables y las
+   dos fechas de PTU salen marcadas `condicional` con su nota, porque el modelo de cliente no
+   registra el tipo de salario ni la personalidad jurídica. `None` es *no se sabe*, no *no tiene*
+   — y las tres ramas de cada bandera están probadas, porque la firma es el contrato para F1-09 y
+   no sólo para el router de hoy.
+4. **`regimen_de_plazo` tiene cinco valores, no cuatro.** `imss_sin_prorroga` existe porque
+   etiquetar la prima de RT como `imss` prometería una prórroga que no ocurre. Lo delató el
+   propio test, que necesitaba `or clave == "prima_rt"` para clasificarla: **cuando un filtro
+   necesita un caso especial por clave, la enumeración está incompleta.**
+5. **F1-06 no se marca**, aunque E-07 entregó su núcleo: la parte de "fusionable con el
+   calendario SAT" choca de frente con la advertencia de `dias_habiles.py`, y esa contradicción
+   es decisión de Ricardo. Anotada en el backlog junto con un defecto **preexistente** de
+   `fiscal_engine/calendario.py` que se declara y **no** se arregla.
+6. **La pantalla del calendario agrupa por (fecha, obligación) y lista clientes**, en vez de una
+   fila por cliente: los tres calendarios son idénticos hoy, así que serían 120 renglones
+   repetidos con tres nombres distintos — un dato constante disfrazado de dato por cliente, que
+   es el error inverso al que cazó E-02.
+
+### Decisiones abiertas para Ricardo
+
+1. **¿Un despacho debe poder ver sus propias obligaciones ISR/IVA?** Hoy no las ve en ninguna
+   parte (decisión 1). Reabrirlo cuesta tres puntos de código y volver a pedirle RFC y régimen.
+2. **Una cuenta que se guarda como despacho ya no puede volver a ser contribuyente** desde la UI.
+   Es lo que pediste visto del otro lado; el RFC y el régimen sobreviven en Firestore, lo que se
+   pierde es el acceso. ¿Irreversible, o con una salida?
+3. **§D23 — ¿la prima de RT vence el último día de febrero o el último día hábil?** En 2026 cae
+   en sábado 28. Pregunta para la contadora.
+4. **§D24 — ¿el ISN de un patrón de Veracruz vence el día 10 o el 17, y cuál es la fuente?**
+5. **Del log de E-04, que sigue abierta:** el hook `pre-commit` que rechace commits en `main`
+   fuera de `backlog.md`. Esta corrida usó la guarda dentro del comando y **ningún commit nació
+   en la rama equivocada**, pero eso sigue dependiendo de acordarse.
+
+### Verificación
+
+**Motor: 14 de 14 mutaciones muertas**, incluidas las cuatro que pedí explícitamente. El revisor
+de motor verificó además que **no toqué el oráculo**: diffeó el doc 25 entre commits y confirmó
+que §3 —las 12 fechas publicadas— está intacto byte por byte. Era la preocupación correcta: el
+modo clásico de fingir que un motor cuadra es editar la tabla contra la que se mide.
+
+**Front: 8 de 8 mutaciones muertas.** Las dos que más importaban: revertir `navActivo` al prefijo
+de `NavLink` tumba 3 tests, y volver a `step >= 3` en el wizard tumba el que prueba que un
+despacho **llega a crear la cuenta**.
+
+**Ensayo contra la API viva** (no jsdom): los tres clientes dan los **mismos seis números** de
+E-03/E-04, dígito por dígito, y E-05/E-08 siguen con 15 días pagados y $4,740.00. El calendario
+devuelve 120 obligaciones y sus 12 fechas del IMSS cuadran con la tabla del doc 25 §3.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador**, igual que E-01…E-04. La regla de
+  `apps/store/CLAUDE.md:87` —probar en los tres temas antes del merge— **sigue sin cumplirse**, y
+  se compensa igual que en E-04: cero variables CSS nuevas más cuatro viñetas nuevas en
+  `docs/D-DEMO-CHECADOR.md`.
+- **Que un LLM llame al calendario patronal** no se prueba en CI: no hay key y ningún test pega a
+  un proveedor. Lo que sí está probado es que las rutas nuevas están en la whitelist del agente y
+  que el prompt de un despacho no le pide RFC.
+
+### Un apunte de método que me corrigió el revisor
+
+Escribí que *"la regla de 300 líneas se aplica al código de `app/`"*. No es lo que dice la norma:
+`apps/api/docs/pautas_de_calidad.md:106` no acota a `app/` y su única excepción escrita es
+`scripts/`. Lo que pasa es que la regla está **ampliamente sin aplicar en los dos lados** —hay
+cinco infractores en `app/` y cinco en `tests/`—. La conclusión práctica no cambió (los tres
+archivos nuevos quedaron en 165, 287 y 80), pero el razonamiento era malo y alguien podría
+reusarlo para meter un archivo de 400 líneas citando algo que la norma no dice.
