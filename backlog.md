@@ -49,7 +49,7 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
   del cliente seleccionado: checador en vivo, cerrar quincena, calcular nómina, cuotas por
   ramo, PDF. **Mismo motor, misma API.** *Listo cuando:* el flujo completo corre para el
   cliente de fixtures y para uno sintético.
-- [ ] **E-04 · Pulido visual** — los inputs de fecha y los botones de la pantalla actual se ven
+- [x] **E-04 · Pulido visual** — los inputs de fecha y los botones de la pantalla actual se ven
   crudos: jerarquía tipográfica, espaciado, estados de carga y vacío, tabla de recibos
   legible. *Listo cuando:* se proyecta en pantalla grande sin verse a medio hacer.
 
