@@ -115,7 +115,10 @@ describe('validarNSS', () => {
       // que no puede afirmarlo como hecho en la UI.
       expect(validarNSS('1234567890').motivo).toMatch(/suele ser una asignación previa/);
       expect(validarNSS('123456789034').motivo).not.toMatch(/asignación previa/);
-      expect(validarNSS('123456789034').motivo).toMatch(/Sobran 1\./);
+      expect(validarNSS('123456789034').motivo).toMatch(/Sobra 1\./);
+      // Concordancia: lo lee una contadora, no un log.
+      expect(validarNSS('1234567890').motivo).toMatch(/Falta 1\./);
+      expect(validarNSS('123456789').motivo).toMatch(/Faltan 2\./);
     });
 
     it('texto sin un solo dígito es error, no "vacío"', () => {

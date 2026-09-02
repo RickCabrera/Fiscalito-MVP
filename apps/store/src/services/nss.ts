@@ -12,7 +12,7 @@
  * existe son fuentes secundarias. No es DOF, no es un anexo, no es un acuerdo.
  * Por eso este módulo **no cita "fuente oficial"**: cita lo que hay, que es un
  * algoritmo de dominio público, sin norma publicada y **sin validar con la
- * contadora** (`docs/decisiones-nomina.md`, §NSS).
+ * contadora** (`docs/decisiones-nomina.md`, §D25).
  *
  * Comprobación aritmética del ejemplo canónico `12345678903`, para que quien
  * lea esto pueda verificar el algoritmo sin correr nada:
@@ -61,6 +61,11 @@ export const LARGO_NSS = 11;
  * repartida por el formulario justamente para que cambiar la política sea una
  * línea y no una cacería.
  */
+// DECISIÓN PROVISIONAL (nocturno): pendiente de firma de Ricardo (§D25 de
+// `docs/decisiones-nomina.md`). Se eligió la opción más conservadora bajo el
+// criterio que importa aquí —no producir un NSS INVENTADO de un tercero—, que
+// no es la más estricta con el formulario. Si la contadora confirma que el
+// verificador es normativo, esto pasa a `true`.
 export const BLOQUEA_VERIFICADOR = false;
 
 export type GravedadNSS = 'ok' | 'advertencia' | 'error';
@@ -132,7 +137,11 @@ export function validarNSS(entrada: string): ResultadoNSS {
     // segunda frase, el contador con un NSS de 10 dígitos calcula el onceavo a
     // mano — que es justo el dato inventado que no queremos.
     const falta = LARGO_NSS - digitos.length;
-    const cuantos = falta > 0 ? `Faltan ${falta}.` : `Sobran ${-falta}.`;
+    // Concordancia: lo lee una contadora, no un log.
+    const cuantos =
+      falta > 0
+        ? `Falta${falta === 1 ? '' : 'n'} ${falta}.`
+        : `Sobra${falta === -1 ? '' : 'n'} ${-falta}.`;
     // La explicación de la asignación antigua **sólo aplica a 10 dígitos**.
     // Incondicional, le decía "un número de 10 dígitos es..." a quien capturó
     // 13, que es incongruente y hace desconfiar del resto del mensaje.
