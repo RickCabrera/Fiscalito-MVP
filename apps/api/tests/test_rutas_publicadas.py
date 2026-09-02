@@ -115,6 +115,15 @@ def test_ningun_404_del_backend_viaja_con_detail_string():
     `FiscalAgentError(..., status_code=404)`, así que buscar el texto
     "status_code=404" acusa justo lo que se quiere. Lo que importa es de qué
     clase es la excepción.
+
+    **HASTA DÓNDE ALCANZA.** Ve `HTTPException` escrito como nombre pelón con el
+    literal `404`. NO ve un alias (`HTTPException as X`), la forma con atributo
+    (`fastapi.HTTPException`) ni `status.HTTP_404_NOT_FOUND`. Ninguna de las tres
+    existe hoy en `app/` —cero ocurrencias, `status` ni siquiera se importa—, y
+    por eso no se cubren. Se dice aquí para que nadie lea el test como una
+    garantía total. Lo mismo vale para el 405: `errorApi.ts` lo trata igual que
+    el 404, pero un 405 de dominio no es plausible (lo produce el router), así
+    que no se guarda.
     """
     infractores = []
     for ruta in (Path(__file__).resolve().parents[1] / "app").rglob("*.py"):
