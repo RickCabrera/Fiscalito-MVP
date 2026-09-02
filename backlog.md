@@ -117,6 +117,22 @@ destructivas.
   está versionado en la raíz del repo, **y `firebase.json` se dejó intacto a propósito** para
   no cambiar la semántica de `firebase deploy`.
 
+**Dos cosas que quedaron abiertas y son acción de Ricardo, no de código:**
+
+1. **La receta para desplegar `firestore.rules` no funciona como está escrita.** El encabezado
+   del archivo dice `firebase deploy --only firestore:rules`, pero `firebase.json` vive en
+   `apps/store/` y las reglas en la raíz, y ese `firebase.json` **no tiene bloque `firestore`**
+   (se dejó intacto a propósito: agregárselo haría que un `firebase deploy` pelado publicara
+   también las reglas y pudiera romper producción). Para desplegarlas hace falta decidir entre
+   agregar ese bloque —asumiendo el riesgo— o poner un `firebase.json` en la raíz.
+   **G-03 entero cuelga de ese despliegue**: sin reglas, la app cae al catálogo del backend y
+   dos cuentas ven los mismos tres clientes.
+2. **Colisión de nomenclatura con F1-09.** Está referenciada en `api-contract.md`,
+   `D-DEMO-CHECADOR.md`, `decisiones-nomina.md` y `nocturno-log.md` como dueña de "persistencia
+   Firestore / alta de clientes". **G-01 y G-03 se comieron esa parte.** No aparece en
+   `backlog.md`, así que es deuda de nomenclatura y no de código; hay que decidir si F1-09 se
+   redefine o se cierra.
+
 **Decisión de arquitectura que necesita la firma de Ricardo:** G-01 pedía CRUD de empleados en
 el backend y G-03 pedía la cartera en Firestore. Eso son dos dueños del mismo dato. Se
 construyó el modelo, la semilla y el cálculo en el backend, y el CRUD contra Firestore desde el
