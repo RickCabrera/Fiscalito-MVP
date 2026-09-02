@@ -189,7 +189,15 @@ export default function NominaClientePage() {
           <button
             className="btn-primary"
             onClick={n.pedirCierre}
-            disabled={n.ocupado || !cliente || !n.inicio || !n.fin || n.carteraCargando}
+            // `ajenoALaCartera` va TAMBIÉN aquí y no sólo en el badge del
+            // paso. Ponerlo sólo en el letrero dejaba el botón encendido, en
+            // color, sin hacer nada — que es exactamente lo que el encabezado
+            // de este archivo critica de la corrida G, reintroducido a tres
+            // líneas de distancia. El handler ya lo bloquea; esto es que se vea.
+            disabled={
+              n.ocupado || !cliente || !n.inicio || !n.fin ||
+              n.carteraCargando || n.ajenoALaCartera
+            }
             style={ACCION}
           >
             <CalendarCheck size={16} /> Cerrar quincena
