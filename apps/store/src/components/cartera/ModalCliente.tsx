@@ -214,15 +214,22 @@ export default function ModalCliente({
           </div>
           <div style={{ flex: '1 1 180px' }}>
             <label style={etiqueta}>Periodicidad de pago</label>
+            {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app
+                calcula es siempre `quincena(hoy)`, y nadie valida que la
+                duración del periodo case con esta clave: un cliente marcado
+                Mensual recibiría la tarifa mensual del Art. 96 sobre una base
+                de 15-16 días —**ISR subestimado en silencio**, con recibo
+                creíble— y uno Semanal, la semanal sobre 16 días. Catorcenal ni
+                siquiera puede calcular: no hay tarifa publicada (§D10).
+                Abrir las otras tres exige que el motor rechace un periodo cuya
+                duración no case con la clave. Queda anotado en el backlog. */}
             <select
               style={campo}
               value={datos.clave_periodicidad}
+              disabled
               onChange={(e) => setDatos({ ...datos, clave_periodicidad: e.target.value })}
             >
-              <option value="02">Semanal</option>
-              <option value="03">Catorcenal</option>
               <option value="04">Quincenal</option>
-              <option value="05">Mensual</option>
             </select>
           </div>
         </div>
@@ -241,6 +248,12 @@ export default function ModalCliente({
             <strong>0.0054355</strong> multiplica Riesgos de Trabajo por mil.
           </p>
         )}
+
+        <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Hoy sólo se puede llevar nómina <strong>quincenal</strong>: el periodo que la app
+          propone siempre es una quincena, y calcular una quincena con la tarifa de otra
+          periodicidad daría un ISR equivocado sin avisar.
+        </p>
 
         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           Al elegir clase se propone la <strong>prima media</strong> de esa clase (Art. 73 LSS),

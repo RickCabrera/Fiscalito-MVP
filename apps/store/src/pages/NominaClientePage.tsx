@@ -56,7 +56,22 @@ export default function NominaClientePage() {
 
   // Los estados se derivan en cascada: un paso está bloqueado mientras no
   // exista lo que produce el anterior.
-  const estadoPaso2: EstadoPaso = cierre ? 'listo' : cliente ? 'disponible' : 'bloqueado';
+  /**
+   * El paso 2 espera también a la CARTERA, no sólo a la ficha.
+   *
+   * La ficha llega del backend (round-trip local) antes que Firestore (hasta
+   * 2500 ms). En esa ventana `deLaCartera` es `null`, así que el cierre usaría
+   * las llaves del catálogo en vez de las del aparato: para un empleado con
+   * número propio, cero checadas encontradas. Y cuando la cartera llega, la
+   * plantilla vuelve a cuadrar por `empleado_no` y nada levanta — sale un recibo
+   * con faltas de más, en silencio. Es el mismo bug de G-02 entrando por la
+   * puerta del tiempo.
+   */
+  const estadoPaso2: EstadoPaso = cierre
+    ? 'listo'
+    : cliente && !n.carteraCargando
+      ? 'disponible'
+      : 'bloqueado';
   const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
   const estadoPaso4: EstadoPaso = nomina ? 'disponible' : 'bloqueado';
 

@@ -123,6 +123,9 @@ export function useNominaCliente(clienteId: string) {
       .then((c) => {
         if (cancelado) return;
         setCargada({ id: clienteId, valor: c });
+        // Se limpia el error de carga: navegar A → B → A tras un reinicio de la
+        // API dejaba pintado el error viejo de A aunque la ficha ya llegó bien.
+        setErrorCargaDe(null);
         setInicio(c.periodo_sugerido.inicio);
         setFin(c.periodo_sugerido.fin);
       })
@@ -226,7 +229,10 @@ export function useNominaCliente(clienteId: string) {
    */
   const error =
     suyo(errorDe, clienteId, null) ??
-    (deLaCartera ? null : suyo(errorCargaDe, clienteId, null));
+    // `cartera.loading` cuenta como "todavía no se sabe": sin esto, una recarga
+    // directa sobre un cliente propio pintaba el 404 en rojo hasta 2500 ms y
+    // luego lo quitaba solo.
+    (deLaCartera || cartera.loading ? null : suyo(errorCargaDe, clienteId, null));
 
   /**
    * Checadas que caen DENTRO del periodo que se va a cerrar.
@@ -325,6 +331,8 @@ export function useNominaCliente(clienteId: string) {
     cliente,
     /** Empleados de la cartera que NO están vinculados al checador (G-02). */
     sinVincular,
+    /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
+    carteraCargando: cartera.loading,
     eventos,
     cierre,
     nomina,

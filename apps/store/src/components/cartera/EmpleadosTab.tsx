@@ -67,6 +67,15 @@ export default function EmpleadosTab({
 
   const sinVincular = useMemo(() => contarSinVincular(empleados), [empleados]);
   const llaves = useMemo(() => empleados.map((e) => e.empleado_no), [empleados]);
+  /** Números de aparato de los OTROS: el que se edita no choca consigo mismo. */
+  const numerosDeAparato = useMemo(
+    () =>
+      empleados
+        .filter((e) => e.empleado_no !== editando?.empleado_no)
+        .map((e) => e.employee_no)
+        .filter((n): n is string => Boolean(n)),
+    [empleados, editando],
+  );
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
@@ -213,6 +222,7 @@ export default function EmpleadosTab({
         <ModalEmpleado
           empleado={editando}
           existentes={llaves}
+          enUsoPorOtro={numerosDeAparato}
           onGuardar={onGuardar}
           onCerrar={() => setAbierto(false)}
         />

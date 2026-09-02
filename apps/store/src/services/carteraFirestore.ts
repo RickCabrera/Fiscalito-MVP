@@ -144,7 +144,11 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
   // evitar, con el fallback puesto y todo.
   const respaldo = async (motivo: string): Promise<CarteraCargada> => {
     try {
-      return { clientes: await carteraDelBackend(), origen: 'backend', motivoFallback: motivo };
+      return {
+        clientes: await conTimeout(carteraDelBackend(), 'El catálogo de demostración'),
+        origen: 'backend',
+        motivoFallback: motivo,
+      };
     } catch (e) {
       const porQue = e instanceof Error ? e.message : 'error desconocido';
       return {
@@ -183,14 +187,20 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
  * el panel saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una
  * razón que nadie entendería.
  *
- * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde,
- * se queda el snapshot, que es peor que estar al día pero mejor que no tener
- * cartera.
+ * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde
+ * —o se cuelga, de ahí el `conTimeout`— se queda el snapshot, que es peor que
+ * estar al día pero mejor que no tener cartera. Sin la cota, una API colgada
+ * dejaba `cargarCartera` sin resolver nunca: spinner eterno en la lista y, peor,
+ * `deLaCartera` en `null` para siempre, que rompe la auto-sanación del error de
+ * carga. Es el mismo agujero que se acababa de cerrar en `sembrarDemo`.
  */
 async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCartera[]> {
   if (clientes.length === 0) return clientes;
   try {
-    const { periodo_sugerido } = await obtenerCliente(CLIENTE_DEMO);
+    const { periodo_sugerido } = await conTimeout(
+      obtenerCliente(CLIENTE_DEMO),
+      'El periodo sugerido',
+    );
     return clientes.map((c) => ({ ...c, periodo_sugerido }));
   } catch {
     return clientes;

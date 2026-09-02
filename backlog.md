@@ -133,6 +133,17 @@ destructivas.
    `backlog.md`, así que es deuda de nomenclatura y no de código; hay que decidir si F1-09 se
    redefine o se cierra.
 
+3. **La periodicidad de pago quedó fija en quincenal, y es un número mal que ya venía de
+   antes.** El periodo que la app propone es siempre `quincena(hoy)`, y **nadie valida que la
+   duración del periodo case con la `clave_periodicidad` del cliente**: `periodo.py` sólo
+   comprueba que todas las incidencias midan lo mismo. Un cliente marcado **Mensual (05)**
+   recibiría la tarifa mensual del Art. 96 sobre una base de 15-16 días —**ISR subestimado en
+   silencio**, con recibo creíble— y uno **Semanal (02)**, la semanal sobre 16 días.
+   **Catorcenal (03)** ni siquiera puede calcular: no hay tarifa publicada (§D10) y el motor
+   levanta. Por eso el selector del alta de cliente ofrece **sólo quincenal**, deshabilitado y
+   con la razón en pantalla. Abrir las otras tres exige que el motor rechace un periodo cuya
+   duración no case con la clave — es tarea propia, y toca a la contadora.
+
 **Decisión de arquitectura que necesita la firma de Ricardo:** G-01 pedía CRUD de empleados en
 el backend y G-03 pedía la cartera en Firestore. Eso son dos dueños del mismo dato. Se
 construyó el modelo, la semilla y el cálculo en el backend, y el CRUD contra Firestore desde el

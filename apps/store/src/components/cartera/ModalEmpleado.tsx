@@ -102,6 +102,7 @@ function Campo({
 export default function ModalEmpleado({
   empleado,
   existentes,
+  enUsoPorOtro,
   onGuardar,
   onCerrar,
 }: {
@@ -109,6 +110,8 @@ export default function ModalEmpleado({
   empleado: EmpleadoCartera | null;
   /** Los `empleado_no` ya usados en este cliente, para no duplicar la llave. */
   existentes: string[];
+  /** Los `employee_no` de LOS DEMÁS: el del aparato tampoco se puede repetir. */
+  enUsoPorOtro: string[];
   onGuardar: (e: EmpleadoCartera) => Promise<void>;
   onCerrar: () => void;
 }) {
@@ -182,11 +185,26 @@ export default function ModalEmpleado({
     [esAlta, existentes, datos.empleado_no],
   );
 
+  /**
+   * Dos personas con el mismo número de aparato.
+   *
+   * El checador manda **una sola** serie de checadas para ese número, así que
+   * una de las dos se queda sin incidencias y el cálculo revienta con "estos
+   * empleados no traen incidencias del periodo" — un mensaje que manda a cerrar
+   * un periodo que sí se cerró. Falla fuerte, no en silencio, pero la pista es
+   * falsa y el arreglo cuesta esta línea.
+   */
+  const numeroDeAparatoRepetido = useMemo(() => {
+    const propio = datos.employee_no?.trim();
+    return Boolean(propio) && enUsoPorOtro.includes(propio as string);
+  }, [datos.employee_no, enUsoPorOtro]);
+
   const puedeGuardar =
     datos.empleado_no.trim() !== '' &&
     datos.nombre.trim() !== '' &&
     sbc !== null &&
     !llaveRepetida &&
+    !numeroDeAparatoRepetido &&
     !guardando;
 
   async function guardar() {
@@ -261,6 +279,14 @@ export default function ModalEmpleado({
             <input style={campo} value={datos.puesto} onChange={(e) => set('puesto', e.target.value)} />
           </Campo>
         </div>
+
+        {numeroDeAparatoRepetido && (
+          <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
+            Otro empleado ya tiene el número de checador{' '}
+            <strong>{datos.employee_no}</strong>. El aparato manda una sola serie de
+            checadas por número, así que uno de los dos se quedaría sin incidencias.
+          </p>
+        )}
 
         {llaveRepetida && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>

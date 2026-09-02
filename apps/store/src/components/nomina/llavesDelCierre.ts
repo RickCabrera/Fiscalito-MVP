@@ -23,6 +23,14 @@
  *
  * Es un error fiscal y silencioso, así que la traducción vive aquí, sola y
  * probada, en vez de inline en el hook.
+ *
+ * DE DÓNDE VIENE DE VERDAD LA SEGURIDAD
+ * -------------------------------------
+ * No de esta traducción, sino de `nomina_engine/periodo.py`, que levanta en las
+ * dos direcciones: una incidencia sin empleado y un empleado sin incidencia son
+ * las dos un error de dominio. Este archivo evita el caso silencioso —llaves
+ * que no casan y nadie se entera—; lo que sostiene el resto es esa red de
+ * abajo, y conviene saberlo antes de confiar en que aquí no se cuela nada.
  */
 
 import { estaVinculado, type EmpleadoCartera } from '../../services/carteraApi';
@@ -59,9 +67,10 @@ export function llavesParaElCierre(
  * llaves distintas tumbaría el cálculo entero.
  *
  * Una incidencia cuya llave de checador no corresponda a nadie de la cartera
- * **se descarta**: es una checada de un número que no está dado de alta, y el
- * backend ya la reporta aparte en `empleados_desconocidos`. Colarla con su
- * llave cruda produciría un 422 o, peor, un recibo a nombre de un número.
+ * **se descarta**. Es **defensa en profundidad, no un camino vivo**:
+ * `cerrar_periodo` sólo devuelve incidencias de las llaves que recibió, así que
+ * hoy esa rama es inalcanzable. Si alguna vez se alcanzara, colar la llave cruda
+ * produciría un 422 o, peor, un recibo a nombre de un número.
  */
 export function incidenciasConLlaveDeCalculo(
   incidencias: IncidenciasEmpleado[],

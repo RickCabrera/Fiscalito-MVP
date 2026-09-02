@@ -117,6 +117,16 @@ Los tres clientes: `demo` (el caso real anonimizado de S-04, con sus 9 empleados
 `PLANTILLA_DEMO`), `cafeteria` (4 empleados) y `taller` (12 empleados), estos dos **sintéticos
 completos** — personas, salarios y fechas inventados.
 
+> **`empleados` lleva la llave del CHECADOR, no la del cálculo.** Son los
+> `employeeNo` del aparato: el motor casa `evento.empleado_no` —el
+> `employeeNoString` que manda el Hikvision— contra esta lista. Hasta G-02 las dos
+> llaves coincidían siempre y la distinción no se notaba; desde que un empleado
+> puede tener un número de aparato distinto del interno, mandar la equivocada hace
+> que **no se encuentre ni una de sus checadas**: falta todo el periodo, menos días
+> pagados, menor base de cuotas y menor ISR, sin ningún error. Las incidencias
+> vuelven con la misma llave que se mandó, así que el llamador tiene que
+> traducirlas de regreso antes de `calcular-periodo`, que indexa por la interna.
+
 ### `GET /api/v1/despacho/clientes`
 
 Cartera del despacho, para la lista y el selector de cliente activo.

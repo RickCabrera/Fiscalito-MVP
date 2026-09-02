@@ -58,12 +58,17 @@ const EMPLEADO = {
   nss: '', employee_no: 'E-01', enrolamiento: 'enrolado' as const,
 };
 
+/** El periodo que el backend calcula HOY. */
+const PERIODO_DE_HOY = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null };
+/** El que quedó congelado en Firestore al sembrar, dos quincenas atrás. */
+const VIEJO = { inicio: '2026-07-16', fin: '2026-07-31', fecha_pago: null };
+
 function backendResponde() {
   obtenerClientes.mockResolvedValue([RESUMEN]);
   obtenerCliente.mockResolvedValue({
     ...RESUMEN,
     empleados: [],
-    periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
+    periodo_sugerido: PERIODO_DE_HOY,
     fecha_referencia: '2026-09-01',
   });
   obtenerEmpleadosSemilla.mockResolvedValue({
@@ -137,6 +142,63 @@ describe('cargarCartera', () => {
   it('nunca lanza, pase lo que pase en Firestore', async () => {
     getDocs.mockRejectedValue(new Error('lo que sea'));
     await expect(cargarCartera('uid-1')).resolves.toBeDefined();
+  });
+});
+
+describe('conPeriodoAlDia · el periodo sugerido no envejece', () => {
+  /**
+   * Lo que hay en Firestore es un **snapshot** del momento de sembrar, no
+   * `quincena(hoy)` reevaluado: el backend lo recalcula en cada request y
+   * Firestore no. Dos semanas después, cada cliente arrancaría con una quincena
+   * vencida, el panel saldría vacío y la pantalla pediría confirmación por una
+   * razón que nadie entendería.
+   */
+  it('reemplaza el periodo guardado por el que el backend calcula hoy', async () => {
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [{ id: 'mio', data: () => ({ nombre: 'Mi Cliente', periodo_sugerido: VIEJO }) }],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+
+    const r = await cargarCartera('uid-1');
+    expect(r.origen).toBe('firestore');
+    expect(r.clientes[0].periodo_sugerido).toEqual(PERIODO_DE_HOY);
+  });
+
+  it('si el backend falla, conserva el snapshot y NO cambia de origen', async () => {
+    // Quedarse con una quincena vieja es peor que estar al día, y mucho mejor
+    // que quedarse sin cartera.
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [{ id: 'mio', data: () => ({ nombre: 'Mi Cliente', periodo_sugerido: VIEJO }) }],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+    obtenerCliente.mockRejectedValue(new Error('API caída'));
+
+    const r = await cargarCartera('uid-1');
+    expect(r.origen).toBe('firestore');
+    expect(r.clientes[0].periodo_sugerido).toEqual(VIEJO);
+  });
+
+  it('si el backend se CUELGA, la carga no se cuelga con él', async () => {
+    // El agujero real: un `await` sin cota aquí dejaba `cargarCartera` sin
+    // resolver nunca — spinner eterno en la lista y, peor, `deLaCartera` en
+    // `null` para siempre, que rompe la auto-sanación del error de carga.
+    vi.useFakeTimers();
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [{ id: 'mio', data: () => ({ nombre: 'Mi Cliente', periodo_sugerido: VIEJO }) }],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+    obtenerCliente.mockReturnValue(new Promise(() => {}));
+
+    const promesa = cargarCartera('uid-1');
+    await vi.advanceTimersByTimeAsync(3000);
+    const r = await promesa;
+
+    expect(r.origen).toBe('firestore');
+    expect(r.clientes[0].periodo_sugerido).toEqual(VIEJO);
+    vi.useRealTimers();
   });
 });
 

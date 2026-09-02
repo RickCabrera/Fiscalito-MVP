@@ -50,9 +50,10 @@ export default function TablaIncidencias({
             color: 'var(--text-primary)',
           }}
         >
-          <strong>Checadas de empleados que no están en la plantilla:</strong>{' '}
-          {cierre.empleados_desconocidos.join(', ')}. No entraron al cálculo. Suele ser un
-          alta con el número equivocado en el checador.
+          <strong>Números del checador que no corresponden a nadie:</strong>{' '}
+          {cierre.empleados_desconocidos.join(', ')}. Sus checadas no entraron al cálculo.
+          Suele ser un alta con el número equivocado en el aparato — o alguien de la
+          plantilla al que todavía no le capturas su <code>employeeNo</code>.
         </p>
       )}
 
