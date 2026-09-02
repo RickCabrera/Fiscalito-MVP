@@ -107,6 +107,46 @@ describe('ModalCliente · la prima de RT se acota contra el Art. 72', () => {
   });
 });
 
+describe('ModalCliente · los campos obligatorios', () => {
+  it('sin prima de RT no se guarda', async () => {
+    // `primaFueraDeRango` excluye la cadena vacía a propósito, así que lo único
+    // que impide guardar un cliente SIN prima es la cláusula de `puedeGuardar`.
+    // Un cliente sin prima es un cliente al que no se le puede calcular Riesgos
+    // de Trabajo, y hasta ahora nada lo fijaba.
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    pintar();
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    llenarBasico();
+
+    expect(campo(/Prima de RT/)).toHaveProperty('value', '');
+    expect(botonAlta()).toHaveProperty('disabled', true);
+  });
+
+  it('sin razón social no se guarda', async () => {
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    pintar();
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    fireEvent.change(campo(/Identificador/), { target: { value: 'tortilleria-lopez' } });
+    fireEvent.change(campo(/Prima de RT/), { target: { value: '0.0113065' } });
+
+    expect(botonAlta()).toHaveProperty('disabled', true);
+  });
+
+  it('el handler tampoco guarda si la validación no pasa', async () => {
+    // Simetría con `useNominaCliente`: la guarda vive en el handler, no sólo en
+    // el atributo del botón.
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    const onGuardar = pintar();
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    llenarBasico();
+    fireEvent.change(campo(/Prima de RT/), { target: { value: '5.4355' } });
+
+    fireEvent.click(botonAlta());
+    await new Promise((r) => setTimeout(r, 30));
+    expect(onGuardar).not.toHaveBeenCalled();
+  });
+});
+
 describe('ModalCliente · sin los límites no se guarda', () => {
   it('si el endpoint de primas falla, lo dice y bloquea el alta', async () => {
     // La validación no se evapora en silencio: sin límites no hay con qué

@@ -91,6 +91,11 @@ export default function ModalCliente({
     !guardando;
 
   async function guardar() {
+    // `disabled` es una propiedad del DOM, no una garantía del handler. Hoy no
+    // hay forma de disparar esto sin el botón —no hay `<form>`, así que Enter
+    // no envía— pero es la misma asimetría que esta rama gastó dos rondas
+    // corrigiendo en `useNominaCliente`, y cuesta una línea.
+    if (!puedeGuardar) return;
     setGuardando(true);
     setError(null);
     try {
