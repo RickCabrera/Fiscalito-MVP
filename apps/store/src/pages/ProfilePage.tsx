@@ -71,7 +71,11 @@ export default function ProfilePage() {
     <div className="page-container">
       <div className="page-header animate-in">
         <h1>{tipo === 'contador' ? 'Perfil del despacho' : 'Perfil del contribuyente'}</h1>
-        <p>Estos datos se usan para calcular tus declaraciones correctamente.</p>
+        <p>
+          {tipo === 'contador'
+            ? 'Los datos de tu despacho. Los de cada cliente se llevan por separado.'
+            : 'Estos datos se usan para calcular tus declaraciones correctamente.'}
+        </p>
       </div>
 
       {/* Tipo de contribuyente */}

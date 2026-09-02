@@ -49,7 +49,7 @@ export default function ClientesPage() {
         >
           <Users size={24} color="var(--text-muted)" />
         </div>
-        <div style={{ fontSize: '1.05rem', fontWeight: 600 }}>Todavía no hay clientes</div>
+        <div style={{ fontSize: '1.05rem', fontWeight: 600 }}>La cartera de clientes llega en la siguiente entrega</div>
         <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)', maxWidth: 420 }}>
           Aquí va la cartera del despacho: cada cliente con sus empleados, su prima de riesgo y
           su nómina. Mientras tanto, la nómina de demostración vive en el enlace “Nómina” del

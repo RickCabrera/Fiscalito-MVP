@@ -41,8 +41,19 @@ vi.mock('../context/ProfileContext', () => ({
 }));
 
 // El dashboard lee Firestore al montar; aquí solo importa a dónde navega.
+// Un DashboardStats en ceros, no `{}`: si la promesa resolviera antes de la
+// aserción, `getStatsForType` leería campos de undefined y el test moriría por
+// una razón que no tiene nada que ver con rutas.
 vi.mock('../services/declaracionesHistory', () => ({
-  obtenerEstadisticas: vi.fn(async () => ({})),
+  obtenerEstadisticas: vi.fn(async () => ({
+    totalDeclaraciones: 0,
+    declaracionesEsteMes: 0,
+    ultimoISR: 0,
+    ultimoIVA: 0,
+    ultimoTotal: 0,
+    saldoFavorAcumulado: 0,
+    promedioMensual: 0,
+  })),
   obtenerHistorial: vi.fn(async () => []),
 }));
 

@@ -36,7 +36,7 @@ export default function StepDatosFiscales({
       </h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 32 }}>
         {isContador
-          ? 'Estos son los datos de tu despacho. Los de cada cliente se capturan aparte.'
+          ? 'Estos son los datos fiscales de tu despacho, no los de tus clientes.'
           : 'Necesitamos tu RFC y regimen para calcular tus obligaciones correctamente.'}
       </p>
 
