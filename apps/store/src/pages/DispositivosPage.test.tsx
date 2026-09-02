@@ -73,9 +73,13 @@ vi.mock('../services/dispositivosFirestore', () => ({
 }));
 
 // El endpoint REAL del adaptador. Se stubbea la red, no la lógica del cruce.
+const cruceFalla = { actual: false };
 vi.mock('../services/nominaDemoApi', () => ({
   CLIENTE_DEMO: 'demo',
-  obtenerEventos: async () => ({ eventos: eventos.actual }),
+  obtenerEventos: async () => {
+    if (cruceFalla.actual) throw new Error('API caída');
+    return { eventos: eventos.actual };
+  },
 }));
 
 const { default: DispositivosPage } = await import('./DispositivosPage');
@@ -111,6 +115,7 @@ beforeEach(() => {
   dispositivosGuardados.actual = [];
   empleadosDelCliente.actual = [];
   eventos.actual = [];
+  cruceFalla.actual = false;
 });
 afterEach(cleanup);
 
@@ -214,6 +219,37 @@ describe('DispositivosPage · los cruces, que son el valor de la pantalla', () =
     await waitFor(() => expect(screen.getByText('ANA LOPEZ')).toBeTruthy());
     const chip = screen.getByText('ANA LOPEZ').closest('li') as HTMLElement;
     expect(within(chip).getByText(/sin checadas/)).toBeTruthy();
+  });
+});
+
+describe('DispositivosPage · "no pude preguntar" no es "no ha checado"', () => {
+  it('con el checador incontactable NO marca a nadie sin checadas', async () => {
+    // El defecto que un revisor encontró: `.catch(() => setChecando(new Set()))`
+    // convertía una API caída en la afirmación, en ámbar, de que nadie está
+    // checando — sobre gente que sí lo está. Es el MISMO defecto que ya se
+    // arregló para el aviso de "sin aparato" y que aquí quedó abierto.
+    empleadosDelCliente.actual = [emp({ employee_no: '7' })];
+    dispositivosGuardados.actual = [disp({ employee_nos: ['7'] })];
+    cruceFalla.actual = true;
+    pintar();
+
+    await waitFor(() => expect(screen.getByText('Entrada planta')).toBeTruthy());
+    const chip = screen.getByText('ANA LOPEZ').closest('li') as HTMLElement;
+    expect(within(chip).queryByText(/sin checadas/)).toBeNull();
+  });
+
+  it('y lo DICE, en vez de callar que el cruce no se pudo hacer', async () => {
+    // Callarlo dejaría una pantalla que se ve completa y omite la mitad de su
+    // información sin señal alguna.
+    empleadosDelCliente.actual = [emp({ employee_no: '7' })];
+    dispositivosGuardados.actual = [disp({ employee_nos: ['7'] })];
+    cruceFalla.actual = true;
+    pintar();
+
+    const aviso = await waitFor(() =>
+      screen.getAllByRole('alert').find((a) => a.textContent?.includes('No se pudo consultar')),
+    );
+    expect(aviso, 'no salió el aviso de cruce fallido').toBeTruthy();
   });
 });
 

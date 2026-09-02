@@ -19,12 +19,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AlertTriangle, Fingerprint, Loader, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Fingerprint, Loader, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCartera } from '../context/carteraStore';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import {
-  cruzarEnrolamiento,
   sinAparato,
   type DispositivoChecador,
 } from '../services/dispositivosApi';
@@ -35,6 +34,7 @@ import {
 } from '../services/dispositivosFirestore';
 import { obtenerEventos } from '../services/nominaDemoApi';
 import ModalDispositivo from '../components/dispositivos/ModalDispositivo';
+import TarjetaDispositivo from '../components/dispositivos/TarjetaDispositivo';
 import ErrorAlert from '../components/common/ErrorAlert';
 import SinClienteActivo from '../components/common/SinClienteActivo';
 
@@ -76,8 +76,21 @@ export default function DispositivosPage() {
   const [editando, setEditando] = useState<DispositivoChecador | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [porBorrar, setPorBorrar] = useState<DispositivoChecador | null>(null);
-  /** `employee_no` con al menos una checada en el almacén del backend. */
-  const [checando, setChecando] = useState<Set<string>>(new Set());
+  /**
+   * `employee_no` con al menos una checada en el almacén del backend.
+   *
+   * **`null` = no se pudo preguntar**, y es una distinción que costó un
+   * bloqueo del revisor. Con un `Set` vacío como estado de fallo, una API
+   * caída convertía "no pude preguntar" en "no ha checado" —en ámbar, sobre
+   * gente que sí está checando— y la ventana de carga hacía parpadear la
+   * insignia en todos para desdecirse un segundo después.
+   *
+   * Es el MISMO defecto que se arregló tres líneas más abajo para `huerfanos`,
+   * dejado abierto aquí: un aviso que aparece y desaparece solo enseña a
+   * ignorarlo. Sin la respuesta del adaptador no se afirma nada.
+   */
+  const [checando, setChecando] = useState<Set<string> | null>(null);
+  const [falloElCruce, setFalloElCruce] = useState(false);
   const [intento, setIntento] = useState(0);
 
   const uid = user?.uid ?? null;
@@ -105,15 +118,27 @@ export default function DispositivosPage() {
   }, [uid, clienteId, intento]);
 
   // Quién está checando, del endpoint REAL del adaptador. Que falle no rompe la
-  // pantalla: se pierde el cruce, no la administración de aparatos.
+  // pantalla —se sigue pudiendo administrar aparatos— pero **sí se dice**: el
+  // cruce deja de afirmar, no pasa a afirmar el negativo.
   useEffect(() => {
     if (!clienteId) return;
     let cancelado = false;
     obtenerEventos(clienteId)
       .then((r) => {
-        if (!cancelado) setChecando(new Set(r.eventos.map((e) => e.empleado_no)));
+        if (cancelado) return;
+        // El backend llama `empleado_no` a este campo, pero lo que trae es el
+        // `employeeNo` del APARATO — la llave que G-02 separó de la del
+        // cálculo. Es el único punto del archivo donde los dos nombres se
+        // cruzan, y por eso se dice aquí: comparar contra `e.empleado_no` de
+        // la cartera sería el defecto fiscal de G-02 reintroducido.
+        setChecando(new Set(r.eventos.map((e) => e.empleado_no)));
+        setFalloElCruce(false);
       })
-      .catch(() => { if (!cancelado) setChecando(new Set()); });
+      .catch(() => {
+        if (cancelado) return;
+        setChecando(null);
+        setFalloElCruce(true);
+      });
     return () => { cancelado = true; };
   }, [clienteId, intento]);
 
@@ -199,6 +224,16 @@ export default function DispositivosPage() {
         </div>
       )}
 
+      {falloElCruce && lista.length > 0 && (
+        <div style={{ marginBottom: 'var(--space-md)' }}>
+          <Aviso>
+            No se pudo consultar el checador, así que <strong>esta pantalla no dice quién
+            está checando</strong>. Los aparatos y sus enrolados son correctos; lo que falta
+            es el cruce contra las checadas recibidas.
+          </Aviso>
+        </div>
+      )}
+
       {dispositivos === null && !error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)', padding: '24px 0' }}>
           <Loader size={18} className="spin" color="var(--accent-active)" />
@@ -219,99 +254,18 @@ export default function DispositivosPage() {
       )}
 
       <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
-        {lista.map((d) => {
-          const { enrolados, fantasmas } = cruzarEnrolamiento(d, empleados);
-          return (
-            <div key={d.id} className="card" style={{ padding: 'var(--space-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>{d.nombre}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                    {[d.marca, d.modelo].filter(Boolean).join(' ') || 'Sin modelo'}
-                    {d.ip && (
-                      <>
-                        {' · '}
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                          {d.ip}:{d.puerto}
-                        </span>
-                      </>
-                    )}
-                    {d.serial && <> · serie {d.serial}</>}
-                  </div>
-                </div>
-                {!cartera.soloLectura && (
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      aria-label={`Editar ${d.nombre}`}
-                      onClick={() => { setEditando(d); setAbierto(true); }}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      aria-label={`Dar de baja ${d.nombre}`}
-                      onClick={() => setPorBorrar(d)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: 'var(--space-md)' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                  Enrolados · {enrolados.length}
-                </div>
-                {enrolados.length === 0 && (
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Nadie enrolado todavía. Edítalo para marcar quién está dado de alta en el aparato.
-                  </p>
-                )}
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-                  {enrolados.map((e) => (
-                    <li
-                      key={e.empleado_no}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem',
-                        border: '1px solid var(--border)', borderRadius: 'var(--radius-full)',
-                        padding: '3px 10px',
-                      }}
-                    >
-                      <span>{e.nombre}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
-                        #{e.employee_no}
-                      </span>
-                      {/* Del endpoint real del adaptador, no de la cartera. */}
-                      {!checando.has(e.employee_no as string) && (
-                        <span style={{ color: 'var(--warning)', fontSize: '0.72rem' }}>sin checadas</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {fantasmas.length > 0 && (
-                <div style={{ marginTop: 'var(--space-md)' }}>
-                  <Aviso>
-                    <AlertTriangle size={14} color="var(--warning)" style={{ verticalAlign: 'middle' }} />{' '}
-                    <strong>
-                      {fantasmas.length === 1
-                        ? 'Un número enrolado en este aparato no está en la cartera'
-                        : `${fantasmas.length} números enrolados en este aparato no están en la cartera`}
-                      :
-                    </strong>{' '}
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                      {fantasmas.join(', ')}
-                    </span>
-                    . Sus checadas van a llegar y <strong>no habrá a quién atribuirlas</strong>:
-                    es de donde salen los "empleados desconocidos" al cerrar el periodo.
-                  </Aviso>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {lista.map((d) => (
+          <TarjetaDispositivo
+            key={d.id}
+            dispositivo={d}
+            empleados={empleados}
+            checando={checando}
+            soloLectura={cartera.soloLectura}
+            onEditar={() => { setEditando(d); setAbierto(true); }}
+            onBorrar={() => setPorBorrar(d)}
+            Aviso={Aviso}
+          />
+        ))}
       </div>
 
       {lista.length > 0 && (

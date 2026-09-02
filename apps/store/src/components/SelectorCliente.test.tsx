@@ -86,6 +86,19 @@ describe('dónde se muestra el selector', () => {
     expect(screen.queryByLabelText('Cliente activo')).toBeNull();
   });
 
+  /**
+   * R-05. `navigation.ts` promete, en el comentario de `RUTAS_CON_CLIENTE`, que
+   * "esta constante se mueve con ella o el selector desaparece justo donde más
+   * se necesita". La promesa estaba escrita y la prueba no: quitar
+   * `/app/empleados` y `/app/dispositivos` de la constante dejaba las 405
+   * pruebas en verde y apagaba el selector en las dos pantallas nuevas — o sea
+   * el mecanismo entero de R-05, en silencio. Un revisor lo demostró.
+   */
+  it('las pantallas de empleados y dispositivos llevan selector de cliente', () => {
+    expect(rutaTieneAlcanceDeCliente('/app/empleados')).toBe(true);
+    expect(rutaTieneAlcanceDeCliente('/app/dispositivos')).toBe(true);
+  });
+
   it('la regla de alcance es explícita y no un prefijo suelto', () => {
     expect(rutaTieneAlcanceDeCliente('/app/clientes')).toBe(true);
     expect(rutaTieneAlcanceDeCliente('/app/clientes/taller')).toBe(true);

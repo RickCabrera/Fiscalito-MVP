@@ -113,7 +113,7 @@ export function navActivo(link: SidebarLink, pathname: string): boolean {
   // nómina. Se fija con test: si alguien las moviera a colgar de `/app/clientes`
   // volvería el bug de E-06 —dos entradas encendidas— sin que nada avise.
   //
-  // El resto conserva la semántica de `NavLink`: `end` compara exacto y el
+  // Del resto se conserva la semántica de `NavLink`: `end` compara exacto y el
   // query string del destino no participa (el tab lo resuelve la pantalla).
   const destino = link.to.split('?')[0];
   return link.end ? pathname === destino : bajoLaRuta(pathname, destino);

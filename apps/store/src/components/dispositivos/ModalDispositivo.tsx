@@ -80,13 +80,25 @@ export default function ModalDispositivo({
   );
   const puedeGuardar = problemas.length === 0 && !guardando;
 
-  const alternar = (employeeNo: string) =>
+  /**
+   * Enrola o desenrola por la llave del CHECADOR.
+   *
+   * **La guarda del nulo va aquí y no sólo en el `disabled` del checkbox.** El
+   * atributo es presentación: un test lo demostró metiendo `null` dentro de
+   * `employee_nos` con un clic forzado, y ese `null` se habría escrito en
+   * Firestore como un enrolado fantasma permanente —envenenando la llave que
+   * G-02 construyó y ensuciando el cruce para siempre—. Un dato que no se puede
+   * borrar desde la UI no se protege con un atributo.
+   */
+  const alternar = (employeeNo: string | null) => {
+    if (!employeeNo) return;
     setDatos((d) => ({
       ...d,
       employee_nos: d.employee_nos.includes(employeeNo)
         ? d.employee_nos.filter((n) => n !== employeeNo)
         : [...d.employee_nos, employeeNo],
     }));
+  };
 
   async function guardar() {
     if (!puedeGuardar) return;
@@ -224,7 +236,7 @@ export default function ModalDispositivo({
                     type="checkbox"
                     disabled={!vinculado}
                     checked={vinculado && datos.employee_nos.includes(e.employee_no as string)}
-                    onChange={() => alternar(e.employee_no as string)}
+                    onChange={() => alternar(e.employee_no)}
                   />
                   <span>{e.nombre}</span>
                   {vinculado ? (
