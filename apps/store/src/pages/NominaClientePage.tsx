@@ -49,15 +49,46 @@ import {
   type ClienteDetalle,
 } from '../services/despachoApi';
 import { useClienteActivo } from '../context/clienteActivoStore';
+import { labelStyle } from '../utils/styles';
 
 const MS_POLLING = 3000;
 
-const CAJA: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: 20,
+/**
+ * Texto sólo para lectores de pantalla.
+ *
+ * En línea y no como clase: `global.css` no tiene una utilidad para esto y
+ * E-04 no agrega CSS nuevo — la regla del proyecto es que cualquier variable
+ * nueva se defina en los tres temas, y no hay forma de revisarlos aquí.
+ */
+const SOLO_LECTORES: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
 };
+
+/** Botón de acción: el icono y el texto en una línea, sin saltos. */
+const ACCION: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+/**
+ * Aviso destacado dentro del flujo (E-04).
+ *
+ * Usa `.card` como base y sólo cambia el color del borde según la severidad,
+ * para que un aviso se lea como una card marcada y no como otro tipo de caja.
+ */
+function avisoStyle(color: string): React.CSSProperties {
+  return {
+    borderColor: color,
+    color: 'var(--text-primary)',
+    margin: 0,
+  };
+}
 
 /**
  * Qué fecha de pago mandar.
@@ -259,48 +290,68 @@ export default function NominaClientePage() {
     .map((i) => i.empleado_no);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 40 }}>
-      <header>
-        <h1 style={{ marginBottom: 4 }}>
-          Nómina de {cliente?.nombre ?? 'cliente'}{' '}
+    <div
+      className="page-container"
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}
+    >
+      <header className="page-header" style={{ marginBottom: 0 }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+          Nómina de {cliente?.nombre ?? 'cliente'}
           <span
             style={{
-              fontSize: '0.7em',
+              fontSize: '0.6em',
+              fontWeight: 700,
+              letterSpacing: 0.8,
               background: 'var(--accent-active)',
               color: 'var(--text-on-accent)',
-              borderRadius: 6,
-              padding: '2px 8px',
-              verticalAlign: 'middle',
+              borderRadius: 'var(--radius-full)',
+              padding: '3px 10px',
             }}
           >
             DEMO
           </span>
         </h1>
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-          {cliente
-            ? `${cliente.giro} · ${etiquetaOrigen(cliente.origen)} · ${cliente.num_empleados} empleados`
-            : cargandoCliente
-              ? 'Cargando el cliente...'
-              : 'No se pudo cargar el cliente'}
-        </p>
+        {cliente ? (
+          <p>
+            {cliente.giro} · {etiquetaOrigen(cliente.origen)} · {cliente.num_empleados} empleados
+          </p>
+        ) : cargandoCliente ? (
+          /* `role="status"` con texto accesible: un skeleton mudo dejaría sin
+             forma de distinguir "cargando" de "falló", que es justo lo que la
+             pantalla tiene que decir. */
+          <p role="status">
+            <span
+              className="skeleton"
+              aria-hidden="true"
+              style={{ display: 'inline-block', width: 260, height: 14, verticalAlign: 'middle' }}
+            />
+            <span style={SOLO_LECTORES}>Cargando el cliente...</span>
+          </p>
+        ) : (
+          <p style={{ color: 'var(--danger)' }}>No se pudo cargar el cliente</p>
+        )}
       </header>
 
       {error && (
-        <p
-          role="alert"
-          style={{ ...CAJA, borderColor: 'var(--danger)', color: 'var(--danger)' }}
-        >
+        <p className="card" role="alert" style={avisoStyle('var(--danger)')}>
+          <strong style={{ color: 'var(--danger)' }}>No se pudo completar la operación.</strong>{' '}
           {error}
         </p>
       )}
 
       {confirmarCierre && cliente && (
         <div
+          className="card"
           role="alertdialog"
           aria-label="Confirmar cierre sin checadas"
-          style={{ ...CAJA, borderColor: 'var(--warning)', display: 'flex', flexDirection: 'column', gap: 12 }}
+          style={{
+            ...avisoStyle('var(--warning)'),
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-sm)',
+          }}
         >
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
             <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
             <span>
               No hay checadas de <strong>{cliente.nombre}</strong> entre {inicio} y {fin}. Si
@@ -308,55 +359,102 @@ export default function NominaClientePage() {
               saldrá con <strong>sólo los días de descanso pagados</strong>, no en ceros.
             </span>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => void alCerrar()}>Cerrar de todos modos</button>
-            <button onClick={() => setConfirmarPara(null)}>Cancelar</button>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <button className="btn-primary" onClick={() => void alCerrar()}>
+              Cerrar de todos modos
+            </button>
+            <button className="btn-secondary" onClick={() => setConfirmarPara(null)}>
+              Cancelar
+            </button>
           </div>
         </div>
       )}
 
       <PanelChecador eventos={eventos} error={errorPanel} />
 
-      <section style={{ ...CAJA, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
-          Inicio del periodo
-          <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
-          Fin del periodo
-          <input type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
-        </label>
+      <section
+        className="card"
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}
+      >
+        <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+          <label style={{ flex: '0 1 190px' }}>
+            <span style={labelStyle}>Inicio del periodo</span>
+            <input
+              className="input-field"
+              type="date"
+              value={inicio}
+              onChange={(e) => setInicio(e.target.value)}
+            />
+          </label>
+          <label style={{ flex: '0 1 190px' }}>
+            <span style={labelStyle}>Fin del periodo</span>
+            <input
+              className="input-field"
+              type="date"
+              value={fin}
+              onChange={(e) => setFin(e.target.value)}
+            />
+          </label>
+        </div>
+
         {cliente && (
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, flexBasis: '100%' }}>
-            Se calculará con fecha de pago <strong>{cliente.periodo_sugerido.fecha_pago}</strong>.
-            De ella dependen la UMA, el salario mínimo y la tarifa vigentes.
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+            Se calculará con fecha de pago{' '}
+            <strong style={{ color: 'var(--text-secondary)' }}>
+              {cliente.periodo_sugerido.fecha_pago}
+            </strong>
+            . De ella dependen la UMA, el salario mínimo y la tarifa vigentes.
           </p>
         )}
-        <button onClick={alPedirCierre} disabled={ocupado || !cliente || !inicio || !fin}>
-          <CalendarCheck size={16} /> Cerrar quincena
-        </button>
-        <button onClick={alCalcular} disabled={ocupado || !cierre}>
-          <Calculator size={16} /> Calcular nómina
-        </button>
-        {nomina && cliente && (
-          <button onClick={() => exportarNominaPDF(nomina, cliente)}>
-            <FileDown size={16} /> Exportar PDF
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-sm)',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            borderTop: '1px solid var(--border)',
+            paddingTop: 'var(--space-md)',
+          }}
+        >
+          <button
+            className="btn-primary"
+            onClick={alPedirCierre}
+            disabled={ocupado || !cliente || !inicio || !fin}
+            style={ACCION}
+          >
+            <CalendarCheck size={16} /> Cerrar quincena
           </button>
-        )}
-        {ocupado && <Loader size={16} className="spin" />}
+          <button
+            className="btn-primary"
+            onClick={alCalcular}
+            disabled={ocupado || !cierre}
+            style={ACCION}
+          >
+            <Calculator size={16} /> Calcular nómina
+          </button>
+          {nomina && cliente && (
+            <button
+              className="btn-secondary"
+              onClick={() => exportarNominaPDF(nomina, cliente)}
+              style={ACCION}
+            >
+              <FileDown size={16} /> Exportar PDF
+            </button>
+          )}
+          {ocupado && <Loader size={16} className="spin" color="var(--accent-active)" />}
+        </div>
       </section>
 
       {cierre && ausentesTotales.length > 0 && (
         <p
+          className="card"
           role="alert"
           style={{
-            ...CAJA,
-            borderColor: 'var(--warning)',
-            color: 'var(--warning)',
+            ...avisoStyle('var(--warning)'),
             display: 'flex',
-            gap: 10,
+            gap: 'var(--space-sm)',
             alignItems: 'flex-start',
-            margin: 0,
           }}
         >
           <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -382,9 +480,11 @@ export default function NominaClientePage() {
           {/* `origen_plantilla` vale "request" para los tres clientes desde
               E-03, así que ya no distingue nada: lo que importa decir es de
               QUIÉN es esta nómina. */}
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-            Calculado con fecha de pago <strong>{nomina.fecha_pago_efectiva}</strong> ·{' '}
-            <strong>{cliente?.nombre}</strong> ({etiquetaOrigen(cliente?.origen ?? '')})
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            Calculado con fecha de pago{' '}
+            <strong style={{ color: 'var(--text-secondary)' }}>{nomina.fecha_pago_efectiva}</strong>{' '}
+            · <strong style={{ color: 'var(--text-secondary)' }}>{cliente?.nombre}</strong> (
+            {etiquetaOrigen(cliente?.origen ?? '')})
           </p>
           <TablaRecibos nomina={nomina} />
           <CuotasPorRamo nomina={nomina} />
