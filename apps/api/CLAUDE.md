@@ -57,7 +57,8 @@ fiscal-agent-api/
 │   │   ├── retenciones.py      # POST retenciones-terceros
 │   │   ├── multi_periodo.py    # POST multi-periodo
 │   │   ├── estado_cuenta.py    # POST estado-cuenta
-│   │   └── agente.py           # POST agente/predeclaracion (tool use Anthropic/OpenAI)
+│   │   ├── agente.py           # POST agente/predeclaracion (tool use Anthropic/OpenAI)
+│   │   └── despacho.py         # GET despacho/clientes y /clientes/{id} (E-02, demo)
 │   ├── schemas/
 │   │   ├── __init__.py
 │   │   ├── fiscal.py           # PerfilContribuyente, CFDI, enums, ContributorType
@@ -69,7 +70,8 @@ fiscal-agent-api/
 │   │   ├── retenciones.py      # RetencionesRequest/Response, TerceroRetencion
 │   │   ├── estado_cuenta.py    # EstadoCuentaRequest/Response
 │   │   ├── multi_periodo.py    # MultiPeriodoRequest/Response, AcumuladoMultiPeriodo
-│   │   └── agente.py           # AgentePreDeclaracionRequest/Response
+│   │   ├── agente.py           # AgentePreDeclaracionRequest/Response
+│   │   └── despacho.py         # ClienteResumen/ClienteDetalle/EmpleadoClienteSchema (E-02)
 │   ├── fiscal_engine/
 │   │   ├── __init__.py
 │   │   ├── tablas_isr.py       # Tablas ISR México 2026 (RESICO + Art. 96 + Art. 152)
@@ -172,6 +174,10 @@ Agente conversacional con tool use. Provider (Anthropic `claude-haiku-4-5-202510
 - Herramientas: `leer_perfil_contribuyente`, `obtener_predeclaraciones`, `crear_predeclaracion`
 - Loop agéntico máx 10 iteraciones. Tools definidas en `services/agent_tools.py`.
 - Retorna: texto + `predeclaracion` calculada (si se invocó la herramienta) + `herramientas_usadas`
+
+> **El contrato vive en `docs/api-contract.md`**, que es la fuente unica. Lo de abajo es un
+> resumen; los endpoints de las epicas D (asistencia, nomina) y E (despacho) estan documentados
+> ahi con su forma de request y response.
 
 ## SCHEMAS ACTUALES (CONTRATO)
 

@@ -23,6 +23,7 @@ from app.routes import (
     calendario,
     comparador,
     declaraciones,
+    despacho,
     diot,
     estado_cuenta,
     health,
@@ -98,5 +99,6 @@ app.include_router(estado_cuenta.router, prefix="/api/v1")
 app.include_router(agente.router, prefix="/api/v1")
 app.include_router(asistencia.router, prefix="/api/v1")
 app.include_router(nomina.router, prefix="/api/v1")
+app.include_router(despacho.router, prefix="/api/v1")
 
 logger.info("Fiscal Agent API inicializada correctamente")

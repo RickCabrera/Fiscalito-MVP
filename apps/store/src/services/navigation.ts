@@ -65,6 +65,42 @@ export function rutaInicial(tipo: ContributorType | null): string {
 }
 
 // ────────────────────────────────────────────────────────────
+// Alcance de cliente (E-02)
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Rutas cuyo contenido depende del cliente activo del despacho.
+ *
+ * REGLA PARA AGREGAR UNA: no basta con que la pantalla HABLE de clientes; tiene
+ * que LEER `useClienteActivo` y pedirle los datos a ese cliente. Si no, el
+ * selector afirma un cliente y la pantalla enseña otro.
+ *
+ * `/app/nomina-demo` NO está aquí a propósito: hoy esa pantalla cae en los
+ * defaults de `nominaDemoApi` (el cliente `demo`) y no mira el cliente activo.
+ * Con el selector encima diría "Taller Nogal · 12 empleados" sobre los nueve
+ * empleados del caso real, sus salarios y su PDF — y el guard del backend
+ * (`routes/nomina.py`, que rechaza calcularle a un cliente la plantilla de
+ * otro) nunca se dispararía, porque el front seguiría mandando `demo`.
+ * **E-03 la cablea al cliente activo y entonces entra a esta lista** — y si
+ * E-03 mueve la nómina a `/app/clientes/:id/nomina`, esta constante se mueve
+ * con ella o el selector desaparece justo donde más se necesita.
+ */
+const RUTAS_CON_CLIENTE = ['/app/clientes'];
+
+/**
+ * Si la ruta habla de UN cliente. Decide dónde se muestra el selector de
+ * cliente activo.
+ *
+ * Calendario y Perfil quedan fuera a propósito: son del DESPACHO. §D21 fija que
+ * el calendario de una cuenta de despacho muestra sus obligaciones propias y
+ * nada patronal, así que un selector de cliente ahí le mentiría al contador
+ * sobre lo que está viendo.
+ */
+export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
+  return RUTAS_CON_CLIENTE.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+}
+
+// ────────────────────────────────────────────────────────────
 // Tabs del servicio Fiscalito
 // ────────────────────────────────────────────────────────────
 

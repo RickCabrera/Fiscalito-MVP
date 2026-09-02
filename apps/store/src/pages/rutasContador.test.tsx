@@ -44,6 +44,19 @@ vi.mock('../context/ProfileContext', () => ({
 // Un DashboardStats en ceros, no `{}`: si la promesa resolviera antes de la
 // aserción, `getStatsForType` leería campos de undefined y el test moriría por
 // una razón que no tiene nada que ver con rutas.
+// La cartera tiene sus propios tests; aquí sólo importa que la ruta resuelva.
+vi.mock('../context/clienteActivoStore', () => ({
+  useClienteActivo: () => ({
+    clientes: [{ id: 'demo', nombre: 'Cliente Demo', giro: 'Servicios', origen: 'sintetico', num_empleados: 3, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' }],
+    clienteId: 'demo',
+    cliente: null,
+    loading: false,
+    error: null,
+    setClienteId: vi.fn(),
+    recargar: vi.fn(),
+  }),
+}));
+
 vi.mock('../services/declaracionesHistory', () => ({
   obtenerEstadisticas: vi.fn(async () => ({
     totalDeclaraciones: 0,
@@ -91,7 +104,7 @@ describe('rutas del contador', () => {
     const { container } = montar('/app/clientes');
 
     expect(screen.getByRole('heading', { name: 'Clientes' })).toBeTruthy();
-    expect(screen.getByText('Cartera de Despacho Demo')).toBeTruthy();
+    expect(screen.getByText('Cliente Demo')).toBeTruthy();
     expect(container.querySelector('.page-container')).toBeTruthy();
   });
 

@@ -98,13 +98,16 @@ fiscalito-store-app/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── src/
-│   ├── main.tsx                # Entry point + Router + AuthProvider + ProfileProvider
+│   ├── main.tsx                # Entry point: createRoot + providers + BrowserRouter
+│   ├── AppRoutes.tsx           # Arbol de <Routes>. Separado de main.tsx para que sea montable en jsdom
 │   ├── vite-env.d.ts
 │   ├── styles/
 │   │   └── global.css          # Variables CSS, utility classes, tema global
 │   ├── context/
 │   │   ├── AuthContext.tsx      # Firebase Auth provider + hooks (signIn, signUp, signInWithGoogle, signOut)
-│   │   └── ProfileContext.tsx   # Perfil de contribuyente + sync con Firestore
+│   │   ├── ProfileContext.tsx   # Perfil de contribuyente + sync con Firestore
+│   │   ├── ClienteActivoContext.tsx # Provider del cliente activo del despacho (E-02)
+│   │   └── clienteActivoStore.ts    # Contexto + hook useClienteActivo (separado por fast refresh)
 │   ├── components/
 │   │   ├── AppLayout.tsx        # Sidebar + layout + guards (authLoading, user, onboarding)
 │   │   ├── ProtectedRoute.tsx   # Guard de autenticacion
@@ -136,14 +139,16 @@ fiscalito-store-app/
 │   │   ├── ServiceDetailPage.tsx    # Detalle de servicio + docs API + ejemplo request/response
 │   │   ├── FiscalitoServicePage.tsx # Interfaz principal de Fiscalito con tabs
 │   │   ├── HistorialPage.tsx        # Historial de declaraciones con filtros y export PDF
-│   │   ├── ClientesPage.tsx         # Clientes del despacho (STUB de E-01, la llena E-02)
+│   │   ├── ClientesPage.tsx         # Cartera del despacho (E-02)
+│   │   ├── ClienteDetallePage.tsx   # Ficha del cliente con su plantilla (E-02)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
 │   │   ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
 │   │   ├── storeServices.ts         # Catalogo de servicios del marketplace
 │   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente (incl. contador)
-│   │   ├── navigation.ts            # Sidebar y tabs por perfil + frontera de rutas (modulo puro)
+│   │   ├── navigation.ts            # Sidebar, tabs por perfil y alcance de cliente (modulo puro)
+│   │   ├── despachoApi.ts           # Cliente REST de la cartera del despacho (E-02)
 │   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
 │   │   ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
 │   │   ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
@@ -167,7 +172,8 @@ fiscalito-store-app/
 /app/onboarding                → OnboardingWizard (protegida, sin sidebar)
 /app                           → DashboardPage (protegida, con sidebar)
 /app/historial                 → HistorialPage (protegida)
-/app/clientes                  → ClientesPage (protegida, solo contador — STUB de E-01, la llena E-02)
+/app/clientes                  → ClientesPage (protegida, cartera del despacho — solo contador)
+/app/clientes/:id              → ClienteDetallePage (protegida, ficha con la plantilla del cliente)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
@@ -209,6 +215,19 @@ teclee `/app` es redirigido a `/app/clientes` (`rutaInicial`).
 
 **Fuera de alcance de E-01, conocido:** `/app/historial`, `/app/store`, `/app/store/:serviceId`
 y `/app/admin` siguen alcanzables por URL para un contador.
+
+### Cliente activo del despacho (E-02)
+
+`ClienteActivoProvider` carga `GET /despacho/clientes` **solo si el perfil es contador** y
+mantiene el cliente en foco, persistido en `localStorage`. Un id guardado que ya no exista en la
+cartera **cae al primero** y se corrige lo guardado: si no, la ficha pediría un cliente fantasma
+y el backend respondería 404.
+
+El **selector de cliente** vive en una barra sobre el `<Outlet />` de `AppLayout` y se muestra
+solo en las rutas con alcance de cliente (`rutaTieneAlcanceDeCliente` en `navigation.ts`):
+Clientes y Nomina. **NO** en Calendario ni Perfil, que son del DESPACHO — §D21 fija que el
+calendario de una cuenta de despacho muestra sus obligaciones propias y nada patronal, asi que
+un selector de cliente ahi le mentiria al contador sobre lo que esta viendo.
 
 ### Frontera de tipos front → API
 

@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar } from 'lucide-react';
 import { getSidebarLinks, type NavId } from '../services/navigation';
+// DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
+import SelectorCliente from './SelectorCliente';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
 
@@ -135,6 +137,7 @@ export default function AppLayout() {
 
       {/* Main content */}
       <main className="main-with-sidebar" style={{ flex: 1, marginLeft: 240, minHeight: '100vh' }}>
+        <SelectorCliente />
         <Outlet />
       </main>
       <FiscalitoVoiceChat />

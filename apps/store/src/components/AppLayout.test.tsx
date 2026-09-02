@@ -48,6 +48,9 @@ vi.mock('../context/ProfileContext', () => ({
 // El chat de voz habla con OpenAI y el toggle necesita ThemeProvider: ninguno
 // de los dos tiene que ver con qué enlaces muestra el sidebar.
 vi.mock('./FiscalitoVoiceChat', () => ({ default: () => null }));
+// El selector de cliente tiene sus propios tests y necesita su provider; aquí
+// lo que se mide son los enlaces del sidebar.
+vi.mock('./SelectorCliente', () => ({ default: () => null }));
 vi.mock('./ThemeToggle', () => ({ default: () => null }));
 
 const { default: AppLayout } = await import('./AppLayout');

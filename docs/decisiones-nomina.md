@@ -519,3 +519,33 @@ sidebar cambia de destino y la tarea que lo habilita es F1-06, no una de la Épi
 
 **Que quede claro para quien planee E-02 y E-03:** hoy "Calendario" NO significa nada
 patronal. No se puede asumir que ya cubre las obligaciones IMSS de los clientes.
+
+---
+
+## D22 · La clase de riesgo de los clientes sintéticos es un supuesto — PROVISIONAL
+
+**Contexto (E-02).** La cartera de la demo lleva dos clientes inventados —una cafetería y un
+taller de reparación de vehículos— y cada uno necesita una prima de Riesgos de Trabajo para
+que su nómina se pueda calcular.
+
+**Lo que SÍ tiene fuente:** la **prima media por clase** está publicada en el Art. 73 LSS y ya
+vivía en el motor (`prima_media_clase()` en `nomina_engine/tablas_imss.py`, documentada en
+`knowledge_base/nomina/22_cuotas_imss_infonavit_2026.md`). E-02 la **lee de ahí**, no la
+retipea: clase II (1.13065 %) para la cafetería y clase III (2.59840 %) para el taller.
+
+**Lo que NO tiene fuente, y por eso esto es provisional:** la asignación **giro → clase**. Sale
+del catálogo de actividades del RACERF, que no está en el repo. Afirmar "una cafetería es clase
+II" sería declarar con fundamento algo que no se puede citar.
+
+**Decisión:** se conservan esas primas, pero la clase viaja **declarada como supuesto**: el
+código lo marca con `# DECISIÓN PROVISIONAL (nocturno):`, el campo `clase_riesgo` del contrato
+lo dice, y la ficha del cliente lo imprime literalmente como *"2 (supuesta)"*. Nadie que mire la
+pantalla puede confundirlo con un dato clasificado.
+
+**Pregunta para la contadora:** ¿en qué clase clasifica el IMSS a un establecimiento de
+preparación de alimentos y bebidas, y a un taller de reparación de vehículos automotores?
+
+**Y lo que hay que recordar para un cliente de verdad:** la prima **la autodetermina el patrón
+cada febrero** con su siniestralidad del ejercicio anterior (Art. 74 LSS). Es dato de entrada,
+**no derivable del giro** — la clase sólo fija la prima media de una empresa nueva.
+
