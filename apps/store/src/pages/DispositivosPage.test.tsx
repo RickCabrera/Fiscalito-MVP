@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { DispositivoChecador } from '../services/dispositivosApi';
 import type { EmpleadoCartera } from '../services/carteraApi';
@@ -66,17 +66,32 @@ vi.mock('../context/carteraStore', async () => {
 // a un `vi.fn` de una factoría de `vi.mock`. El síntoma era desconcertante —los
 // tres primeros tests pasaban y los de después veían la pantalla sin aparatos—
 // porque el doble se vaciaba a mitad de la suite, no al principio.
+const escrituras = { guardados: [] as DispositivoChecador[], borrados: [] as string[] };
 vi.mock('../services/dispositivosFirestore', () => ({
   listarDispositivos: async () => dispositivosGuardados.actual,
-  guardarDispositivo: async () => 'nuevo-id',
-  borrarDispositivo: async () => undefined,
+  // El doble ESCRIBE en el mismo almacén que lee: así "guardar y ver" se puede
+  // medir de verdad. Con un doble que sólo dice que sí, borrar el `recargar()`
+  // de la página dejaba las pruebas en verde y el criterio de R-04 —"doy de
+  // alta un dispositivo y VEO qué empleados están enrolados"— sin cubrir.
+  guardarDispositivo: async (_uid: string, _cliente: string, d: DispositivoChecador) => {
+    escrituras.guardados.push(d);
+    dispositivosGuardados.actual = [...dispositivosGuardados.actual, { ...d, id: 'nuevo-id' }];
+    return 'nuevo-id';
+  },
+  borrarDispositivo: async (_uid: string, _cliente: string, id: string) => {
+    escrituras.borrados.push(id);
+    dispositivosGuardados.actual = dispositivosGuardados.actual.filter((x) => x.id !== id);
+  },
 }));
 
 // El endpoint REAL del adaptador. Se stubbea la red, no la lógica del cruce.
 const cruceFalla = { actual: false };
+/** Deja la consulta del checador colgada, para poder mirar la ventana intermedia. */
+const cruceColgado = { actual: false };
 vi.mock('../services/nominaDemoApi', () => ({
   CLIENTE_DEMO: 'demo',
   obtenerEventos: async () => {
+    if (cruceColgado.actual) return new Promise(() => {});
     if (cruceFalla.actual) throw new Error('API caída');
     return { eventos: eventos.actual };
   },
@@ -116,6 +131,9 @@ beforeEach(() => {
   empleadosDelCliente.actual = [];
   eventos.actual = [];
   cruceFalla.actual = false;
+  cruceColgado.actual = false;
+  escrituras.guardados = [];
+  escrituras.borrados = [];
 });
 afterEach(cleanup);
 
@@ -264,5 +282,94 @@ describe('DispositivosPage · no afirma lo que no puede saber', () => {
     await waitFor(() =>
       expect(screen.getByText(/no traen la identidad del dispositivo/)).toBeTruthy(),
     );
+  });
+});
+
+describe('DispositivosPage · el cableado con el modal (el "veo" de R-04)', () => {
+  it('dar de alta un dispositivo lo hace APARECER en la lista', async () => {
+    // El criterio literal de R-04 es "doy de alta un dispositivo y VEO qué
+    // empleados están enrolados". El test del modal prueba que `onGuardar` se
+    // llama; sin éste, nada probaba que la página hiciera algo con eso —borrar
+    // el `recargar()` dejaba las 421 en verde y la lista sin refrescar.
+    empleadosDelCliente.actual = [emp({ employee_no: '7' })];
+    pintar();
+    await waitFor(() => expect(screen.getByText(/no tiene dispositivos/)).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /Nuevo dispositivo/ }));
+    fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: 'Entrada planta' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /Dar de alta/ }));
+
+    // Y aparece en la LISTA, no sólo en el almacén.
+    await waitFor(() => expect(screen.getByText('Entrada planta')).toBeTruthy());
+    expect(escrituras.guardados[0].employee_nos).toEqual(['7']);
+    // "veo qué empleados están enrolados": el nombre de la persona, ahí.
+    expect(screen.getByText('ANA LOPEZ')).toBeTruthy();
+  });
+
+  it('dar de baja lo hace DESAPARECER de la lista', async () => {
+    dispositivosGuardados.actual = [disp()];
+    pintar();
+    await waitFor(() => expect(screen.getByText('Entrada planta')).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText(/Dar de baja/));
+    fireEvent.click(screen.getByRole('button', { name: /Sí, dar de baja/ }));
+
+    await waitFor(() => expect(screen.queryByText('Entrada planta')).toBeNull());
+    expect(escrituras.borrados).toEqual(['d1']);
+  });
+
+  it('editar un aparato con serie NO choca consigo mismo', async () => {
+    // `serialesEnUso` excluye al que se edita. Sin esa exclusión, editar
+    // cualquier aparato que tenga serie es imposible: el botón nunca se
+    // habilita porque el serial "ya está en uso"... por él mismo. El docstring
+    // de `validarDispositivo` explica la exclusión; quien la implementa es el
+    // llamador, y el llamador no tenía prueba.
+    dispositivosGuardados.actual = [disp({ serial: 'ABC123' })];
+    pintar();
+    await waitFor(() => expect(screen.getByText('Entrada planta')).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText(/Editar/));
+    expect(screen.getByRole('button', { name: /^Guardar$/ })).toHaveProperty('disabled', false);
+  });
+});
+
+describe('DispositivosPage · cambiar de cliente no arrastra el cruce anterior', () => {
+  it('el cruce del cliente anterior NO se pinta sobre el nuevo', async () => {
+    // TERCERA aparición del mismo defecto en este archivo. Los dos efectos
+    // corren en paralelo y Firestore suele contestar antes que la red, así que
+    // sin la compuerta `para` las tarjetas del cliente nuevo se pintan contra
+    // el `checando` del anterior.
+    //
+    // EL MONTAJE IMPORTA: para que el arrastre se VEA, el cruce viejo tiene que
+    // afirmar algo FALSO del cliente nuevo. Cliente A: nadie está checando
+    // (conjunto vacío). Cliente B: su gente sí checa. Si el conjunto vacío de A
+    // sobrevive al cambio, la pantalla marca "sin checadas" a quien sí checa.
+    empleadosDelCliente.actual = [emp({ employee_no: '7' })];
+    dispositivosGuardados.actual = [disp({ employee_nos: ['7'] })];
+    eventos.actual = []; // en el cliente A nadie ha checado
+    const { rerender } = pintar();
+
+    await waitFor(() => {
+      const chip = screen.getByText('ANA LOPEZ').closest('li') as HTMLElement;
+      expect(within(chip).getByText(/sin checadas/)).toBeTruthy();
+    });
+
+    // Cambia el cliente activo, y el checador del nuevo todavía no contesta:
+    // ésa es exactamente la ventana donde vivía el bug.
+    clienteActivo.actual = { clienteId: 'taller', cliente: { nombre: 'Taller' } };
+    cruceColgado.actual = true;
+    rerender(
+      <MemoryRouter>
+        <DispositivosPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Taller')).toBeTruthy());
+    const chip = screen.getByText('ANA LOPEZ').closest('li') as HTMLElement;
+    expect(
+      within(chip).queryByText(/sin checadas/),
+      'se está afirmando "sin checadas" del cliente nuevo con el cruce del anterior',
+    ).toBeNull();
   });
 });

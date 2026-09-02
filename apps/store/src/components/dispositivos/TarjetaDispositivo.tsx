@@ -11,8 +11,7 @@
  * actualizar.
  */
 
-import { AlertTriangle } from 'lucide-react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import type { EmpleadoCartera } from '../../services/carteraApi';
 import { cruzarEnrolamiento, type DispositivoChecador } from '../../services/dispositivosApi';
 
@@ -37,7 +36,7 @@ export default function TarjetaDispositivo({
   const { enrolados, fantasmas } = cruzarEnrolamiento(d, empleados);
 
   return (
-      <div key={d.id} className="card" style={{ padding: 'var(--space-lg)' }}>
+      <div className="card" style={{ padding: 'var(--space-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: 600, fontSize: '1rem' }}>{d.nombre}</div>

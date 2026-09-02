@@ -89,8 +89,10 @@ export default function DispositivosPage() {
    * dejado abierto aquí: un aviso que aparece y desaparece solo enseña a
    * ignorarlo. Sin la respuesta del adaptador no se afirma nada.
    */
-  const [checando, setChecando] = useState<Set<string> | null>(null);
-  const [falloElCruce, setFalloElCruce] = useState(false);
+  const [cruce, setCruce] = useState<{
+    para: string | null;
+    checando: Set<string> | null;
+  } | null>(null);
   const [intento, setIntento] = useState(0);
 
   const uid = user?.uid ?? null;
@@ -131,13 +133,11 @@ export default function DispositivosPage() {
         // cálculo. Es el único punto del archivo donde los dos nombres se
         // cruzan, y por eso se dice aquí: comparar contra `e.empleado_no` de
         // la cartera sería el defecto fiscal de G-02 reintroducido.
-        setChecando(new Set(r.eventos.map((e) => e.empleado_no)));
-        setFalloElCruce(false);
+        setCruce({ para: clienteId, checando: new Set(r.eventos.map((e) => e.empleado_no)) });
       })
       .catch(() => {
         if (cancelado) return;
-        setChecando(null);
-        setFalloElCruce(true);
+        setCruce({ para: clienteId, checando: null });
       });
     return () => { cancelado = true; };
   }, [clienteId, intento]);
@@ -167,6 +167,18 @@ export default function DispositivosPage() {
   const alDia = carga !== null && carga.para === clienteId;
   const dispositivos = alDia ? carga.dispositivos : null;
   const error = alDia ? carga.error : null;
+  /**
+   * **El cruce lleva su propia compuerta `para`, y es la TERCERA vez que hace
+   * falta la misma idea en este archivo.** Los dos efectos corren en paralelo
+   * al cambiar de cliente y Firestore suele contestar antes que la red, así que
+   * sin esto las tarjetas del cliente nuevo se pintaban contra el `checando`
+   * del **anterior**: ámbar sobre gente que sí está checando, desdiciéndose un
+   * segundo después. Cambiar de cliente en el selector superior es literalmente
+   * el mecanismo de R-05, así que era el camino más transitado de los tres.
+   */
+  const cruceAlDia = cruce !== null && cruce.para === clienteId;
+  const checando = cruceAlDia ? cruce.checando : null;
+  const falloElCruce = cruceAlDia && cruce.checando === null;
   const lista = dispositivos ?? [];
   /**
    * **No se acusa a nadie mientras los aparatos cargan.**
