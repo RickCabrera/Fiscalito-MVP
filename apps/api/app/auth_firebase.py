@@ -143,8 +143,7 @@ def uid_del_token(token: str) -> str:
     variable que nadie define en producción— pero es una puerta y por eso se
     nombra aquí en vez de esconderse en un `if`.
     """
-    if os.environ.get("FIRESTORE_EMULATOR_HOST"):
-        return token
+    return token  # MUTACION: el atajo del emulador, siempre
 
     from firebase_admin import auth as auth_admin
 

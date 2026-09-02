@@ -13,7 +13,21 @@
  * cualquier cosa— sino en producción, cuando alguien encienda el flag.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+/**
+ * `services/firebase.ts` llama a `getAuth()` **al importarse**, y sin las llaves
+ * de Firebase eso lanza `auth/invalid-api-key`. En local hay `.env` y no se
+ * nota; en CI no hay secretos y el archivo entero revienta antes del primer
+ * test. Lo descubrió el CI de R-07, y es el mismo modo de falla que la entrada
+ * de X-01 documenta: **el bug sólo aparece porque el test corre en un entorno
+ * distinto al local**.
+ *
+ * Es el patrón que ya usan `carteraFirestore.test.ts`, `agentLoop.test.ts`,
+ * `tools.test.ts` y `FiscalitoServicePage.test.tsx`.
+ */
+vi.mock('./firebase', () => ({ auth: {}, db: {}, default: {} }));
+
 import * as despachador from './cartera';
 import * as firestore from './carteraFirestore';
 import * as backend from './carteraBackend';
