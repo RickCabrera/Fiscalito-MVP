@@ -28,9 +28,16 @@ const CONTRIBUYENTES: (ContributorType | null)[] = [
 ];
 
 describe('getSidebarLinks', () => {
-  it('el contador ve Clientes / Nómina / Calendario / Perfil, en ese orden', () => {
+  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Perfil, en ese orden', () => {
     expect(getSidebarLinks('contador')).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
+      // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
+      // a la ficha del cliente y cambiando de pestaña, y los dispositivos no
+      // existían. Las dos operan sobre el cliente activo, igual que Nómina, y
+      // por eso van juntas y antes de ella: es el orden del flujo real
+      // —plantilla, aparatos, y luego la nómina que sale de los dos—.
+      { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
+      { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
       // E-03: el enlace no conoce el id del cliente; `/app/nomina` lo resuelve
       // desde el contexto. Así `getSidebarLinks` sigue siendo pura del perfil.
       { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
@@ -39,6 +46,16 @@ describe('getSidebarLinks', () => {
       { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
+  });
+
+  it('ningún contribuyente ve las entradas del despacho', () => {
+    // La simétrica de la de arriba, extendida a lo que R-05 agrega: las tres
+    // pantallas del despacho leen la CARTERA, que un contribuyente no tiene.
+    for (const tipo of CONTRIBUYENTES) {
+      const ids = getSidebarLinks(tipo).map((l) => l.id);
+      expect(ids).not.toContain('empleados');
+      expect(ids).not.toContain('dispositivos');
+    }
   });
 
   it.each(CONTRIBUYENTES)('el perfil %s conserva el sidebar de siempre', (tipo) => {

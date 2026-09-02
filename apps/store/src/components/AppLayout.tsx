@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar } from 'lucide-react';
+import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint } from 'lucide-react';
 import { esContador, getSidebarLinks, navActivo, type NavId } from '../services/navigation';
 import { useClienteActivo } from '../context/clienteActivoStore';
 // DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
@@ -17,6 +17,10 @@ const ICONOS: Record<NavId, React.ReactNode> = {
   historial: <History size={20} />,
   nomina: <Radio size={20} />,
   clientes: <Users size={20} />,
+  // R-05. `Users` ya lo usa Clientes: repetirlo haria el sidebar ilegible
+  // de un vistazo, que es justo para lo que sirve un icono.
+  empleados: <Contact size={20} />,
+  dispositivos: <Fingerprint size={20} />,
   calendario: <Calendar size={20} />,
   perfil: <User size={20} />,
 };
