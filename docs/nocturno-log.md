@@ -951,3 +951,94 @@ segundo cubre además el deep-link `?tab=declaracion`, que degrada al calendario
 - **E-02/E-03 no deben reusar `PerfilContribuyente` con el perfil del despacho** para calcular
   por un cliente: el sujeto del cálculo es el cliente, y por eso `TIPO_API['contador']` es
   `null`.
+
+---
+
+## E-02 · cartera de clientes del despacho (2026-09-02, sesión autónoma)
+
+**PR #21, mergeada. Tests: 980 → 1018 backend, 90 → 128 frontend.**
+**CI verde al primer intento** (Backend 32 s, Frontend 1 m 13 s).
+`pytest -q` → `1018 passed` · `ruff check .` limpio · `npm run build` limpio · `npm test` →
+`128 passed` · `npx eslint .` → 20/8, la línea base preexistente de S-02.
+
+Primera tarea de la corrida en **MODO AUTÓNOMO** (Ricardo lo activó tras el merge de E-01).
+
+### EL BLOQUEANTE QUE LA REVISIÓN EVITÓ
+
+El selector de cliente estaba habilitado en `/app/nomina-demo`, y esa pantalla **no lee el
+cliente activo**: cae en los defaults de `nominaDemoApi`, que son del cliente `demo`. La barra
+habría dicho **"Taller Mecánico Nogal · 12 empleados"** encima de los nueve empleados del caso
+real, con sus salarios, sus recibos y su PDF.
+
+Lo grave no es el letrero. `app/routes/nomina.py:75-79` **ya tiene** un guard que rechaza
+calcularle a un cliente la plantilla de otro, con el comentario de que hacerlo *"sería mucho
+peor que responder un error"*. El front lo anulaba **sin tocarlo**: nunca mandaba `taller`,
+mandaba `demo`, así que el guard jamás se disparaba y la pantalla presentaba la nómina de un
+cliente bajo el encabezado de otro.
+
+`/app/nomina-demo` sale de `RUTAS_CON_CLIENTE` hasta que E-03 cablee la pantalla. Lo que
+protege de la reincidencia no es la línea sino la **regla de admisión** escrita junto a la
+constante: *no basta con que la pantalla hable de clientes; tiene que LEER `useClienteActivo`*.
+Y el aviso de que si E-03 mueve la nómina a `/app/clientes/:id/nomina`, esa lista se mueve con
+ella.
+
+### Decisiones tomadas sin Ricardo
+
+1. **Los SDI de los clientes sintéticos son literales verificados contra el motor, no
+   calculados en el import.** Derivarlos contra `date.today()` los movería solos: el factor sube
+   al cruzar un aniversario (Art. 76 LFT) y el piso/tope del clamp se mueven el 1-ene y el
+   1-feb. Un cliente de demostración cuyas cuotas cambian de un mes a otro sin que nadie toque
+   código es lo peor enfrente de un cliente. Todo se mide contra `FECHA_REFERENCIA_DEMO`, fija.
+2. **El factor se contrasta contra la tabla publicada de `PLAN_NOMINA` §2.2**, no sólo contra el
+   motor: un test que reejecuta la función que produjo el dato no prueba nada. Y hay un test que
+   verifica que **toda** antigüedad usada esté contrastada — cazó el caso de 8 años (T-03) que
+   se nos había pasado al revisor y a mí.
+3. **Al caso real no se le inventa fecha de alta** (§D9). Su factor viaja marcado como cociente
+   observado, con asterisco por renglón y nota al pie explicando por qué no es el del Art. 27.
+4. **La clase de riesgo de los sintéticos es un supuesto declarado** — ver **D22**. La prima
+   media por clase sí tiene fuente (Art. 73 LSS) y **ya existía en el motor**
+   (`prima_media_clase()`), así que se llama, no se copia.
+5. **La ficha del caso real dice "Autodeterminada (Art. 74)", no "No aplica"**: todo patrón
+   tiene clase de riesgo; lo que no aplica es haber deducido su prima de una clase.
+6. **El nombre del cliente de fixtures no lleva ancla geográfica.** "Servicios Administrativos
+   del Golfo" + prima real + salarios reales, contra §D8 que documenta que el caso es de
+   Veracruz, hacía la inferencia más fácil. Ninguno de esos datos es nuevo —`/nomina/demo/plantilla`
+   ya los sirve—, pero el nombre era lo único que E-02 agregaba.
+7. **`AppRoutes.tsx`**: el árbol de `<Routes>` sale de `main.tsx` (aprobado por Ricardo al
+   cerrar E-01). Cierra el hueco de que ninguna ruta tuviera test.
+8. **La cartera es monótona a propósito y NO se arregló:** los 25 empleados están en zona
+   general, periodicidad 04, y todos son `sbc_fijo` puro. E-02 no pide variedad y agregarla
+   sería alcance de más. **Para el guion de la demo:** si preguntan por un empleado con
+   comisiones, la respuesta es que el motor tiene `sbc_variable` y `sbc_mixto` desde F1-02 y que
+   la cartera de demostración no los ejercita.
+
+### Verificación
+
+**19 mutaciones, 19 en rojo** (13 en la primera pasada del entregable, 6 en las correcciones).
+Una sobrevivió al primer intento: quitar el asterisco por renglón del factor implícito, porque
+el test asertaba la nota al pie —que la dispara un `some()` sobre la plantilla— y no la marca
+renglón por renglón.
+
+**Nota de método, que costó un diagnóstico:** la mutación de un `empleado_no`
+(`"C-01"` → `"E-01"`) dejó un `.pyc` rancio tras restaurar el archivo —mismo tamaño y mismo
+segundo de mtime, así que Python dio la caché por válida— y la suite completa falló con el
+fuente correcto. Al mutar Python hay que limpiar `__pycache__` antes de creerle a un rojo
+posterior.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador**, igual que E-01.
+- **El enlace "Nómina" del sidebar del contador es hoy siempre el cliente `demo`.** La pantalla
+  se identifica en su propio encabezado, así que no miente, pero conviene decirlo en el runbook.
+
+### Para E-03
+
+- **`checador_sintetico.py` sólo sabe generar los nueve `employeeNo` de las fixtures**, porque
+  los lee de `tests/fixtures/`. Un cliente sintético saldría con **falta en todo día laborable**.
+  El camino limpio es que `simular_checador.py` pida `GET /despacho/clientes/{id}`.
+- **El camino de asistencia vacía no está probado por nadie:** nadie ha corrido
+  `cerrar-periodo` → `calcular-periodo` con `dias_pagados = 0` en todos los empleados. E-03
+  necesita test de ese camino, no confianza en que siempre habrá siembra.
+- `EmpleadoClienteSchema` ya es superconjunto compatible de `EmpleadoNominaSchema`, con `zona`
+  por empleado, y la ficha trae `periodo_sugerido` resuelto con la misma `quincena()`.
+
