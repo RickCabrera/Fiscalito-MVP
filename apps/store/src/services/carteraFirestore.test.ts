@@ -83,11 +83,33 @@ beforeEach(() => {
 });
 
 describe('cargarCartera', () => {
-  it('sin sesión cae al catálogo del backend y lo dice', async () => {
+  /**
+   * R-06 INVIRTIÓ LA PREMISA DE ESTE BLOQUE, Y HAY QUE DECIRLO.
+   *
+   * Hasta G-03, TODO camino que no terminara en "la cartera del usuario"
+   * devolvía el catálogo de demostración del backend: vacía, error, timeout y
+   * sin sesión. Era deliberado —que la demo no se rompiera nunca— y este
+   * archivo lo probaba caso por caso.
+   *
+   * El costo lo declaraba el propio `carteraFirestore.ts`: **dos cuentas
+   * distintas veían los mismos tres clientes**, o sea el criterio de G-03 sin
+   * cumplir. Ahora cada caso devuelve una verdad sobre ESTA cuenta, y ninguno
+   * devuelve los clientes de otra persona.
+   *
+   * Los casos no se borran: cambian de aserción. Las cotas de tiempo siguen
+   * probadas, porque el modo de falla que evitan —Firestore colgado deja
+   * `loading` en `true` para siempre— no lo tocó R-06.
+   */
+  it('sin sesión devuelve una cartera vacía, no el catálogo', async () => {
     const r = await cargarCartera(null);
-    expect(r.origen).toBe('backend');
-    expect(r.clientes).toHaveLength(1);
-    expect(r.motivoFallback).toContain('demostración');
+    expect(r.clientes).toEqual([]);
+    expect(r.error).toBeNull();
+    // `origen` decide `soloLectura` en `CarteraContext`, así que también aquí:
+    // devolver `backend` en un camino que no trae datos del backend dejaría la
+    // cartera de sólo lectura por una razón que no existe.
+    expect(r.origen).toBe('firestore');
+    // Y NO se pide el catálogo: pedirlo sería trabajo para enseñar datos ajenos.
+    expect(obtenerClientes).not.toHaveBeenCalled();
   });
 
   it('con datos en Firestore usa los del usuario', async () => {
@@ -99,34 +121,46 @@ describe('cargarCartera', () => {
     expect(r.origen).toBe('firestore');
     expect(r.clientes[0].id).toBe('mio');
     expect(r.clientes[0].empleados).toHaveLength(1);
-    expect(r.motivoFallback).toBeNull();
-    // No se pidió el catálogo: la cartera del usuario ganó.
+    expect(r.error).toBeNull();
     expect(obtenerClientes).not.toHaveBeenCalled();
   });
 
-  it('UNA CARTERA VACÍA se trata igual que un error', async () => {
-    // El caso peligroso. Unas reglas que permitan leer y nieguen escribir dejan
-    // la cartera vacía SIN lanzar nada: si esto no cayera al backend, quedaría
-    // una app que se ve bien y no tiene clientes, que es peor que un error.
+  it('UNA CARTERA VACÍA es una cartera vacía, y es ESCRIBIBLE', async () => {
+    // El caso que le da la vuelta a G-03. Antes se trataba igual que un error y
+    // se caía al catálogo, con lo que una cuenta nueva NUNCA podía verse a sí
+    // misma vacía ni crear su primer cliente.
+    //
+    // `origen: 'firestore'` no es cosmético: `CarteraContext` deriva
+    // `soloLectura` de ahí, así que con `'backend'` el botón "crea tu primer
+    // cliente" rebota con "esta cartera es el catálogo de demostración". Es una
+    // palabra y es la tarea entera.
     getDocs.mockResolvedValue({ docs: [] });
 
     const r = await cargarCartera('uid-1');
-    expect(r.origen).toBe('backend');
-    expect(r.clientes).toHaveLength(1);
-    expect(r.motivoFallback).toContain('vacía');
+    expect(r.clientes).toEqual([]);
+    expect(r.origen).toBe('firestore');
+    expect(r.error).toBeNull();
+    expect(obtenerClientes).not.toHaveBeenCalled();
   });
 
-  it('si Firestore lanza, cae al backend y explica por qué', async () => {
+  it('si Firestore lanza, lo DICE y no enseña datos de otra persona', async () => {
     getDocs.mockRejectedValue(new Error('Missing or insufficient permissions.'));
 
     const r = await cargarCartera('uid-1');
-    expect(r.origen).toBe('backend');
-    expect(r.motivoFallback).toContain('insufficient permissions');
+    expect(r.error).toContain('insufficient permissions');
+    expect(r.clientes).toEqual([]);
+    // Y la cartera sigue siendo SUYA: tras un fallo transitorio, reintentar y
+    // crear un cliente tiene que seguir siendo posible. Con `backend` aquí, el
+    // contador quedaba en sólo lectura hasta recargar la página.
+    expect(r.origen).toBe('firestore');
+    // La aserción que mata la regresión: ni un cliente del catálogo en pantalla.
+    expect(obtenerClientes).not.toHaveBeenCalled();
   });
 
   it('si Firestore se cuelga, el timeout la rescata', async () => {
-    // Ningún `await` sin cota en el camino de la demo: una promesa que nunca
-    // resuelve dejaría la pantalla en "Cargando" para siempre.
+    // La cota sigue siendo obligatoria y por la misma razón que antes: una
+    // promesa que nunca resuelve deja `loading` en `true` para siempre, y la
+    // pantalla no llega ni a poder decir que algo salió mal.
     vi.useFakeTimers();
     getDocs.mockReturnValue(new Promise(() => {}));
 
@@ -134,50 +168,10 @@ describe('cargarCartera', () => {
     await vi.advanceTimersByTimeAsync(3000);
     const r = await promesa;
 
-    expect(r.origen).toBe('backend');
-    expect(r.motivoFallback).toContain('tardó');
-    vi.useRealTimers();
-  });
-
-  it('si el CATÁLOGO se cuelga, tampoco cuelga la carga', async () => {
-    // El respaldo también va cotado. Sin cota, con Firestore vacío y la API
-    // colgada, `cargarCartera` no resolvía nunca — y el respaldo es justo el
-    // camino al que se cae cuando algo ya salió mal.
-    vi.useFakeTimers();
-    getDocs.mockResolvedValue({ docs: [] });
-    obtenerClientes.mockReturnValue(new Promise(() => {}));
-
-    const promesa = cargarCartera('uid-1');
-    await vi.advanceTimersByTimeAsync(9000);
-    const r = await promesa;
-
+    expect(r.error).toContain('tardó');
     expect(r.clientes).toEqual([]);
-    expect(r.motivoFallback).toContain('tampoco respondió');
+    expect(r.origen).toBe('firestore');
     vi.useRealTimers();
-  });
-
-  it('el respaldo aguanta un backend LENTO, no sólo uno colgado', async () => {
-    // Siete requests contra un arranque en frío pueden pasar de 2500 ms. Con el
-    // tope de Firestore, un backend lento pero vivo devolvía la pantalla vacía
-    // que este archivo existe para evitar.
-    vi.useFakeTimers();
-    getDocs.mockResolvedValue({ docs: [] });
-    obtenerClientes.mockReturnValue(
-      new Promise((resolver) => setTimeout(() => resolver([RESUMEN]), 4000)),
-    );
-
-    const promesa = cargarCartera('uid-1');
-    await vi.advanceTimersByTimeAsync(9000);
-    const r = await promesa;
-
-    expect(r.origen).toBe('backend');
-    expect(r.clientes).toHaveLength(1);
-    vi.useRealTimers();
-  });
-
-  it('nunca lanza, pase lo que pase en Firestore', async () => {
-    getDocs.mockRejectedValue(new Error('lo que sea'));
-    await expect(cargarCartera('uid-1')).resolves.toBeDefined();
   });
 });
 

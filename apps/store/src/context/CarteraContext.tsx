@@ -1,16 +1,24 @@
 /**
- * Proveedor de la cartera del despacho (G-03).
+ * Proveedor de la cartera del despacho (G-03, R-06).
  *
- * EL ORDEN DE ARRANQUE ES LO IMPORTANTE DE ESTE ARCHIVO
- * -----------------------------------------------------
- * Regla de Ricardo: la demo funciona en TODO momento. Por eso:
+ * LA CARTERA ES DEL USUARIO, Y SÓLO DEL USUARIO
+ * ---------------------------------------------
+ * `cargarCartera` **nunca lanza**, pero desde R-06 tampoco sustituye. Devuelve
+ * una de tres cosas, y las tres son verdad sobre ESTA cuenta:
  *
- * 1. `cargarCartera` **nunca lanza**: si Firestore truena, tarda o devuelve
- *    vacío, vuelve con el catálogo del backend y el motivo. El primer pintado
- *    no depende de Firestore.
- * 2. La **siembra ya no corre sola**: es `sembrar()`, detrás de un botón. Ver
- *    su docstring — escribir salarios de terceros en un Firestore cuyas reglas
- *    nadie ha revisado no debe ser efecto colateral de un login.
+ * 1. sus clientes,
+ * 2. una cartera **vacía y escribible** —que es lo que ve una cuenta nueva, y
+ *    no es un error—,
+ * 3. un error, para que la pantalla lo diga y ofrezca reintentar.
+ *
+ * Lo que ya **no** hace es enseñar el catálogo de demostración cuando lo de
+ * arriba falla. G-03 lo hacía a propósito para que la demo no se rompiera, y
+ * este archivo lo declaraba: el fallback derrotaba el criterio de G-03 porque
+ * dos cuentas veían los mismos tres clientes.
+ *
+ * `soloLectura` se deriva de `origen`, así que ese campo decide si el botón de
+ * alta funciona: una cartera vacía tiene que venir con `origen: 'firestore'` o
+ * el contador no puede crear su primer cliente.
  *
  * SÓLO CARGA PARA UN CONTADOR, igual que `ClienteActivoContext`: un
  * contribuyente no tiene cartera y pedirla dispararía trabajo inútil en cada
@@ -45,7 +53,6 @@ interface Estado {
   para: string | null | undefined;
   clientes: ClienteCartera[];
   origen: OrigenCartera;
-  motivoFallback: string | null;
   error: string | null;
 }
 
@@ -53,7 +60,6 @@ const INICIAL: Estado = {
   para: undefined,
   clientes: [],
   origen: 'backend',
-  motivoFallback: null,
   error: null,
 };
 
@@ -77,10 +83,8 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
           para: uid,
           clientes: cargada.clientes,
           origen: cargada.origen,
-          motivoFallback: cargada.motivoFallback,
-          error: null,
+          error: cargada.error,
         });
-
       })
       .catch((e: unknown) => {
         // `cargarCartera` no lanza; esto es la red por si algún día lo hace.
@@ -100,14 +104,12 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
   /**
    * Copia los tres clientes de demostración a la cuenta del contador.
    *
-   * **Es un acto explícito, no automático, y eso es una desviación consciente
-   * del enunciado de G-03** ("los 3 demo se siembran para cuentas nuevas").
-   * Sembrar en el primer login escribiría el salario de trabajadores de terceros
-   * —montos reales del CFDI, aunque con nombres anonimizados— en un Firestore
-   * cuyas reglas **nadie ha revisado todavía**: `firestore.rules` está
-   * versionado y sin desplegar. Hacerlo en segundo plano convertiría esa
-   * escalada de sensibilidad en un efecto colateral en vez de una decisión.
-   * Cuesta un clic y la demo funciona igual sin darlo.
+   * **Explícito, y desde R-06 sólo para cuentas de desarrollo.** La razón
+   * original —las reglas de Firestore sin revisar— la cerró R-01. La que queda
+   * es más simple: escribe el salario de trabajadores de terceros, incluido el
+   * caso real con montos reales, y eso no tiene por qué acabar en la cuenta de
+   * nadie que no lo haya pedido. Quién ve el botón lo decide
+   * `esCuentaDeDesarrollo` (`services/entorno.ts`).
    */
   const sembrar = useCallback(async () => {
     if (!uid) throw new Error('Hace falta una sesión para guardar la cartera.');
@@ -138,7 +140,6 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
       clientes: alDia ? estado.clientes : [],
       loading: cargando,
       origen: estado.origen,
-      motivoFallback: alDia ? estado.motivoFallback : null,
       soloLectura,
       error: alDia ? estado.error : null,
       clientePorId: (id: string) =>
@@ -147,18 +148,29 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
         escribir(() =>
           guardarClienteFs(uid as string, {
             ...c,
-            // Un cliente nuevo no trae periodo sugerido y sin él su nómina
-            // arrancaría con las fechas vacías. Se copia del que ya está en la
-            // cartera en vez de calcularlo aquí: `quincena(hoy)` vive en
-            // `demo_nomina.py` y replicarla en TypeScript sería una segunda
-            // verdad sobre qué periodo se calcula.
+            // Se copia del cliente que ya esté en la cartera en vez de
+            // calcularlo aquí: `quincena(hoy)` vive en `demo_nomina.py` y
+            // replicarla en TypeScript sería una segunda verdad sobre qué
+            // periodo se calcula. Lo copiado puede estar vencido —es un
+            // snapshot—, y por eso `cargarCartera` lo refresca al leer.
             //
-            // **Y lo copiado puede estar vencido**, que es distinto de lo que
-            // decía este comentario antes: lo que hay en Firestore es un
-            // snapshot del momento de sembrar, no `quincena(hoy)` reevaluado.
-            // Por eso `cargarCartera` refresca el periodo de TODA la cartera
-            // contra el backend al leerla; esto sólo tiene que dejar algo
-            // coherente mientras tanto.
+            // **El primer cliente de una cuenta vacía nace SIN periodo, y eso
+            // está bien.** Hasta R-06 este `?? ` nunca se ejercitaba porque el
+            // fallback garantizaba que `estado.clientes[0]` existiera; quitado
+            // el fallback, es el caso normal de toda cuenta nueva.
+            //
+            // Se descartó pedirle el periodo al backend aquí. Copiar la
+            // QUINCENA del cliente de demostración a un cliente que puede ser
+            // mensual, semanal o diario siembra el peligro que
+            // `useNominaCliente` documenta —tarifa mensual del Art. 96 sobre
+            // base de 15-16 días, ISR subestimado con recibo creíble— y además
+            // haría que el alta de un cliente real dependiera del endpoint del
+            // catálogo demo, que es la costura que R-06 viene a cortar.
+            //
+            // `conPeriodoAlDia` ya repara esto al LEER, con cota y tolerando el
+            // fallo. Y la pantalla de nómina avisa cuando el periodo llega
+            // vacío, que es donde las fechas se usan y donde el operador puede
+            // hacer algo: sus dos inputs son libres.
             periodo_sugerido: c.periodo_sugerido.inicio
               ? c.periodo_sugerido
               : estado.clientes[0]?.periodo_sugerido ?? c.periodo_sugerido,

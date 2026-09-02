@@ -14,6 +14,8 @@ import { useCartera } from '../context/carteraStore';
 import type { ClienteCartera } from '../services/carteraApi';
 import { Building2, ChevronRight, Loader, Plus, RefreshCw, Users } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
+import { useAuth } from '../context/AuthContext';
+import { esCuentaDeDesarrollo } from '../services/entorno';
 import { etiquetaOrigen, primaComoPorcentaje } from '../services/despachoApi';
 import ErrorAlert from '../components/common/ErrorAlert';
 
@@ -90,6 +92,8 @@ export default function ClientesPage() {
   // escribe: pintarla desde el backend hacía que un cliente recién capturado
   // no apareciera nunca, sin error y sin mensaje.
   const { clienteId, setClienteId } = useClienteActivo();
+  const { user } = useAuth();
+  const cuentaDeDesarrollo = esCuentaDeDesarrollo(user?.email);
   const cartera = useCartera();
   const clientes = cartera.clientes;
   const loading = cartera.loading;
@@ -124,9 +128,11 @@ export default function ClientesPage() {
         <p>La cartera del despacho. Elige uno para ver su plantilla y calcular su nómina.</p>
       </div>
 
-      {/* G-03: el origen se DICE, no se esconde. Con el catálogo del backend en
-          pantalla no hay escritura, y el contador tiene que saber por qué. */}
-      {cartera.motivoFallback && (
+      {/* R-06: la siembra es SÓLO para cuentas de desarrollo. Una cuenta de
+          producción no tiene por qué poder copiarse a sí misma el salario de
+          los trabajadores de un tercero, y el del caso real es dinero real de
+          alguien. */}
+      {cuentaDeDesarrollo && !cartera.soloLectura && clientes.length === 0 && !loading && (
         <div
           style={{
             marginBottom: 'var(--space-md)', background: 'var(--warning-bg)',
@@ -135,8 +141,8 @@ export default function ClientesPage() {
           }}
         >
           <div>
-            {cartera.motivoFallback} Las altas y ediciones están deshabilitadas hasta que tu
-            cartera viva en tu cuenta.
+            Cuenta de desarrollo: puedes copiar los tres clientes de demostración a tu
+            cartera para probar el flujo completo.
           </div>
           <button
             className="btn-primary"
@@ -153,7 +159,7 @@ export default function ClientesPage() {
                 .finally(() => setSembrando(false));
             }}
           >
-            {sembrando ? 'Guardando…' : 'Guardar esta cartera en mi cuenta'}
+            {sembrando ? 'Guardando…' : 'Cargar clientes de demostración'}
           </button>
           {errorSembrar && (
             <div role="alert" style={{ marginTop: 'var(--space-xs)', color: 'var(--danger)' }}>
@@ -199,14 +205,26 @@ export default function ClientesPage() {
         </div>
       )}
 
+      {/* R-06: una cartera vacía NO es un error, y decirle al contador que
+          "revise que la API esté corriendo" cuando lo único que pasa es que
+          acaba de crear su cuenta era un diagnóstico equivocado que además no
+          ofrecía salida. Ahora dice lo que hay y da el botón. */}
       {!loading && !error && clientes.length === 0 && (
         <div className="card" style={{ padding: 'var(--space-2xl) var(--space-lg)', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 'var(--space-xs)' }}>
-            La cartera está vacía
+          <Building2 size={24} color="var(--text-muted)" />
+          <div style={{ fontSize: '1.05rem', fontWeight: 600, margin: '12px 0 8px' }}>
+            Aún no tienes clientes
           </div>
-          <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)' }}>
-            El servicio respondió sin clientes. Revisa que la API esté corriendo.
+          <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)' }}>
+            Da de alta el primero para empezar a llevarle la nómina.
           </p>
+          <button
+            className="btn-primary"
+            onClick={() => { setEditando(null); setModalAbierto(true); }}
+            style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+          >
+            <Plus size={16} /> Crear el primer cliente
+          </button>
         </div>
       )}
 

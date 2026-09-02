@@ -23,20 +23,36 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const CLIENTE = 'taller';
+const CLIENTE_ID = 'taller';
 
-const estadoCartera = { loading: false };
+const estadoCartera = { loading: false, tieneAlCliente: true };
 
+/**
+ * R-06: `clientePorId` devolviendo `null` dejó de ser un caso neutro.
+ *
+ * Antes significaba "la cartera no lo tiene, usa la ficha del backend", que era
+ * el camino del fallback. Ahora significa **"este cliente no es de tu cuenta"**
+ * y el hook se niega a cerrar y a calcular. Por eso el doble lo hace explícito
+ * con `tieneAlCliente`: los tests de la guarda de `loading` necesitan que el
+ * cliente SÍ esté, y hay tests nuevos para la guarda nueva.
+ */
 vi.mock('../../context/carteraStore', async () => {
   const { carteraDePrueba } = await import('../../test/carteraDePrueba');
+  const CLIENTE = {
+    id: CLIENTE_ID, nombre: 'Taller', giro: 'Taller', origen: 'sintetico',
+    prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04',
+    zona: 'general',
+    periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' },
+    empleados: [],
+  };
   return {
     useCartera: () =>
       carteraDePrueba({
         loading: estadoCartera.loading,
-        clientes: [],
+        clientes: estadoCartera.tieneAlCliente ? [CLIENTE] : [],
         origen: 'firestore',
         soloLectura: false,
-        clientePorId: () => null,
+        clientePorId: () => (estadoCartera.tieneAlCliente ? CLIENTE : null),
       }),
   };
 });
@@ -44,7 +60,7 @@ vi.mock('../../context/carteraStore', async () => {
 vi.mock('../../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
     clientes: [], cliente: null, loading: false, error: null,
-    clienteId: CLIENTE, setClienteId: vi.fn(), recargar: vi.fn(),
+    clienteId: CLIENTE_ID, setClienteId: vi.fn(), recargar: vi.fn(),
   }),
 }));
 
@@ -58,7 +74,7 @@ function stubApi(conChecadas = true) {
     let cuerpo: unknown;
     if (url.includes('despacho/clientes')) {
       cuerpo = {
-        id: CLIENTE, nombre: 'Taller Nogal', giro: 'G', origen: 'sintetico',
+        id: CLIENTE_ID, nombre: 'Taller Nogal', giro: 'G', origen: 'sintetico',
         num_empleados: 1, prima_riesgo: '0.0113065', clase_riesgo: 2,
         clave_periodicidad: '04', zona: 'general', fecha_referencia: '2026-09-01',
         empleados: [{
@@ -79,7 +95,7 @@ function stubApi(conChecadas = true) {
       };
     } else if (url.includes('cerrar-periodo')) {
       cuerpo = {
-        cliente: CLIENTE, periodo: { inicio: '2026-08-16', fin: '2026-08-31' },
+        cliente: CLIENTE_ID, periodo: { inicio: '2026-08-16', fin: '2026-08-31' },
         incidencias: [], empleados_desconocidos: [],
       };
     } else {
@@ -93,7 +109,7 @@ function stubApi(conChecadas = true) {
 /** Monta el hook y espera a que la ficha del backend haya llegado. */
 async function montarHook(conChecadas = true) {
   const llamadas = stubApi(conChecadas);
-  const { result, rerender } = renderHook(() => useNominaCliente(CLIENTE));
+  const { result, rerender } = renderHook(() => useNominaCliente(CLIENTE_ID));
   await waitFor(() => expect(result.current.inicio).toBe('2026-08-16'));
   /**
    * Pone la cartera en "cargando" y **vuelve a renderizar**: sin el rerender el
@@ -104,13 +120,14 @@ async function montarHook(conChecadas = true) {
     estadoCartera.loading = true;
     rerender();
   };
-  return { result, llamadas, conCarteraCargando };
+  return { result, llamadas, conCarteraCargando, rerender };
 }
 
 const seCerro = (llamadas: string[]) => llamadas.some((u) => u.includes('cerrar-periodo'));
 
 beforeEach(() => {
   estadoCartera.loading = false;
+  estadoCartera.tieneAlCliente = true;
 });
 
 afterEach(() => {
@@ -172,5 +189,82 @@ describe('con la cartera lista, el handler SÍ cierra', () => {
     await act(async () => { result.current.pedirCierre(); });
     await waitFor(() => expect(seCerro(llamadas)).toBe(true));
     expect(result.current.confirmarCierre).toBe(false);
+  });
+});
+
+describe('R-06 · el cliente que NO está en la cartera de esta cuenta', () => {
+  /**
+   * LA GUARDA MÁS IMPORTANTE DE R-06, Y LA MENOS VISIBLE.
+   *
+   * Hasta ahora eran dos estados: la cartera carga, o la cartera está. Con el
+   * fallback de G-03 daba igual —`clientePorId` siempre devolvía algo porque el
+   * catálogo del backend poblaba la cartera— así que el tercer estado no
+   * existía.
+   *
+   * Quitado el fallback aparece: **cargada, y el cliente no está en ella**.
+   * Entrar por URL a `/app/clientes/demo/nomina` desde una cuenta cuya cartera
+   * no tiene `demo` daba `clientePorId → null`, y entonces `plantillaDeNomina`
+   * caía a la ficha COMPLETA del backend **sin filtrar vinculados**, con
+   * `sinVincular` en 0 — así que el aviso tampoco salía. Otro conjunto de
+   * empleados entrando a `POST /nomina/calcular-periodo`, en silencio.
+   *
+   * Se prueba llamando a los handlers DIRECTO, por la razón del encabezado de
+   * este archivo: `disabled` es una propiedad del DOM, no una garantía.
+   */
+  it('`pedirCierre` NO cierra un cliente ajeno a la cartera', async () => {
+    estadoCartera.tieneAlCliente = false;
+    const { result, llamadas } = await montarHook(true);
+    expect(result.current.ajenoALaCartera).toBe(true);
+
+
+    act(() => result.current.pedirCierre());
+
+    expect(llamadas.some((u) => u.includes('cerrar-periodo'))).toBe(false);
+    // Y tampoco pregunta: preguntar sugeriría que decir que sí serviría.
+    expect(result.current.confirmarCierre).toBe(false);
+  });
+
+  it('`calcular` lo rechaza aunque ya haya un cierre en estado', async () => {
+    /**
+     * ESTE ES EL ESCENARIO QUE LA GUARDA DE `calcular` DEFIENDE, y montarlo mal
+     * la volvía inalcanzable: con la cartera ya resuelta a "no es tuyo" desde el
+     * principio, `pedirCierre` bloquea antes y `calcular` sale por su
+     * `!cierre`. El test pasaba sin ejercitar nada.
+     *
+     * El caso real es el otro: se cerró el periodo con la cartera diciendo que
+     * sí, y **después** la cartera se recarga y el cliente ya no está —otra
+     * pestaña lo borró, o la lectura se rehízo—. El `cierre` sigue en estado y
+     * el botón de calcular está vivo. Cerrar una sola de las dos puertas deja
+     * la otra abierta.
+     */
+    estadoCartera.tieneAlCliente = true;
+    const { result, llamadas, rerender } = await montarHook(true);
+
+    act(() => result.current.pedirCierre());
+    await waitFor(() => expect(result.current.cierre).not.toBeNull());
+
+    // Ahora el cliente desaparece de la cartera, con el cierre ya hecho. El
+    // `rerender` es obligatorio y este archivo ya lo advierte para la otra
+    // guarda: sin él, el hook sigue con el valor viejo del contexto y el test
+    // pasaría por la razón equivocada.
+    estadoCartera.tieneAlCliente = false;
+    rerender();
+    await waitFor(() => expect(result.current.ajenoALaCartera).toBe(true));
+
+    await act(async () => { await result.current.calcular(); });
+
+    expect(llamadas.some((u) => u.includes('calcular-periodo'))).toBe(false);
+    expect(result.current.error).toContain('no está en la cartera de tu cuenta');
+  });
+
+  it('con el cliente EN la cartera, `ajenoALaCartera` es falso y sí se cierra', async () => {
+    // La mitad simétrica. Sin ella, una guarda que bloqueara SIEMPRE pasaría
+    // los dos tests de arriba y dejaría la nómina inservible.
+    estadoCartera.tieneAlCliente = true;
+    const { result, llamadas } = await montarHook(true);
+    expect(result.current.ajenoALaCartera).toBe(false);
+
+    act(() => result.current.pedirCierre());
+    await waitFor(() => expect(llamadas.some((u) => u.includes('cerrar-periodo'))).toBe(true));
   });
 });

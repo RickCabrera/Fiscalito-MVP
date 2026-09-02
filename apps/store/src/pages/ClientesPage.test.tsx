@@ -15,6 +15,14 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ClienteCartera, EmpleadoCartera } from '../services/carteraApi';
 
+// R-06: las pantallas leen la cuenta para decidir si ven los datos de
+// demostración. En jsdom `import.meta.env.DEV` es `true`, así que el doble
+// basta con existir: la cuenta cuenta como de desarrollo y los tests de la
+// demo siguen midiendo lo mismo que medían.
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { uid: 'uid-demo', email: 'demo@ejemplo.mx' }, loading: false }),
+}));
+
 /**
  * G-03: **la LISTA sale de la cartera**, no del contexto del cliente activo.
  * Pintarla desde el backend hacía que un cliente recién capturado no apareciera
@@ -167,16 +175,38 @@ describe('estados que no son la lista feliz', () => {
     expect(recargar).toHaveBeenCalledTimes(1);
   });
 
-  it('el vacío sólo aparece cuando de verdad no hay clientes ni error', () => {
+  it('una cartera vacía OFRECE crear el primer cliente', () => {
+    // R-06 cambió el copy y la salida. Antes decía "La cartera está vacía · el
+    // servicio respondió sin clientes, revisa que la API esté corriendo": un
+    // diagnóstico equivocado —lo único que pasa es que la cuenta es nueva— y
+    // sin ninguna acción. Ahora dice lo que hay y da el botón.
     estado.clientes = [];
     montar();
-    expect(screen.getByText(/La cartera está vacía/)).toBeTruthy();
+
+    expect(screen.getByText(/Aún no tienes clientes/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Crear el primer cliente/ })).toBeTruthy();
+    // Y NO culpa a la API de algo que no pasó.
+    expect(screen.queryByText(/Revisa que la API esté corriendo/)).toBeNull();
   });
 
   it('con error no dice además que la cartera está vacía', () => {
-    estado.error = 'No se pudo cargar la cartera: HTTP 500';
+    estado.error = 'No se pudo leer tu cartera: Missing or insufficient permissions.';
     estado.clientes = [];
     montar();
-    expect(screen.queryByText(/La cartera está vacía/)).toBeNull();
+    expect(screen.queryByText(/Aún no tienes clientes/)).toBeNull();
+  });
+
+  it('un fallo de lectura NO enseña clientes de demostración', () => {
+    // La aserción que mata la regresión de R-06: antes, un fallo al leer la
+    // cartera se sustituía por el catálogo del backend, y el contador veía
+    // tres clientes que no son suyos con aspecto de serlo.
+    estado.error = 'No se pudo leer tu cartera: Missing or insufficient permissions.';
+    estado.clientes = [];
+    montar();
+
+    expect(screen.getByText(/No se pudo leer tu cartera/)).toBeTruthy();
+    for (const ajeno of ['Servicios Administrativos Integrales', 'Cafetería La Estación', 'Taller Mecánico Nogal']) {
+      expect(screen.queryByText(ajeno), `apareció ${ajeno}`).toBeNull();
+    }
   });
 });

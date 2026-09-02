@@ -223,7 +223,11 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   desarrollo (sin borrar fixtures ni sus tests), los clientes de demostración sólo en
   cuentas de desarrollo, y el catálogo de sólo-lectura deja de hacerse pasar por la
   cartera. *Listo cuando:* una cuenta nueva ve una app vacía y funcional, sin datos que no
-  sean suyos.
+  sean suyos. **PR abierta.** Cerró **cuatro** costuras, no tres: la que faltaba era
+  `ClienteActivoContext`, que alimentaba el selector superior desde el catálogo del
+  backend — sin tocarla, una cuenta nueva habría visto su lista vacía **y el selector
+  mostrando los tres clientes de demostración**. Lleva revisor de motor: quitar el fallback
+  podía cambiar quién entra a `POST /nomina/calcular-periodo`.
 - [ ] **R-07 · Backend dueño del dato** — `firebase-admin` en `apps/api`; el CRUD de
   clientes y empleados pasa a endpoints del backend. Decisión tomada por Ricardo: el
   servicio deja de ser stateless. *Listo cuando:* alta/edición/baja de empleado pasa por el

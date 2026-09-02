@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { UserProfile } from './ProfileContext';
-import type { ClienteResumen } from '../services/despachoApi';
+import type { ClienteCartera } from '../services/carteraApi';
 
 const perfilBase: UserProfile = {
   contributorType: 'contador',
@@ -38,15 +38,44 @@ vi.mock('./ProfileContext', () => ({
   useProfile: () => ({ profile: perfilMock.actual, loading: false }),
 }));
 
-const CARTERA: ClienteResumen[] = [
-  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
-  { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos', origen: 'sintetico', num_empleados: 4, prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general' },
+/**
+ * R-06: LOS CLIENTES SALEN DE LA CARTERA, NO DEL BACKEND.
+ *
+ * Este archivo doblaba `obtenerClientes()` —`GET /despacho/clientes`, los tres
+ * de demostración—, que es exactamente la costura que R-06 corta: con ella, una
+ * cuenta nueva veía su lista vacía y el selector de arriba mostrando clientes
+ * ajenos. El doble ahora es el de la CARTERA, que es la fuente real.
+ */
+const PERIODO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null };
+const empleados = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    empleado_no: `E-${i}`, nombre: `PERSONA ${i}`, puesto: '', salario_diario: '316.00',
+    salario_diario_integrado: '331.58', zona: 'general', fecha_alta: null,
+    tipo_contrato: 'indeterminado' as const,
+    prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+    nss: '', employee_no: `E-${i}`, enrolamiento: 'enrolado' as const,
+  }));
+
+const CARTERA: ClienteCartera[] = [
+  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04', prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general', periodo_sugerido: PERIODO, empleados: empleados(9) },
+  { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos', origen: 'sintetico', prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general', periodo_sugerido: PERIODO, empleados: empleados(4) },
 ];
 
-const obtenerClientes = vi.fn(async () => CARTERA);
-vi.mock('../services/despachoApi', () => ({
-  obtenerClientes: () => obtenerClientes(),
-}));
+const estadoCartera = { clientes: CARTERA, loading: false, error: null as string | null };
+
+vi.mock('./carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        clientes: estadoCartera.clientes,
+        loading: estadoCartera.loading,
+        error: estadoCartera.error,
+        origen: 'firestore',
+        soloLectura: false,
+      }),
+  };
+});
 
 const { ClienteActivoProvider } = await import('./ClienteActivoContext');
 const { useClienteActivo } = await import('./clienteActivoStore');
@@ -73,7 +102,9 @@ function montar() {
 
 beforeEach(() => {
   perfilMock.actual = perfilBase;
-  obtenerClientes.mockClear();
+  estadoCartera.clientes = CARTERA;
+  estadoCartera.loading = false;
+  estadoCartera.error = null;
   localStorage.clear();
 });
 
@@ -102,13 +133,31 @@ describe('ClienteActivoContext', () => {
     expect(localStorage.getItem('fiscalito_cliente_activo')).toBe('demo');
   });
 
-  it('no pide la cartera si el perfil no es de contador', async () => {
+  it('un contribuyente no ve ningún cliente, aunque la cartera traiga datos', async () => {
+    // R-06: ya no se mide "no se llamó al endpoint" —el proveedor no llama a
+    // nadie, lee la cartera— sino el efecto que importaba: un contribuyente no
+    // tiene despacho, así que no debe ver clientes ni con la cartera poblada.
     perfilMock.actual = { ...perfilBase, contributorType: 'independiente' };
     montar();
 
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
-    expect(obtenerClientes).not.toHaveBeenCalled();
     expect(screen.getByTestId('total').textContent).toBe('0');
+    expect(screen.getByTestId('id').textContent).toBe('sin-cliente');
+  });
+
+  it('R-06 · una cartera VACÍA deja el selector sin clientes, no con los demo', async () => {
+    // El agujero que cerró R-06 y que no tenía prueba: este proveedor leía
+    // `GET /despacho/clientes` por su cuenta, así que una cuenta nueva veía su
+    // lista vacía y el selector de arriba mostrando los tres de demostración
+    // —con `/app/nomina` llevando a `demo`—. Datos ajenos, en la barra superior
+    // y en la nómina.
+    estadoCartera.clientes = [];
+    montar();
+
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('total').textContent).toBe('0');
+    expect(screen.getByTestId('id').textContent).toBe('sin-cliente');
+    expect(screen.getByTestId('nombre').textContent).toBe('sin-nombre');
   });
 
   it('sobrevive a un localStorage que lanza', async () => {
