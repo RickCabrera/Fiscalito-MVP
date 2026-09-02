@@ -17,9 +17,11 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import EmpleadosTab from '../components/cartera/EmpleadosTab';
+import { useCartera } from '../context/carteraStore';
 import { ArrowLeft, Info, Loader } from 'lucide-react';
 import ErrorAlert from '../components/common/ErrorAlert';
-import { envoltura, fila, tabla, td, tdNum, th, thNum, tituloSeccion } from '../components/nomina/estilosTabla';
+import { envoltura, fila, tabla, td, tdNum, th, thNum } from '../components/nomina/estilosTabla';
 import {
   etiquetaOrigen, obtenerCliente, primaComoPorcentaje,
   type ClienteDetalle,
@@ -52,9 +54,19 @@ function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: string; mono
  */
 type Resultado = { id: string; cliente?: ClienteDetalle; error?: string };
 
+/**
+ * G-01: la ficha gana un tab de **Empleados**, que es el editable y sale de la
+ * cartera del uid. El tab **Plantilla** es la vista de E-02/E-04 y se queda
+ * intacta: es el camino probado, y dejarlo alcanzable es lo que hace que la
+ * demo siga funcionando aunque el camino de Firestore falle.
+ */
+type Vista = 'empleados' | 'plantilla';
+
 export default function ClienteDetallePage() {
   const { id } = useParams();
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [vista, setVista] = useState<Vista>('empleados');
+  const cartera = useCartera();
 
   useEffect(() => {
     if (!id) return;
@@ -80,6 +92,12 @@ export default function ClienteDetallePage() {
   const loading = !alDia;
 
   const hayFactorImplicito = cliente?.empleados.some((e) => e.factor_implicito) ?? false;
+
+  // Los empleados EDITABLES salen de la cartera, no de la ficha del backend: si
+  // esta pantalla siguiera leyendo `obtenerCliente()`, un alta nueva no
+  // aparecería aquí ni en el cálculo, y el criterio de G-01 fallaría callado.
+  const deLaCartera = id ? cartera.clientePorId(id) : null;
+  const empleadosCartera = deLaCartera?.empleados ?? [];
 
   return (
     <div className="page-container">
@@ -129,7 +147,43 @@ export default function ClienteDetallePage() {
           </div>
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
-            <h2 style={{ ...tituloSeccion, marginBottom: 'var(--space-sm)' }}>Plantilla</h2>
+            <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+              {([['empleados', 'Empleados'], ['plantilla', 'Plantilla']] as const).map(([v, texto]) => (
+                <button
+                  key={v}
+                  onClick={() => setVista(v)}
+                  aria-current={vista === v}
+                  style={{
+                    padding: 'var(--space-xs) var(--space-md)',
+                    background: vista === v ? 'var(--accent-active)' : 'transparent',
+                    color: vista === v ? 'var(--text-on-accent)' : 'var(--text-secondary)',
+                    border: `1px solid ${vista === v ? 'var(--accent-active)' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-full)', cursor: 'pointer', fontSize: '0.85rem',
+                  }}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
+
+            {vista === 'empleados' && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                {cartera.motivoFallback && (
+                  <p style={{ margin: '0 0 var(--space-md)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    {cartera.motivoFallback}
+                  </p>
+                )}
+                <EmpleadosTab
+                  empleados={empleadosCartera}
+                  soloLectura={cartera.soloLectura}
+                  onGuardar={(e) => cartera.guardarEmpleado(id as string, e)}
+                  onBorrar={(no) => cartera.borrarEmpleado(id as string, no)}
+                />
+              </div>
+            )}
+
+            {vista === 'plantilla' && (
+            <>
             <div className="card" style={{ padding: 'var(--space-lg)' }}>
               <div style={envoltura}>
                 <table style={tabla(760)}>
@@ -203,6 +257,8 @@ export default function ClienteDetallePage() {
                 )}
               </span>
             </div>
+            </>
+            )}
           </div>
         </>
       )}

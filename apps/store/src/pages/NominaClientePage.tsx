@@ -74,6 +74,26 @@ export default function NominaClientePage() {
         </AvisoNomina>
       )}
 
+      {/* G-02: el conteo sale de la CARTERA, no del flujo de checadas.
+          `empleados_desconocidos` (TablaIncidencias, herencia D-04) responde la
+          pregunta contraria —un employeeNo que checó y no está en la
+          plantilla—. Los dos conjuntos no se tocan, y con sólo uno de los dos
+          hay gente que desaparece del cálculo sin que nadie lo note. */}
+      {n.sinVincular > 0 && (
+        <AvisoNomina severidad="advertencia">
+          <strong>
+            {n.sinVincular}{' '}
+            {n.sinVincular === 1
+              ? 'empleado no está vinculado al checador'
+              : 'empleados no están vinculados al checador'}
+            .
+          </strong>{' '}
+          Sin <code>employeeNo</code> no hay forma de atribuirle sus checadas, así que{' '}
+          {n.sinVincular === 1 ? 'no entra' : 'no entran'} en este cálculo. Captura su número
+          del aparato en la ficha del cliente, pestaña Empleados.
+        </AvisoNomina>
+      )}
+
       <PasoNomina
         numero={1}
         titulo="Checadas recibidas"

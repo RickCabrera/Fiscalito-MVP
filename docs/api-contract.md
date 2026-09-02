@@ -214,6 +214,63 @@ La ficha: el resumen de arriba más `empleados`, `periodo_sugerido` y `fecha_ref
 > un cliente que no sea `demo`, porque ahí es una validación de dominio. No se unificó: tocar
 > `nomina.py` queda fuera del alcance de E-02.
 
+### `GET /api/v1/despacho/clientes/{cliente_id}/empleados` (G-01)
+
+Los empleados del cliente en el **modelo canónico de la cartera**, que es el mismo que el
+despacho guarda en Firestore.
+
+**Es una SEMILLA, no un CRUD.** El backend está declarado *stateless* (`apps/api/CLAUDE.md`)
+y no persiste altas ni bajas: el dueño del dato es `users/{uid}/clientes/{id}/empleados/{id}`
+(PLAN_NOMINA §3.3). Esta ruta existe para que una cuenta nueva arranque con los tres clientes
+de demostración sin que el front invente sus datos.
+
+**Respuesta 200**
+
+```json
+{
+  "cliente_id": "demo",
+  "origen": "fixtures-s04",
+  "total": 9,
+  "sin_vincular": 0,
+  "empleados": [
+    {
+      "empleado_no": "E-01",
+      "nombre": "ANA BEATRIZ XALA MORA",
+      "puesto": "",
+      "salario_diario": "316.00",
+      "salario_diario_integrado": "331.58",
+      "zona": "general",
+      "fecha_alta": null,
+      "tipo_contrato": "indeterminado",
+      "prestaciones": {"dias_aguinaldo": 15, "dias_vacaciones": 0, "prima_vacacional": "0.25"},
+      "nss": "",
+      "employee_no": "E-01",
+      "enrolamiento": "enrolado"
+    }
+  ]
+}
+```
+
+**Las dos llaves son distintas y eso es lo importante:**
+
+| Campo | Para qué | ¿Puede ser nulo? |
+|---|---|---|
+| `empleado_no` | Llave del **cálculo**. La que usan `EmpleadoNominaSchema` y las incidencias. | **Nunca.** |
+| `employee_no` | Llave del **checador** (`employeeNoString` del Hikvision). | **Sí.** `null` = no vinculado. |
+
+`docs/D-DEMO-CHECADOR.md` dice que el `employeeNo` del aparato *es* el id del empleado. Aquí se
+separan a propósito: fundirlas obligaría a que la llave del cálculo fuera nullable, y ahí se
+pierde gente — o el request revienta con 422 y la nómina entera falla, o dos empleados sin
+vincular entran ambos con `""` y colisionan en el dedupe del almacén de checadas.
+
+`nss` viene **vacío en toda la semilla** y nunca inventado: un NSS de 11 dígitos bien formado es
+el NSS de alguien. Mismo criterio que `fecha_alta`, que es `null` cuando no se conoce.
+
+`sin_vincular` lo cuenta el backend, no la UI: un aviso que depende de que alguien se acuerde de
+filtrar es un aviso que un día no sale.
+
+**404** — cliente desconocido, con el sobre `{"exito": false, "error": "..."}`.
+
 ### `GET /api/v1/despacho/calendario` (E-07)
 
 Obligaciones **patronales** de todos los clientes de la cartera, ordenadas por fecha límite y
@@ -403,6 +460,64 @@ porcion_bimestral, advertencias[], explicacion?}`.
 (§D11, provisional) calculado con el SBC **acotado**, mientras la evidencia de §D11 se
 construyó con el timbrado. Coinciden en los 9 empleados de la demo y divergen en un
 trabajador al piso del Art. 28.
+
+### `POST /api/v1/nomina/sbc` (G-01)
+
+Integra un salario **fijo** (Art. 30 fr. I LSS) con el factor del Art. 27 y lo acota entre 1
+salario mínimo y 25 UMA (Art. 28). Lo llama la pantalla de alta de empleado mientras se teclea el
+salario, para que el front **no reimplemente la fórmula**: un factor calculado en TypeScript sería
+una segunda verdad sobre el Art. 27 sin ningún test que la cuide.
+
+**Orquestador, no motor:** llama a `factor_integracion`, `sbc_fijo` y `clamp_sbc` de
+`nomina_engine/integracion.py`. No calcula nada por su cuenta.
+
+**Request**
+
+```json
+{
+  "salario_diario": "500.00",
+  "fecha": "2026-09-01",
+  "zona": "general",
+  "anios_servicio_cumplidos": 3,
+  "dias_aguinaldo": 15,
+  "dias_vacaciones": 0,
+  "prima_vacacional": "0.25"
+}
+```
+
+`fecha` es **obligatoria y sin default**: `clamp_sbc` mueve el piso el 1-ene (salario mínimo) y el
+tope el 1-feb (UMA), así que un `date.today()` implícito haría que el número del modal cambiara
+solo entre enero y febrero. `dias_vacaciones: 0` significa *los de ley que le tocan a su
+antigüedad* (Art. 76 LFT).
+
+**Respuesta 200**
+
+```json
+{
+  "factor": "1.0521",
+  "dias_vacaciones_aplicados": 16,
+  "sbc_sin_acotar": "526.05",
+  "sbc": "526.05",
+  "piso_aplicado": false,
+  "tope_aplicado": false,
+  "piso": "315.04",
+  "tope": "2932.75",
+  "fundamento": "Arts. 27, 28 y 30 fr. I LSS; Arts. 76, 80 y 87 LFT."
+}
+```
+
+Las banderas del clamp **no son adorno**: `piso_aplicado` es el único camino por el que un SBC
+llega a ser exactamente 1 salario mínimo, que es el supuesto del Art. 36 LSS (el patrón absorbe la
+cuota obrera) y el renglón de 3.150% de la tabla de CEAV. Acotar en silencio escondería las dos.
+
+**422** — con el sobre `{"exito": false, "error": "..."}`. Los casos que importan:
+aguinaldo menor a 15 días (Art. 87 LFT: subintegraría el SBC y con él todas las cuotas) y prima
+vacacional fuera de `[0.25, 1]` — pasar `25` en vez de `0.25` produce un factor de 1.86 y un SBC
+inflado 77% que ninguna tabla de referencia detecta.
+
+**Lo que NO hace, a propósito:** no recalcula un SDI que ya venga dado (§D9: cuando sale de un CFDI
+timbrado es dato de entrada); no acepta conceptos integrables (§D5: el motor no decide qué integra,
+y mandar una despensa completa sobreintegraría); y no usa LLM ni acepta `incluir_explicacion`.
 
 ### Tool del agente: `calcular_nomina_periodo`
 

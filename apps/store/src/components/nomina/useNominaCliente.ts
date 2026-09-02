@@ -30,7 +30,7 @@
  * las cuotas del IMSS y un día menos pagado.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   calcularNomina,
   cerrarPeriodo,
@@ -39,6 +39,8 @@ import {
   type EventoChecada,
   type NominaPeriodo,
 } from '../../services/nominaDemoApi';
+import { useCartera } from '../../context/carteraStore';
+import { estaVinculado, contarSinVincular } from '../../services/carteraApi';
 import { obtenerCliente, type ClienteDetalle } from '../../services/despachoApi';
 import { useClienteActivo } from '../../context/clienteActivoStore';
 
@@ -85,6 +87,7 @@ export function useNominaCliente(clienteId: string) {
   // La confirmación es estado, no `window.confirm`. Guarda el id del cliente al
   // que corresponde, para que no sobreviva a un cambio de cliente.
   const [confirmarPara, setConfirmarPara] = useState<string | null>(null);
+  const cartera = useCartera();
 
   // El contexto SIGUE a la ruta. Al revés, el header afirmaría un cliente y la
   // pantalla calcularía otro.
@@ -145,6 +148,36 @@ export function useNominaCliente(clienteId: string) {
     return dia >= inicio && dia <= fin;
   });
 
+  // G-01/G-02: los empleados del CÁLCULO salen de la cartera del uid, no de la
+  // ficha del backend. Si esto siguiera leyendo `cliente.empleados`, un alta
+  // nueva no entraría a la nómina y el criterio de G-01 fallaría en silencio.
+  //
+  // Y sólo entran los VINCULADOS: sin `employee_no` no hay checadas que
+  // atribuirle, y mandarlo al cierre con una llave vacía lo haría colisionar
+  // con cualquier otro sin vincular. Los excluidos NO desaparecen callados —
+  // `sinVincular` los cuenta y la pantalla lo dice.
+  const deLaCartera = clienteId ? cartera.clientePorId(clienteId) : null;
+  const empleadosCartera = deLaCartera?.empleados ?? null;
+  const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
+
+  /** La plantilla que se manda al backend: la de la cartera si la hay. */
+  const plantilla = useMemo(() => {
+    if (!cliente) return [];
+    if (!empleadosCartera) return cliente.empleados;
+    return empleadosCartera.filter(estaVinculado).map((e) => ({
+      empleado_no: e.empleado_no,
+      nombre: e.nombre,
+      puesto: e.puesto,
+      salario_diario: e.salario_diario,
+      salario_diario_integrado: e.salario_diario_integrado,
+      zona: e.zona,
+      fecha_alta: e.fecha_alta,
+      antiguedad_anios: null,
+      factor: '0',
+      factor_implicito: false,
+    }));
+  }, [cliente, empleadosCartera]);
+
   const cerrar = async () => {
     if (!cliente) return;
     const id = cliente.id;
@@ -157,7 +190,7 @@ export function useNominaCliente(clienteId: string) {
         id,
         valor: await cerrarPeriodo(
           id,
-          cliente.empleados.map((e) => e.empleado_no),
+          plantilla.map((e) => e.empleado_no),
           { inicio, fin },
         ),
       });
@@ -182,7 +215,9 @@ export function useNominaCliente(clienteId: string) {
           id,
           { inicio, fin, fecha_pago: fechaDePago(cliente, inicio, fin) },
           cierre.incidencias,
-          cliente,
+          // La ficha con la plantilla de la cartera: es lo que hace que un
+          // empleado dado de alta hoy aparezca en los recibos de hoy.
+          { ...cliente, empleados: plantilla },
         ),
       });
     } catch (e) {
@@ -194,6 +229,8 @@ export function useNominaCliente(clienteId: string) {
 
   return {
     cliente,
+    /** Empleados de la cartera que NO están vinculados al checador (G-02). */
+    sinVincular,
     eventos,
     cierre,
     nomina,

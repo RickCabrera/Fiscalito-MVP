@@ -241,3 +241,55 @@ class CalcularPeriodoResponse(BaseModel):
     porcion_bimestral: PorcionConsolidada
     advertencias: tuple[str, ...] = ()
     explicacion: str | None = None
+
+
+class SBCRequest(BaseModel):
+    """
+    Lo que se necesita para integrar un salario fijo (Art. 27 y 30 fr. I LSS).
+
+    **`fecha` es obligatoria y no tiene default.** `clamp_sbc` mueve el piso el
+    1 de enero (salario mínimo) y el tope el 1 de febrero (UMA), así que un
+    `date.today()` implícito haría que el SBC del modal cambiara solo entre
+    enero y febrero. Todo el encabezado de `despacho_demo.py` está escrito
+    contra esa clase de deriva.
+    """
+
+    salario_diario: Decimal = Field(gt=0)
+    fecha: date = Field(
+        description="Fecha contra la que se miden piso y tope. Obligatoria a "
+        "propósito: piso y tope se mueven en fechas distintas."
+    )
+    zona: ZonaSalarioMinimo = ZonaSalarioMinimo.GENERAL
+    anios_servicio_cumplidos: int = Field(
+        default=0,
+        ge=0,
+        le=60,
+        description="Antigüedad cumplida. Decide los días de vacaciones de ley "
+        "cuando no se capturan (Art. 76 LFT).",
+    )
+    dias_aguinaldo: int = Field(default=15, ge=0)
+    dias_vacaciones: int = Field(
+        default=0, ge=0, description="0 = los de ley que le tocan a su antigüedad."
+    )
+    prima_vacacional: Decimal = Field(default=Decimal("0.25"), ge=0)
+
+
+class SBCResponse(BaseModel):
+    """
+    El SBC integrado, con todo lo que la pantalla necesita para explicarlo.
+
+    Las banderas del clamp **no son adorno**: `piso_aplicado` es el único camino
+    por el que un SBC llega a ser exactamente 1 salario mínimo, que es el
+    supuesto del Art. 36 LSS (el patrón absorbe la cuota obrera) y el renglón de
+    3.150% de la tabla de CEAV. Acotar en silencio escondería eso.
+    """
+
+    factor: Decimal
+    dias_vacaciones_aplicados: int
+    sbc_sin_acotar: Decimal
+    sbc: Decimal
+    piso_aplicado: bool
+    tope_aplicado: bool
+    piso: Decimal
+    tope: Decimal
+    fundamento: str

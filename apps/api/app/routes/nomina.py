@@ -25,6 +25,12 @@ from app.demo_nomina import (
 )
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.cuotas import Consolidado
+from app.nomina_engine.integracion import (
+    clamp_sbc,
+    dias_vacaciones_de_ley,
+    factor_integracion,
+    sbc_fijo,
+)
 from app.nomina_engine.periodo import (
     EmpleadoPeriodo,
     IncidenciasPeriodo,
@@ -32,6 +38,7 @@ from app.nomina_engine.periodo import (
     ResultadoPeriodo,
     calcular_periodo,
 )
+from app.schemas.declaraciones import ErrorResponse
 from app.schemas.nomina import (
     CalcularPeriodoRequest,
     CalcularPeriodoResponse,
@@ -42,6 +49,8 @@ from app.schemas.nomina import (
     PlantillaDemoResponse,
     PorcionConsolidada,
     ReciboSchema,
+    SBCRequest,
+    SBCResponse,
 )
 from app.services.llm_nomina import generar_explicacion_nomina_periodo
 
@@ -257,4 +266,53 @@ async def calcular(req: CalcularPeriodoRequest) -> CalcularPeriodoResponse:
         porcion_bimestral=_porcion(resultado.porcion_bimestral),
         advertencias=resultado.advertencias,
         explicacion=explicacion,
+    )
+
+
+@router.post(
+    "/nomina/sbc",
+    response_model=SBCResponse,
+    responses={422: {"model": ErrorResponse}},
+    summary="Integrar un salario diario a SBC",
+    description="Integra un salario **fijo** (Art. 30 fr. I LSS) con el factor del "
+    "Art. 27 y lo acota entre 1 salario mínimo y 25 UMA (Art. 28). Es lo que la "
+    "pantalla de alta de empleado llama mientras se teclea el salario, para que el "
+    "front **no reimplemente la fórmula**.\n\n"
+    "**Orquestador, no motor:** llama a `factor_integracion`, `sbc_fijo` y `clamp_sbc` "
+    "de `nomina_engine/integracion.py` y no calcula nada por su cuenta.\n\n"
+    "**Lo que NO hace, a propósito:** no recalcula un SDI que ya venga dado (§D9: "
+    "cuando sale de un CFDI timbrado es dato de entrada); no acepta conceptos "
+    "integrables (§D5: el motor no decide qué integra, y mandar una despensa completa "
+    "sobreintegraría); no acota en silencio (devuelve las banderas); y no usa LLM ni "
+    "acepta `incluir_explicacion` — aquí no hay nada que explicar que no sea el número.",
+)
+async def integrar_sbc(req: SBCRequest) -> SBCResponse:
+    # Los días de vacaciones se resuelven ANTES de llamar al motor y se
+    # devuelven: si el motor recibiera 0 y aplicara el de ley por su cuenta, la
+    # pantalla no podría decir con cuántos días integró.
+    dias_vacaciones = (
+        req.dias_vacaciones
+        if req.dias_vacaciones > 0
+        else dias_vacaciones_de_ley(req.anios_servicio_cumplidos)
+    )
+
+    # `factor_integracion` levanta `FiscalValidationError` con aguinaldo < 15 y
+    # con prima fuera de [0.25, 1]. NO se atrapa: ese segundo guard es el que
+    # caza el 25 en vez de 0.25, que infla el SBC 77% sin que ninguna tabla lo
+    # detecte. Un "mejor esfuerzo" aquí mataría la validación; el handler global
+    # lo convierte en 422 con su mensaje.
+    factor = factor_integracion(req.dias_aguinaldo, dias_vacaciones, req.prima_vacacional)
+    sin_acotar = sbc_fijo(req.salario_diario, factor)
+    acotado = clamp_sbc(sin_acotar, req.fecha, req.zona)
+
+    return SBCResponse(
+        factor=factor,
+        dias_vacaciones_aplicados=dias_vacaciones,
+        sbc_sin_acotar=sin_acotar,
+        sbc=acotado.valor,
+        piso_aplicado=acotado.piso_aplicado,
+        tope_aplicado=acotado.tope_aplicado,
+        piso=acotado.piso,
+        tope=acotado.tope,
+        fundamento="Arts. 27, 28 y 30 fr. I LSS; Arts. 76, 80 y 87 LFT.",
     )

@@ -43,6 +43,11 @@ from app.schemas.despacho import (
     ClientesResponse,
     EmpleadoClienteSchema,
 )
+from app.schemas.empleado import (
+    EmpleadoCarteraSchema,
+    EmpleadosClienteResponse,
+    EstatusEnrolamiento,
+)
 from app.schemas.nomina import PeriodoNomina
 
 router = APIRouter(tags=["Despacho (demo)"])
@@ -76,6 +81,33 @@ def _empleado(empleado: EmpleadoCliente) -> EmpleadoClienteSchema:
         antiguedad_anios=empleado.antiguedad_anios,
         factor=empleado.factor,
         factor_implicito=empleado.factor_implicito,
+    )
+
+
+def _empleado_cartera(empleado: EmpleadoCliente) -> EmpleadoCarteraSchema:
+    """
+    Traduce un empleado de la semilla al modelo canónico de la cartera.
+
+    **`nss` se queda vacío y `fecha_alta` puede ser `None`.** Los nueve del caso
+    real salen de fixtures anonimizadas con montos reales: ponerles un NSS
+    inventado lo dejaría junto a datos reales, que es justo la mezcla que
+    después alguien confunde con dato verdadero. Mismo criterio que ya usa
+    `despacho_demo.py` para la fecha de alta.
+
+    **`employee_no = empleado_no`** porque estos empleados YA están enrolados en
+    el checador de la demo: es lo que hace que la demo siga funcionando igual
+    que antes de G-02. Un empleado capturado desde la UI empieza sin llave.
+    """
+    return EmpleadoCarteraSchema(
+        empleado_no=empleado.empleado_no,
+        nombre=empleado.nombre,
+        puesto=empleado.puesto,
+        salario_diario=empleado.salario_diario,
+        salario_diario_integrado=empleado.salario_diario_integrado,
+        zona=empleado.zona,
+        fecha_alta=empleado.fecha_alta,
+        employee_no=empleado.empleado_no,
+        enrolamiento=EstatusEnrolamiento.ENROLADO,
     )
 
 
@@ -211,4 +243,45 @@ async def calendario_de_la_cartera(
         total_obligaciones=len(obligaciones),
         obligaciones=tuple(obligaciones),
         advertencias=ADVERTENCIAS_CALENDARIO,
+    )
+
+
+@router.get(
+    "/despacho/clientes/{cliente_id}/empleados",
+    response_model=EmpleadosClienteResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary=_AVISO + "Semilla de empleados de un cliente",
+    description=_AVISO
+    + "Los empleados del cliente en el **modelo canónico de la cartera** "
+    "(`EmpleadoCarteraSchema`), que es el mismo que el despacho guarda en Firestore. "
+    "Es una SEMILLA, no un CRUD: el backend está declarado stateless y no persiste "
+    "altas ni bajas — el dueño del dato es `users/{uid}/clientes/{id}/empleados/{id}` "
+    "(PLAN_NOMINA §3.3). Esta ruta existe para que una cuenta nueva arranque con los "
+    "tres clientes de demostración sin que el front invente sus datos.\n\n"
+    "**`employee_no` viene igual a `empleado_no` para todos**, porque estos empleados "
+    "ya están dados de alta en el checador de la demo. Un empleado capturado desde la "
+    "UI puede no tenerlo, y entonces `sin_vincular` lo cuenta.",
+)
+async def empleados_del_cliente(cliente_id: str) -> EmpleadosClienteResponse:
+    cliente = cliente_por_id(cliente_id)
+    if cliente is None:
+        # Mismo 404 de dominio que la ficha: `FiscalAgentError` para que salga
+        # con el sobre `{exito, error}` y no con el `detail` pelón de FastAPI,
+        # que el front lee como "esta ruta no existe" (ver `errorApi.ts`).
+        conocidos = ", ".join(c.id for c in CLIENTES)
+        raise FiscalAgentError(
+            f"El cliente {cliente_id!r} no está en la cartera de la demo. "
+            f"Clientes disponibles: {conocidos}.",
+            status_code=404,
+        )
+
+    empleados = tuple(_empleado_cartera(e) for e in cliente.empleados)
+    return EmpleadosClienteResponse(
+        cliente_id=cliente.id,
+        origen=cliente.origen,
+        total=len(empleados),
+        # Se cuenta aquí, no en la UI: un aviso que depende de que alguien se
+        # acuerde de filtrar es un aviso que un día no sale.
+        sin_vincular=sum(1 for e in empleados if not e.vinculado_al_checador),
+        empleados=empleados,
     )

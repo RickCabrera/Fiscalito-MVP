@@ -15,6 +15,15 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ClienteResumen } from '../services/despachoApi';
 
+// G-03: las pantallas piden la cartera. El doble viene vacío, así que
+// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
+// camino que estas pruebas medían antes de G-01.
+vi.mock('../context/carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  return { useCartera: () => carteraDePrueba() };
+});
+
+
 const CARTERA: ClienteResumen[] = [
   { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios administrativos', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
   { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos y bebidas', origen: 'sintetico', num_empleados: 4, prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general' },

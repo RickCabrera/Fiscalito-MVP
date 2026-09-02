@@ -59,6 +59,12 @@
       ]
     },
     {
+      "path": "/api/v1/despacho/clientes/{cliente_id}/empleados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/diot",
       "metodos": [
         "POST"
@@ -86,6 +92,12 @@
       "path": "/api/v1/nomina/demo/plantilla",
       "metodos": [
         "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/sbc",
+      "metodos": [
+        "POST"
       ]
     },
     {

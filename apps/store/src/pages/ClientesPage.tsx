@@ -7,8 +7,12 @@
  * DEMO — se borra en F2.
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ChevronRight, Loader, RefreshCw, Users } from 'lucide-react';
+import ModalCliente from '../components/cartera/ModalCliente';
+import { useCartera } from '../context/carteraStore';
+import type { ClienteCartera } from '../services/carteraApi';
+import { Building2, ChevronRight, Loader, Plus, RefreshCw, Users } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import { etiquetaOrigen, primaComoPorcentaje, type ClienteResumen } from '../services/despachoApi';
 import ErrorAlert from '../components/common/ErrorAlert';
@@ -82,6 +86,9 @@ function TarjetaCliente({
 
 export default function ClientesPage() {
   const { clientes, clienteId, loading, error, setClienteId, recargar } = useClienteActivo();
+  const cartera = useCartera();
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [editando, setEditando] = useState<Omit<ClienteCartera, 'empleados'> | null>(null);
   const navigate = useNavigate();
 
   const abrir = (id: string) => {
@@ -95,6 +102,33 @@ export default function ClientesPage() {
         <h1>Clientes</h1>
         <p>La cartera del despacho. Elige uno para ver su plantilla y calcular su nómina.</p>
       </div>
+
+      {/* G-03: el origen se DICE, no se esconde. Con el catálogo del backend en
+          pantalla no hay escritura, y el contador tiene que saber por qué. */}
+      {cartera.motivoFallback && (
+        <div
+          style={{
+            marginBottom: 'var(--space-md)', background: 'var(--warning-bg)',
+            border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-sm) var(--space-md)', fontSize: '0.86rem',
+          }}
+        >
+          {cartera.motivoFallback} Las altas y ediciones están deshabilitadas hasta que tu
+          cartera se pueda guardar en tu cuenta.
+        </div>
+      )}
+
+      {!cartera.soloLectura && (
+        <div style={{ marginBottom: 'var(--space-md)' }}>
+          <button
+            className="btn-primary"
+            onClick={() => { setEditando(null); setModalAbierto(true); }}
+            style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+          >
+            <Plus size={16} /> Nuevo cliente
+          </button>
+        </div>
+      )}
 
       {error && (
         <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
@@ -141,6 +175,15 @@ export default function ClientesPage() {
           />
         ))}
       </div>
+
+      {modalAbierto && (
+        <ModalCliente
+          cliente={editando}
+          idsExistentes={cartera.clientes.map((c) => c.id)}
+          onGuardar={cartera.guardarCliente}
+          onCerrar={() => setModalAbierto(false)}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,7 @@ import rutasBackend from './rutasBackend.json';
 import * as despachoApi from './despachoApi';
 import * as nominaDemoApi from './nominaDemoApi';
 import * as fiscalAgentApi from './fiscalAgentApi';
+import * as carteraApi from './carteraApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -135,6 +136,10 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
         FICHA_VACIA,
       ),
   },
+  'carteraApi.ts': {
+    obtenerEmpleadosSemilla: () => carteraApi.obtenerEmpleadosSemilla('demo'),
+    integrarSBC: () => carteraApi.integrarSBC({ salario_diario: '500.00', fecha: '2026-09-01' }),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -165,6 +170,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'despachoApi.ts': despachoApi,
   'nominaDemoApi.ts': nominaDemoApi,
   'fiscalAgentApi.ts': fiscalAgentApi,
+  'carteraApi.ts': carteraApi,
 };
 
 /**
@@ -180,6 +186,8 @@ const HELPERS_PUROS = new Set([
   'primaComoPorcentaje',
   'tipoParaApi',
   'tipoParaCalendario',
+  'estaVinculado',
+  'contarSinVincular',
 ]);
 
 function funcionesQueDeberianPegar(modulo: Record<string, unknown>): string[] {

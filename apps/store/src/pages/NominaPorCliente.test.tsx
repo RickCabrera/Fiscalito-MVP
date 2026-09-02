@@ -17,6 +17,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
+// G-03: las pantallas piden la cartera. El doble viene vacío, así que
+// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
+// camino que estas pruebas medían antes de G-01.
+vi.mock('../context/carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  return { useCartera: () => carteraDePrueba() };
+});
+
+
 const setClienteId = vi.fn();
 const estadoContexto = { clienteId: 'taller' as string | null };
 
