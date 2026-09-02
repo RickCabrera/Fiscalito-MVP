@@ -496,7 +496,7 @@ persistencia tiene que permitir consultarla.
 
 ---
 
-## D21 · Qué muestra "Calendario" en una cuenta de despacho — PROVISIONAL
+## D21 · Qué muestra "Calendario" en una cuenta de despacho — RESUELTA (E-07)
 
 **Contexto (E-01).** El sidebar del contador lleva cuatro entradas, y una es **Calendario**.
 La pantalla detrás es el tab de calendario de Fiscalito, que llama a
@@ -519,6 +519,29 @@ sidebar cambia de destino y la tarea que lo habilita es F1-06, no una de la Épi
 
 **Que quede claro para quien planee E-02 y E-03:** hoy "Calendario" NO significa nada
 patronal. No se puede asumir que ya cubre las obligaciones IMSS de los clientes.
+
+### Resolución (E-07, 2026-09-02)
+
+**Se tomó la alternativa: "Calendario" es el calendario PATRONAL de los clientes.** La tarea
+habilitante era F1-06, que E-07 entregó parcialmente (`nomina_engine/calendario_laboral.py` y
+`plazos_patronales.py`). El enlace del sidebar apunta ahora a `/app/calendario`, que consume
+`GET /api/v1/despacho/calendario` y muestra las obligaciones de toda la cartera agrupadas por
+fecha límite.
+
+**Y con eso cae la otra mitad de la decisión, que no era opcional.** Una cuenta de despacho
+**deja de tener calendario de contribuyente**: `getTabsForProfile('contador')` devuelve `[]` y
+`FiscalitoServicePage` redirige a `/app/calendario`. No es un capricho de alcance — E-05 dejó de
+pedirle RFC y régimen al despacho *y quitó del perfil el único lugar donde capturarlos*, y
+`CalendarioTab` corta en seco sin esos dos campos. Mantener el enlace habría dejado un tab muerto
+con letrero. `tipoParaCalendario` conserva su entrada `contador` sólo como guarda de
+exhaustividad del `Record`, y su comentario dice que quedó inalcanzable por construcción.
+
+**Consecuencia declarada, y es una decisión abierta para Ricardo:** *la app ya no calcula las
+obligaciones fiscales propias del despacho* (su ISR e IVA como persona física con régimen 612 o
+626). Si algún día se quieren, hay que volver a pedirle RFC y régimen en el onboarding y en el
+perfil. **La pantalla se lo dice al contador**, no sólo este documento: el calendario patronal
+lleva una línea fija que aclara que es el de sus clientes y que la app no calcula las del
+despacho.
 
 ---
 
@@ -549,3 +572,85 @@ preparación de alimentos y bebidas, y a un taller de reparación de vehículos 
 cada febrero** con su siniestralidad del ejercicio anterior (Art. 74 LSS). Es dato de entrada,
 **no derivable del giro** — la clase sólo fija la prima media de una empresa nueva.
 
+
+---
+
+## D23 · La prima de RT no se corre al siguiente día hábil — PROVISIONAL
+
+**Contexto (E-07 / F1-06).** La Declaración Anual de Prima de Riesgo de Trabajo se presenta
+**durante febrero, a más tardar el último día** (Art. 74 LSS; Art. 32 RACERF). En **2026 el
+último día de febrero cae en sábado 28**, o sea en un día en que el trámite no se puede
+presentar.
+
+**El planteamiento honesto, que una versión anterior de esta entrega tenía mal.** El Art. 3 del
+RACERF —el que prorroga al siguiente día hábil los plazos que vencen en día inhábil o viernes—
+**sí le alcanza a esta obligación**: se presenta bajo el Art. 32 del mismo reglamento y no es un
+aviso afiliatorio, que es lo único que ese artículo excluye. Decir "el Art. 3 la excluye" era
+citar una fuente que dice lo contrario.
+
+**Decisión provisional, y la razón es conservadora, no legal:** `calendario_laboral.py` **no**
+aplica la prórroga y reporta el **28 de febrero**. Correr la fecha al lunes 2 de marzo es la
+dirección **permisiva** —le diría al patrón que tiene dos días más de los que este repo puede
+sostener con cita—, y la doctrina del proyecto en materia de plazos es contar de menos, nunca de
+más (misma razón que §D13 y que la omisión de la jornada electoral en `dias_habiles.py`).
+
+Para que la fecha no engañe, la obligación viaja con `regimen_de_plazo = "imss_sin_prorroga"`
+—un valor propio del enum, no `"imss"`, que promete una prórroga que aquí no ocurre— y con una
+`nota` que dice que cae en sábado y que la decisión es provisional.
+
+**Pregunta para la contadora, y es la que cierra esto:** la declaración anual de prima de riesgo
+cuyo último día cae en sábado, ¿vence ese sábado o el siguiente día hábil? Y si es lo segundo,
+¿es por el Art. 3 del RACERF o por otra regla?
+
+**Qué cambia con cada respuesta.** Si vence el siguiente hábil, `fecha_limite_prima_riesgo()`
+pasa a envolver su resultado en `prorroga_racerf()` y el `regimen_de_plazo` vuelve a `"imss"`;
+el test que hoy fija el 28-feb-2026 se invierte. Si vence el sábado, esto deja de ser provisional
+y la nota se queda como advertencia operativa.
+
+---
+
+## D24 · Qué obligaciones emite el calendario patronal, y cuáles no — PROVISIONAL
+
+**Contexto (E-07).** El calendario patronal de un despacho se arma por cliente, y el modelo de
+cliente de la demo (`despacho_demo.ClienteDespacho`) **no registra RFC, ni estado, ni
+personalidad jurídica, ni el tipo de salario de los trabajadores**. Cada una de esas ausencias
+decide si una obligación se puede afirmar, se afirma con reservas, o no se emite.
+
+**Lo que se emite firme:** entero mensual del IMSS y bimestral de RCV/Infonavit (Art. 39 LSS),
+entero del ISR retenido de salarios (LISR Art. 96), declaración anual de prima de RT (§D23) y
+aguinaldo (LFT Art. 87).
+
+**Lo que se emite CONDICIONAL, con nota.** `condicional: true` no significa "opcional": significa
+"verifícalo, porque aquí no consta".
+
+1. **Aviso bimestral de modificación de la parte variable del SBC** (Art. 34 fr. II LSS). El
+   modelo no registra el tipo de salario. `None` en el motor es *no se sabe*, **no** *no tiene*:
+   la cartera de la demo es toda de salario fijo, pero eso es una propiedad de los datos de
+   demostración, no un hecho sobre un patrón real.
+2. **PTU** (LFT Art. 122). El plazo depende de si el patrón es persona moral (30 de mayo) o
+   física (29 de junio), y eso no consta, así que **se emiten las dos fechas** marcadas.
+
+**Lo que NO se emite, y por qué:**
+
+- **ISN (Impuesto Sobre Nóminas).** Es estatal, la tasa y la fecha varían por entidad, y
+  `knowledge_base/` **no tiene ninguna fuente estatal** —ni el Código Financiero de Veracruz ni
+  otro— ni el modelo registra el estado del patrón. Escribir "día 10 o 17 según la entidad" sería
+  un valor legal sin cita. **Ojo:** §D8 decide no calcular su *importe* y no dice nada de la
+  fecha; el argumento de aquí es la falta de fuente, no §D8. El doc 25 §4 prometía que el
+  calendario sí lo mostraría como vencimiento: **se corrigió en el mismo entregable**.
+
+**Y una que sí se emite pero con la regla acotada:** el **entero del ISR retenido** se rige por el
+CFF Art. 12 (siguiente día hábil, **sin** la regla del viernes del IMSS) y **sin el ajuste por
+sexto dígito del RFC**, que es una facilidad de la RMF y sólo puede correr la fecha hacia
+adelante. El modelo no guarda el RFC del cliente, así que omitirla deja la fecha igual o antes de
+la legal — conservador. Por eso las cuotas de marzo de 2026 vencen el **20-abr** y su ISR el
+**17-abr**: dos fechas, dos reglas, y el campo `regimen_de_plazo` existe para que ninguna vista
+las presente como si fueran la misma.
+
+**Preguntas para la contadora:** (1) ¿el ISN de un patrón de Veracruz vence el día 10 o el 17, y
+cuál es la fuente? (2) ¿Hay alguna obligación patronal recurrente que este calendario esté
+omitiendo?
+
+**Y para F1-09**, que es quien pone clientes reales: registrar RFC, estado, personalidad jurídica
+y tipo de salario convierte casi todo lo condicional de arriba en firme, y habilita el ajuste por
+sexto dígito.

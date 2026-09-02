@@ -81,6 +81,61 @@ export async function obtenerCliente(clienteId: string): Promise<ClienteDetalle>
   return leer<ClienteDetalle>(res, `No se pudo cargar el cliente ${clienteId}`);
 }
 
+/**
+ * Qué regla de cómputo produjo la fecha límite. **No es adorno.**
+ *
+ * `knowledge_base/nomina/25_calendario_laboral_2026.md` §4 advierte que juntar
+ * obligaciones del IMSS y del SAT en una vista sin distinguir su regla "es un
+ * bug esperando": el viernes es inhábil para el IMSS y hábil para el SAT, así
+ * que el mismo mes puede tener dos fechas. `imss_sin_prorroga` NO es `imss`:
+ * etiquetar así la prima de RT prometería una prórroga que no ocurre (§D23).
+ */
+export type RegimenDePlazo = 'imss' | 'imss_sin_prorroga' | 'imss_aviso' | 'sat' | 'lft';
+
+export interface ObligacionPatronal {
+  cliente_id: string;
+  cliente_nombre: string;
+  /** Id estable del TIPO de obligación. Es lo que se agrupa, nunca el nombre. */
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  fecha_limite: string;
+  periodicidad: string;
+  /** Qué periodo REPORTA, que no es el de su vencimiento. */
+  periodo_cubierto: string;
+  fundamento: string;
+  regimen_de_plazo: RegimenDePlazo;
+  /** `true` = puede no aplicarle a este patrón y el modelo no alcanza para saberlo. */
+  condicional: boolean;
+  nota: string;
+}
+
+export interface CalendarioPatronal {
+  anio_de_las_cuotas: number;
+  /** Primer vencimiento. NO es el 1 de enero: las cuotas de enero vencen en
+   *  febrero. `null` sólo con la lista vacía. */
+  cubre_desde: string | null;
+  /** Último vencimiento, en enero del año siguiente. `null` con la lista vacía. */
+  cubre_hasta: string | null;
+  total_obligaciones: number;
+  obligaciones: ObligacionPatronal[];
+  /** Lo que la respuesta no cubre, redactado por el backend. */
+  advertencias: string[];
+}
+
+/**
+ * Calendario patronal de toda la cartera.
+ *
+ * `anio` es el año **de las cuotas**, no el del vencimiento. Se manda siempre
+ * explícito: el default del backend es el año en curso, y una pantalla cuyo
+ * contenido cambia solo al pasar de año es justo lo que `despacho_demo.py`
+ * evita en el resto de la demo.
+ */
+export async function obtenerCalendarioPatronal(anio: number): Promise<CalendarioPatronal> {
+  const res = await fetch(`${V1}/despacho/calendario?anio_de_las_cuotas=${anio}`);
+  return leer<CalendarioPatronal>(res, 'No se pudo cargar el calendario patronal');
+}
+
 /** Etiqueta legible del origen, para no enseñar el slug crudo en pantalla. */
 export function etiquetaOrigen(origen: string): string {
   if (origen === 'fixtures-s04') return 'Caso real anonimizado';

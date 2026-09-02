@@ -322,6 +322,86 @@ describe('NominaClientePage', () => {
     expect(screen.getByText(/NO el entero mensual ni el bimestral/)).toBeTruthy();
   });
 
+  /**
+   * E-06 — la pantalla se explica sola.
+   *
+   * QUE PRUEBAN: que los cuatro pasos existan DESDE EL PRIMER RENDER, con su
+   * línea de qué hacen, y que se habiliten en orden. El modo de falla que
+   * cierran es el de antes: tres botones sueltos, sin numerar, y el de exportar
+   * **ni siquiera renderizado** hasta que hubiera nómina — así que el cuarto
+   * paso no existía en pantalla y no había forma de saber que estaba ahí.
+   */
+  describe('los cuatro pasos', () => {
+    const TITULOS = [
+      /1\. Checadas recibidas/,
+      /2\. Cerrar quincena/,
+      /3\. Calcular nómina/,
+      /4\. Exportar/,
+    ];
+
+    it('los cuatro están numerados y visibles desde el primer render', async () => {
+      stubApi();
+      montar();
+      for (const titulo of TITULOS) {
+        expect(await screen.findByRole('heading', { name: titulo })).toBeTruthy();
+      }
+    });
+
+    it('cada paso dice en una línea qué hace', async () => {
+      stubApi();
+      montar();
+      expect(await screen.findByText(/convierte las checadas en días trabajados/i)).toBeTruthy();
+      expect(screen.getByText(/percepciones, ISR retenido, cuotas del IMSS/i)).toBeTruthy();
+      expect(screen.getByText(/PDF con los recibos y las cuotas patronales/i)).toBeTruthy();
+      expect(screen.getByText(/el panel se refresca solo/i)).toBeTruthy();
+    });
+
+    it('el paso 3 está bloqueado hasta cerrar la quincena, y dice por qué', async () => {
+      stubApi();
+      montar();
+      await esperarPlantilla();
+
+      const calcular = screen.getByRole('button', { name: /Calcular nómina/ }) as HTMLButtonElement;
+      expect(calcular.disabled).toBe(true);
+      expect(screen.getByText(/Cierra la quincena primero/)).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+      await screen.findByText('PERSONA DOS');
+      expect((screen.getByRole('button', { name: /Calcular nómina/ }) as HTMLButtonElement).disabled)
+        .toBe(false);
+    });
+
+    it('el paso 4 EXISTE deshabilitado antes de calcular, no aparece de la nada', async () => {
+      /**
+       * La regresión concreta: antes el botón de exportar se renderizaba sólo
+       * con `{nomina && ...}`. Un paso que no está en pantalla no se puede
+       * anticipar, y la pantalla dejaba de tener cuatro pasos.
+       */
+      stubApi();
+      montar();
+      const exportar = await screen.findByRole('button', { name: /Exportar PDF/ });
+      expect((exportar as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByText(/Calcula la nómina primero/)).toBeTruthy();
+
+      fireEvent.click(await esperarPlantilla());
+      await screen.findByText('PERSONA DOS');
+      fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
+      await screen.findByText('Recibos');
+
+      expect((screen.getByRole('button', { name: /Exportar PDF/ }) as HTMLButtonElement).disabled)
+        .toBe(false);
+    });
+
+    it('la migaja de pan dice en qué cliente estoy y da el regreso', async () => {
+      stubApi();
+      montar();
+      const migaja = await screen.findByRole('navigation', { name: 'Ruta' });
+      expect(migaja.textContent).toContain('Clientes');
+      await waitFor(() => expect(migaja.textContent).toContain('Cliente De Prueba'));
+      expect(migaja.textContent).toContain('Nómina');
+    });
+  });
+
   it('un error de red se muestra en pantalla y no deja la página en blanco', async () => {
     stubApi({ 'asistencia/eventos': new Error('conexión rechazada') });
     montar();

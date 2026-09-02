@@ -1,18 +1,22 @@
 /**
- * La única pantalla de Fiscalito que ve un despacho (E-01).
+ * Fiscalito y las cuentas de despacho (E-01, reescrito en E-07).
  *
- * Cubre dos cosas que `navigation.test.ts` no puede ver:
+ * E-01 le dejaba al contador UN tab: el calendario de sus propias obligaciones
+ * como persona física (§D21, provisional). E-05 deja de pedirle RFC y régimen
+ * —y quita del perfil el único lugar donde capturarlos—, y `CalendarioTab`
+ * corta en seco sin esos dos campos: el tab quedaba muerto.
  *
- * 1. Que la pantalla USE el filtro — incluido el deep-link `?tab=declaracion`,
- *    que un contador puede recibir de un enlace viejo o del propio agente.
- * 2. El copy y el back-link. Sin esto, la única pantalla de Fiscalito que ve el
- *    contador puede anunciarle "Calcula tus pre-declaraciones ISR/IVA" y
- *    devolverlo al marketplace de contribuyente.
+ * E-07 lo resuelve de frente en vez de dejar un callejón con letrero: **un
+ * despacho no tiene ninguna pantalla de Fiscalito**, y la que pedía por URL lo
+ * manda a `/app/calendario`, que es el calendario PATRONAL de sus clientes.
+ *
+ * Lo que este archivo protege es que el redirect exista y que el contribuyente
+ * no haya perdido nada.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 
 const perfilBase: UserProfile = {
@@ -57,11 +61,20 @@ const { default: FiscalitoServicePage } = await import('./FiscalitoServicePage')
 // El tab de pre-declaracion (el del contribuyente) usa useAgent.
 const { AgentProvider } = await import('../agent/AgentContext');
 
+/** Sonda del query string vivo. `window.location` no sirve con MemoryRouter. */
+function SondaQuery() {
+  return <span data-testid="query">{useLocation().search}</span>;
+}
+
 function montar(ruta = '/app/store/fiscalito/use') {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <AgentProvider>
-        <FiscalitoServicePage />
+        <SondaQuery />
+        <Routes>
+          <Route path="/app/store/fiscalito/use" element={<FiscalitoServicePage />} />
+          <Route path="/app/calendario" element={<div>calendario patronal</div>} />
+        </Routes>
       </AgentProvider>
     </MemoryRouter>,
   );
@@ -73,36 +86,49 @@ afterEach(() => {
 });
 
 describe('FiscalitoServicePage — cuenta de despacho', () => {
-  it('solo pinta el tab de calendario', () => {
+  it('un despacho no ve este servicio: va a su calendario patronal', () => {
     montar();
 
-    expect(screen.getByText('Calendario fiscal')).toBeTruthy();
-    for (const oculto of ['Pre-declaración', 'DIOT', 'Retenciones', 'Comparar regímenes', 'Estado de cuenta', 'Multi-periodo']) {
+    expect(screen.getByText('calendario patronal')).toBeTruthy();
+  });
+
+  it('tampoco por deep-link a un tab concreto', () => {
+    /**
+     * Un enlace viejo —o el propio agente— puede mandar al contador a
+     * `?tab=declaracion`. Antes degradaba al calendario de contribuyente; ahora
+     * ese calendario no le aplica y el redirect tiene que ganarle al deep-link.
+     */
+    montar('/app/store/fiscalito/use?tab=declaracion');
+
+    expect(screen.getByText('calendario patronal')).toBeTruthy();
+    expect(screen.queryByText('Pre-declaración')).toBeNull();
+  });
+
+  it('no se le pinta ni un tab de contribuyente antes de redirigir', () => {
+    montar();
+
+    for (const oculto of ['Pre-declaración', 'DIOT', 'Retenciones', 'Comparar regímenes',
+      'Estado de cuenta', 'Multi-periodo', 'Calendario fiscal']) {
       expect(screen.queryByText(oculto)).toBeNull();
     }
   });
 
-  // Un enlace viejo, o el propio agente, pueden mandar al contador a un tab que
-  // su perfil no permite: tiene que degradar al calendario, no pintarlo.
-  it('un deep-link a pre-declaración degrada al calendario', () => {
-    montar('/app/store/fiscalito/use?tab=declaracion');
+  it('un contribuyente con un ?tab= que no le toca queda con el query limpio', () => {
+    /**
+     * COBERTURA QUE SE PERDIÓ AL REESCRIBIR ESTE ARCHIVO. El efecto que limpia
+     * el query lo recorría antes un contador con `?tab=declaracion`; desde E-07
+     * el contador se sale por el `return` del propio efecto, así que el CUERPO
+     * quedó sin ejercitar: sustituirlo por un no-op no rompía nada. Aquí lo
+     * recorre quien de verdad lo usa hoy.
+     */
+    perfilMock.actual = { ...perfilBase, contributorType: 'independiente', regimen: '626' };
+    montar('/app/store/fiscalito/use?tab=diot');
 
-    expect(screen.queryByText('Pre-declaración')).toBeNull();
-    expect(screen.getByText('Calendario fiscal')).toBeTruthy();
-  });
-
-  it('el encabezado habla del despacho, no de pre-declaraciones', () => {
-    montar();
-
-    expect(screen.getByText('Las obligaciones fiscales de tu despacho')).toBeTruthy();
-    expect(screen.queryByText('Calcula tus pre-declaraciones ISR/IVA')).toBeNull();
-  });
-
-  it('el back-link devuelve a Clientes, no al marketplace de contribuyente', () => {
-    montar();
-
-    const volver = screen.getByRole('link', { name: /Clientes/ });
-    expect(volver.getAttribute('href')).toBe('/app/clientes');
+    // DIOT no aplica a un RESICO: el tab degrada y el query se limpia.
+    expect(screen.queryByText('DIOT')).toBeNull();
+    // La sonda lee `useLocation`, no `window.location`: con `MemoryRouter` el
+    // segundo está siempre vacío y la aserción no probaría nada.
+    expect(screen.getByTestId('query').textContent).toBe('');
   });
 
   it('el contribuyente conserva sus tabs y su back-link', () => {

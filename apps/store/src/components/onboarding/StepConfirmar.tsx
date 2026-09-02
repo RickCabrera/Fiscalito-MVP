@@ -4,6 +4,8 @@ interface StepConfirmarProps {
   tipoLabel: string;
   tipoIcon: string;
   allowedRegimens: { code: string; name: string }[];
+  /** E-05: un despacho no captura RFC ni régimen; imprimirlos daría un renglón vacío. */
+  esContador: boolean;
   rfc: string;
   regimen: string;
   nombre: string;
@@ -16,7 +18,7 @@ interface StepConfirmarProps {
 }
 
 export default function StepConfirmar({
-  tipoLabel, tipoIcon, allowedRegimens,
+  tipoLabel, tipoIcon, allowedRegimens, esContador,
   rfc, regimen, nombre, telefono, actividad, cp, nombreNegocio, numEmpleados, nombreDespacho,
 }: StepConfirmarProps) {
   const regimenName = allowedRegimens.find((r) => r.code === regimen)?.name || regimen;
@@ -24,9 +26,13 @@ export default function StepConfirmar({
   const rows: { label: string; value: string }[] = [
     { label: 'Tipo', value: `${tipoIcon} ${tipoLabel}` },
     { label: 'Nombre', value: nombre },
-    { label: 'RFC', value: rfc },
-    { label: 'Regimen', value: `${regimen} — ${regimenName}` },
   ];
+  // Sin la guarda, el resumen de un despacho mostraba "RFC:" en blanco y un
+  // "Regimen: —" suelto, que es peor que no mostrar el renglón.
+  if (!esContador) {
+    rows.push({ label: 'RFC', value: rfc });
+    rows.push({ label: 'Regimen', value: `${regimen} — ${regimenName}` });
+  }
   if (actividad) rows.push({ label: 'Actividad', value: actividad });
   if (cp) rows.push({ label: 'Codigo postal', value: cp });
   if (telefono) rows.push({ label: 'Telefono', value: telefono });

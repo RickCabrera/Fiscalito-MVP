@@ -214,6 +214,91 @@ La ficha: el resumen de arriba más `empleados`, `periodo_sugerido` y `fecha_ref
 > un cliente que no sea `demo`, porque ahí es una validación de dominio. No se unificó: tocar
 > `nomina.py` queda fuera del alcance de E-02.
 
+### `GET /api/v1/despacho/calendario` (E-07)
+
+Obligaciones **patronales** de todos los clientes de la cartera, ordenadas por fecha límite y
+etiquetadas con su cliente. Es lo que ve un despacho en "Calendario"; el calendario del
+CONTRIBUYENTE (`POST /api/v1/calendario`) es otro endpoint y otra cosa.
+
+**Traductor, no motor:** ninguna fecha se calcula aquí. Todas salen de
+`app/nomina_engine/calendario_laboral.py` y `plazos_patronales.py`, que es donde viven los
+fundamentos y los tests que los contrastan contra la tabla publicada de
+`knowledge_base/nomina/25_calendario_laboral_2026.md` §3.
+
+| Parámetro | Tipo | Default | Significado |
+|---|---|---|---|
+| `anio_de_las_cuotas` | int (2000-2100) | año en curso | Año **del periodo que se reporta**, no del vencimiento |
+
+**`anio_de_las_cuotas` no es "el año del calendario".** Las cuotas de diciembre de 2026 vencen
+en enero de 2027 y **sí** vienen; las de diciembre de 2025, que vencen en enero de 2026, **no**.
+Por eso la respuesta trae `cubre_desde` y `cubre_hasta`: una pantalla que muestre "2026" sin
+decir el rango enseñaría un enero vacío sin poder explicarlo. Los dos son `null` **sólo** si no
+hay obligaciones — hoy inalcanzable con la cartera estática, pero la pantalla ya pinta ese
+estado y las dos mitades tienen que coincidir.
+
+```json
+{
+  "exito": true,
+  "anio_de_las_cuotas": 2026,
+  "cubre_desde": "2026-02-17",
+  "cubre_hasta": "2027-01-18",
+  "total_obligaciones": 120,
+  "obligaciones": [
+    {
+      "cliente_id": "demo",
+      "cliente_nombre": "Servicios Administrativos Integrales",
+      "clave": "imss_mensual",
+      "nombre": "Cuotas IMSS de marzo 2026",
+      "descripcion": "Entero mensual: Riesgos de Trabajo, Enfermedades y Maternidad, Invalidez y Vida, Guarderías.",
+      "fecha_limite": "2026-04-20",
+      "periodicidad": "mensual",
+      "periodo_cubierto": "marzo 2026",
+      "fundamento": "Art. 39 LSS",
+      "regimen_de_plazo": "imss",
+      "condicional": false,
+      "nota": ""
+    }
+  ],
+  "advertencias": ["No cubre el ISN..."]
+}
+```
+
+#### `regimen_de_plazo` — cinco valores, y no se pintan igual
+
+Es **dato**, no adorno: dice qué regla produjo `fecha_limite`. El doc 25 §4 advierte que juntar
+obligaciones del IMSS y del SAT en una vista **sin distinguir su regla** "es un bug esperando".
+
+| Valor | Regla | Fundamento |
+|---|---|---|
+| `imss` | vence en inhábil **o viernes** → siguiente hábil | Art. 3 RACERF |
+| `imss_sin_prorroga` | fecha fija, **no** se corre (decisión provisional §D23) | Art. 74 LSS; Art. 32 RACERF |
+| `imss_aviso` | no se prorroga nunca | Art. 3 RACERF, que excluye los avisos afiliatorios |
+| `sat` | vence en inhábil → siguiente hábil, **sin** la regla del viernes | CFF Art. 12 |
+| `lft` | fecha fija de ley | LFT Arts. 87 y 122 |
+
+Se ve en la respuesta: las cuotas del IMSS de marzo de 2026 vencen el **20-abr** y el entero del
+ISR retenido de marzo el **17-abr**. `imss` e `imss_sin_prorroga` **no** son intercambiables:
+etiquetar la prima de RT como `imss` prometería una prórroga que no ocurre.
+
+#### `condicional` no significa opcional
+
+Significa *verifícalo, porque aquí no consta*. Hoy salen condicionales el **aviso bimestral de
+salario variable** (el modelo de cliente no registra el tipo de salario) y las **dos fechas de
+PTU** (no registra la personalidad jurídica). Toda condicional trae `nota`. Ver §D24.
+
+#### Lo que NO cubre
+
+`advertencias` lo dice en el cuerpo, para que la pantalla lo imprima sin volver a redactarlo:
+el **ISN** (estatal, sin fuente en la base de conocimiento ni entidad en el modelo), y el aviso
+de que **hoy ninguna fecha depende del cliente** — son las mismas para toda la cartera hasta que
+F1-09 registre RFC, entidad y personalidad.
+
+**422 — año fuera de rango**, con el sobre de dominio del proyecto:
+
+```json
+{ "exito": false, "error": "Año fuera de rango: 1999. Debe estar entre 2000 y 2100." }
+```
+
 ---
 
 ## Nómina (épica D — demo)

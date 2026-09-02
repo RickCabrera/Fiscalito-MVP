@@ -248,12 +248,38 @@ npm run dev --workspace fiscalito-store
 
 | Paso | Qué debe verse |
 |---|---|
-| Al abrir | "Checador en vivo" con **194 checadas**, nombres y horas |
-| Fechas | Precargadas en **2026-08-16 → 2026-08-31** (16 días naturales) y la fecha de pago debajo |
-| "Cerrar quincena" | Tabla de 9 empleados; **E-05 y E-08 con 1 falta**; **E-02, E-06 y E-09 con 1 retardo** |
+| Al abrir | **Cuatro pasos numerados**. El 1 con **194 checadas**, nombres y horas; el 2 disponible; los 3 y 4 **bloqueados con su motivo** |
+| Sidebar | **"Nómina" resaltado, NO "Clientes"**, y debajo el nombre del cliente activo |
+| Migaja | Clientes › *nombre del cliente* › Nómina |
+| Fechas (paso 2) | Precargadas en **2026-08-16 → 2026-08-31** (16 días naturales) y la fecha de pago debajo |
+| "Cerrar quincena" | El paso 2 se marca **listo** (palomita) y el 3 se habilita. Tabla de 9 empleados; **E-05 y E-08 con 1 falta**; **E-02, E-06 y E-09 con 1 retardo** |
 | "Calcular nómina" | 9 recibos. E-05 y E-08 con **15 días pagados y $4,740.00**; los demás con 16 |
 | Cuotas | Desglose por ramo, y la **advertencia** de que son la porción del periodo |
-| "Exportar PDF" | PDF con la banda naranja **"DATOS DE DEMOSTRACIÓN"** y el **nombre del cliente** |
+| "Exportar PDF" (paso 4) | Se habilita sólo ahora. PDF con la banda naranja **"DATOS DE DEMOSTRACIÓN"** y el **nombre del cliente** |
+
+### Calendario patronal (E-07)
+
+En el sidebar, **Calendario**. Ya no son las declaraciones ISR/IVA del contribuyente:
+
+| Qué mirar | Qué debe verse |
+|---|---|
+| Encabezado | "Vencimientos del **2026-02-17** al **2027-01-18**" — y la línea de que la app no calcula las obligaciones propias del despacho |
+| Cuotas IMSS de marzo | **20-abr-2026** (el 17 cae en viernes y el IMSS lo corre) con insignia **IMSS** |
+| ISR retenido de marzo | **17-abr-2026**, con insignia **SAT**. Son dos reglas distintas y por eso dan fechas distintas |
+| Prima de RT | **28-feb-2026**, con la nota de que cae en sábado y que la decisión es provisional (§D23) |
+| Aguinaldo | **19-dic-2026**, no el 20 (Art. 87 LFT dice "antes del veinte") |
+| PTU | **dos** renglones, marcados **Verificar**: no consta si el patrón es persona física o moral |
+| Al pie | Las advertencias: no cubre ISN, y hoy ninguna fecha depende del cliente |
+
+**Si preguntan por qué el mismo mes tiene dos fechas:** porque el viernes es inhábil para el IMSS
+(Art. 3 RACERF) y hábil para el SAT (CFF Art. 12). Es la diferencia que el doc 25 §4 advierte que
+no hay que fundir, y por eso cada renglón lleva su insignia.
+
+### Alta de una cuenta de despacho (E-05)
+
+Al crear cuenta y elegir "Despacho / Contador": **tres campos y tres pasos**, no cuatro. Nombre
+del contador, nombre del despacho y teléfono. Si aparece un campo de RFC o un selector de
+régimen, algo se revirtió.
 
 ### Los tres clientes, corridos de verdad (E-03)
 
@@ -271,8 +297,27 @@ arriba: E-05 y E-08 con 1 falta, E-02/E-06/E-09 con 1 retardo, y **15 días
 pagados con $4,740.00** para los dos que faltaron. La mudanza al contexto del
 cliente no movió un centavo.
 
+**Reejecutado tras E-06 (2026-09-02):** los tres clientes dan **los mismos seis números** de la
+tabla, dígito por dígito. Los cuatro pasos y el hook que extrajo el estado de la pantalla no
+tocaron el cálculo.
+
 **Cuota patronal** es la suma de la porción mensual y la bimestral del periodo,
 no el entero del Art. 39 LSS — la pantalla lo advierte y el PDF lo imprime.
+
+### Lo que E-06 y E-07 agregan a esa revisión visual (2026-09-02)
+
+Mismo estatus que E-04: **nada de esto se vio en un navegador** y la regla de
+`apps/store/CLAUDE.md:87` —probar en los tres temas— **sigue sin cumplirse**. Cero variables CSS
+nuevas, que es la condición necesaria y verificable. Falta mirar:
+
+6. **Los cuatro pasos se leen como pasos**: el número en su círculo, la palomita verde cuando
+   está listo, y el gris apagado del bloqueado distinguible del disponible en los tres temas.
+7. **"Nómina" resaltado y "Clientes" no**, con el nombre del cliente debajo sin desbordar el
+   sidebar de 240 px (un nombre largo debe recortarse con puntos suspensivos, no empujar).
+8. **El calendario patronal**: las insignias IMSS/SAT/LFT se distinguen, el borde izquierdo de
+   color por estado (vencida / próxima / futura) se ve en los tres temas, y las notas en ámbar
+   no compiten con el nombre de la obligación.
+9. **En ventana angosta**, los renglones del calendario envuelven en vez de desbordar.
 
 ### Los dos minutos de revisión visual que sólo Ricardo puede hacer (E-04)
 

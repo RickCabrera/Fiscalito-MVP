@@ -40,18 +40,71 @@ const LINKS_CONTRIBUYENTE: SidebarLink[] = [
 ];
 
 /**
- * Navegación del despacho. `calendario` apunta al tab de Fiscalito porque es
- * la única pantalla de ese servicio que le aplica (ver `getTabsForProfile`).
+ * Navegación del despacho.
+ *
+ * E-07: `calendario` dejó de apuntar al tab de Fiscalito. Ese tab muestra las
+ * declaraciones ISR/IVA de un CONTRIBUYENTE, que a un despacho de nómina no le
+ * aplican; ahora lleva al calendario **patronal** de sus clientes.
  */
 const LINKS_CONTADOR: SidebarLink[] = [
   { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
-  { id: 'calendario', to: '/app/store/fiscalito/use?tab=calendario', label: 'Calendario' },
+  { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
 export function esContador(tipo: ContributorType | null): boolean {
   return tipo === 'contador';
+}
+
+// ────────────────────────────────────────────────────────────
+// Qué entrada del sidebar va resaltada (E-06)
+// ────────────────────────────────────────────────────────────
+
+/** `/app/clientes/{id}/nomina`, la ruta real de la pantalla desde E-03. */
+const RE_NOMINA_DE_CLIENTE = /^\/app\/clientes\/[^/]+\/nomina\/?$/;
+
+/**
+ * Si la ruta ES la nómina, viva donde viva.
+ *
+ * `/app/nomina` sólo resuelve el cliente activo y redirige, así que las dos
+ * formas tienen que contar. `/app/nomina-demo` NO está aquí y no es un olvido:
+ * es un `<Navigate>` (`AppRoutes.tsx`), nunca se pinta un sidebar sobre esa
+ * ruta, y un caso de prueba inalcanzable no prueba nada.
+ */
+export function esRutaDeNomina(pathname: string): boolean {
+  return pathname === '/app/nomina' || RE_NOMINA_DE_CLIENTE.test(pathname);
+}
+
+function bajoLaRuta(pathname: string, destino: string): boolean {
+  return pathname === destino || pathname.startsWith(`${destino}/`);
+}
+
+/**
+ * Si un enlace del sidebar debe verse activo en esta ruta.
+ *
+ * POR QUÉ NO LO DECIDE `NavLink`
+ * ------------------------------
+ * La nómina cuelga de `/app/clientes/{id}/nomina`, así que el `isActive` de
+ * `NavLink` marcaba **Clientes** —su `to` es prefijo de la ruta— y dejaba
+ * **Nómina** apagado: el sidebar señalaba la sección equivocada justo en la
+ * pantalla de la demo. Aquí la nómina se queda la ruta y Clientes la suelta.
+ *
+ * Es función pura del par (enlace, pathname): se prueba sin jsdom, y
+ * `AppLayout` la usa también para el `aria-current`, que si no seguiría
+ * anunciando "Clientes" aunque el color cambiara.
+ */
+export function navActivo(link: SidebarLink, pathname: string): boolean {
+  if (link.id === 'nomina') return esRutaDeNomina(pathname);
+  // Clientes cubre la cartera y la ficha, pero NO la nómina del cliente: dos
+  // entradas encendidas a la vez no señalan nada.
+  if (link.id === 'clientes') {
+    return bajoLaRuta(pathname, '/app/clientes') && !esRutaDeNomina(pathname);
+  }
+  // El resto conserva la semántica de `NavLink`: `end` compara exacto y el
+  // query string del destino no participa (el tab lo resuelve la pantalla).
+  const destino = link.to.split('?')[0];
+  return link.end ? pathname === destino : bajoLaRuta(pathname, destino);
 }
 
 /** Links del sidebar para el perfil dado. `null` (perfil sin tipo) ve el de contribuyente. */
@@ -91,10 +144,12 @@ const RUTAS_CON_CLIENTE = ['/app/clientes'];
  * Si la ruta habla de UN cliente. Decide dónde se muestra el selector de
  * cliente activo.
  *
- * Calendario y Perfil quedan fuera a propósito: son del DESPACHO. §D21 fija que
- * el calendario de una cuenta de despacho muestra sus obligaciones propias y
- * nada patronal, así que un selector de cliente ahí le mentiría al contador
- * sobre lo que está viendo.
+ * Calendario y Perfil quedan fuera a propósito. Perfil es del DESPACHO. Y
+ * Calendario, desde E-07, **sí** es patronal —§D21 quedó resuelta— pero es el de
+ * TODA la cartera: un selector de "cliente activo" encima de una lista que
+ * mezcla los tres clientes afirmaría un alcance que la pantalla no tiene. La
+ * regla de admisión no cambia: entra la ruta que LEE un cliente y le pide sus
+ * datos, no la que habla de clientes.
  */
 export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
   return RUTAS_CON_CLIENTE.some((r) => pathname === r || pathname.startsWith(`${r}/`));
@@ -121,9 +176,18 @@ export function getTabsForProfile(
   contributorType: string | null,
   regimen: string | null,
 ): TabFiscalito[] {
-  // Contador: solo el calendario de sus propias obligaciones como despacho.
+  // Contador: NINGÚN tab de Fiscalito.
+  //
+  // Hasta E-06 veía el de calendario, con sus propias obligaciones como persona
+  // física (§D21). E-05 deja de pedirle RFC y régimen —y quita del perfil el
+  // único lugar donde capturarlos—, así que ese tab quedaba muerto: `CalendarioTab`
+  // corta en seco sin esos dos campos. Antes que dejar un callejón con letrero,
+  // se decide de frente: una cuenta de despacho no tiene calendario de
+  // contribuyente, y `FiscalitoServicePage` la manda a `/app/calendario`, que es
+  // el patronal de sus clientes. Consecuencia declarada en §D21: la app ya no
+  // calcula las obligaciones propias del despacho.
   if (contributorType === 'contador')
-    return ['calendario'];
+    return [];
 
   if (contributorType === 'asalariado' || regimen === '605')
     return ['deducciones', 'calendario'];

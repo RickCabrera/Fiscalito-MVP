@@ -1,8 +1,26 @@
+/**
+ * Perfil del usuario. Para un despacho, E-05 lo reduce a lo que de verdad usa.
+ *
+ * EL SELECTOR DE TIPO SE OCULTA POR EL PERFIL **GUARDADO**, NO POR EL LOCAL
+ * -------------------------------------------------------------------------
+ * `tipo` es estado local y cambia con un clic. Si la condición colgara de él,
+ * un CONTRIBUYENTE que clickeara "Despacho / Contador" por curiosidad vería
+ * desaparecer el selector completo en ese mismo render, sin haber guardado nada
+ * y sin forma de volver salvo recargando. Colgándola de `profile.contributorType`
+ * el selector sólo desaparece para quien ya ES un despacho.
+ *
+ * A un despacho no se le piden RFC, régimen, actividad ni código postal: no
+ * declara por sí mismo en esta app (§D21). `handleSave` **sigue mandando esos
+ * campos** desde `form` aunque no se pinten, para no repetir la pérdida
+ * silenciosa que cazó la mutación de E-01.
+ */
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { CONTRIBUTOR_TYPES, getProfileByType } from '../services/contributorProfiles';
 import type { ContributorType } from '../services/contributorProfiles';
+import { esContador } from '../services/navigation';
 import { Save, User, Check } from 'lucide-react';
 
 const NUM_EMPLEADOS_OPTIONS = ['Solo yo', '2-5', '6-20', '21+'];
@@ -26,6 +44,8 @@ export default function ProfilePage() {
   });
 
   const selectedProfile = tipo ? getProfileByType(tipo) : null;
+  // Del perfil GUARDADO, no del estado local. Ver el encabezado del archivo.
+  const esDespacho = esContador(profile.contributorType);
 
   // Reset regimen when tipo changes if current regimen is not in allowed list
   useEffect(() => {
@@ -70,17 +90,25 @@ export default function ProfilePage() {
   return (
     <div className="page-container">
       <div className="page-header animate-in">
-        <h1>{tipo === 'contador' ? 'Perfil del despacho' : 'Perfil del contribuyente'}</h1>
+        <h1>{esDespacho ? 'Perfil del despacho' : 'Perfil del contribuyente'}</h1>
         <p>
-          {tipo === 'contador'
+          {esDespacho
             ? 'Los datos de tu despacho. Los de cada cliente se llevan por separado.'
             : 'Estos datos se usan para calcular tus declaraciones correctamente.'}
         </p>
       </div>
 
-      {/* Tipo de contribuyente */}
+      {/* Tipo de cuenta. Un despacho no lo elige aquí: lo ve. */}
       <div className="card animate-in" style={{ marginBottom: 24 }}>
         <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 16 }}>Tipo de cuenta</h3>
+        {esDespacho ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.2rem' }}>{getProfileByType('contador').icon}</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+              {getProfileByType('contador').label}
+            </span>
+          </div>
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
           {CONTRIBUTOR_TYPES.map((ct) => {
             const selected = tipo === ct.id;
@@ -112,6 +140,7 @@ export default function ProfilePage() {
             );
           })}
         </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -142,24 +171,47 @@ export default function ProfilePage() {
               <input className="input-field" placeholder="10 digitos" value={form.telefono}
                 onChange={(e) => handleChange('telefono', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>Actividad economica</label>
-              <input className="input-field" placeholder="Ej: Diseno grafico, Consultoria..." value={form.actividad}
-                onChange={(e) => handleChange('actividad', e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>Codigo postal (domicilio fiscal)</label>
-              <input className="input-field" placeholder="00000" value={form.cp}
-                onChange={(e) => handleChange('cp', e.target.value)} maxLength={5}
-                style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: 2 }} />
-            </div>
+            {/* Actividad y CP son del contribuyente: a un despacho no se le
+                calcula ninguna declaración propia, así que no se le piden. */}
+            {!esDespacho && (
+              <>
+                <div>
+                  <label style={labelStyle}>Actividad economica</label>
+                  <input className="input-field" placeholder="Ej: Diseno grafico, Consultoria..." value={form.actividad}
+                    onChange={(e) => handleChange('actividad', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Codigo postal (domicilio fiscal)</label>
+                  <input className="input-field" placeholder="00000" value={form.cp}
+                    onChange={(e) => handleChange('cp', e.target.value)} maxLength={5}
+                    style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: 2 }} />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Fiscal info */}
+        {/* Datos fiscales — o del despacho, que no son lo mismo */}
         <div className="card animate-in" style={{ animationDelay: '0.2s' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 24 }}>Datos fiscales</h3>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 24 }}>
+            {esDespacho ? 'Datos del despacho' : 'Datos fiscales'}
+          </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {esDespacho ? (
+              <>
+                <div>
+                  <label style={labelStyle}>Nombre del despacho</label>
+                  <input className="input-field" placeholder="Despacho Contable Ejemplo"
+                    value={form.nombreDespacho}
+                    onChange={(e) => handleChange('nombreDespacho', e.target.value)} />
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  El RFC y el régimen que importan son los de cada cliente, no los del
+                  despacho: la app no calcula tus declaraciones propias.
+                </p>
+              </>
+            ) : (
+            <>
             <div>
               <label style={labelStyle}>RFC</label>
               <input className="input-field" placeholder="XAXX010101000" value={form.rfc}
@@ -194,16 +246,6 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Contador: nombre del despacho */}
-            {tipo === 'contador' && (
-              <div>
-                <label style={labelStyle}>Nombre del despacho</label>
-                <input className="input-field" placeholder="Despacho Contable Ejemplo"
-                  value={form.nombreDespacho}
-                  onChange={(e) => handleChange('nombreDespacho', e.target.value)} />
-              </div>
-            )}
-
             {/* PYME extra fields */}
             {tipo === 'pyme' && (
               <>
@@ -225,6 +267,8 @@ export default function ProfilePage() {
                   </select>
                 </div>
               </>
+            )}
+            </>
             )}
           </div>
         </div>

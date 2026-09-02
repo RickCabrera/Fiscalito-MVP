@@ -1,12 +1,17 @@
-/** Barra de progreso del wizard con indicadores de paso */
-
-const STEPS = ['Tipo', 'Datos fiscales', 'Datos personales', 'Confirmar'];
+/**
+ * Barra de progreso del wizard con indicadores de paso.
+ *
+ * E-05: los pasos LLEGAN como prop. Un despacho recorre tres y un contribuyente
+ * cuatro, así que una lista fija aquí pintaría un paso que nadie va a ver.
+ */
 
 interface WizardProgressProps {
+  pasos: string[];
   currentStep: number;
 }
 
-export default function WizardProgress({ currentStep }: WizardProgressProps) {
+export default function WizardProgress({ pasos, currentStep }: WizardProgressProps) {
+  const STEPS = pasos;
   return (
     <div style={{
       display: 'flex',

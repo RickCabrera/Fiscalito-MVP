@@ -1,8 +1,45 @@
-/** Panel de checador en vivo (D-07). DEMO: se borra en F2. */
+/**
+ * Panel de checador en vivo (D-07). DEMO: se borra en F2.
+ *
+ * E-06: dejó de traer su propia card y su propio título — ahora es el contenido
+ * del **paso 1** y el encabezado lo pone `PasoNomina`. Dos encabezados encima
+ * del mismo contenido ("1. Checadas recibidas" y "Checador en vivo") competían
+ * por decir lo mismo.
+ */
 
 import { Radio } from 'lucide-react';
 import type { EventoChecada } from '../../services/nominaDemoApi';
-import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from './estilosTabla';
+import { envoltura, fila, tabla, td, th, thNum } from './estilosTabla';
+
+/**
+ * Contador de checadas, para el encabezado del paso.
+ *
+ * Vive aquí y no en la página porque es del panel: si el panel cambia de forma,
+ * su contador cambia con él.
+ */
+export function ContadorChecadas({ total }: { total: number }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: 6,
+        padding: '4px 12px',
+        borderRadius: 'var(--radius-full)',
+        background: 'var(--teal-bg)',
+        color: 'var(--accent-active)',
+        fontSize: '0.8rem',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums' }}>
+        {total}
+      </span>
+      checadas
+    </span>
+  );
+}
 
 function horaLocal(iso: string): string {
   // La checada trae su offset (-06:00). Se muestra tal cual la mandó el
@@ -27,38 +64,7 @@ export default function PanelChecador({
   const ultimos = [...eventos].reverse().slice(0, 12);
 
   return (
-    <section className="card">
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-xs)',
-          marginBottom: 'var(--space-md)',
-        }}
-      >
-        <Radio size={18} color="var(--accent-active)" />
-        <h2 style={tituloSeccion}>Checador en vivo</h2>
-        <span
-          style={{
-            marginLeft: 'auto',
-            display: 'inline-flex',
-            alignItems: 'baseline',
-            gap: 6,
-            padding: '4px 12px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--teal-bg)',
-            color: 'var(--accent-active)',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-          }}
-        >
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums' }}>
-            {eventos.length}
-          </span>
-          checadas
-        </span>
-      </header>
-
+    <>
       {error && (
         <p
           role="alert"
@@ -133,6 +139,6 @@ export default function PanelChecador({
           </table>
         </div>
       )}
-    </section>
+    </>
   );
 }
