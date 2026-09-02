@@ -50,18 +50,26 @@ def rutas_publicadas() -> list[dict[str, Any]]:
     Se excluyen las que FastAPI monta por su cuenta (`/docs`, `/openapi.json`,
     `/redoc`…): no son contrato con el front y cambian con la versión del
     framework, lo que haría fallar el test por una razón que no es la nuestra.
+
+    Los métodos se agrupan **por path**, una entrada por ruta. Emitir una
+    entrada por combinación (path, método) hacía que
+    `/api/v1/asistencia/eventos` apareciera dos veces (GET y POST), y el lado
+    del front busca por path y se queda con la primera: un POST legítimo a esa
+    ruta habría fallado acusando un método que el backend sí acepta.
     """
     fuera = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
-    rutas = []
+    por_path: dict[str, set[str]] = {}
     for r in app.routes:
         path = getattr(r, "path", None)
         metodos = getattr(r, "methods", None)
         if not path or not metodos or path in fuera:
             continue
-        visibles = sorted(set(metodos) - METODOS_IGNORADOS)
+        visibles = set(metodos) - METODOS_IGNORADOS
         if visibles:
-            rutas.append({"path": path, "metodos": visibles})
-    return sorted(rutas, key=lambda r: (r["path"], r["metodos"]))
+            por_path.setdefault(path, set()).update(visibles)
+    return [
+        {"path": path, "metodos": sorted(por_path[path])} for path in sorted(por_path)
+    ]
 
 
 def contenido() -> str:

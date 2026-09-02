@@ -22,12 +22,21 @@
  * `app.main:app` por `apps/api/scripts/exportar_rutas.py` y vigilado por
  * `apps/api/tests/test_rutas_publicadas.py` para que no envejezca.
  *
- * LOS CONTEOS POR MÓDULO NO SON ADORNO
- * ------------------------------------
+ * LA COBERTURA SE MIDE CONTRA EL MÓDULO, NO CONTRA UN NÚMERO
+ * ----------------------------------------------------------
  * Una cobertura PARCIAL es invisible: si este archivo dejara de ejercitar tres
  * funciones, seguiría verde declarando que el contrato está verificado. Por eso
- * cada módulo afirma cuántas de sus funciones llaman al backend. Agregar una sin
- * agregarla aquí rompe el test, que es exactamente lo que se quiere.
+ * la lista de llamadas se compara contra los **exports reales** de cada módulo
+ * (menos una lista explícita de helpers puros). Un conteo escrito a mano no
+ * sirve: sería otro literal del mismo archivo, y agregar una función sin
+ * registrarla pasaría en verde.
+ *
+ * LÍMITE CONOCIDO
+ * ---------------
+ * `coincide` acepta cualquier segmento no vacío donde el backend declara un
+ * `{param}`, así que un bug que produjera `/despacho/clientes/undefined` pasaría
+ * este contrato. Aquí se verifica que la RUTA exista, no que el argumento sea
+ * sensato; eso le toca a los tests de la pantalla que la llama.
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -143,17 +152,41 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
 };
 
 /**
- * Cuántas funciones de cada módulo pegan al backend HOY.
+ * Los módulos de verdad, para contar sus exports en tiempo de test.
  *
- * Si agregas una y no la pones arriba, este número deja de cuadrar y el test
- * falla. Ese es el único mecanismo que impide que la cobertura se degrade en
- * silencio, que es como se ve un test de contrato podrido.
+ * Contra un número escrito a mano, esto es lo que hace la guarda REAL: un
+ * literal `ESPERADAS: {'despachoApi.ts': 3}` y la lista `LLAMADAS` son dos
+ * literales del mismo archivo, así que nada obliga a que reflejen el módulo.
+ * Agregar `obtenerLoQueSea()` a `despachoApi.ts` sin registrarla aquí pasaba en
+ * verde — o sea, exactamente la degradación silenciosa que este test viene a
+ * impedir. Ahora la lista se compara contra los exports reales.
  */
-const ESPERADAS: Record<string, number> = {
-  'despachoApi.ts': 3,
-  'nominaDemoApi.ts': 4,
-  'fiscalAgentApi.ts': 11,
+const MODULOS: Record<string, Record<string, unknown>> = {
+  'despachoApi.ts': despachoApi,
+  'nominaDemoApi.ts': nominaDemoApi,
+  'fiscalAgentApi.ts': fiscalAgentApi,
 };
+
+/**
+ * Funciones exportadas que NO pegan al backend: formateo y mapeo puros.
+ *
+ * Es una lista explícita y corta a propósito. Cualquier export nuevo se
+ * considera candidato a llamar al backend hasta que alguien lo declare aquí, y
+ * declararlo obliga a mirarlo. Lo contrario —una heurística por nombre— dejaría
+ * pasar la función que sí pega.
+ */
+const HELPERS_PUROS = new Set([
+  'etiquetaOrigen',
+  'primaComoPorcentaje',
+  'tipoParaApi',
+  'tipoParaCalendario',
+]);
+
+function funcionesQueDeberianPegar(modulo: Record<string, unknown>): string[] {
+  return Object.keys(modulo)
+    .filter((k) => typeof modulo[k] === 'function' && !HELPERS_PUROS.has(k))
+    .sort();
+}
 
 // ── Los tests ──
 
@@ -164,8 +197,14 @@ describe('contrato de rutas front ↔ backend', () => {
 
   for (const [modulo, funciones] of Object.entries(LLAMADAS)) {
     describe(modulo, () => {
-      it(`ejercita las ${ESPERADAS[modulo]} funciones que pegan al backend`, () => {
-        expect(Object.keys(funciones)).toHaveLength(ESPERADAS[modulo]);
+      it('ejercita TODAS sus funciones que pegan al backend', () => {
+        expect(
+          Object.keys(funciones).sort(),
+          `Hay funciones exportadas por ${modulo} que este test no ejercita. ` +
+            'Agrégalas a LLAMADAS, o a HELPERS_PUROS si no llaman al backend. ' +
+            'Una cobertura parcial es invisible: el test seguiría verde ' +
+            'declarando que el contrato está verificado.',
+        ).toEqual(funcionesQueDeberianPegar(MODULOS[modulo]));
       });
 
       for (const [nombre, llamar] of Object.entries(funciones)) {

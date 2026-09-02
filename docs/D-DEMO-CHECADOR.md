@@ -363,7 +363,7 @@ Si algo de eso falla, es cosmético y se arregla sin tocar cálculo.
 - **El panel dice "0 checadas" después de re-correr el simulador.** El almacén
   deduplica por `(empleado, serialNo)`: la segunda corrida es un no-op. Corre
   con `--serial-base 5000000` para volver a sembrar sin reiniciar la API.
-- **Una pantalla dice "el backend en ... no reconoce esta ruta".** No es un
+- **Una pantalla dice "el backend en ... no reconoce esta llamada".** No es un
   fallo de red: el backend contestó, y contestó que no conoce la llamada. Son
   dos causas y el mensaje no elige: o el proceso es de antes del último merge
   (modo de falla 4 — corre el paso 0 y relanza **antes** de sembrar), o

@@ -104,10 +104,10 @@ export default function TablaIncidencias({
           confusa y falsa. */}
       <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
         * <strong>Informativo:</strong> no alimenta ningún cálculo de esta pantalla. Cada
-        ramo del IMSS cobra sobre su propia base de días. Con ausencias de hasta 7 días,{' '}
-        <strong>Enfermedades y Maternidad se cobra íntegro</strong> — las faltas no lo
-        reducen (Art. 31 LSS). Invalidez y Vida, Guarderías, Retiro, Infonavit y Riesgos
-        de Trabajo sí descuentan esos días.
+        ramo del IMSS cobra sobre su propia base de días. Con ausencias de hasta 7 días al
+        mes, <strong>Enfermedades y Maternidad se cobra íntegro</strong> — las faltas no lo
+        reducen (Art. 31 LSS). Todos los demás ramos —Invalidez y Vida, Guarderías, Retiro,
+        Cesantía y Vejez, Infonavit y Riesgos de Trabajo— sí descuentan esos días.
       </p>
     </section>
   );

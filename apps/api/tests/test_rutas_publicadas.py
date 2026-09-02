@@ -24,6 +24,7 @@ la ruta, porque implica revisar si el front todavía la llama.
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -92,6 +93,53 @@ def test_el_calendario_patronal_esta_publicado(documento):
         "Se fue /api/v1/despacho/calendario, que es la ruta que "
         "CalendarioPatronalPage consume. Si el cambio es a propósito, mueve "
         "también obtenerCalendarioPatronal en apps/store/src/services/despachoApi.ts."
+    )
+
+
+def test_ningun_404_del_backend_viaja_con_detail_string():
+    """
+    El invariante del que cuelga `apps/store/src/services/errorApi.ts`.
+
+    El front distingue dos 404: el de dominio, que sale con sobre propio
+    (`{exito, error}`) por el handler global, y el pelón de FastAPI
+    (`{"detail": "Not Found"}`), que significa *el backend que respondió no
+    conoce esta ruta*. Esa discriminación sólo es válida mientras el dominio no
+    levante `HTTPException(404)`: el día que alguien lo haga, la pantalla dirá
+    "el backend no reconoce esta llamada" para un recurso que simplemente no
+    existe, y mandará a reiniciar un servidor sano.
+
+    Hoy es cierto por convención (`apps/api/CLAUDE.md`: el dominio levanta
+    `FiscalAgentError`, nunca `HTTPException`). Este test lo vuelve mecánico.
+
+    Se busca con AST y no con `grep`: el patrón CORRECTO es
+    `FiscalAgentError(..., status_code=404)`, así que buscar el texto
+    "status_code=404" acusa justo lo que se quiere. Lo que importa es de qué
+    clase es la excepción.
+    """
+    infractores = []
+    for ruta in (Path(__file__).resolve().parents[1] / "app").rglob("*.py"):
+        arbol = ast.parse(ruta.read_text(encoding="utf-8"), filename=str(ruta))
+        for nodo in ast.walk(arbol):
+            if not isinstance(nodo, ast.Call):
+                continue
+            nombre = nodo.func.id if isinstance(nodo.func, ast.Name) else None
+            if nombre != "HTTPException":
+                continue
+            codigos = [
+                a.value for a in nodo.args if isinstance(a, ast.Constant)
+            ] + [
+                k.value.value
+                for k in nodo.keywords
+                if k.arg == "status_code" and isinstance(k.value, ast.Constant)
+            ]
+            if 404 in codigos:
+                infractores.append(f"{ruta.name}:{nodo.lineno}")
+
+    assert not infractores, (
+        f"Hay un 404 levantado como HTTPException en {infractores}. "
+        "El front lo leería como 'ruta inexistente' (ver errorApi.ts) y "
+        "mandaría a reiniciar un servidor sano. Usa FiscalAgentError, que sale "
+        "con el sobre {exito, error}."
     )
 
 

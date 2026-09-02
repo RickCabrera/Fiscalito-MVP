@@ -18,12 +18,7 @@
     {
       "path": "/api/v1/asistencia/eventos",
       "metodos": [
-        "GET"
-      ]
-    },
-    {
-      "path": "/api/v1/asistencia/eventos",
-      "metodos": [
+        "GET",
         "POST"
       ]
     },

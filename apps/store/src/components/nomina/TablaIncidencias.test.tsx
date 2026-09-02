@@ -61,10 +61,12 @@ describe('TablaIncidencias · nota de días cotizados', () => {
     expect(notaAlPie()).toContain('Enfermedades y Maternidad se cobra íntegro');
   });
 
-  it('acota la afirmación a ausencias de hasta 7 días (Art. 31 fr. II, §D3)', () => {
+  it('acota la afirmación a ausencias de hasta 7 días AL MES (Art. 31 fr. II, §D3)', () => {
+    // "al mes" no sobra: §D3 fija el umbral por mes y esta tabla muestra una
+    // quincena. Sin esas dos palabras, el lector lo lee como umbral del periodo.
     pintar();
     const nota = notaAlPie();
-    expect(nota).toContain('hasta 7 días');
+    expect(nota).toContain('hasta 7 días al mes');
     expect(nota).toContain('Art. 31 LSS');
   });
 
@@ -79,10 +81,22 @@ describe('TablaIncidencias · nota de días cotizados', () => {
     expect(nota).not.toMatch(/no reduce Enfermedades/i);
   });
 
-  it('nombra los ramos que sí descuentan los días de ausencia', () => {
+  it('nombra los SEIS ramos que sí descuentan los días de ausencia', () => {
+    // Seis, no cinco. La frase está construida como partición —EyM no reduce /
+    // estos sí—, así que omitir uno lo empuja al lado de EyM. Cesantía y Vejez
+    // es el que se cae solo: vive en `ceav.py`, no en `CUOTAS_RAMOS`, pero toma
+    // el mismo default `se_reduce_por_ausentismo=True` y **aparece en pantalla**
+    // en el desglose de ramos del recibo, con sus días ya reducidos.
     pintar();
     const nota = notaAlPie();
-    for (const ramo of ['Invalidez y Vida', 'Guarderías', 'Retiro', 'Infonavit', 'Riesgos']) {
+    for (const ramo of [
+      'Invalidez y Vida',
+      'Guarderías',
+      'Retiro',
+      'Cesantía y Vejez',
+      'Infonavit',
+      'Riesgos de Trabajo',
+    ]) {
       expect(nota).toContain(ramo);
     }
   });
