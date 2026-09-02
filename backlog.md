@@ -237,7 +237,7 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   clientes y empleados pasa a endpoints del backend. Decisión tomada por Ricardo: el
   servicio deja de ser stateless. *Listo cuando:* alta/edición/baja de empleado pasa por el
   backend, sobrevive reinicio de la API, y el cálculo de nómina lee la misma fuente.
-  **ABIERTA, y le falta código Y credenciales — dos cosas distintas.**
+  **PR #31 mergeada, y la tarea sigue ABIERTA — le falta código Y credenciales.**
 
   **(a) Falta código: el TERCER criterio no está construido.** "El cálculo de nómina lee la
   misma fuente" **no se cumple**, ni con el interruptor apagado ni encendido.
@@ -259,6 +259,30 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   `apps/store/.env`. **No hay migración de datos** — las rutas de Firestore son las mismas
   de los dos lados. Los **dispositivos** de R-04 no se movieron: hacerlo en la misma corrida
   habría hecho nacer esa colección con dos dueños, que es el problema que R-07 cierra.
+
+- [ ] **R-08 · El cálculo de nómina lee la cartera, no el cuerpo del request** — es el
+  tercer criterio de R-07, que **no se construyó**. Hoy `POST /nomina/calcular-periodo`
+  recibe `empleados` en el cuerpo y el front lo arma con `plantillaDeNomina`, así que
+  "afirmar un cliente y calcular otro" cabe en un JSON y el guard del backend no puede
+  atraparlo. Con `GET /cartera/clientes/{id}/empleados` ya construido, el cálculo puede leer
+  la plantilla él mismo y dejar de creerle al navegador. **Depende de que R-07 se encienda**
+  (credenciales). *Listo cuando:* el request de cálculo no lleva plantilla y el resultado es
+  el mismo, con test de que mandar una plantilla ajena no cambia nada.
+- [ ] **R-09 · Los dispositivos pasan al backend** — R-04 los dejó en Firestore escritos por
+  el front. Se dejaron fuera de R-07 a propósito para no hacer nacer esa colección con dos
+  dueños el mismo día. Cuando el interruptor de R-07 se encienda, migrarlos. *Listo cuando:*
+  el alta de dispositivo pasa por el backend, igual que la de empleado.
+- [ ] **R-10 · Los `ilegibles` de la cartera llegan a la pantalla** — el backend ya reporta
+  los empleados guardados que no pasan la validación actual (`ilegibles[]`), pero **el front
+  los tira**. Desde donde está sentado el contador, ese empleado sigue quedando fuera del
+  cálculo sin verlo — la mitad de arriba de lo que `sin_vincular` hace bien. *Listo cuando:*
+  un empleado ilegible se ve en la ficha con su razón, como el "no vinculado".
+- [ ] **R-11 · (Decisión de Ricardo) ¿El emulador de Firestore entra al CI?** — los 9 tests
+  marcados `emulador` **no corren en CI**: el job hereda `-m "not emulador"`. Entre ellos, el
+  único que caza el borrado en cascada y el único que mide "sobrevive reinicio". **Verde en
+  CI ya no significa "toda la suite corrió"**, y el `CLAUDE.md` que define el gate ("cero
+  skips") todavía no lo dice. La reparación es un job con `firebase-tools`; la alternativa es
+  aceptar explícitamente que esos dos criterios viven fuera del gate.
 
 ## S — Saneamiento (deuda que estorba al bucle)
 
