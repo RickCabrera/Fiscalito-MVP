@@ -110,7 +110,7 @@ su regla es un bug esperando.
 |---|---|---|
 | `imss` | vence en inhábil **o viernes** → siguiente hábil | Art. 3 RACERF |
 | `imss_sin_prorroga` | fecha fija; no se corre (decisión provisional) | Art. 74 LSS; Art. 32 RACERF; §D23 |
-| `imss_aviso` | **no** se prorroga: el Art. 3 excluye los avisos afiliatorios | Art. 34 LSS |
+| `imss_aviso` | **no** se prorroga nunca | Art. 3 RACERF, que excluye los avisos afiliatorios |
 | `sat` | vence en inhábil → siguiente hábil, **sin** la regla del viernes | CFF Art. 12 |
 | `lft` | fecha fija de ley | LFT Arts. 87 y 122 |
 

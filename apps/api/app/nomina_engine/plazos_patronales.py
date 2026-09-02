@@ -9,7 +9,7 @@ citas y el porqué de cada una, vive en
 |---|---|---|
 | `IMSS` | inhábil **o viernes** → siguiente hábil | Art. 3 RACERF |
 | `IMSS_SIN_PRORROGA` | fecha fija; no se corre (decisión §D23) | Art. 74 LSS; Art. 32 RACERF |
-| `IMSS_AVISO` | no se prorroga: el Art. 3 excluye los avisos afiliatorios | Art. 34 LSS |
+| `IMSS_AVISO` | no se prorroga nunca | Art. 3 RACERF, que excluye los avisos afiliatorios |
 | `SAT` | inhábil → siguiente hábil, **sin** la regla del viernes | CFF Art. 12 |
 | `LFT` | fecha fija de ley | LFT Arts. 87 y 122 |
 

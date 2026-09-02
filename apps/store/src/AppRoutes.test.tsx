@@ -12,7 +12,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from './context/ProfileContext';
 
@@ -101,9 +101,18 @@ afterEach(cleanup);
 
 describe('rutas registradas', () => {
   it('/app/clientes pinta la cartera, no un hueco en blanco', async () => {
-    montar('/app/clientes');
+    /**
+     * La aserción va acotada al `<main>`: desde E-06 el sidebar imprime el
+     * nombre del cliente activo bajo "Nómina", así que el mismo texto aparece
+     * dos veces en la página. Lo que este test mide es que la CARTERA se pinte,
+     * no que el nombre exista en algún lado.
+     */
+    const { container } = montar('/app/clientes');
     expect(await screen.findByRole('heading', { name: 'Clientes' })).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('Servicios Administrativos Integrales')).toBeTruthy());
+    const contenido = container.querySelector('main') as HTMLElement;
+    await waitFor(() =>
+      expect(within(contenido).getByText('Servicios Administrativos Integrales')).toBeTruthy(),
+    );
   });
 
   it('/app/clientes/:id pinta la ficha del cliente', async () => {
