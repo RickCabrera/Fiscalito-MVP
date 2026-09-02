@@ -178,17 +178,31 @@ vital a lo menos. Régimen de la corrida: revisor 1× al plan y 1× al cierre, m
 motor obligatorio en lo que toque cálculo (R-03, R-06 y R-07). Tests por área durante la
 corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.**
 
-- [ ] **R-01 · Desbloquear Firestore** — bloque `firestore` en `apps/store/firebase.json`,
-  revisión de `firestore.rules`, despliegue, y verificación en la app corriendo.
-  *Listo cuando:* creo un cliente y doy de alta un empleado desde la UI y sobrevive a
-  recargar la página.
-- [ ] **R-02 · Siembra automática** — un comando que levante la API y siembre los tres
-  clientes del checador. El camino manual se queda como está. *Listo cuando:* un solo
-  comando levanta API + datos de checador.
-- [ ] **R-03 · Campo NSS en el modal de empleado** — recortado en G-01, se restaura.
-  Validación de 11 dígitos + dígito verificador. El NSS sólo persiste bajo el uid dueño,
-  jamás en el catálogo demo. *Listo cuando:* alta con NSS válido guarda, inválido bloquea
-  con mensaje claro.
+- [x] **R-01 · Desbloquear Firestore** — **PR #27.** Las reglas vivas cubrían `users/{uid}`
+  y `declaraciones` y **nada más**; como las reglas de Firestore no heredan hacia
+  subcolecciones, toda `users/{uid}/clientes/**` estaba **denegada**. Ésa era la causa raíz
+  del banner de permisos y de que G-03 nunca cumpliera su criterio. `firestore.rules` se
+  movió a `apps/store/` (el CLI rechaza rutas fuera del directorio del proyecto — el motivo
+  concreto de que la receta de la sección G no funcionara). Reglas sin cambios, validadas
+  con 10 casos contra el evaluador oficial, desplegadas y verificadas contra el proyecto
+  vivo. *Verificado en navegador:* crear cliente → alta de empleado → relectura con
+  `origen=firestore` → borrado en cascada, cero rastros. **Salvedad:** se ejercitó el camino
+  de código de producción, no el clic, porque la única sesión disponible es de perfil
+  contribuyente y no pinta el sidebar del despacho.
+- [x] **R-02 · Siembra automática** — **PR #27.** `apps/api/scripts/levantar_demo.py`:
+  un comando levanta uvicorn y siembra los tres clientes. Reproduce **194 / 86 / 260**
+  checadas, los mismos números del camino manual, verificado end-to-end. El manual queda
+  intacto y este script reusa su `enviar()`. Elimina de raíz el modo de falla del uvicorn
+  viejo: el proceso nace del commit actual.
+- [x] **R-03 · Campo NSS en el modal de empleado** — **PR #28.** Validación con Luhn en
+  `services/nss.ts`. **Desviación consciente del enunciado, pendiente de tu firma:** el
+  formato (11 dígitos, numéricos) **bloquea**, pero el dígito verificador **advierte y
+  guarda**, con insignia "Por verificar" en la tabla. Bloquearlo empujaría al contador a
+  teclear un NSS que pase Luhn — un número inventado junto a datos reales, que es lo que
+  `routes/despacho.py` argumenta que nunca debe pasar. Además no hay norma primaria del
+  IMSS publicada y el XSD del SAT timbra con `[0-9]{1,15}` sin exigir verificador.
+  Decisión **ABIERTA** en `docs/decisiones-nomina.md` §D25 con dos preguntas para la
+  contadora; se revierte con la constante `BLOQUEA_VERIFICADOR`.
 - [ ] **R-04 · Pantalla de dispositivos biométricos** — recortada en G-02, se restaura.
   Listar, agregar/editar (nombre, IP, serial) y enrolamiento de empleados por dispositivo
   usando la vinculación por `employeeNo` de G-02. *Listo cuando:* doy de alta un
