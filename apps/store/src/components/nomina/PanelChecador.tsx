@@ -2,6 +2,7 @@
 
 import { Radio } from 'lucide-react';
 import type { EventoChecada } from '../../services/nominaDemoApi';
+import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from './estilosTabla';
 
 function horaLocal(iso: string): string {
   // La checada trae su offset (-06:00). Se muestra tal cual la mandó el
@@ -24,59 +25,113 @@ export default function PanelChecador({
   error: string | null;
 }) {
   const ultimos = [...eventos].reverse().slice(0, 12);
+
   return (
-    <section
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: 20,
-      }}
-    >
-      <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+    <section className="card">
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-xs)',
+          marginBottom: 'var(--space-md)',
+        }}
+      >
         <Radio size={18} color="var(--accent-active)" />
-        <h2 style={{ fontSize: '1rem', margin: 0 }}>Checador en vivo</h2>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          {eventos.length} checadas
+        <h2 style={tituloSeccion}>Checador en vivo</h2>
+        <span
+          style={{
+            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'baseline',
+            gap: 6,
+            padding: '4px 12px',
+            borderRadius: 'var(--radius-full)',
+            background: 'var(--teal-bg)',
+            color: 'var(--accent-active)',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontVariantNumeric: 'tabular-nums' }}>
+            {eventos.length}
+          </span>
+          checadas
         </span>
       </header>
 
       {error && (
-        <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            padding: 'var(--space-sm) var(--space-md)',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--danger-bg)',
+            border: '1px solid var(--danger-border)',
+            color: 'var(--danger)',
+            fontSize: '0.88rem',
+          }}
+        >
           No se pudieron leer las checadas: {error}
         </p>
       )}
 
       {!error && eventos.length === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Sin checadas todavía. Corre el simulador del checador o conecta el dispositivo.
-        </p>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 6,
+            padding: 'var(--space-xl) var(--space-md)',
+            textAlign: 'center',
+          }}
+        >
+          <Radio size={22} color="var(--text-muted)" />
+          <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Sin checadas todavía</div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, maxWidth: 420 }}>
+            Corre el simulador del checador para este cliente, o conecta el dispositivo.
+          </p>
+        </div>
       )}
 
       {ultimos.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-              <th style={{ padding: '4px 0' }}>Empleado</th>
-              <th>Día</th>
-              <th>Hora</th>
-              <th>Tipo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ultimos.map((e) => (
-              <tr key={`${e.empleado_no}-${e.timestamp}-${e.tipo}`}>
-                <td style={{ padding: '4px 0' }}>
-                  {e.raw?.name ?? e.empleado_no}{' '}
-                  <span style={{ color: 'var(--text-muted)' }}>({e.empleado_no})</span>
-                </td>
-                <td>{fechaLocal(e.timestamp)}</td>
-                <td>{horaLocal(e.timestamp)}</td>
-                <td>{e.tipo}</td>
+        <div style={envoltura}>
+          <table style={tabla(560)}>
+            <thead>
+              <tr>
+                <th style={th}>Empleado</th>
+                <th style={th}>Día</th>
+                <th style={thNum}>Hora</th>
+                <th style={th}>Tipo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ultimos.map((e, i) => (
+                <tr key={`${e.empleado_no}-${e.timestamp}-${e.tipo}`} style={fila(i)}>
+                  <td style={td}>
+                    {e.raw?.name ?? e.empleado_no}{' '}
+                    <span style={{ color: 'var(--text-muted)' }}>({e.empleado_no})</span>
+                  </td>
+                  <td style={{ ...td, fontFamily: "'JetBrains Mono', monospace" }}>
+                    {fechaLocal(e.timestamp)}
+                  </td>
+                  <td
+                    style={{
+                      ...td,
+                      textAlign: 'right',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {horaLocal(e.timestamp)}
+                  </td>
+                  <td style={{ ...td, color: 'var(--text-secondary)' }}>{e.tipo}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

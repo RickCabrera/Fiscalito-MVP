@@ -21,8 +21,8 @@ function TarjetaCliente({
       onClick={onAbrir}
       className="card"
       style={{
-        display: 'flex', alignItems: 'center', gap: 16, width: '100%',
-        padding: '18px 20px', textAlign: 'left', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 'var(--space-md)', width: '100%',
+        padding: 'var(--space-md) var(--space-lg)', textAlign: 'left', cursor: 'pointer',
         border: `1.5px solid ${activo ? 'var(--accent-active)' : 'var(--border)'}`,
         background: activo ? 'var(--accent-active-bg)' : 'var(--bg-card)',
         color: 'var(--text-primary)',
@@ -39,7 +39,7 @@ function TarjetaCliente({
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontSize: '1rem' }}>{cliente.nombre}</span>
           {activo && (
             <span
@@ -58,7 +58,7 @@ function TarjetaCliente({
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)', flexShrink: 0 }}>
         <div style={{ textAlign: 'right' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
             <Users size={14} color="var(--text-muted)" />
@@ -121,8 +121,8 @@ export default function ClientesPage() {
       )}
 
       {!loading && !error && clientes.length === 0 && (
-        <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>
+        <div className="card" style={{ padding: 'var(--space-2xl) var(--space-lg)', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 'var(--space-xs)' }}>
             La cartera está vacía
           </div>
           <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)' }}>
@@ -131,7 +131,7 @@ export default function ClientesPage() {
         </div>
       )}
 
-      <div className="animate-in" style={{ animationDelay: '0.1s', display: 'grid', gap: 12 }}>
+      <div className="animate-in" style={{ animationDelay: '0.1s', display: 'grid', gap: 'var(--space-sm)' }}>
         {clientes.map((c) => (
           <TarjetaCliente
             key={c.id}

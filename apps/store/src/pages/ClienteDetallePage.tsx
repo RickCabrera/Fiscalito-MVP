@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Info, Loader } from 'lucide-react';
 import ErrorAlert from '../components/common/ErrorAlert';
+import { envoltura, fila, tabla, td, tdNum, th, thNum, tituloSeccion } from '../components/nomina/estilosTabla';
 import {
   etiquetaOrigen, obtenerCliente, primaComoPorcentaje,
   type ClienteDetalle,
@@ -40,17 +41,8 @@ function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: string; mono
   );
 }
 
-const th: React.CSSProperties = {
-  textAlign: 'left', padding: '10px 12px', fontSize: '0.75rem',
-  color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap',
-  borderBottom: '1px solid var(--border)',
-};
-const td: React.CSSProperties = {
-  padding: '10px 12px', fontSize: '0.85rem', borderBottom: '1px solid var(--border)',
-};
-const tdNum: React.CSSProperties = {
-  ...td, textAlign: 'right', fontFamily: "'JetBrains Mono', monospace",
-};
+// E-04: los mismos estilos que las tablas de nómina, para que la ficha y los
+// recibos se lean igual. Eran th/td locales escritos en E-02.
 
 /**
  * El resultado se guarda JUNTO CON el id que lo produjo. Así `loading` se
@@ -93,7 +85,7 @@ export default function ClienteDetallePage() {
     <div className="page-container">
       <Link
         to="/app/clientes"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 24 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 'var(--space-lg)' }}
       >
         <ArrowLeft size={16} /> Clientes
       </Link>
@@ -117,7 +109,7 @@ export default function ClienteDetallePage() {
           <div
             className="card animate-in"
             style={{
-              animationDelay: '0.05s', marginBottom: 24,
+              animationDelay: '0.05s', marginBottom: 'var(--space-lg)',
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20,
             }}
           >
@@ -137,24 +129,25 @@ export default function ClienteDetallePage() {
           </div>
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>Plantilla</h2>
-            <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+            <h2 style={{ ...tituloSeccion, marginBottom: 'var(--space-sm)' }}>Plantilla</h2>
+            <div className="card" style={{ padding: 'var(--space-lg)' }}>
+              <div style={envoltura}>
+                <table style={tabla(760)}>
                 <thead>
                   <tr>
                     <th style={th}>No.</th>
                     <th style={th}>Nombre</th>
                     <th style={th}>Puesto</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Salario diario</th>
-                    <th style={{ ...th, textAlign: 'right' }}>SBC</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Factor</th>
+                    <th style={thNum}>Salario diario</th>
+                    <th style={thNum}>SBC</th>
+                    <th style={thNum}>Factor</th>
                     <th style={th}>Alta</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Antigüedad</th>
+                    <th style={thNum}>Antigüedad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cliente.empleados.map((e) => (
-                    <tr key={e.empleado_no}>
+                  {cliente.empleados.map((e, i) => (
+                    <tr key={e.empleado_no} style={fila(i)}>
                       <td style={{ ...td, fontFamily: "'JetBrains Mono', monospace" }}>{e.empleado_no}</td>
                       <td style={td}>{e.nombre}</td>
                       <td style={{ ...td, color: 'var(--text-secondary)' }}>{e.puesto || '—'}</td>
@@ -180,12 +173,14 @@ export default function ClienteDetallePage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
 
             <div
               style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12,
+                display: 'flex', alignItems: 'flex-start',
+                gap: 'var(--space-xs)', marginTop: 'var(--space-sm)',
                 fontSize: '0.78rem', color: 'var(--text-muted)',
               }}
             >
