@@ -63,6 +63,16 @@ describe('tool navegar', () => {
     expect(deps.navigate).not.toHaveBeenCalled();
   });
 
+  // E-01: la lista de clientes del despacho es ruta nueva; si no está en la
+  // whitelist, el agente no puede llevar al contador a su propia pantalla.
+  it('acepta la pantalla de clientes del despacho', async () => {
+    const deps = hacerDeps({ contributorType: 'contador' });
+    const res = await TOOL_EXECUTORS.navegar({ ruta: '/app/clientes' }, deps);
+
+    expect(res.ok).toBe(true);
+    expect(deps.navigate).toHaveBeenCalledWith('/app/clientes');
+  });
+
   it('navega cuando la ruta es válida', async () => {
     const deps = hacerDeps();
     const res = await TOOL_EXECUTORS.navegar(
@@ -77,6 +87,35 @@ describe('tool navegar', () => {
 });
 
 describe('tool calcular_predeclaracion', () => {
+  /**
+   * E-01. El chat de voz flota sobre TODAS las pantallas, incluidas las del
+   * despacho, y esta tool no pasa por el filtro de tabs: sin la guarda, pedirle
+   * "calcula la predeclaración" a una cuenta de contador la calcularía sobre el
+   * RFC del despacho como si fuera el del cliente del que se está hablando.
+   */
+  it('se niega en una cuenta de despacho', async () => {
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
+      { año: 2026, mes: 1 },
+      hacerDeps({ contributorType: 'contador', rfc: 'AAA010101AAA', regimen: '612' }),
+    );
+
+    expect(res.ok).toBe(false);
+    expect(res.summary).toMatch(/despacho/i);
+  });
+
+  // La guarda va ANTES de la de RFC: a un contador el mensaje correcto es "no
+  // calculo la predeclaración de un despacho", no "completa tu RFC".
+  it('el mensaje del despacho gana al de perfil incompleto', async () => {
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
+      { año: 2026, mes: 1 },
+      hacerDeps({ contributorType: 'contador', rfc: '', regimen: '' }),
+    );
+
+    expect(res.ok).toBe(false);
+    expect(res.summary).toMatch(/despacho/i);
+    expect(res.summary).not.toMatch(/falta rfc/i);
+  });
+
   it('se detiene si el perfil no tiene RFC, sin llamar a la red', async () => {
     const res = await TOOL_EXECUTORS.calcular_predeclaracion(
       { año: 2026, mes: 1 },

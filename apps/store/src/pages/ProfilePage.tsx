@@ -22,6 +22,7 @@ export default function ProfilePage() {
     telefono: profile.telefono,
     nombreNegocio: profile.nombreNegocio,
     numEmpleados: profile.numEmpleados,
+    nombreDespacho: profile.nombreDespacho,
   });
 
   const selectedProfile = tipo ? getProfileByType(tipo) : null;
@@ -55,6 +56,7 @@ export default function ProfilePage() {
         telefono: form.telefono,
         nombreNegocio: form.nombreNegocio,
         numEmpleados: form.numEmpleados,
+        nombreDespacho: form.nombreDespacho,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -68,13 +70,17 @@ export default function ProfilePage() {
   return (
     <div className="page-container">
       <div className="page-header animate-in">
-        <h1>Perfil del contribuyente</h1>
-        <p>Estos datos se usan para calcular tus declaraciones correctamente.</p>
+        <h1>{tipo === 'contador' ? 'Perfil del despacho' : 'Perfil del contribuyente'}</h1>
+        <p>
+          {tipo === 'contador'
+            ? 'Los datos de tu despacho. Los de cada cliente se llevan por separado.'
+            : 'Estos datos se usan para calcular tus declaraciones correctamente.'}
+        </p>
       </div>
 
       {/* Tipo de contribuyente */}
       <div className="card animate-in" style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 16 }}>Tipo de contribuyente</h3>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 16 }}>Tipo de cuenta</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
           {CONTRIBUTOR_TYPES.map((ct) => {
             const selected = tipo === ct.id;
@@ -187,6 +193,16 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
+
+            {/* Contador: nombre del despacho */}
+            {tipo === 'contador' && (
+              <div>
+                <label style={labelStyle}>Nombre del despacho</label>
+                <input className="input-field" placeholder="Despacho Contable Ejemplo"
+                  value={form.nombreDespacho}
+                  onChange={(e) => handleChange('nombreDespacho', e.target.value)} />
+              </div>
+            )}
 
             {/* PYME extra fields */}
             {tipo === 'pyme' && (

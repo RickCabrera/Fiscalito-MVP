@@ -8,8 +8,9 @@ import {
   type DashboardStats, type DeclaracionRecord, type HistorialCategoria,
 } from '../services/declaracionesHistory';
 import { Timestamp } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { formatMoney } from '../utils/format';
+import { getTabsForProfile, esContador, rutaInicial, type TabFiscalito } from '../services/navigation';
 import {
   ArrowRight, FileText, Calculator, Calendar, BarChart3,
   FileSpreadsheet, Users, TrendingUp, Wallet, Clock, Zap, Loader,
@@ -17,7 +18,7 @@ import {
 
 // ── Tipos ──
 
-type TabId = 'declaracion' | 'deducciones' | 'calendario' | 'comparar' | 'diot' | 'retenciones' | 'multiperiodo' | 'estado';
+type TabId = TabFiscalito;
 
 interface ServiceDef {
   id: TabId;
@@ -39,22 +40,6 @@ const SERVICES: ServiceDef[] = [
   { id: 'multiperiodo', label: 'Multi-periodo',        icon: <TrendingUp size={20} />,    color: 'var(--success)',       categoria: 'multiperiodo',   tabParam: 'multiperiodo', descripcion: 'Análisis anual por mes' },
   { id: 'estado',       label: 'Estado de cuenta',     icon: <Wallet size={20} />,        color: 'var(--teal-light)',    categoria: 'estado_cuenta',  tabParam: 'estado-cuenta',descripcion: 'Proyección e ISR faltante' },
 ];
-
-function getTabsForProfile(contributorType: string | null, regimen: string | null): TabId[] {
-  if (contributorType === 'asalariado' || regimen === '605')
-    return ['deducciones', 'calendario'];
-  if (contributorType === 'pyme')
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
-  if (regimen === '626')
-    return ['declaracion', 'calendario', 'comparar', 'estado'];
-  if (regimen === '612')
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
-  if (contributorType === 'arrendamiento' || regimen === '606')
-    return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (contributorType === 'plataformas' || regimen === '625')
-    return ['declaracion', 'calendario', 'estado'];
-  return ['declaracion', 'calendario', 'estado'];
-}
 
 function formatFecha(fecha: Timestamp | Date): string {
   const d = fecha instanceof Timestamp ? fecha.toDate() : new Date(fecha);
@@ -168,6 +153,12 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoadingStats(false));
   }, [user?.uid]);
+
+  // E-01: el dashboard es de contribuyente. Un despacho entra a sus clientes.
+  // Va DESPUES de los hooks (no antes) para no romper su orden entre renders.
+  if (esContador(tipo)) {
+    return <Navigate to={rutaInicial(tipo)} replace />;
+  }
 
   return (
     <div className="page-container">

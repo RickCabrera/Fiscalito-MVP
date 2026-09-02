@@ -12,11 +12,12 @@ interface StepConfirmarProps {
   cp: string;
   nombreNegocio: string;
   numEmpleados: string;
+  nombreDespacho: string;
 }
 
 export default function StepConfirmar({
   tipoLabel, tipoIcon, allowedRegimens,
-  rfc, regimen, nombre, telefono, actividad, cp, nombreNegocio, numEmpleados,
+  rfc, regimen, nombre, telefono, actividad, cp, nombreNegocio, numEmpleados, nombreDespacho,
 }: StepConfirmarProps) {
   const regimenName = allowedRegimens.find((r) => r.code === regimen)?.name || regimen;
 
@@ -29,6 +30,7 @@ export default function StepConfirmar({
   if (actividad) rows.push({ label: 'Actividad', value: actividad });
   if (cp) rows.push({ label: 'Codigo postal', value: cp });
   if (telefono) rows.push({ label: 'Telefono', value: telefono });
+  if (nombreDespacho) rows.push({ label: 'Despacho', value: nombreDespacho });
   if (nombreNegocio) rows.push({ label: 'Negocio', value: nombreNegocio });
   if (numEmpleados) rows.push({ label: 'Empleados', value: numEmpleados });
 

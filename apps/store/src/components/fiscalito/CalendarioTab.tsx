@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerCalendario, type ObligacionFiscal } from '../../services/fiscalAgentApi';
+import { obtenerCalendario, type ObligacionFiscal, tipoParaCalendario } from '../../services/fiscalAgentApi';
 import { obtenerHistorial, type DeclaracionRecord } from '../../services/declaracionesHistory';
 import { Calendar, Clock, AlertCircle, Loader, CheckCircle2 } from 'lucide-react';
 
@@ -91,7 +91,7 @@ export default function CalendarioTab() {
           obtenerCalendario({
             rfc: profile.rfc,
             regimen: profile.regimen,
-            contributor_type: profile.contributorType || 'independiente',
+            contributor_type: tipoParaCalendario(profile.contributorType),
             year: yearActual,
           }),
           user?.uid ? obtenerHistorial(user.uid, 100) : Promise.resolve([]),

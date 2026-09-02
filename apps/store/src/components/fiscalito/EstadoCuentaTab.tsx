@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse } from '../../services/fiscalAgentApi';
+import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse, tipoParaApi } from '../../services/fiscalAgentApi';
 import { guardarEstadoCuenta } from '../../services/declaracionesHistory';
 import { exportarEstadoCuentaPDF } from '../../services/pdfExportEstado';
 import { fmtMoney } from '../../utils/format';
@@ -37,7 +37,7 @@ export default function EstadoCuentaTab() {
     setGuardado(false);
     try {
       const res = await obtenerEstadoCuenta({
-        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: profile.contributorType },
+        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
         facturas, periodo_year: year, incluir_explicacion: true,
       });
       setResultado(res);

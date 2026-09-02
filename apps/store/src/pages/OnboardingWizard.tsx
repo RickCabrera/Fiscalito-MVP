@@ -5,6 +5,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { getProfileByType } from '../services/contributorProfiles';
+import { rutaInicial, esContador } from '../services/navigation';
 import type { ContributorType } from '../services/contributorProfiles';
 import { ArrowLeft, ArrowRight, Check, Loader } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export default function OnboardingWizard() {
   const [regimen, setRegimen] = useState('');
   const [nombreNegocio, setNombreNegocio] = useState('');
   const [numEmpleados, setNumEmpleados] = useState('');
+  const [nombreDespacho, setNombreDespacho] = useState('');
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [actividad, setActividad] = useState('');
@@ -40,7 +42,8 @@ export default function OnboardingWizard() {
       const rfcValid = rfc.length === 12 || rfc.length === 13;
       const regimenValid = regimen !== '';
       const pymeValid = tipo !== 'pyme' || (nombreNegocio.trim() !== '' && numEmpleados !== '');
-      return rfcValid && regimenValid && pymeValid;
+      const contadorValid = tipo !== 'contador' || nombreDespacho.trim() !== '';
+      return rfcValid && regimenValid && pymeValid && contadorValid;
     }
     if (step === 2) return nombre.trim() !== '';
     return true;
@@ -52,10 +55,11 @@ export default function OnboardingWizard() {
       await setProfile({
         contributorType: tipo,
         rfc, regimen, nombre, telefono, actividad, cp,
-        nombreNegocio, numEmpleados,
+        nombreNegocio, numEmpleados, nombreDespacho,
         onboardingComplete: true,
       });
-      navigate('/app');
+      // Un despacho entra a sus clientes, no al dashboard de contribuyente.
+      navigate(rutaInicial(tipo));
     } catch {
       setSaving(false);
     }
@@ -92,7 +96,7 @@ export default function OnboardingWizard() {
           <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Store</span>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Configuremos tu perfil de contribuyente
+          {esContador(tipo) ? 'Configuremos el perfil de tu despacho' : 'Configuremos tu perfil de contribuyente'}
         </p>
       </div>
 
@@ -109,7 +113,9 @@ export default function OnboardingWizard() {
               regimen={regimen} setRegimen={setRegimen}
               nombreNegocio={nombreNegocio} setNombreNegocio={setNombreNegocio}
               numEmpleados={numEmpleados} setNumEmpleados={setNumEmpleados}
+              nombreDespacho={nombreDespacho} setNombreDespacho={setNombreDespacho}
               isPyme={tipo === 'pyme'}
+              isContador={esContador(tipo)}
             />
           )}
           {step === 2 && (
@@ -128,6 +134,7 @@ export default function OnboardingWizard() {
               rfc={rfc} regimen={regimen} nombre={nombre}
               telefono={telefono} actividad={actividad} cp={cp}
               nombreNegocio={nombreNegocio} numEmpleados={numEmpleados}
+              nombreDespacho={nombreDespacho}
             />
           )}
         </div>

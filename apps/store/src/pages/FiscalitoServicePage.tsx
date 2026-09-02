@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
+import { getTabsForProfile, esContador, type TabFiscalito } from '../services/navigation';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
 import DeduccionesPersonalesTab from '../components/fiscalito/DeduccionesPersonalesTab';
 import CalendarioTab from '../components/fiscalito/CalendarioTab';
@@ -13,7 +14,7 @@ import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
 import { ArrowLeft, FileText, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
 
-type Tab = 'declaracion' | 'deducciones' | 'calendario' | 'comparar' | 'diot' | 'retenciones' | 'multiperiodo' | 'estado';
+type Tab = TabFiscalito;
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'declaracion', label: 'Pre-declaración', icon: <FileText size={16} /> },
@@ -25,41 +26,6 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'multiperiodo', label: 'Multi-periodo', icon: <TrendingUp size={16} /> },
   { id: 'estado', label: 'Estado de cuenta', icon: <Wallet size={16} /> },
 ];
-
-function getTabsForProfile(contributorType: string | null, regimen: string | null): Tab[] {
-  // Asalariado: solo deducciones personales y calendario
-  if (contributorType === 'asalariado' || regimen === '605') {
-    return ['deducciones', 'calendario'];
-  }
-
-  // PYME: todo (tiene empleados, más obligaciones)
-  if (contributorType === 'pyme') {
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
-  }
-
-  // RESICO: simplificado, sin DIOT ni retenciones
-  if (regimen === '626') {
-    return ['declaracion', 'calendario', 'comparar', 'estado'];
-  }
-
-  // Act. Empresarial: todo menos deducciones personales
-  if (regimen === '612') {
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
-  }
-
-  // Arrendamiento: sin DIOT ni retenciones
-  if (contributorType === 'arrendamiento' || regimen === '606') {
-    return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  }
-
-  // Plataformas: básico
-  if (contributorType === 'plataformas' || regimen === '625') {
-    return ['declaracion', 'calendario', 'estado'];
-  }
-
-  // Default: pre-declaración + calendario + estado
-  return ['declaracion', 'calendario', 'estado'];
-}
 
 const TAB_PARAM_MAP: Record<string, Tab> = {
   predeclaracion: 'declaracion',
@@ -85,6 +51,7 @@ export default function FiscalitoServicePage() {
     () => getTabsForProfile(profile.contributorType, profile.regimen),
     [profile.contributorType, profile.regimen],
   );
+  const esContadorActual = esContador(profile.contributorType);
   const tabs = ALL_TABS.filter(t => allowedTabIds.includes(t.id));
   const defaultTab = allowedTabIds[0];
 
@@ -111,8 +78,8 @@ export default function FiscalitoServicePage() {
   return (
     <div className="page-container">
       {/* Back link */}
-      <Link to="/app/store/fiscalito" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 24 }}>
-        <ArrowLeft size={16} /> Información
+      <Link to={esContadorActual ? '/app/clientes' : '/app/store/fiscalito'} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 24 }}>
+        <ArrowLeft size={16} /> {esContadorActual ? 'Clientes' : 'Información'}
       </Link>
 
       {/* Header */}
@@ -127,9 +94,11 @@ export default function FiscalitoServicePage() {
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: -0.5 }}>Fiscalito</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            {allowedTabIds.includes('deducciones') && !allowedTabIds.includes('declaracion')
-              ? 'Calcula tus deducciones personales y saldo a favor'
-              : 'Calcula tus pre-declaraciones ISR/IVA'}
+            {esContadorActual
+              ? 'Las obligaciones fiscales de tu despacho'
+              : allowedTabIds.includes('deducciones') && !allowedTabIds.includes('declaracion')
+                ? 'Calcula tus deducciones personales y saldo a favor'
+                : 'Calcula tus pre-declaraciones ISR/IVA'}
           </p>
         </div>
       </div>

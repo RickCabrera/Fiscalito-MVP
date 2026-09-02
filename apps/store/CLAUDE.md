@@ -136,12 +136,14 @@ fiscalito-store-app/
 │   │   ├── ServiceDetailPage.tsx    # Detalle de servicio + docs API + ejemplo request/response
 │   │   ├── FiscalitoServicePage.tsx # Interfaz principal de Fiscalito con tabs
 │   │   ├── HistorialPage.tsx        # Historial de declaraciones con filtros y export PDF
+│   │   ├── ClientesPage.tsx         # Clientes del despacho (STUB de E-01, la llena E-02)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
 │   │   ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
 │   │   ├── storeServices.ts         # Catalogo de servicios del marketplace
-│   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente
+│   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente (incl. contador)
+│   │   ├── navigation.ts            # Sidebar y tabs por perfil + frontera de rutas (modulo puro)
 │   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
 │   │   ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
 │   │   ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
@@ -165,6 +167,7 @@ fiscalito-store-app/
 /app/onboarding                → OnboardingWizard (protegida, sin sidebar)
 /app                           → DashboardPage (protegida, con sidebar)
 /app/historial                 → HistorialPage (protegida)
+/app/clientes                  → ClientesPage (protegida, solo contador — STUB de E-01, la llena E-02)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
@@ -178,6 +181,7 @@ Definidos en `src/services/contributorProfiles.ts`. El campo `contributorType` d
 
 | Tipo | Regimenes | Servicios visibles | Tabs Fiscalito |
 |------|-----------|-------------------|----------------|
+| **contador** (Despacho / Contador) | 612, 626 | Fiscalito | **Solo Calendario** |
 | asalariado | 605 | Fiscalito | Deducciones personales, Calendario |
 | independiente (RESICO) | 626 | Fiscalito | Declaracion, Calendario, Comparar, Estado cuenta |
 | independiente (Empresarial) | 612 | Fiscalito | Declaracion, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
@@ -185,12 +189,47 @@ Definidos en `src/services/contributorProfiles.ts`. El campo `contributorType` d
 | plataformas | 625 | Fiscalito | Declaracion, Calendario, Estado cuenta |
 | pyme | 612, 626, 621 (RIF) | Fiscalito + IMSS Manager + Contabilito | Declaracion, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
 
-**Nota**: La logica de filtrado de tabs esta en `FiscalitoServicePage.tsx:getTabsForProfile()`. Los tabs se filtran por `contributorType` y luego por `regimen`.
+**Nota**: La logica de filtrado de tabs esta en `services/navigation.ts:getTabsForProfile()`
+— **una sola copia**, usada por `FiscalitoServicePage` y por `DashboardPage`. Los tabs se
+filtran por `contributorType` y luego por `regimen`. **La rama de `contador` va PRIMERO**: un
+despacho tiene regimen 612 o 626 y si se evaluara despues caeria en la rama de contribuyente.
+
+### Navegacion por perfil (E-01)
+
+El sidebar NO se arma en `AppLayout`: sale de `services/navigation.ts` (`getSidebarLinks`),
+modulo puro sin JSX. `AppLayout` solo le pone iconos por `id`.
+
+| Perfil | Sidebar |
+|--------|---------|
+| contador | Clientes · Nomina · Calendario · Perfil |
+| cualquier otro (incluido perfil sin tipo) | Dashboard · Fiscalito · Historial · Nomina (demo) · Perfil |
+
+Los tabs y pantallas de contribuyente **no se borraron**: dejan de mostrarse. Un contador que
+teclee `/app` es redirigido a `/app/clientes` (`rutaInicial`).
+
+**Fuera de alcance de E-01, conocido:** `/app/historial`, `/app/store`, `/app/store/:serviceId`
+y `/app/admin` siguen alcanzables por URL para un contador.
+
+### Frontera de tipos front → API
+
+El front tiene un tipo que el backend no conoce: `contador`.
+`PerfilContribuyente.contributor_type` (en `fiscalAgentApi.ts`) espeja a mano el enum de
+`app/schemas/fiscal.py:49` y **no se ensancha a `string`** — si se ensanchara, agregar un tipo
+nuevo dejaria de romper el build y pasaria a romperse en vivo con un 422. Todo paso de
+`ContributorType` a un request va por una de estas dos:
+
+- `tipoParaApi(tipo)` — para los endpoints de calculo. `contador` → `null` (un despacho no es
+  el sujeto del calculo, sus clientes lo son).
+- `tipoParaCalendario(tipo)` — para `/calendario`, que exige un tipo concreto y responde 400
+  si no lo reconoce. `contador` → `'independiente'`. Ver `docs/decisiones-nomina.md` D21.
+
+Los dos mapas son `Record<ContributorType, ...>` exhaustivos a proposito: un tipo nuevo rompe
+el build y obliga a decidir que se le manda al backend.
 
 ### Wizard de onboarding (post-registro)
 Despues de registrarse, el usuario pasa por un wizard de 4 pasos en `OnboardingWizard.tsx`:
-1. **Tipo de contribuyente** — card selector visual con iconos
-2. **Datos fiscales** — RFC + regimen (filtrado por tipo) + campos PYME (nombre negocio, num empleados)
+1. **Tipo de cuenta** — card selector visual con iconos (incluye Despacho / Contador)
+2. **Datos fiscales** — RFC + regimen (filtrado por tipo) + campos PYME (nombre negocio, num empleados) + campo contador (nombre del despacho)
 3. **Datos personales** — nombre completo, telefono, actividad economica, codigo postal
 4. **Confirmacion** — resumen de todo lo configurado con boton "Comenzar"
 
@@ -298,7 +337,7 @@ DB: Firestore
 
 **Perfil de usuario** — `users/{uid}`:
 ```
-contributorType: 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme' | null
+contributorType: 'contador' | 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme' | null
 rfc: string
 regimen: string (codigo SAT: '626', '612', '605', '606', '625')
 nombre: string
@@ -307,6 +346,7 @@ cp: string
 telefono: string
 nombreNegocio: string (solo PYME)
 numEmpleados: string (solo PYME)
+nombreDespacho: string (solo contador)
 onboardingComplete: boolean
 updatedAt: serverTimestamp
 ```
@@ -370,4 +410,5 @@ npm install          # Instalar dependencias
 npm run dev          # Dev server en localhost:3000
 npm run build        # Build para produccion (tsc + vite build)
 npm run preview      # Preview del build de produccion
+npm test             # Suite de vitest (red bloqueada por default)
 ```

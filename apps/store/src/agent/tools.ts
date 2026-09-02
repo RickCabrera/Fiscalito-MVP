@@ -12,12 +12,12 @@
 
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
+import { esContador } from '../services/navigation';
 import { parseMultipleCFDI } from '../services/cfdiParser';
 import {
   calcularPreDeclaracion,
   type CFDI,
-  type PreDeclaracionRequest,
-} from '../services/fiscalAgentApi';
+  type PreDeclaracionRequest, tipoParaApi } from '../services/fiscalAgentApi';
 import { guardarDeclaracion } from '../services/declaracionesHistory';
 import { getAgentActions, getAgentSnapshot } from './AgentContext';
 import type { ToolName, ToolResult } from './types';
@@ -30,6 +30,8 @@ import type { ToolName, ToolResult } from './types';
  *  el LLM no invente rutas inexistentes. */
 const RUTAS_VALIDAS = [
   '/app',
+  // E-01: pantalla de clientes del despacho.
+  '/app/clientes',
   '/app/historial',
   '/app/store',
   '/app/store/fiscalito/use',
@@ -62,7 +64,8 @@ export const TOOLS_OPENAI = [
             description:
               'Ruta exacta a la que navegar. Para tabs internos de Fiscalito ' +
               'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
-              'lleva al tab de pre-declaración.',
+              'lleva al tab de pre-declaración. "/app/clientes" es la lista de ' +
+              'clientes del despacho, solo para cuentas de contador.',
           },
         },
         required: ['ruta'],
@@ -249,6 +252,19 @@ async function ejecutarCalcularPredeclaracion(
   const { profile } = deps;
   const snapshot = getAgentSnapshot();
 
+  // E-01: un despacho no declara por sus clientes desde aqui. Sin esta guarda
+  // se calcularia la pre-declaracion del RFC del despacho creyendo que es la
+  // del cliente del que se esta hablando.
+  if (esContador(profile.contributorType)) {
+    return {
+      ok: false,
+      summary: 'La pre-declaración no aplica a una cuenta de despacho',
+      error: 'Este perfil es de contador: la pre-declaración se calcula sobre el RFC de un ' +
+        'contribuyente, no del despacho. Explícale que para la nómina de un cliente use la ' +
+        'pantalla de nómina.',
+    };
+  }
+
   if (!profile.rfc || !profile.regimen) {
     return {
       ok: false,
@@ -270,7 +286,7 @@ async function ejecutarCalcularPredeclaracion(
       rfc: profile.rfc,
       regimen: profile.regimen,
       nombre: profile.nombre,
-      contributor_type: profile.contributorType,
+      contributor_type: tipoParaApi(profile.contributorType),
       actividad_economica: profile.actividad,
     },
     facturas: snapshot.facturas,

@@ -14,12 +14,16 @@ interface StepDatosFiscalesProps {
   setNombreNegocio: (v: string) => void;
   numEmpleados: string;
   setNumEmpleados: (v: string) => void;
+  nombreDespacho: string;
+  setNombreDespacho: (v: string) => void;
   isPyme: boolean;
+  isContador: boolean;
 }
 
 export default function StepDatosFiscales({
   allowedRegimens, rfc, setRfc, regimen, setRegimen,
-  nombreNegocio, setNombreNegocio, numEmpleados, setNumEmpleados, isPyme,
+  nombreNegocio, setNombreNegocio, numEmpleados, setNumEmpleados,
+  nombreDespacho, setNombreDespacho, isPyme, isContador,
 }: StepDatosFiscalesProps) {
   const rfcLen = rfc.length;
   const rfcHint = rfcLen === 0 ? '' : rfcLen === 12 ? 'Persona moral' : rfcLen === 13 ? 'Persona fisica' : 'El RFC debe tener 12 o 13 caracteres';
@@ -31,7 +35,9 @@ export default function StepDatosFiscales({
         Datos fiscales
       </h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 32 }}>
-        Necesitamos tu RFC y regimen para calcular tus obligaciones correctamente.
+        {isContador
+          ? 'Estos son los datos fiscales de tu despacho, no los de tus clientes.'
+          : 'Necesitamos tu RFC y regimen para calcular tus obligaciones correctamente.'}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -68,6 +74,19 @@ export default function StepDatosFiscales({
             ))}
           </select>
         </div>
+
+        {/* Contador: nombre del despacho */}
+        {isContador && (
+          <div>
+            <label style={labelStyle}>Nombre del despacho</label>
+            <input
+              className="input-field"
+              placeholder="Despacho Contable Ejemplo"
+              value={nombreDespacho}
+              onChange={(e) => setNombreDespacho(e.target.value)}
+            />
+          </div>
+        )}
 
         {/* PYME extra fields */}
         {isPyme && (
