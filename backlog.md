@@ -57,18 +57,18 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
 en una rama, un plan, un revisor de plan, un revisor de entregable y un PR. El motor de E-07
 llevó **revisor aparte**, que es la excepción que Ricardo dejó en pie.
 
-- [ ] **E-05 · Onboarding y perfil del despacho** — cuando el tipo es "Despacho / Contador", el
+- [x] **E-05 · Onboarding y perfil del despacho** — cuando el tipo es "Despacho / Contador", el
   wizard pide SOLO: nombre del contador, nombre del despacho y teléfono. Nada de RFC, régimen
   fiscal, actividad económica ni código postal — esos son del contribuyente y a un despacho no le
   calculamos su declaración. En Perfil, si el tipo es despacho, no mostrar el selector de los
   otros 5 tipos de cuenta. *Listo cuando:* creo cuenta de despacho y sólo me piden esos tres
   datos, y en Perfil no hay dónde cambiarme de tipo.
-- [ ] **E-06 · La pantalla de nómina se explica sola** — convertir el flujo en 4 pasos numerados y
+- [x] **E-06 · La pantalla de nómina se explica sola** — convertir el flujo en 4 pasos numerados y
   visibles ("1. Checadas recibidas · 2. Cerrar quincena · 3. Calcular nómina · 4. Exportar"), cada
   uno con una línea de qué hace. Los pasos 2-4 se habilitan en orden. Además: en la nómina de un
   cliente, el sidebar y el título dejan claro en qué cliente estoy, y **"Nómina" queda resaltado,
   no "Clientes"**. *Listo cuando:* se proyecta y se entiende el orden sin que nadie lo explique.
-- [ ] **E-07 · Calendario patronal** — "Calendario" mostraba declaraciones ISR+IVA del
+- [x] **E-07 · Calendario patronal** — "Calendario" mostraba declaraciones ISR+IVA del
   contribuyente, que no aplican a un despacho de nómina. Se conecta al calendario laboral de
   F1-06: obligaciones patronales por cliente (entero mensual IMSS día 17, bimestral
   RCV/Infonavit, avisos de variables), agrupadas por fecha con el nombre del cliente, con
