@@ -34,7 +34,9 @@ describe('getSidebarLinks', () => {
       // E-03: el enlace no conoce el id del cliente; `/app/nomina` lo resuelve
       // desde el contexto. Así `getSidebarLinks` sigue siendo pura del perfil.
       { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
-      { id: 'calendario', to: '/app/store/fiscalito/use?tab=calendario', label: 'Calendario' },
+      // E-07: dejó de apuntar al tab de contribuyente. Ahora es el calendario
+      // PATRONAL de sus clientes.
+      { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
   });
@@ -99,7 +101,7 @@ describe('navActivo (E-06)', () => {
 
   it('nunca hay dos entradas encendidas a la vez', () => {
     const rutas = ['/app/clientes', '/app/clientes/demo', '/app/clientes/demo/nomina',
-      '/app/nomina', '/app/profile'];
+      '/app/nomina', '/app/calendario', '/app/profile'];
     for (const ruta of rutas) {
       const encendidas = getSidebarLinks('contador').filter((l) => navActivo(l, ruta));
       expect(encendidas.length, `ruta ${ruta}`).toBeLessThanOrEqual(1);
@@ -107,10 +109,15 @@ describe('navActivo (E-06)', () => {
   });
 
   it('el query string del destino no participa de la comparación', () => {
-    // El enlace de Calendario del contador lleva `?tab=`; el tab lo resuelve la
-    // pantalla, no el resaltado.
-    const calendario = del('calendario');
-    expect(navActivo(calendario, calendario.to.split('?')[0])).toBe(true);
+    /**
+     * Ningún enlace del sidebar lleva query desde E-07 —el de Calendario lo
+     * perdió al dejar de apuntar a un tab—, así que el caso se prueba con un
+     * enlace sintético en vez de con uno real: si no, este test no ejercitaría
+     * nada y parecería que sí.
+     */
+    const conQuery: SidebarLink = { id: 'fiscalito', to: '/app/x?tab=y', label: 'X' };
+    expect(navActivo(conQuery, '/app/x')).toBe(true);
+    expect(navActivo(conQuery, '/app/otra')).toBe(false);
   });
 
   it('`end` sigue significando coincidencia exacta', () => {
@@ -136,13 +143,20 @@ describe('getTabsForProfile', () => {
    * de RESICO o en la de Actividad Empresarial y vería pre-declaración, DIOT y
    * retenciones. Los dos regímenes que el perfil permite están probados.
    */
-  it.each(['612', '626'])('el contador con régimen %s solo ve el calendario', (regimen) => {
-    expect(getTabsForProfile('contador', regimen)).toEqual(['calendario']);
+  it.each(['612', '626'])('el contador con régimen %s no ve NINGÚN tab', (regimen) => {
+    /**
+     * Cambió en E-07. E-01 le dejaba el tab de calendario —sus obligaciones
+     * propias como persona física, §D21 provisional—, pero E-05 deja de pedirle
+     * RFC y régimen y `CalendarioTab` corta en seco sin esos dos campos: el tab
+     * quedaba muerto. Su calendario es ahora el PATRONAL, en `/app/calendario`,
+     * y `FiscalitoServicePage` lo redirige ahí.
+     */
+    expect(getTabsForProfile('contador', regimen)).toEqual([]);
   });
 
-  it('el contador sin régimen capturado tampoco ve tabs de contribuyente', () => {
-    expect(getTabsForProfile('contador', null)).toEqual(['calendario']);
-    expect(getTabsForProfile('contador', '')).toEqual(['calendario']);
+  it('el contador sin régimen capturado —que es su estado normal desde E-05— tampoco', () => {
+    expect(getTabsForProfile('contador', null)).toEqual([]);
+    expect(getTabsForProfile('contador', '')).toEqual([]);
   });
 
   // Regresión: esta función sirve a FiscalitoServicePage y a DashboardPage a la

@@ -34,16 +34,37 @@ export interface AgentLoopResult {
   executedTools: ToolCallLogEntry[];
 }
 
-function buildAgentSystemPrompt(profile: UserProfile, historialResumen: string): string {
-  return `Eres Fiscalito, un asistente fiscal mexicano amigable con voz propia.
-Hablas de forma conversacional, clara y concisa (máximo 3 oraciones para voz).
-
-Datos del contribuyente actual:
+/**
+ * Quién es el usuario, para el prompt.
+ *
+ * Un DESPACHO no tiene RFC ni régimen desde E-05, y no es un olvido del
+ * usuario: la app dejó de pedírselos porque no se le calcula nada propio. Con
+ * el bloque de contribuyente, el prompt decía "RFC: No proporcionado" y el LLM
+ * le pedía al contador que completara su perfil — un callejón, porque ya no hay
+ * dónde capturarlo.
+ */
+function describirUsuario(profile: UserProfile): string {
+  if (profile.contributorType === 'contador') {
+    return `Datos de la cuenta actual: es un DESPACHO CONTABLE, no un contribuyente.
+- Contador: ${profile.nombre || 'No proporcionado'}
+- Despacho: ${profile.nombreDespacho || 'No proporcionado'}
+El despacho NO tiene RFC ni régimen capturados en la app, y eso es correcto: la app no
+calcula sus declaraciones propias, sino la nómina y las obligaciones patronales de sus
+CLIENTES. Nunca le pidas su RFC ni su régimen.`;
+  }
+  return `Datos del contribuyente actual:
 - Nombre: ${profile.nombre || 'No proporcionado'}
 - RFC: ${profile.rfc || 'No proporcionado'}
 - Tipo: ${profile.contributorType || 'No definido'}
 - Régimen: ${profile.regimen || 'No definido'}
-- Actividad: ${profile.actividad || 'No proporcionada'}
+- Actividad: ${profile.actividad || 'No proporcionada'}`;
+}
+
+function buildAgentSystemPrompt(profile: UserProfile, historialResumen: string): string {
+  return `Eres Fiscalito, un asistente fiscal mexicano amigable con voz propia.
+Hablas de forma conversacional, clara y concisa (máximo 3 oraciones para voz).
+
+${describirUsuario(profile)}
 Historial reciente de declaraciones: ${historialResumen || 'Sin historial aún.'}
 
 PUEDES OPERAR LA APLICACIÓN POR TU CUENTA usando las herramientas (tools) disponibles.

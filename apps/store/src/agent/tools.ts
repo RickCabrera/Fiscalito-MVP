@@ -32,6 +32,13 @@ const RUTAS_VALIDAS = [
   '/app',
   // E-01: pantalla de clientes del despacho.
   '/app/clientes',
+  // E-07: el calendario PATRONAL de los clientes del despacho. Sin esto,
+  // "llévame al calendario" mandaba a un contador al tab de contribuyente, que
+  // desde E-05 ni siquiera puede cargar (no hay RFC ni régimen que capturar).
+  '/app/calendario',
+  // E-03: resuelve el cliente activo y redirige a su nómina. Va esta ruta y no
+  // `/app/clientes/{id}/nomina` porque el enum es cerrado y no admite un id.
+  '/app/nomina',
   '/app/historial',
   '/app/store',
   '/app/store/fiscalito/use',
@@ -64,8 +71,11 @@ export const TOOLS_OPENAI = [
             description:
               'Ruta exacta a la que navegar. Para tabs internos de Fiscalito ' +
               'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
-              'lleva al tab de pre-declaración. "/app/clientes" es la lista de ' +
-              'clientes del despacho, solo para cuentas de contador.',
+              'lleva al tab de pre-declaración. Las tres del despacho, solo para ' +
+              'cuentas de contador: "/app/clientes" es la cartera, "/app/nomina" la ' +
+              'nómina del cliente activo, y "/app/calendario" las obligaciones ' +
+              'patronales (IMSS, ISR retenido, avisos) de sus clientes. Un despacho ' +
+              'NO usa los tabs de Fiscalito: son de contribuyente.',
           },
         },
         required: ['ruta'],

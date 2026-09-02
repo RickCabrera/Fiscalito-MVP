@@ -1,7 +1,7 @@
 /** Página principal del servicio Fiscalito — interfaz para usar el servicio */
 
 import { useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { getTabsForProfile, esContador, type TabFiscalito } from '../services/navigation';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
@@ -53,11 +53,13 @@ export default function FiscalitoServicePage() {
   );
   const esContadorActual = esContador(profile.contributorType);
   const tabs = ALL_TABS.filter(t => allowedTabIds.includes(t.id));
-  const defaultTab = allowedTabIds[0];
+  // `Tab | undefined`, no `Tab`: desde E-07 un contador no tiene ningún tab, y
+  // tipar `allowedTabIds[0]` como `Tab` sería mentirle al compilador.
+  const defaultTab: Tab | undefined = allowedTabIds[0];
 
   // Tab activo derivado de la URL: ?tab=xxx es la fuente de verdad.
   // Así, reload o deep-link siempre restauran el tab correcto.
-  const activeTab: Tab = useMemo(() => {
+  const activeTab: Tab | undefined = useMemo(() => {
     if (tabParam) {
       const mapped = TAB_PARAM_MAP[tabParam];
       if (mapped && allowedTabIds.includes(mapped)) return mapped;
@@ -68,12 +70,25 @@ export default function FiscalitoServicePage() {
   // Limpia el query param si trae un tab inválido o no permitido por el
   // perfil actual (ej. cambio de perfil que deshabilita el tab en uso).
   useEffect(() => {
+    // Un despacho no se queda en esta pantalla: el redirect de abajo lo saca.
+    // Limpiar el query de una ruta que se está abandonando pelea con esa
+    // navegación —y deja la pantalla en blanco— además de no servir para nada.
+    if (esContadorActual) return;
     if (!tabParam) return;
     const mapped = TAB_PARAM_MAP[tabParam];
     if (!mapped || !allowedTabIds.includes(mapped)) {
       setSearchParams({}, { replace: true });
     }
-  }, [tabParam, allowedTabIds, setSearchParams]);
+  }, [esContadorActual, tabParam, allowedTabIds, setSearchParams]);
+
+  // E-07: un despacho no tiene calendario de contribuyente. Su Calendario es el
+  // patronal de sus clientes, y este servicio no le aplica en nada más.
+  //
+  // Va DESPUÉS de los hooks (no antes) para no romper su orden entre renders —
+  // mismo patrón que `DashboardPage`.
+  if (esContadorActual) {
+    return <Navigate to="/app/calendario" replace />;
+  }
 
   return (
     <div className="page-container">

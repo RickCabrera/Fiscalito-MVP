@@ -496,7 +496,7 @@ persistencia tiene que permitir consultarla.
 
 ---
 
-## D21 · Qué muestra "Calendario" en una cuenta de despacho — PROVISIONAL
+## D21 · Qué muestra "Calendario" en una cuenta de despacho — RESUELTA (E-07)
 
 **Contexto (E-01).** El sidebar del contador lleva cuatro entradas, y una es **Calendario**.
 La pantalla detrás es el tab de calendario de Fiscalito, que llama a
@@ -519,6 +519,29 @@ sidebar cambia de destino y la tarea que lo habilita es F1-06, no una de la Épi
 
 **Que quede claro para quien planee E-02 y E-03:** hoy "Calendario" NO significa nada
 patronal. No se puede asumir que ya cubre las obligaciones IMSS de los clientes.
+
+### Resolución (E-07, 2026-09-02)
+
+**Se tomó la alternativa: "Calendario" es el calendario PATRONAL de los clientes.** La tarea
+habilitante era F1-06, que E-07 entregó parcialmente (`nomina_engine/calendario_laboral.py` y
+`plazos_patronales.py`). El enlace del sidebar apunta ahora a `/app/calendario`, que consume
+`GET /api/v1/despacho/calendario` y muestra las obligaciones de toda la cartera agrupadas por
+fecha límite.
+
+**Y con eso cae la otra mitad de la decisión, que no era opcional.** Una cuenta de despacho
+**deja de tener calendario de contribuyente**: `getTabsForProfile('contador')` devuelve `[]` y
+`FiscalitoServicePage` redirige a `/app/calendario`. No es un capricho de alcance — E-05 dejó de
+pedirle RFC y régimen al despacho *y quitó del perfil el único lugar donde capturarlos*, y
+`CalendarioTab` corta en seco sin esos dos campos. Mantener el enlace habría dejado un tab muerto
+con letrero. `tipoParaCalendario` conserva su entrada `contador` sólo como guarda de
+exhaustividad del `Record`, y su comentario dice que quedó inalcanzable por construcción.
+
+**Consecuencia declarada, y es una decisión abierta para Ricardo:** *la app ya no calcula las
+obligaciones fiscales propias del despacho* (su ISR e IVA como persona física con régimen 612 o
+626). Si algún día se quieren, hay que volver a pedirle RFC y régimen en el onboarding y en el
+perfil. **La pantalla se lo dice al contador**, no sólo este documento: el calendario patronal
+lleva una línea fija que aclara que es el de sus clientes y que la app no calcula las del
+despacho.
 
 ---
 

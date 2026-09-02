@@ -1,18 +1,22 @@
 /**
- * La única pantalla de Fiscalito que ve un despacho (E-01).
+ * Fiscalito y las cuentas de despacho (E-01, reescrito en E-07).
  *
- * Cubre dos cosas que `navigation.test.ts` no puede ver:
+ * E-01 le dejaba al contador UN tab: el calendario de sus propias obligaciones
+ * como persona física (§D21, provisional). E-05 deja de pedirle RFC y régimen
+ * —y quita del perfil el único lugar donde capturarlos—, y `CalendarioTab`
+ * corta en seco sin esos dos campos: el tab quedaba muerto.
  *
- * 1. Que la pantalla USE el filtro — incluido el deep-link `?tab=declaracion`,
- *    que un contador puede recibir de un enlace viejo o del propio agente.
- * 2. El copy y el back-link. Sin esto, la única pantalla de Fiscalito que ve el
- *    contador puede anunciarle "Calcula tus pre-declaraciones ISR/IVA" y
- *    devolverlo al marketplace de contribuyente.
+ * E-07 lo resuelve de frente en vez de dejar un callejón con letrero: **un
+ * despacho no tiene ninguna pantalla de Fiscalito**, y la que pedía por URL lo
+ * manda a `/app/calendario`, que es el calendario PATRONAL de sus clientes.
+ *
+ * Lo que este archivo protege es que el redirect exista y que el contribuyente
+ * no haya perdido nada.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 
 const perfilBase: UserProfile = {
@@ -61,7 +65,10 @@ function montar(ruta = '/app/store/fiscalito/use') {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <AgentProvider>
-        <FiscalitoServicePage />
+        <Routes>
+          <Route path="/app/store/fiscalito/use" element={<FiscalitoServicePage />} />
+          <Route path="/app/calendario" element={<div>calendario patronal</div>} />
+        </Routes>
       </AgentProvider>
     </MemoryRouter>,
   );
@@ -73,36 +80,31 @@ afterEach(() => {
 });
 
 describe('FiscalitoServicePage — cuenta de despacho', () => {
-  it('solo pinta el tab de calendario', () => {
+  it('un despacho no ve este servicio: va a su calendario patronal', () => {
     montar();
 
-    expect(screen.getByText('Calendario fiscal')).toBeTruthy();
-    for (const oculto of ['Pre-declaración', 'DIOT', 'Retenciones', 'Comparar regímenes', 'Estado de cuenta', 'Multi-periodo']) {
-      expect(screen.queryByText(oculto)).toBeNull();
-    }
+    expect(screen.getByText('calendario patronal')).toBeTruthy();
   });
 
-  // Un enlace viejo, o el propio agente, pueden mandar al contador a un tab que
-  // su perfil no permite: tiene que degradar al calendario, no pintarlo.
-  it('un deep-link a pre-declaración degrada al calendario', () => {
+  it('tampoco por deep-link a un tab concreto', () => {
+    /**
+     * Un enlace viejo —o el propio agente— puede mandar al contador a
+     * `?tab=declaracion`. Antes degradaba al calendario de contribuyente; ahora
+     * ese calendario no le aplica y el redirect tiene que ganarle al deep-link.
+     */
     montar('/app/store/fiscalito/use?tab=declaracion');
 
+    expect(screen.getByText('calendario patronal')).toBeTruthy();
     expect(screen.queryByText('Pre-declaración')).toBeNull();
-    expect(screen.getByText('Calendario fiscal')).toBeTruthy();
   });
 
-  it('el encabezado habla del despacho, no de pre-declaraciones', () => {
+  it('no se le pinta ni un tab de contribuyente antes de redirigir', () => {
     montar();
 
-    expect(screen.getByText('Las obligaciones fiscales de tu despacho')).toBeTruthy();
-    expect(screen.queryByText('Calcula tus pre-declaraciones ISR/IVA')).toBeNull();
-  });
-
-  it('el back-link devuelve a Clientes, no al marketplace de contribuyente', () => {
-    montar();
-
-    const volver = screen.getByRole('link', { name: /Clientes/ });
-    expect(volver.getAttribute('href')).toBe('/app/clientes');
+    for (const oculto of ['Pre-declaración', 'DIOT', 'Retenciones', 'Comparar regímenes',
+      'Estado de cuenta', 'Multi-periodo', 'Calendario fiscal']) {
+      expect(screen.queryByText(oculto)).toBeNull();
+    }
   });
 
   it('el contribuyente conserva sus tabs y su back-link', () => {

@@ -143,6 +143,7 @@ fiscalito-store-app/
 │   │   ├── ClienteDetallePage.tsx   # Ficha del cliente con su plantilla (E-02)
 │   │   ├── NominaClientePage.tsx    # Nomina del cliente: checador, cierre, calculo, PDF (E-03)
 │   │   ├── NominaDelClienteActivo.tsx # /app/nomina -> nomina del cliente activo (E-03)
+│   │   ├── CalendarioPatronalPage.tsx # Obligaciones patronales de la cartera (E-07)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
@@ -150,7 +151,8 @@ fiscalito-store-app/
 │   │   ├── storeServices.ts         # Catalogo de servicios del marketplace
 │   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente (incl. contador)
 │   │   ├── navigation.ts            # Sidebar, tabs por perfil y alcance de cliente (modulo puro)
-│   │   ├── despachoApi.ts           # Cliente REST de la cartera del despacho (E-02)
+│   │   ├── despachoApi.ts           # Cliente REST de la cartera y del calendario patronal (E-02, E-07)
+│   │   ├── calendarioPatronal.ts    # Logica pura del calendario patronal: agrupacion y estados (E-07)
 │   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
 │   │   ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
 │   │   ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
@@ -178,6 +180,7 @@ fiscalito-store-app/
 /app/clientes/:id              → ClienteDetallePage (protegida, ficha con la plantilla del cliente)
 /app/clientes/:id/nomina       → NominaClientePage (protegida, checador + cierre + calculo + PDF)
 /app/nomina                    → NominaDelClienteActivo (redirige a la nomina del cliente activo)
+/app/calendario                → CalendarioPatronalPage (obligaciones patronales de la cartera — solo contador)
 /app/nomina-demo               → redireccion a /app/clientes/demo/nomina (ruta vieja de D-07)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
@@ -192,7 +195,7 @@ Definidos en `src/services/contributorProfiles.ts`. El campo `contributorType` d
 
 | Tipo | Regimenes | Servicios visibles | Tabs Fiscalito |
 |------|-----------|-------------------|----------------|
-| **contador** (Despacho / Contador) | 612, 626 | Fiscalito | **Solo Calendario** |
+| **contador** (Despacho / Contador) | — (E-05 no le pide regimen) | ninguno | **Ninguno** (ver E-07) |
 | asalariado | 605 | Fiscalito | Deducciones personales, Calendario |
 | independiente (RESICO) | 626 | Fiscalito | Declaracion, Calendario, Comparar, Estado cuenta |
 | independiente (Empresarial) | 612 | Fiscalito | Declaracion, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
@@ -212,7 +215,7 @@ modulo puro sin JSX. `AppLayout` solo le pone iconos por `id`.
 
 | Perfil | Sidebar |
 |--------|---------|
-| contador | Clientes · Nomina · Calendario · Perfil |
+| contador | Clientes · Nomina · Calendario (**patronal**, E-07) · Perfil |
 | cualquier otro (incluido perfil sin tipo) | Dashboard · Fiscalito · Historial · Nomina (demo) · Perfil |
 
 Los tabs y pantallas de contribuyente **no se borraron**: dejan de mostrarse. Un contador que
@@ -230,13 +233,33 @@ y el backend respondería 404.
 
 El **selector de cliente** vive en una barra sobre el `<Outlet />` de `AppLayout` y se muestra
 solo en las rutas con alcance de cliente (`rutaTieneAlcanceDeCliente` en `navigation.ts`): todo
-lo que cuelga de `/app/clientes`, incluida la nomina. **NO** en Calendario ni Perfil, que son
-del DESPACHO — §D21 fija que el calendario de una cuenta de despacho muestra sus obligaciones
-propias y nada patronal, asi que un selector de cliente ahi le mentiria al contador.
+lo que cuelga de `/app/clientes`, incluida la nomina. **NO** en Calendario ni Perfil. Perfil es
+del DESPACHO; y Calendario, desde E-07, si es patronal pero es el de **toda la cartera**, asi que
+un selector de "cliente activo" encima afirmaria un alcance que esa pantalla no tiene.
 
 **REGLA PARA AGREGAR UNA RUTA A ESA LISTA:** no basta con que la pantalla HABLE de clientes;
 tiene que LEER el cliente activo y pedirle los datos a ese cliente. Si no, el selector afirma un
 cliente y la pantalla ensena otro.
+
+### El despacho y el calendario (E-07)
+
+`Calendario` del sidebar apunta a `/app/calendario` (`CalendarioPatronalPage`), que consume
+`GET /api/v1/despacho/calendario`: las obligaciones **patronales** de toda la cartera —entero
+mensual IMSS, bimestral RCV/Infonavit, avisos de variables, prima de RT, PTU, aguinaldo y entero
+del ISR retenido—, agrupadas por fecha limite.
+
+**Un despacho NO tiene tabs de Fiscalito**: `getTabsForProfile('contador')` devuelve `[]` y
+`FiscalitoServicePage` redirige a `/app/calendario`. E-05 dejo de pedirle RFC y regimen y quito
+del perfil el unico lugar donde capturarlos, asi que el tab de calendario de contribuyente
+quedaba muerto. Consecuencia declarada en §D21: **la app ya no calcula las obligaciones fiscales
+propias del despacho**, y la pantalla se lo dice al contador.
+
+**`regimen_de_plazo` no se pinta igual para todos.** Cinco valores (`imss`, `imss_sin_prorroga`,
+`imss_aviso`, `sat`, `lft`) porque el viernes es inhabil para el IMSS y habil para el SAT: las
+cuotas de marzo de 2026 vencen el 20-abr y su ISR el 17-abr. Fundirlos en la vista es lo que
+`knowledge_base/nomina/25_calendario_laboral_2026.md` §4 llama "un bug esperando".
+
+**`condicional` no significa opcional**: significa *verificalo, porque aqui no consta*. Ver §D24.
 
 ### La ruta es la fuente de verdad del cliente (E-03)
 
@@ -259,8 +282,10 @@ nuevo dejaria de romper el build y pasaria a romperse en vivo con un 422. Todo p
 
 - `tipoParaApi(tipo)` — para los endpoints de calculo. `contador` → `null` (un despacho no es
   el sujeto del calculo, sus clientes lo son).
-- `tipoParaCalendario(tipo)` — para `/calendario`, que exige un tipo concreto y responde 400
-  si no lo reconoce. `contador` → `'independiente'`. Ver `docs/decisiones-nomina.md` D21.
+- `tipoParaCalendario(tipo)` — para `POST /calendario`, que exige un tipo concreto y responde
+  400 si no lo reconoce. **Su entrada `contador` quedo inalcanzable por construccion en E-07**:
+  un despacho ya no llega a esa pantalla. Se conserva solo como guarda de exhaustividad del
+  `Record`. Ver `docs/decisiones-nomina.md` D21.
 
 Los dos mapas son `Record<ContributorType, ...>` exhaustivos a proposito: un tipo nuevo rompe
 el build y obliga a decidir que se le manda al backend.

@@ -73,6 +73,20 @@ describe('tool navegar', () => {
     expect(deps.navigate).toHaveBeenCalledWith('/app/clientes');
   });
 
+  /**
+   * E-07: sin estas dos en la whitelist, "llévame al calendario" mandaba al
+   * contador al tab de contribuyente —que desde E-05 ni siquiera puede cargar,
+   * porque su perfil ya no tiene RFC ni régimen— y "llévame a la nómina" era
+   * imposible. El enum es cerrado: lo que no está aquí, el ejecutor lo rechaza.
+   */
+  it.each(['/app/calendario', '/app/nomina'])('acepta la ruta %s del despacho', async (ruta) => {
+    const deps = hacerDeps({ contributorType: 'contador' });
+    const res = await TOOL_EXECUTORS.navegar({ ruta }, deps);
+
+    expect(res.ok).toBe(true);
+    expect(deps.navigate).toHaveBeenCalledWith(ruta);
+  });
+
   it('navega cuando la ruta es válida', async () => {
     const deps = hacerDeps();
     const res = await TOOL_EXECUTORS.navegar(

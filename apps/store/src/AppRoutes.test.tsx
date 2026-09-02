@@ -147,6 +147,16 @@ describe('rutas registradas', () => {
     );
   });
 
+  it('/app/calendario pinta el calendario patronal (E-07)', async () => {
+    /**
+     * El enlace "Calendario" del sidebar del contador apunta aquí desde E-07.
+     * Sin `<Route>` no hay catch-all bajo `/app`: el sidebar navegaría y el
+     * área de contenido quedaría en blanco, sin error en consola.
+     */
+    montar('/app/calendario');
+    expect(await screen.findByRole('heading', { name: 'Calendario patronal' })).toBeTruthy();
+  });
+
   it('/login es pública y no pasa por el layout', () => {
     const { container } = montar('/login');
     expect(container.querySelector('.sidebar-full')).toBeNull();

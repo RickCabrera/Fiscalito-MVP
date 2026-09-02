@@ -81,6 +81,35 @@ describe('runAgentLoop', () => {
     expect(mensajes[0].content).toContain('Contribuyente Demo');
   });
 
+  /**
+   * E-07: un DESPACHO no tiene RFC ni régimen, y no es un olvido del usuario —
+   * E-05 dejó de pedírselos porque la app no le calcula nada propio. Con el
+   * bloque de contribuyente, el prompt decía "RFC: No proporcionado" y el LLM le
+   * pedía completar su perfil: un callejón, porque ya no hay dónde capturarlo.
+   */
+  it('a un despacho no le pide RFC ni régimen en el system prompt', async () => {
+    sendMessageWithTools.mockResolvedValue({ type: 'text', text: 'ok' });
+
+    await runAgentLoop({
+      history: [],
+      userMessage: 'hola',
+      profile: {
+        rfc: '', regimen: '', nombre: 'Contadora Demo',
+        contributorType: 'contador', nombreDespacho: 'Despacho Demo',
+      } as UserProfile,
+      historialResumen: '',
+      navigate: vi.fn() as unknown as NavigateFunction,
+      uid: null,
+    });
+
+    const [mensajes] = sendMessageWithTools.mock.calls[0];
+    const prompt = mensajes[0].content as string;
+    expect(prompt).toContain('DESPACHO CONTABLE');
+    expect(prompt).toContain('Despacho Demo');
+    expect(prompt).toContain('Nunca le pidas su RFC');
+    expect(prompt).not.toContain('RFC: No proporcionado');
+  });
+
   it('reporta una tool desconocida al LLM y sigue el loop', async () => {
     sendMessageWithTools
       .mockResolvedValueOnce(toolCall('tool_inventada', {}))
