@@ -428,7 +428,7 @@ NSS de trabajadores de terceros. El uid sale del token verificado.
 | 401 | falta `Authorization`, está mal formado, o el token no es válido |
 | 404 | el cliente no está en **tu** cartera |
 | 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL) |
-| 500 | un documento guardado por una versión anterior no pasa la validación de lectura |
+| 503 | **el backend no tiene credenciales de Firebase.** El mensaje dice qué falta |
 
 ### `GET /api/v1/cartera/clientes`
 Los clientes de quien hace el request. `{exito, total, clientes[]}`.
@@ -451,7 +451,15 @@ puede** cazar ese bug.
 ### `GET /api/v1/cartera/clientes/{cliente_id}/empleados`
 La plantilla del cliente, leída de la cartera que este CRUD escribe. Distinta de
 `/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la
-cartera de nadie. `{exito, cliente_id, total, sin_vincular, empleados[]}`.
+cartera de nadie. `{exito, cliente_id, total, sin_vincular, ilegibles[], empleados[]}`.
+
+`ilegibles[]` son los `empleado_no` de documentos guardados que **no pasan la
+validación actual** —un NSS de una versión anterior, un campo que falta— y que
+por eso **no vienen en `empleados`** ni cuentan en `total`. Se reportan en vez de
+tumbar la respuesta con un 500: como el front pide los empleados de todos los
+clientes en paralelo, un solo documento legado dejaba la cartera **completa** en
+cero. **Hoy el front no los pinta**; pintarlos es tarea pendiente, y hasta
+entonces ese empleado queda fuera del cálculo sin que el contador lo vea.
 
 > **Todavía nadie la consume para calcular.** Una versión anterior de este
 > documento decía "ésta es la fuente que el cálculo de nómina lee, y es lo que

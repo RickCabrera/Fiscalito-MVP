@@ -89,11 +89,21 @@ def sin_verificar():
     completamente abierta. `PERMITIR_TOKEN_SIN_VERIFICAR` no tiene ninguna otra
     razón de existir, así que nadie la copia por accidente.
     """
+    # Se GUARDA y se restaura, no se borra: un `pop` incondicional le quitaba
+    # `FIRESTORE_EMULATOR_HOST` a quien la tuviera en su shell. Es el patrón de
+    # `test_auth_firebase.py`.
+    previos = {
+        k: os.environ.get(k)
+        for k in ("FIRESTORE_EMULATOR_HOST", "PERMITIR_TOKEN_SIN_VERIFICAR")
+    }
     os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
     os.environ["PERMITIR_TOKEN_SIN_VERIFICAR"] = "1"
     yield
-    os.environ.pop("FIRESTORE_EMULATOR_HOST", None)
-    os.environ.pop("PERMITIR_TOKEN_SIN_VERIFICAR", None)
+    for k, v in previos.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
 
 
 @pytest.fixture
@@ -527,3 +537,71 @@ class TestTopesEnFirestore:
         repo_memoria.guardar_cliente(UID_A, "uno", {**CLIENTE, "nombre": "Editado"})
 
         assert repo_memoria.obtener_cliente(UID_A, "uno")["nombre"] == "Editado"
+
+
+@pytest.mark.emulador
+class TestTopesContraElEmulador:
+    """
+    Los topes de `FirestoreCartera`, contra Firestore de verdad.
+
+    Un revisor los encontro **sin una sola prueba** dos pasadas seguidas:
+    primero porque solo existian en el doble, y despues porque los tests que
+    agregue median el doble (`test_el_doble_rechaza_al_pasarse` — el nombre lo
+    dice) mas una tautologia. Quitarlos de la implementacion real dejaba las dos
+    suites en verde.
+
+    Importa mas de lo que parece: el camino nuevo hace un `.get()` extra y un
+    `limit(MAX+1).stream()` contra Firestore en cada alta, y ese codigo no se
+    ejecutaba en ninguna corrida.
+    """
+
+    def test_rechaza_al_pasarse_del_tope_de_clientes(self, repo_emulador, monkeypatch):
+        from app import repositorio_cartera as rc
+
+        repo, uid, _ = repo_emulador
+        monkeypatch.setattr(rc, "MAX_CLIENTES_POR_UID", 1)
+        repo.guardar_cliente(uid, "uno", {"nombre": "Uno"})
+
+        with pytest.raises(FiscalAgentError) as exc:
+            repo.guardar_cliente(uid, "dos", {"nombre": "Dos"})
+        assert exc.value.status_code == 409
+
+    def test_editar_uno_existente_NO_rebota(self, repo_emulador, monkeypatch):
+        # Si rebotara, llegar al tope dejaria la cartera de SOLO LECTURA: el
+        # contador no podria ni corregir un nombre.
+        from app import repositorio_cartera as rc
+
+        repo, uid, _ = repo_emulador
+        monkeypatch.setattr(rc, "MAX_CLIENTES_POR_UID", 1)
+        repo.guardar_cliente(uid, "uno", {"nombre": "Uno"})
+        repo.guardar_cliente(uid, "uno", {"nombre": "Editado"})
+
+        assert repo.obtener_cliente(uid, "uno")["nombre"] == "Editado"
+
+    def test_rechaza_al_pasarse_del_tope_de_empleados(self, repo_emulador, monkeypatch):
+        from app import repositorio_cartera as rc
+
+        repo, uid, _ = repo_emulador
+        monkeypatch.setattr(rc, "MAX_EMPLEADOS_POR_CLIENTE", 1)
+        repo.guardar_cliente(uid, "mio", {"nombre": "Mio"})
+        repo.guardar_empleado(uid, "mio", "E-01", EMPLEADO)
+
+        with pytest.raises(FiscalAgentError) as exc:
+            repo.guardar_empleado(uid, "mio", "E-02", {**EMPLEADO, "empleado_no": "E-02"})
+        assert exc.value.status_code == 409
+
+    def test_la_LECTURA_no_trunca(self, repo_emulador, monkeypatch):
+        """
+        El `.limit()` estaba tambien del lado de leer, y **truncaba en
+        silencio**: el cliente 501 desaparecia de la lista del contador sin un
+        solo aviso, que es peor que cualquier cosa que el tope viniera a evitar.
+        """
+        from app import repositorio_cartera as rc
+
+        repo, uid, _ = repo_emulador
+        monkeypatch.setattr(rc, "MAX_CLIENTES_POR_UID", 1)
+        # Se escriben DOS saltandose la ruta, como si vinieran de antes del tope.
+        repo._clientes(uid).document("uno").set({"nombre": "Uno"})  # noqa: SLF001
+        repo._clientes(uid).document("dos").set({"nombre": "Dos"})  # noqa: SLF001
+
+        assert len(repo.listar_clientes(uid)) == 2, "la lectura truncó en silencio"

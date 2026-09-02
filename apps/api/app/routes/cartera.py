@@ -96,7 +96,7 @@ def _sin_id(datos: dict) -> dict:
     "Firebase. No hay parámetro de uid: pasarlo por el cuerpo o por la URL haría que "
     "cualquiera leyera la cartera de cualquiera cambiando un renglón.",
 )
-async def listar_clientes(
+def listar_clientes(
     uid: str = Depends(usuario_actual),
     repo: RepositorioCartera = Depends(repositorio),
 ) -> ClientesCarteraResponse:
@@ -113,7 +113,7 @@ async def listar_clientes(
     "contra `ClienteCarteraSchema`, así que una prima de riesgo fuera del Art. 72 o una "
     "periodicidad desconocida se rechazan aquí y no tres pantallas después.",
 )
-async def guardar_cliente(
+def guardar_cliente(
     cliente_id: str,
     cliente: ClienteCarteraSchema,
     uid: str = Depends(usuario_actual),
@@ -141,7 +141,7 @@ async def guardar_cliente(
     "quedarían huérfanos —con su salario y su NSS— y reaparecerían al recrear un cliente "
     "con el mismo id.",
 )
-async def borrar_cliente(
+def borrar_cliente(
     cliente_id: str,
     uid: str = Depends(usuario_actual),
     repo: RepositorioCartera = Depends(repositorio),
@@ -162,7 +162,7 @@ async def borrar_cliente(
     "recibiendo la plantilla en el cuerpo, así que el tercer criterio de R-07 —*el "
     "cálculo lee la misma fuente*— **no se cumple**. Es tarea propia, y está anotada.",
 )
-async def listar_empleados(
+def listar_empleados(
     cliente_id: str,
     uid: str = Depends(usuario_actual),
     repo: RepositorioCartera = Depends(repositorio),
@@ -179,8 +179,15 @@ async def listar_empleados(
     # cartera COMPLETA en cero. El endpoint de clientes ya era laxo por esta
     # razón exacta; éste no lo era, y es el que más duele.
     #
-    # Los que no pasan se **reportan**, no se esconden: quedar fuera del cálculo
-    # en silencio es el modo de falla que toda la épica G viene evitando.
+    # Los que no pasan se **reportan en la respuesta**, no se esconden. Y esa
+    # frase termina ahí a propósito: **el front todavía no los pinta**, así que
+    # desde donde está sentado el contador ese empleado sigue quedando fuera del
+    # cálculo sin verlo. Compárese con `sin_vincular`, que sí llega a la ficha, a
+    # la pantalla de nómina y al PDF — eso es "no en silencio"; esto es la mitad
+    # de arriba. Pintarlos es tarea pendiente y está anotada.
+    #
+    # `total` EXCLUYE a los ilegibles: un cliente con 4 documentos y 1 que no
+    # valida reporta 3.
     empleados: list[EmpleadoCarteraSchema] = []
     ilegibles: list[str] = []
     for crudo in repo.listar_empleados(uid, cliente_id):
@@ -215,7 +222,7 @@ async def listar_empleados(
     "que G-02 vino a arreglar. El NSS se valida aquí igual que en el front: 11 dígitos o "
     "vacío, sin exigir el verificador (§D25).",
 )
-async def guardar_empleado(
+def guardar_empleado(
     cliente_id: str,
     empleado_no: str,
     empleado: EmpleadoCarteraSchema,
@@ -238,7 +245,7 @@ async def guardar_empleado(
     responses={401: {"model": ErrorResponse}},
     summary="Baja de un empleado",
 )
-async def borrar_empleado(
+def borrar_empleado(
     cliente_id: str,
     empleado_no: str,
     uid: str = Depends(usuario_actual),

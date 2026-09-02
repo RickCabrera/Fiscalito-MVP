@@ -203,9 +203,14 @@ def uid_del_token(token: str) -> str:
         ) from exc
 
 
-async def usuario_actual(authorization: str | None = Header(default=None)) -> str:
+def usuario_actual(authorization: str | None = Header(default=None)) -> str:
     """
     Dependencia de FastAPI: el uid de quien hace el request.
+
+    **Síncrona a propósito.** `verify_id_token` es I/O bloqueante; declarada
+    `async` corría sobre el event loop y congelaba el proceso entero durante la
+    verificación —12.3 s medidos sin credenciales, con `/health` mudo en esa
+    ventana—. Con `def`, FastAPI la manda al threadpool.
 
     Sin encabezado, o con uno mal formado, es **401 y no 403**: 403 diría "sé
     quién eres y no puedes", y aquí no se sabe quién es.

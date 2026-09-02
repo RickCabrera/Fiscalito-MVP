@@ -218,15 +218,34 @@ const HELPERS_PUROS = new Set([
   'tipoParaCalendario',
   'estaVinculado',
   'contarSinVincular',
-  // `sembrarDemo` del backend LANZA a propósito: no existe ese endpoint, y
-  // darle uno que copia salarios de terceros a la cuenta de quien llame sería
-  // la escalada que R-06 vino a cerrar. No pega a ninguna URL.
-  'sembrarDemo',
 ]);
 
-function funcionesQueDeberianPegar(modulo: Record<string, unknown>): string[] {
+/**
+ * Exenciones **por módulo**, no por nombre.
+ *
+ * `HELPERS_PUROS` es global, así que eximir `sembrarDemo` ahí lo eximía en
+ * TODOS los módulos — y `carteraFirestore.sembrarDemo` **sí** pega al backend,
+ * vía `carteraDelBackend`. Hoy no rompe nada porque ese módulo no está en
+ * `MODULOS`, pero es exactamente la "heurística por nombre" que el docstring de
+ * arriba rechaza, y el día que alguien agregue `carteraFirestore.ts` aquí, la
+ * función que sí pega entraría exenta.
+ */
+const PUROS_POR_MODULO: Record<string, Set<string>> = {
+  // Del backend LANZA a propósito: no existe ese endpoint, y darle uno que copia
+  // salarios de terceros a la cuenta de quien llame sería la escalada que R-06
+  // vino a cerrar.
+  'carteraBackend.ts': new Set(['sembrarDemo']),
+};
+
+function funcionesQueDeberianPegar(
+  modulo: Record<string, unknown>,
+  nombreDelModulo = '',
+): string[] {
+  const propios = PUROS_POR_MODULO[nombreDelModulo] ?? new Set<string>();
   return Object.keys(modulo)
-    .filter((k) => typeof modulo[k] === 'function' && !HELPERS_PUROS.has(k))
+    .filter(
+      (k) => typeof modulo[k] === 'function' && !HELPERS_PUROS.has(k) && !propios.has(k),
+    )
     .sort();
 }
 
@@ -246,7 +265,7 @@ describe('contrato de rutas front ↔ backend', () => {
             'Agrégalas a LLAMADAS, o a HELPERS_PUROS si no llaman al backend. ' +
             'Una cobertura parcial es invisible: el test seguiría verde ' +
             'declarando que el contrato está verificado.',
-        ).toEqual(funcionesQueDeberianPegar(MODULOS[modulo]));
+        ).toEqual(funcionesQueDeberianPegar(MODULOS[modulo], modulo));
       });
 
       for (const [nombre, llamar] of Object.entries(funciones)) {
