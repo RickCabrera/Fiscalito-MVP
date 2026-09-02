@@ -1351,3 +1351,100 @@ Escribí que *"la regla de 300 líneas se aplica al código de `app/`"*. No es l
 cinco infractores en `app/` y cinco en `tests/`—. La conclusión práctica no cambió (los tres
 archivos nuevos quedaron en 165, 287 y 80), pero el razonamiento era malo y alguien podría
 reusarlo para meter un archivo de 400 líneas citando algo que la norma no dice.
+
+---
+
+## X-01 + X-02 · arreglos de la demo (2026-09-02, MODO RÁPIDO)
+
+**PR #25, mergeada.** CI verde al **segundo** intento (ver abajo). Backend 1108 → 1113,
+frontend 198 → 237. `ruff` limpio · `npm run build` limpio · `npx eslint .` 20/8, la línea
+base preexistente de S-02.
+
+### El diagnóstico, que contradice la hipótesis con la que llegó la tarea
+
+Ricardo reportó `No se pudo cargar el calendario patronal: Not Found` y propuso que el front
+pedía una ruta que el backend no expone. **No era eso.** Levanté uvicorn desde main en `:8123`
+y la ruta respondió **200** con 120 obligaciones. Después encontré que había **otro uvicorn
+vivo en `:8000`** —el de Ricardo—: contra ese, `/despacho/clientes` daba 200 y
+`/despacho/calendario` daba 404 `{"detail":"Not Found"}`, letra por letra el mensaje del
+navegador. `git show 227b05e^:apps/api/app/routes/despacho.py | grep -c "despacho/calendario"`
+→ **0**: la ruta nació en el PR #24. El proceso se había levantado antes de ese merge y el
+runbook arranca sin `--reload`, así que nunca se enteró.
+
+**No maté ese proceso**, y la razón no es timidez: el almacén de checadas es memoria del
+proceso, así que reiniciarlo habría borrado lo que Ricardo tuviera sembrado. Quedó como primer
+accionable de su reporte.
+
+### Decisiones tomadas sin Ricardo
+
+1. **No se agregó `--reload` al runbook, aunque era el arreglo obvio.** El revisor lo bloqueó
+   y tenía razón: `docs/D-DEMO-CHECADOR.md:199-202` ya prohíbe `--reload` porque cualquier
+   guardado reinicia el proceso y borra las 194 checadas. Habría cambiado un modo de falla
+   raro (proceso viejo, una vez por merge) por uno frecuente (ctrl-S, enfrente del proyector).
+   En su lugar, un **paso 0** de pre-flight con `curl` antes de sembrar.
+2. **El mensaje de error no atribuye causa.** Un 404/405 con `detail` string puede ser un
+   proceso viejo o `VITE_FISCAL_AGENT_URL` mal apuntada, y desde el navegador no se
+   distinguen. El mensaje dice qué backend y qué ruta, y ofrece las dos: afirmar la primera
+   mandaría a reiniciar un servidor sano cuando el problema es el `.env`.
+3. **Las dos tareas se agregaron a `backlog.md` como X-01 y X-02.** No existían; la cola tenía
+   por delante S-03, F1-07 y F1-08. La corrida se saltó ese orden por instrucción directa de
+   Ricardo (demo de hoy), no por la regla de la cola.
+
+### Tres defectos míos que el revisor cazó, y uno que caché yo
+
+1. **Mi guarda de cobertura era teatro.** `ESPERADAS: {'despachoApi.ts': 3}` y la lista de
+   llamadas eran **dos literales del mismo archivo**: nada contaba las funciones reales del
+   módulo. El revisor lo probó agregando una función que pega a una ruta inexistente — 23
+   verdes. Y mi docstring afirmaba que eso rompía el test. Ahora se compara contra los exports
+   reales menos una lista explícita de helpers puros.
+2. **El copy omitía Cesantía y Vejez.** La frase es una partición —EyM no reduce / estos sí—,
+   así que omitir un ramo lo empuja al lado de EyM. `ceav.py:140` no pasa
+   `se_reduce_por_ausentismo` y toma el default `True`, y **CEAV se pinta** en el desglose de
+   ramos del recibo con sus días ya reducidos. Son seis, no cinco.
+3. **Mi plan tenía un extractor por regex que se saltaba 10 de las 17 URLs** (las de
+   `fiscalAgentApi.ts`, que se construyen con otra forma) y mi guarda de "cero urls" no
+   disparaba con 7. Una extracción parcial es invisible; sólo la vacía se ve.
+4. **El que caché yo:** el test "no vuelve a la redacción en negativo" no renderizaba el
+   componente, así que evaluaba contra un documento vacío y pasaba de adorno. Lo destapó la
+   mutación (mataba 2 tests en vez de 3).
+
+Y una cuarta de la misma familia: el test de invariante que escribí para O-d buscaba el texto
+`status_code=404`, que es el patrón **correcto** (`FiscalAgentError`), así que acusaba justo lo
+que quería conservar. Reescrito con `ast`.
+
+### El CI rojo, que era un bug de verdad y no un flake
+
+`rutas_publicadas()` recorría `app.routes` y leía `route.methods`. **Local: 18 rutas. CI:
+cero.** Local corre starlette 1.0.0 y CI instala 1.6.0, donde ese atributo dejó de leerse como
+se esperaba: el filtro `if not metodos` descartaba las 18 en silencio y el test acusaba
+"contrato desactualizado" cuando lo roto era el exportador. **Un exportador que se cae hacia la
+lista vacía es la peor forma de fallar**, porque el error se lee como un diff legítimo. Se pasó
+a `app.openapi()` —contrato público, estable entre versiones, y lo que el front consume— más
+una guarda que revienta si el esquema sale sin rutas. El JSON generado no cambió.
+
+**Vale la pena leer esto dos veces:** el bug sólo apareció porque el test corría en un entorno
+distinto al local. Con las versiones pineadas, habría dormido.
+
+### Verificación
+
+**5 mutaciones, 5 muertas:** path del front · ruta del backend renombrada · rama del 405 ·
+copy en negativo · función nueva sin registrar en el contrato. Más la guarda del esquema vacío.
+
+**Contra la API viva desde la rama:** `/api/v1/despacho/calendario` → 200, 120 obligaciones,
+2026-02-17 → 2027-01-18. `/despacho/clientes`, `/nomina/demo/plantilla`, `/health` → 200.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador**, igual que E-01…E-07. Lo que sí se verificó es la causa
+  raíz contra la API real, que es donde vivía el problema.
+- **El proceso de `:8000` de Ricardo sigue siendo viejo** al cerrar esta entrada. El arreglo
+  del código no lo toca: hay que relanzarlo, y **antes** de sembrar.
+
+### Deuda cosmética anotada, no arreglada
+
+Cuatro tests de pantalla (`SelectorCliente.test.tsx:132`, `ClientesPage.test.tsx:112` y `:128`,
+`NominaDelClienteActivo.test.tsx:90`) inyectan como fixture el literal
+`'No se pudo cargar la cartera: HTTP 500'`, un formato que ya no produce nadie. Son tests de
+render, siguen verdes, y no pueden producir un falso verde en `errorApi` —el que decide es
+`errorApi.ts`, que tiene sus propios tests—. Tocarlos habría sido cuatro archivos "de pasada".
+Que entren cuando alguien toque esas pantallas.
