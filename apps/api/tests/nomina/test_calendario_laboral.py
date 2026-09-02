@@ -22,10 +22,11 @@ from datetime import date
 import pytest
 
 from app.exceptions import FiscalValidationError
-from app.nomina_engine.calendario_laboral import (
+from app.nomina_engine.calendario_laboral import calendario_patronal
+from app.nomina_engine.dias_habiles import es_habil
+from app.nomina_engine.plazos_patronales import (
     Personalidad,
     RegimenDePlazo,
-    calendario_patronal,
     fecha_limite_aguinaldo,
     fecha_limite_cuotas,
     fecha_limite_entero_isr,
@@ -34,6 +35,16 @@ from app.nomina_engine.calendario_laboral import (
     prorroga_cff,
     prorroga_racerf,
 )
+
+# Reglas de plazo que NO corren la fecha. `IMSS_SIN_PRORROGA` existe para que
+# este filtro sea semantico: antes habia que escribir `or clave == "prima_rt"`,
+# y cuando un filtro necesita un caso especial por clave, la enumeracion esta
+# incompleta.
+SIN_PRORROGA = {
+    RegimenDePlazo.LFT,
+    RegimenDePlazo.IMSS_AVISO,
+    RegimenDePlazo.IMSS_SIN_PRORROGA,
+}
 
 # Tabla de `25_calendario_laboral_2026.md` §3, transcrita a mano.
 # mes de las cuotas -> fecha límite publicada.
@@ -72,11 +83,12 @@ class TestFechasDelIMSS:
         assert fecha_limite_cuotas(2026, mes) == esperada
 
     def test_exactamente_cinco_fechas_se_corren_del_dia_17(self):
-        corridos = {
-            mes
-            for mes, limite in FECHAS_IMSS_2026.items()
-            if limite.day != 17
-        }
+        """
+        Derivado de la FUNCION, no de la tabla del propio archivo: comparar dos
+        constantes escritas a mano aqui no puede fallar ante ninguna mutacion
+        del modulo, y no contaba como test.
+        """
+        corridos = {mes for mes in range(1, 13) if fecha_limite_cuotas(2026, mes).day != 17}
         assert corridos == MESES_CORRIDOS_2026
 
     def test_el_viernes_tambien_corre_no_solo_el_fin_de_semana(self):
@@ -95,6 +107,23 @@ class TestFechasDelIMSS:
         """La regla no es sólo del calendario semanal: el Art. 74 LFT cuenta."""
         # 1-ene-2027 es viernes y además descanso obligatorio.
         assert prorroga_racerf(date(2027, 1, 1)) == date(2027, 1, 4)
+
+    @pytest.mark.parametrize(
+        "mes,esperada",
+        [(2, date(2028, 3, 21)), (10, date(2028, 11, 21))],
+    )
+    def test_la_cascada_larga_de_2028(self, mes, esperada):
+        """
+        El unico caso que 2026 NO ejercita, y la regresion que quedaria suelta
+        si la suite solo mirara ese año: **cuatro dias de corrimiento**.
+
+        Derivado a mano, no copiado de correr la funcion: el 17-mar-2028 es
+        viernes, asi que corre a sabado y domingo; el lunes 20 es el TERCER
+        LUNES DE MARZO, descanso obligatorio del Art. 74 fr. III; asi que cae en
+        martes 21. Identico en noviembre: 17-nov-2028 es viernes y el lunes 20
+        es el tercer lunes de noviembre (fr. VI).
+        """
+        assert fecha_limite_cuotas(2028, mes) == esperada
 
 
 class TestEnteroDelISRRetenido:
@@ -130,9 +159,10 @@ class TestEnteroDelISRRetenido:
         assert fecha_limite_entero_isr(2026, mes) == fecha_limite_cuotas(2026, mes)
 
     def test_nunca_se_emite_una_fecha_en_dia_inhabil(self):
+        """`es_habil`, no `weekday`: el nombre del test promete inhabil."""
         for mes in range(1, 13):
             limite = fecha_limite_entero_isr(2026, mes)
-            assert limite.weekday() < 5, f"mes {mes} vence en fin de semana: {limite}"
+            assert es_habil(limite), f"mes {mes} vence en dia inhabil: {limite}"
 
 
 class TestBimestrales:
@@ -251,16 +281,10 @@ class TestNotasDeDiaInhabil:
         que lo autorice, pero tampoco se calla que cae en sábado. Este test es
         lo que impide que la próxima obligación fija entre sin la advertencia.
         """
-        sin_prorroga = [
-            o
-            for o in obligaciones()
-            if o.regimen_de_plazo in (RegimenDePlazo.LFT, RegimenDePlazo.IMSS_AVISO)
-            or o.clave == "prima_rt"
-        ]
+        sin_prorroga = [o for o in obligaciones() if o.regimen_de_plazo in SIN_PRORROGA]
         assert sin_prorroga, "el filtro no encontró ninguna obligación sin prórroga"
         for obligacion in sin_prorroga:
-            cae_en_finde = obligacion.fecha_limite.weekday() >= 5
-            if cae_en_finde:
+            if not es_habil(obligacion.fecha_limite):
                 assert obligacion.nota, f"{obligacion.clave} cae en inhábil y no trae nota"
 
     def test_las_tres_que_caen_en_sabado_en_2026_lo_dicen(self):
@@ -285,9 +309,19 @@ class TestSemanticaDelAnio:
         fechas = [o.fecha_limite for o in obligaciones()]
         assert fechas == sorted(fechas)
 
-    def test_el_orden_es_estable_entre_corridas(self):
-        """Sin desempate, la pantalla se reacomodaría sola entre refrescos."""
-        assert [o.clave for o in obligaciones()] == [o.clave for o in obligaciones()]
+    def test_las_del_mismo_dia_salen_ordenadas_por_clave(self):
+        """
+        El desempate es lo que hace estable el orden: varias obligaciones caen
+        el mismo dia (17-feb lleva la mensual del IMSS y el entero del ISR). Sin
+        el, la pantalla podria reacomodarse sola entre refrescos.
+        """
+        por_dia: dict[date, list[str]] = {}
+        for o in obligaciones():
+            por_dia.setdefault(o.fecha_limite, []).append(o.clave)
+        compartidos = [claves for claves in por_dia.values() if len(claves) > 1]
+        assert compartidos, "ningun dia comparte obligaciones: el test no prueba nada"
+        for claves in compartidos:
+            assert claves == sorted(claves)
 
     @pytest.mark.parametrize("anio", [1999, 2101, 0, -1])
     def test_un_anio_absurdo_levanta_error_de_dominio(self, anio):
@@ -310,6 +344,15 @@ class TestComposicion:
         for obligacion in obligaciones():
             if obligacion.condicional:
                 assert obligacion.nota, obligacion.clave
+
+    def test_la_prima_de_rt_no_se_etiqueta_como_prorrogable(self):
+        """
+        `IMSS` promete "se corre al siguiente habil" y la prima NO se corre. Con
+        esa etiqueta, una vista que agrupe por regimen de plazo pondria el
+        sabado 28-feb-2026 bajo el rotulo de la prorroga.
+        """
+        prima = next(o for o in obligaciones() if o.clave == "prima_rt")
+        assert prima.regimen_de_plazo is RegimenDePlazo.IMSS_SIN_PRORROGA
 
     def test_no_se_emite_ninguna_obligacion_de_isn(self):
         """

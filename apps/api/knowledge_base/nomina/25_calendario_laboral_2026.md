@@ -81,13 +81,66 @@ de la semana.
 | **ISN (Impuesto Sobre Nómina)** | estatal, típicamente mensual el día 10 o 17 según la entidad | Códigos financieros estatales |
 
 **ISN:** es estatal y varía (aprox. 2–4 %; Veracruz 3 %, CDMX 4 %). Para el caso real es
-**informativo, no se calcula en F1** (`docs/decisiones-nomina.md` §D8). En el calendario sí
-aparece como vencimiento.
+**informativo, no se calcula en F1** (`docs/decisiones-nomina.md` §D8). **El generador NO lo
+emite** —ni su importe ni su vencimiento—: no hay ninguna fuente estatal en `knowledge_base/` y
+el modelo de cliente no registra el estado del patrón, así que una fecha aquí sería un valor
+legal sin cita. Ver §D24. *(Este párrafo prometía lo contrario hasta E-07; se corrigió al
+escribir el generador.)*
 
 > El entero del ISR retenido cae el mismo día 17 que las cuotas mensuales del IMSS, **pero se
 > rige por la regla del SAT** (sexto dígito del RFC, sin la prórroga del viernes). Son dos
 > calendarios distintos que se ven iguales: fusionarlos en una sola vista por cliente sin
 > distinguir su regla es un bug esperando.
+
+---
+
+## 5. Cómo lo implementa el motor (E-07 / F1-06)
+
+`app/nomina_engine/plazos_patronales.py` tiene las reglas de plazo y
+`app/nomina_engine/calendario_laboral.py` el catálogo de obligaciones. **Producen fechas, no
+importes.**
+
+### Las cinco reglas de plazo, que se ven iguales y no lo son
+
+Cada obligación viaja con un campo `regimen_de_plazo` —**dato de la respuesta, no comentario**—
+justo por lo que advierte §4: juntar obligaciones del IMSS y del SAT en una vista sin distinguir
+su regla es un bug esperando.
+
+| `regimen_de_plazo` | Regla | Fundamento |
+|---|---|---|
+| `imss` | vence en inhábil **o viernes** → siguiente hábil | Art. 3 RACERF |
+| `imss_sin_prorroga` | fecha fija; no se corre (decisión provisional) | Art. 74 LSS; Art. 32 RACERF; §D23 |
+| `imss_aviso` | **no** se prorroga: el Art. 3 excluye los avisos afiliatorios | Art. 34 LSS |
+| `sat` | vence en inhábil → siguiente hábil, **sin** la regla del viernes | CFF Art. 12 |
+| `lft` | fecha fija de ley | LFT Arts. 87 y 122 |
+
+`imss_sin_prorroga` es un valor aparte y no un `imss` cualquiera: etiquetar la prima de RT como
+`imss` prometería una prórroga que no se le aplica, y pondría el sábado 28-feb-2026 bajo el
+rótulo "se corre al siguiente hábil".
+
+**La diferencia se ve en 2026:** las cuotas del IMSS de marzo vencen el **20-abr** (viernes
+corrido al lunes) y el entero del ISR retenido de marzo el **17-abr**, porque para el CFF el
+viernes es hábil. Igual en junio/julio. En cambio los tres vencimientos que caen en sábado o
+domingo (mayo, octubre y enero de 2027) coinciden, porque ahí corren las dos reglas.
+
+### Lo que el generador NO emite, y por qué
+
+- **ISN** — sin fuente estatal en el repo ni estado del patrón en el modelo (ver §4 y §D24).
+- **El ajuste por sexto dígito del RFC** en el entero del ISR — es facilidad de la RMF, sólo
+  corre la fecha hacia adelante, y el modelo de cliente no guarda RFC. Omitirlo deja la fecha
+  igual o antes que la legal.
+
+### Lo que emite marcado como condicional
+
+El aviso bimestral de variables y las dos fechas de PTU, porque dependen de datos que el modelo
+de cliente no registra (tipo de salario, personalidad jurídica). Ver §D24: `condicional` no
+significa "opcional", significa "verifícalo, porque aquí no consta".
+
+### Advertencia sobre "día inhábil"
+
+Se usan los descansos obligatorios del **Art. 74 LFT**. Ni el acuerdo anual de días inhábiles del
+IMSS ni las vacaciones generales del SAT están en el repo. Contar de menos días inhábiles deja la
+fecha límite antes o igual que la legal — la dirección conservadora. Ver §D13.
 
 ---
 
@@ -97,5 +150,5 @@ aparece como vencimiento.
 - RACERF: Arts. 3 (cómputo del plazo) y 32 (prima de RT).
 - Ley del Infonavit: Art. 35.
 - Ley Federal del Trabajo: Arts. 74, 87, 122.
-- LISR Art. 96 (entero de retenciones).
+- LISR Art. 96 (entero de retenciones); CFF Art. 12 (cómputo de plazos del SAT).
 - `docs/PLAN_NOMINA.md` §2.5; `docs/decisiones-nomina.md` §D8.

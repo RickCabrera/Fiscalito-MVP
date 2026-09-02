@@ -11,7 +11,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from app.nomina_engine.calendario_laboral import RegimenDePlazo
+from app.nomina_engine.plazos_patronales import RegimenDePlazo
 
 
 class ObligacionPatronalSchema(BaseModel):
@@ -22,8 +22,10 @@ class ObligacionPatronalSchema(BaseModel):
     `fecha_limite`, y existe para que una vista que junta obligaciones del IMSS
     y del SAT no las presente como si obedecieran la misma norma: el viernes es
     inhábil para el IMSS (Art. 3 RACERF) y hábil para el SAT (CFF Art. 12), así
-    que el mismo mes puede tener dos fechas distintas. Ver
-    `knowledge_base/nomina/25_calendario_laboral_2026.md` §4.
+    que el mismo mes puede tener dos fechas distintas. `imss_sin_prorroga` es
+    del IMSS pero **no** se corre (§D23): son cinco valores, no cuatro, porque
+    etiquetar esa como `imss` prometería una prórroga que no ocurre. Ver
+    `knowledge_base/nomina/25_calendario_laboral_2026.md` §4 y §5.
     """
 
     cliente_id: str

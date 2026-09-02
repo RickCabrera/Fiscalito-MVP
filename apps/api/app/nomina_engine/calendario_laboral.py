@@ -1,107 +1,73 @@
 """
-Calendario de obligaciones patronales (F1-06, entregado parcialmente por E-07).
+Catálogo de obligaciones patronales de un ejercicio (F1-06, entregado
+parcialmente por E-07).
 
-Genera las fechas límite de lo que un PATRÓN debe enterar, presentar o pagar en
-un ejercicio. Fuente de las fechas y de cada fundamento:
-`knowledge_base/nomina/25_calendario_laboral_2026.md`, que trae la tabla
-publicada de 2026 contra la que se contrasta el test.
+Qué debe enterar, presentar o pagar un PATRÓN, y cuándo. **Produce FECHAS, no
+importes**: los porcentajes de cada ramo viven en `cuotas.py`.
 
-**Este módulo produce FECHAS, no importes.** Los porcentajes de cada ramo viven
-en `cuotas.py` y las tablas en `tablas_imss.py`; aquí no se calcula un peso.
-
-CUATRO REGLAS DE PLAZO QUE SE VEN IGUALES Y NO LO SON
------------------------------------------------------
-Cada obligación viaja con su `regimen_de_plazo` **como dato**, no como
-comentario, porque `25_calendario_laboral_2026.md` §4 advierte que fusionarlas
-en una sola vista *"sin distinguir su regla es un bug esperando*". Son:
-
-| `regimen_de_plazo` | Regla | Fundamento |
-|---|---|---|
-| `imss` | vence en inhábil **o viernes** → siguiente hábil | Art. 3 RACERF |
-| `imss_aviso` | **no** se prorroga nunca | Art. 3 RACERF, que excluye los avisos afiliatorios |
-| `sat` | vence en inhábil → siguiente hábil (**sin** la regla del viernes) | CFF Art. 12 |
-| `lft` | fecha fija de ley, sin prórroga para estas obligaciones | LFT Arts. 87 y 122 |
-
-La diferencia **se ve** en 2026: las cuotas del IMSS de marzo vencen el
-**20-abr** (viernes corrido al lunes) y el entero del ISR retenido de marzo el
-**17-abr**, porque para el SAT el viernes es hábil. Igual en junio/julio. En
-cambio los tres domingos y sábados (mayo, octubre y enero de 2027) coinciden,
-porque ahí las dos reglas corren.
-
-Sobre `lft`: la afirmación se limita a las obligaciones **sustantivas** de pago
-de los Arts. 87 y 122. La LFT sí tiene cómputo de términos (Arts. 733-735),
-pero es **procesal** y no gobierna estas fechas.
-
-QUÉ NO EMITE ESTE MÓDULO, Y POR QUÉ
-------------------------------------
-**El ISN (Impuesto Sobre Nóminas).** No por §D8 —que decide no calcular su
-IMPORTE, y no dice nada de la fecha— sino porque `knowledge_base/` **no tiene
-ninguna fuente estatal**: ni el Código Financiero de Veracruz ni el de ninguna
-otra entidad, y `despacho_demo.ClienteDespacho` tampoco registra en qué estado
-está el patrón. Escribir "día 10 o 17 según la entidad" sería un valor legal sin
-cita, que es justo lo que `CLAUDE.md` prohíbe.
+Las reglas de plazo —cinco, y se ven iguales sin serlo— están en
+`plazos_patronales.py`. La doctrina completa, con citas y con lo que este módulo
+deliberadamente NO emite (el ISN), está en
+`knowledge_base/nomina/25_calendario_laboral_2026.md` §5, que es también la
+fuente de la tabla de 2026 contra la que se contrasta el test.
 
 NO ES, Y NO DEBE SER, EL CALENDARIO DEL SAT
 -------------------------------------------
-`fiscal_engine/calendario.py` genera el calendario del CONTRIBUYENTE (día 17
-corrido por el sexto dígito del RFC). `dias_habiles.py` advierte que los dos
-**no deben fusionarse**. Este módulo tampoco lo llama: su
-`_fecha_limite_dia_17()` con `dias_extra=0` devuelve el día 17 crudo, domingos
-incluidos, porque sólo sabe sumar días hábiles hacia adelante y nunca corrige el
-día de partida. Ese defecto es **preexistente y queda fuera del alcance de
-E-07** (anotado en el backlog para F1-07/S-03); aquí la regla del CFF se
-implementa delegando en `dias_habiles.es_habil`.
-
-ADVERTENCIA SOBRE "DÍA INHÁBIL", HEREDADA DE `dias_habiles.py`
---------------------------------------------------------------
-Se usan los descansos obligatorios del **Art. 74 LFT**. Ni el acuerdo anual de
-días inhábiles del IMSS ni el calendario de vacaciones generales del SAT están
-en el repo. Contar de menos días inhábiles deja la fecha límite **antes** o
-igual que la legal, que es la dirección conservadora; ver §D13.
+`fiscal_engine/calendario.py` genera el del CONTRIBUYENTE (día 17 corrido por el
+sexto dígito del RFC). `dias_habiles.py` advierte que los dos **no deben
+fusionarse**, y este módulo tampoco lo llama: su `_fecha_limite_dia_17()` con
+`dias_extra=0` devuelve el día 17 crudo, domingos incluidos. Ese defecto es
+**preexistente y fuera del alcance de E-07** (anotado en el backlog).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import date, timedelta
-from enum import Enum
+from dataclasses import dataclass
+from datetime import date
 
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.avisos import fecha_limite_aviso_variable
 from app.nomina_engine.dias_habiles import es_habil
-
-# Día de entero de cuotas (Art. 39 LSS) y de retenciones (LISR Art. 96).
-DIA_DE_ENTERO = 17
-
-_VIERNES = 4
-
-# LFT Art. 122: el reparto va "dentro de los sesenta días siguientes a la fecha
-# en que deba pagarse el impuesto anual". Las dos fechas del reparto se DERIVAN
-# de aquí en vez de teclearse, para que el fundamento sea visible en el código.
-DIAS_PARA_REPARTIR_PTU = 60
-_ANUAL_MORAL = (3, 31)  # personas morales: marzo
-_ANUAL_FISICA = (4, 30)  # personas físicas: abril
+from app.nomina_engine.plazos_patronales import (
+    Personalidad,
+    RegimenDePlazo,
+    fecha_limite_aguinaldo,
+    fecha_limite_cuotas,
+    fecha_limite_entero_isr,
+    fecha_limite_prima_riesgo,
+    fecha_limite_ptu,
+)
 
 # Rango de años admisible. No es una regla fiscal: es la barrera contra un
 # `anio` absurdo que produciría un calendario sin sentido.
 ANIO_MINIMO = 2000
 ANIO_MAXIMO = 2100
 
+NOTA_SALARIO_VARIABLE = (
+    "El modelo de cliente no registra el tipo de salario de sus trabajadores. Si el patrón "
+    "tiene trabajadores de salario variable o mixto, esta obligación es firme."
+)
+NOTA_PERSONALIDAD = (
+    "El modelo de cliente no registra la personalidad jurídica del patrón. Sólo una de las dos "
+    "fechas de PTU le aplica."
+)
+NOTA_PRIMA_RT = (
+    "No se aplica la prórroga del Art. 3 RACERF: correr la fecha hacia adelante es la "
+    "dirección permisiva. Decisión provisional, ver docs/decisiones-nomina.md §D23."
+)
 
-class RegimenDePlazo(str, Enum):
-    """Qué regla de cómputo gobierna la fecha límite. Ver la tabla del módulo."""
+_RAMOS_MENSUALES = "Riesgos de Trabajo, Enfermedades y Maternidad, Invalidez y Vida, Guarderías"
+_RAMOS_BIMESTRALES = "Retiro, Cesantía y Vejez, Infonavit"
+_NOTA_ISR = (
+    "Se rige por la regla del SAT, no por la del IMSS: el viernes es hábil. No se aplica el "
+    "ajuste por sexto dígito del RFC, que sólo puede correr la fecha hacia adelante."
+)
 
-    IMSS = "imss"
-    IMSS_AVISO = "imss_aviso"
-    SAT = "sat"
-    LFT = "lft"
-
-
-class Personalidad(str, Enum):
-    """Personalidad jurídica del patrón. Decide el plazo del PTU (Art. 122 LFT)."""
-
-    FISICA = "fisica"
-    MORAL = "moral"
+_NOMBRE_MES = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
+_NOMBRE_DIA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
 
 @dataclass(frozen=True)
@@ -126,145 +92,23 @@ class ObligacionPatronal:
     nota: str = ""
 
 
-def _mes_siguiente(anio: int, mes: int) -> tuple[int, int]:
-    return (anio + 1, 1) if mes == 12 else (anio, mes + 1)
-
-
-def _ultimo_dia_del_mes(anio: int, mes: int) -> date:
-    anio_sig, mes_sig = _mes_siguiente(anio, mes)
-    return date(anio_sig, mes_sig, 1) - timedelta(days=1)
-
-
-def _siguiente_habil(dia: date) -> date:
-    while not es_habil(dia):
-        dia += timedelta(days=1)
-    return dia
-
-
-def prorroga_racerf(dia: date) -> date:
-    """
-    Cómputo del plazo del IMSS (Art. 3 RACERF).
-
-    Si el último día del plazo es **inhábil o viernes**, corre al siguiente día
-    hábil. Que el viernes también corra es específico del IMSS: sin esa mitad de
-    la regla, 2026 sale con dos fechas mal (las cuotas de marzo y las de junio).
-
-    **No aplica a los avisos afiliatorios**, que el propio Art. 3 excluye; ésos
-    los resuelve `avisos.py` y aquí no se tocan.
-    """
-    while (not es_habil(dia)) or dia.weekday() == _VIERNES:
-        dia += timedelta(days=1)
-    return dia
-
-
-def prorroga_cff(dia: date) -> date:
-    """
-    Cómputo del plazo del SAT (CFF Art. 12): si vence en día inhábil, corre al
-    siguiente hábil. **Sin la regla del viernes**, que es del IMSS y no del CFF.
-    """
-    return _siguiente_habil(dia)
-
-
-def fecha_limite_cuotas(anio_de_las_cuotas: int, mes: int) -> date:
-    """
-    Vencimiento del entero de cuotas del IMSS del mes indicado (Art. 39 LSS).
-
-    Se nombra por el **mes de las cuotas**, no por el del vencimiento: las
-    cuotas de marzo vencen en abril. Es la convención del doc 25 §2.
-    """
-    anio_venc, mes_venc = _mes_siguiente(anio_de_las_cuotas, mes)
-    return prorroga_racerf(date(anio_venc, mes_venc, DIA_DE_ENTERO))
-
-
-def fecha_limite_entero_isr(anio_de_las_retenciones: int, mes: int) -> date:
-    """
-    Vencimiento del entero del ISR retenido de salarios (LISR Art. 96).
-
-    Día 17 del mes siguiente con el cómputo del CFF Art. 12. **No se aplica el
-    ajuste por sexto dígito del RFC** (facilidad de la RMF): sólo puede correr
-    la fecha hacia adelante, y el modelo de cliente de la demo no guarda RFC.
-    Omitirlo deja la fecha igual o antes de la legal, que es lo conservador.
-    """
-    anio_venc, mes_venc = _mes_siguiente(anio_de_las_retenciones, mes)
-    return prorroga_cff(date(anio_venc, mes_venc, DIA_DE_ENTERO))
-
-
-def fecha_limite_prima_riesgo(anio_de_presentacion: int) -> date:
-    """
-    Vencimiento de la Declaración Anual de Prima de Riesgo de Trabajo
-    (Art. 74 LSS; Art. 32 RACERF): durante febrero, a más tardar el último día.
-
-    **No se le aplica la prórroga del Art. 3 RACERF**, y la razón NO es que el
-    artículo la excluya —se presenta bajo el mismo reglamento, así que su
-    cómputo sí le alcanza—, sino que correr la fecha hacia adelante es la
-    dirección permisiva. Se toma la conservadora.
-
-    # DECISIÓN PROVISIONAL (nocturno): en 2026 el último día de febrero cae en
-    # sábado 28. Con el Art. 3 el plazo correría al lunes 2 de marzo. Pregunta
-    # abierta para la contadora en `docs/decisiones-nomina.md` §D23.
-    """
-    return _ultimo_dia_del_mes(anio_de_presentacion, 2)
-
-
-def fecha_limite_aguinaldo(anio: int) -> date:
-    """
-    Vencimiento del pago del aguinaldo (LFT Art. 87).
-
-    El artículo dice **"antes del día veinte de diciembre"**, así que la fecha
-    límite es el **19**, no el 20: el día 20 ya no está dentro del plazo. Un día
-    de más aquí es un día que la ley no concede.
-    """
-    return date(anio, 12, 19)
-
-
-def fecha_limite_ptu(anio_de_pago: int, personalidad: Personalidad) -> date:
-    """
-    Vencimiento del reparto de utilidades (LFT Art. 122): sesenta días
-    siguientes a la fecha en que deba pagarse el impuesto anual — 31 de marzo
-    para personas morales y 30 de abril para personas físicas.
-
-    Se deriva de la regla en vez de teclear el 30 de mayo y el 29 de junio, para
-    que el fundamento esté en el código y un año raro no pase desapercibido.
-    """
-    mes, dia = _ANUAL_MORAL if personalidad is Personalidad.MORAL else _ANUAL_FISICA
-    return date(anio_de_pago, mes, dia) + timedelta(days=DIAS_PARA_REPARTIR_PTU)
-
-
-_RAMOS_MENSUALES = "Riesgos de Trabajo, Enfermedades y Maternidad, Invalidez y Vida, Guarderías"
-_RAMOS_BIMESTRALES = "Retiro, Cesantía y Vejez, Infonavit"
-
-_NOMBRE_MES = (
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-)
-
-
 def _nota_si_cae_inhabil(dia: date, sufijo: str = "") -> str:
     """
     Advertencia para las obligaciones que **no** se prorrogan.
 
-    Una fecha fija de ley que cae en sábado se sigue reportando tal cual —moverla
-    sin norma que lo autorice sería inventarse un plazo—, pero callar que cae en
+    Una fecha fija de ley que cae en sábado se reporta tal cual —moverla sin
+    norma que lo autorice sería inventarse un plazo—, pero callar que cae en
     inhábil deja al patrón planeando un trámite en un día en que no puede
     hacerlo. La nota **describe** el dato; nunca propone una segunda fecha.
     """
     if es_habil(dia):
-        return ""
-    dias = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-    base = f"El {dia.isoformat()} cae en {dias[dia.weekday()]}."
+        return sufijo
+    base = f"El {dia.isoformat()} cae en {_NOMBRE_DIA[dia.weekday()]}."
     return f"{base} {sufijo}".strip()
 
 
-@dataclass(frozen=True)
-class _Contexto:
-    """Lo que se sabe del patrón. `None` = el modelo no lo registra."""
-
-    tiene_salario_variable: bool | None = None
-    personalidad: Personalidad | None = None
-    notas: dict[str, str] = field(default_factory=dict)
-
-
-def _obligaciones_mensuales(anio: int) -> list[ObligacionPatronal]:
+def _mensuales(anio: int) -> list[ObligacionPatronal]:
+    """Entero mensual del IMSS y entero del ISR retenido: mismo día 17, dos reglas."""
     obligaciones: list[ObligacionPatronal] = []
     for mes in range(1, 13):
         periodo = f"{_NOMBRE_MES[mes - 1]} {anio}"
@@ -290,15 +134,13 @@ def _obligaciones_mensuales(anio: int) -> list[ObligacionPatronal]:
                 periodo_cubierto=periodo,
                 fundamento="LISR Art. 96; CFF Art. 12",
                 regimen_de_plazo=RegimenDePlazo.SAT,
-                nota="Se rige por la regla del SAT, no por la del IMSS: el viernes es hábil. "
-                "No se aplica el ajuste por sexto dígito del RFC, que sólo puede correr la "
-                "fecha hacia adelante.",
+                nota=_NOTA_ISR,
             )
         )
     return obligaciones
 
 
-def _obligaciones_bimestrales(anio: int, ctx: _Contexto) -> list[ObligacionPatronal]:
+def _bimestrales(anio: int, tiene_salario_variable: bool | None) -> list[ObligacionPatronal]:
     obligaciones: list[ObligacionPatronal] = []
     for bimestre in range(1, 7):
         primero = _NOMBRE_MES[2 * bimestre - 2]
@@ -316,11 +158,12 @@ def _obligaciones_bimestrales(anio: int, ctx: _Contexto) -> list[ObligacionPatro
                 regimen_de_plazo=RegimenDePlazo.IMSS,
             )
         )
-        # El aviso existe aunque el promedio no cambie: lo que se presenta es la
-        # determinación del bimestre. Lo que no se sabe es si HAY variables.
-        condicional = ctx.tiene_salario_variable is None
-        if ctx.tiene_salario_variable is False:
+        if tiene_salario_variable is False:
             continue
+        # La obligación bimestral existe aunque el promedio no cambie: lo que se
+        # presenta es la determinación del bimestre. Lo que no consta es si HAY
+        # trabajadores de salario variable.
+        desconocido = tiene_salario_variable is None
         obligaciones.append(
             ObligacionPatronal(
                 clave="aviso_variables",
@@ -332,14 +175,14 @@ def _obligaciones_bimestrales(anio: int, ctx: _Contexto) -> list[ObligacionPatro
                 periodo_cubierto=periodo,
                 fundamento="Art. 34 fr. II LSS",
                 regimen_de_plazo=RegimenDePlazo.IMSS_AVISO,
-                condicional=condicional,
-                nota=ctx.notas.get("aviso_variables", "") if condicional else "",
+                condicional=desconocido,
+                nota=NOTA_SALARIO_VARIABLE if desconocido else "",
             )
         )
     return obligaciones
 
 
-def _obligaciones_anuales(anio: int, ctx: _Contexto) -> list[ObligacionPatronal]:
+def _anuales(anio: int, personalidad: Personalidad | None) -> list[ObligacionPatronal]:
     ejercicio_anterior = f"ejercicio {anio - 1}"
     prima = fecha_limite_prima_riesgo(anio)
     aguinaldo = fecha_limite_aguinaldo(anio)
@@ -352,16 +195,12 @@ def _obligaciones_anuales(anio: int, ctx: _Contexto) -> list[ObligacionPatronal]
             "anterior, ante el IMSS.",
             fecha_limite=prima,
             periodicidad="anual",
-            # Se presenta en febrero de `anio` pero REPORTA el ejercicio anterior
-            # (Art. 74 LSS). Decirlo "anio" sería un dato falso.
+            # Se presenta en febrero de `anio` pero REPORTA el ejercicio
+            # anterior (Art. 74 LSS). Decir "anio" sería un dato falso.
             periodo_cubierto=ejercicio_anterior,
             fundamento="Art. 74 LSS; Art. 32 RACERF",
-            regimen_de_plazo=RegimenDePlazo.IMSS,
-            nota=_nota_si_cae_inhabil(
-                prima,
-                "No se aplica la prórroga del Art. 3 RACERF: correr la fecha hacia adelante "
-                "es la dirección permisiva. Decisión provisional, ver §D23.",
-            ),
+            regimen_de_plazo=RegimenDePlazo.IMSS_SIN_PRORROGA,
+            nota=_nota_si_cae_inhabil(prima, NOTA_PRIMA_RT),
         ),
         ObligacionPatronal(
             clave="aguinaldo",
@@ -378,15 +217,15 @@ def _obligaciones_anuales(anio: int, ctx: _Contexto) -> list[ObligacionPatronal]
         ),
     ]
 
-    for personalidad in (Personalidad.MORAL, Personalidad.FISICA):
-        if ctx.personalidad is not None and ctx.personalidad is not personalidad:
+    for cual in (Personalidad.MORAL, Personalidad.FISICA):
+        if personalidad is not None and personalidad is not cual:
             continue
-        condicional = ctx.personalidad is None
-        fecha = fecha_limite_ptu(anio, personalidad)
-        etiqueta = "persona moral" if personalidad is Personalidad.MORAL else "persona física"
+        desconocida = personalidad is None
+        fecha = fecha_limite_ptu(anio, cual)
+        etiqueta = "persona moral" if cual is Personalidad.MORAL else "persona física"
         obligaciones.append(
             ObligacionPatronal(
-                clave=f"ptu_{personalidad.value}",
+                clave=f"ptu_{cual.value}",
                 nombre=f"Reparto de utilidades (PTU) — {etiqueta}",
                 descripcion="Sesenta días siguientes a la fecha en que debe pagarse el "
                 f"impuesto anual del {etiqueta} patrón.",
@@ -395,28 +234,11 @@ def _obligaciones_anuales(anio: int, ctx: _Contexto) -> list[ObligacionPatronal]
                 periodo_cubierto=ejercicio_anterior,
                 fundamento="LFT Art. 122",
                 regimen_de_plazo=RegimenDePlazo.LFT,
-                condicional=condicional,
-                nota=" ".join(
-                    parte
-                    for parte in (
-                        ctx.notas.get("ptu", "") if condicional else "",
-                        _nota_si_cae_inhabil(fecha),
-                    )
-                    if parte
-                ),
+                condicional=desconocida,
+                nota=_nota_si_cae_inhabil(fecha, NOTA_PERSONALIDAD if desconocida else ""),
             )
         )
     return obligaciones
-
-
-NOTA_SALARIO_VARIABLE = (
-    "El modelo de cliente no registra el tipo de salario de sus trabajadores. Si el patrón "
-    "tiene trabajadores de salario variable o mixto, esta obligación es firme."
-)
-NOTA_PERSONALIDAD = (
-    "El modelo de cliente no registra la personalidad jurídica del patrón. Sólo una de las dos "
-    "fechas de PTU le aplica."
-)
 
 
 def calendario_patronal(
@@ -430,19 +252,17 @@ def calendario_patronal(
 
     Args:
         anio_de_las_cuotas: año **del periodo que se reporta**, no del
-            vencimiento. Las cuotas de diciembre de 2026 vencen en enero de
-            2027 y **sí** están aquí; las de diciembre de 2025, que vencen en
-            enero de 2026, **no**. Es la convención del doc 25 §2, y por eso el
-            parámetro se llama así y no `anio`.
+            vencimiento. Las cuotas de diciembre de 2026 vencen en enero de 2027
+            y **sí** están aquí; las de diciembre de 2025, que vencen en enero de
+            2026, **no** — por eso el parámetro no se llama `anio`. Es la
+            convención del doc 25 §2.
 
             Las anuales fijas (prima de RT, PTU, aguinaldo) son las que
-            **vencen** dentro del año pedido. Su `periodo_cubierto` dice qué
-            ejercicio reportan, que para la prima de RT y el PTU es el
-            **anterior**.
-        tiene_salario_variable: `True` → el aviso bimestral del Art. 34 fr. II
-            es firme; `False` → no se emite; `None` → se emite marcado
-            `condicional`, porque no consta si el patrón tiene variables. `None`
-            no es "no tiene": es "no se sabe".
+            **vencen** dentro del año pedido; su `periodo_cubierto` dice qué
+            ejercicio reportan, que para la prima de RT y el PTU es el anterior.
+        tiene_salario_variable: `True` → el aviso del Art. 34 fr. II es firme;
+            `False` → no se emite; `None` → se emite `condicional`, porque no
+            consta. `None` no es "no tiene": es "no se sabe".
         personalidad: `None` → se emiten las **dos** fechas de PTU como
             condicionales, porque el plazo depende de algo que no consta.
 
@@ -455,19 +275,13 @@ def calendario_patronal(
             f"Debe estar entre {ANIO_MINIMO} y {ANIO_MAXIMO}."
         )
 
-    ctx = _Contexto(
-        tiene_salario_variable=tiene_salario_variable,
-        personalidad=personalidad,
-        notas={"aviso_variables": NOTA_SALARIO_VARIABLE, "ptu": NOTA_PERSONALIDAD},
-    )
-
     obligaciones = [
-        *_obligaciones_mensuales(anio_de_las_cuotas),
-        *_obligaciones_bimestrales(anio_de_las_cuotas, ctx),
-        *_obligaciones_anuales(anio_de_las_cuotas, ctx),
+        *_mensuales(anio_de_las_cuotas),
+        *_bimestrales(anio_de_las_cuotas, tiene_salario_variable),
+        *_anuales(anio_de_las_cuotas, personalidad),
     ]
-    # Orden estable: por fecha y, dentro del día, por clave. Sin el desempate,
-    # dos corridas podrían devolver el mismo día en distinto orden y la pantalla
-    # se reacomodaría sola entre refrescos.
+    # Orden estable: por fecha y, dentro del día, por clave y periodo. Sin el
+    # desempate, dos corridas podrían devolver el mismo día en distinto orden y
+    # la pantalla se reacomodaría sola entre refrescos.
     obligaciones.sort(key=lambda o: (o.fecha_limite, o.clave, o.periodo_cubierto))
     return tuple(obligaciones)
