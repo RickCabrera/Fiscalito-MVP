@@ -45,7 +45,7 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
   distinto giro y número de empleados. Front: pantalla de lista + selector de cliente activo
   en el header, y ficha `/clientes/:id` con sus empleados (SBC, salario diario, alta, factor).
   *Listo cuando:* cambio de cliente y todo lo demás cambia con él.
-- [ ] **E-03 · Nómina dentro del cliente** — mover el flujo de `/app/nomina-demo` al contexto
+- [x] **E-03 · Nómina dentro del cliente** — mover el flujo de `/app/nomina-demo` al contexto
   del cliente seleccionado: checador en vivo, cerrar quincena, calcular nómina, cuotas por
   ramo, PDF. **Mismo motor, misma API.** *Listo cuando:* el flujo completo corre para el
   cliente de fixtures y para uno sintético.
