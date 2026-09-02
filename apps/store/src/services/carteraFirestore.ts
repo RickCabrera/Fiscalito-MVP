@@ -55,6 +55,17 @@ import {
 /** Ninguna lectura de Firestore puede colgar el primer pintado más que esto. */
 const TIMEOUT_MS = 2500;
 
+/**
+ * El respaldo lleva **su propio tope, más holgado**.
+ *
+ * `carteraDelBackend()` dispara 1 + 3×2 = **siete** requests. Con los mismos
+ * 2500 ms de Firestore, un backend lento pero VIVO —un arranque en frío— caía
+ * en el timeout y devolvía `clientes: []`, o sea la pantalla vacía que todo este
+ * archivo existe para evitar, con el fallback puesto y todo. Cotarlo sigue
+ * siendo obligatorio: sin cota, colgado es para siempre.
+ */
+const TIMEOUT_RESPALDO_MS = 8000;
+
 /** De dónde salió lo que se está viendo. La pantalla lo dice, no lo esconde. */
 export type OrigenCartera = 'firestore' | 'backend';
 
@@ -65,13 +76,17 @@ export interface CarteraCargada {
   motivoFallback: string | null;
 }
 
-function conTimeout<T>(promesa: Promise<T>, que: string): Promise<T> {
+function conTimeout<T>(promesa: Promise<T>, que: string, ms = TIMEOUT_MS): Promise<T> {
+  let temporizador: ReturnType<typeof setTimeout>;
   return Promise.race([
     promesa,
-    new Promise<T>((_, rechazar) =>
-      setTimeout(() => rechazar(new Error(`${que} tardó más de ${TIMEOUT_MS} ms`)), TIMEOUT_MS),
-    ),
-  ]);
+    new Promise<T>((_, rechazar) => {
+      temporizador = setTimeout(() => rechazar(new Error(`${que} tardó más de ${ms} ms`)), ms);
+    }),
+    // Se limpia el timer gane quien gane: sin esto queda uno colgado por
+    // llamada. Inofensivo con topes cortos, sucio en cuanto alguien llame esto
+    // en bucle.
+  ]).finally(() => clearTimeout(temporizador));
 }
 
 // ── Rutas de la colección ──
@@ -145,7 +160,11 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
   const respaldo = async (motivo: string): Promise<CarteraCargada> => {
     try {
       return {
-        clientes: await conTimeout(carteraDelBackend(), 'El catálogo de demostración'),
+        clientes: await conTimeout(
+          carteraDelBackend(),
+          'El catálogo de demostración',
+          TIMEOUT_RESPALDO_MS,
+        ),
         origen: 'backend',
         motivoFallback: motivo,
       };
@@ -223,7 +242,11 @@ export async function sembrarDemo(uid: string): Promise<boolean> {
   const existentes = await conTimeout(getDocs(clientesRef(uid)), 'La lectura de tu cartera');
   if (!existentes.empty) return false;
 
-  const semilla = await conTimeout(carteraDelBackend(), 'El catálogo de demostración');
+  const semilla = await conTimeout(
+    carteraDelBackend(),
+    'El catálogo de demostración',
+    TIMEOUT_RESPALDO_MS,
+  );
   const lote = writeBatch(db);
   for (const cliente of semilla) {
     const { empleados, ...datos } = cliente;

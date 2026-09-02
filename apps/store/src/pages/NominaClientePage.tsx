@@ -161,7 +161,7 @@ export default function NominaClientePage() {
           <button
             className="btn-primary"
             onClick={n.pedirCierre}
-            disabled={n.ocupado || !cliente || !n.inicio || !n.fin}
+            disabled={n.ocupado || !cliente || !n.inicio || !n.fin || n.carteraCargando}
             style={ACCION}
           >
             <CalendarCheck size={16} /> Cerrar quincena

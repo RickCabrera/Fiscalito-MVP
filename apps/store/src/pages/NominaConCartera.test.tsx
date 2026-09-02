@@ -27,7 +27,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { hayLlavesDistintas } from '../components/nomina/llavesDelCierre';
 import type { EmpleadoCartera } from '../services/carteraApi';
 
@@ -53,6 +53,10 @@ function empleado(empleado_no: string, employee_no: string | null): EmpleadoCart
 
 const EN_CARTERA = {
   empleados: [] as EmpleadoCartera[],
+  cargando: false,
+  /** `true` = la cartera no conoce a este cliente (sólo existe en el backend). */
+  ausente: false,
+  periodicidad: '04',
 };
 
 function clienteDeCartera() {
@@ -63,7 +67,7 @@ function clienteDeCartera() {
     origen: 'sintetico',
     prima_riesgo: '0.0113065',
     clase_riesgo: 2,
-    clave_periodicidad: '04',
+    clave_periodicidad: EN_CARTERA.periodicidad,
     zona: 'general',
     periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' },
     empleados: EN_CARTERA.empleados,
@@ -75,10 +79,15 @@ vi.mock('../context/carteraStore', async () => {
   return {
     useCartera: () =>
       carteraDePrueba({
-        clientes: [clienteDeCartera()] as never,
+        clientes:
+          EN_CARTERA.cargando || EN_CARTERA.ausente ? [] : ([clienteDeCartera()] as never),
+        loading: EN_CARTERA.cargando,
         origen: 'firestore',
         soloLectura: false,
-        clientePorId: (id: string) => (id === CLIENTE ? (clienteDeCartera() as never) : null),
+        clientePorId: (id: string) =>
+          !EN_CARTERA.cargando && !EN_CARTERA.ausente && id === CLIENTE
+            ? (clienteDeCartera() as never)
+            : null,
       }),
   };
 });
@@ -91,6 +100,18 @@ vi.mock('../context/clienteActivoStore', () => ({
 }));
 
 const { default: NominaClientePage } = await import('./NominaClientePage');
+
+/** La pantalla con dos botones para navegar sin desmontar el árbol. */
+function ConNavegacion() {
+  const navegar = useNavigate();
+  return (
+    <>
+      <button onClick={() => navegar('/app/clientes/otro/nomina')}>ir a otro</button>
+      <button onClick={() => navegar(`/app/clientes/${CLIENTE}/nomina`)}>volver</button>
+      <NominaClientePage />
+    </>
+  );
+}
 
 const NOMINA_VACIA = {
   cliente: CLIENTE,
@@ -117,7 +138,7 @@ function stubApi() {
       cuerpo = {
         id: CLIENTE, nombre: 'Taller Nogal', giro: 'Giro de prueba', origen: 'sintetico',
         num_empleados: EN_CARTERA.empleados.length, prima_riesgo: '0.0113065',
-        clase_riesgo: 2, clave_periodicidad: '04', zona: 'general',
+        clase_riesgo: 2, clave_periodicidad: EN_CARTERA.periodicidad, zona: 'general',
         fecha_referencia: '2026-09-01',
         // La ficha del backend trae los números INTERNOS, que es lo que la hace
         // distinta de la cartera y lo que permite ver cuál de las dos viajó.
@@ -177,6 +198,9 @@ function cuerpoDe(llamadas: Array<{ url: string; init?: RequestInit }>, ruta: st
 
 beforeEach(() => {
   EN_CARTERA.empleados = [empleado('E-07', '7'), empleado('E-08', '8')];
+  EN_CARTERA.cargando = false;
+  EN_CARTERA.ausente = false;
+  EN_CARTERA.periodicidad = '04';
 });
 
 afterEach(cleanup);
@@ -317,5 +341,163 @@ describe('el error de carga se descarta; el de las operaciones no', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
 
     expect(await screen.findByText(/El periodo está invertido/)).toBeTruthy();
+  });
+});
+
+
+describe('el cierre NO se dispara mientras la cartera carga', () => {
+  /**
+   * El gate estaba en el badge del paso, y `PasoNomina` es presentacional: pinta
+   * "bloqueado" en gris y renderiza `{children}` sin condición. El botón quedaba
+   * vivo, con un letrero abajo que no impedía nada.
+   *
+   * Cerrar en esa ventana usa las llaves del CATÁLOGO en vez de las del aparato
+   * —`deLaCartera` es `null` mientras `cartera.loading`—, así que un empleado
+   * con número propio no encuentra ni una checada. Y cuando la cartera llega, la
+   * plantilla vuelve a cuadrar por `empleado_no` y **nada levanta**: sale un
+   * recibo con faltas de más, en silencio.
+   */
+  it('el botón está deshabilitado', async () => {
+    EN_CARTERA.cargando = true;
+    stubApi();
+    montar();
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toHaveProperty('disabled', true);
+  });
+
+  it('y aunque se dispare el handler, no llama a cerrar-periodo', async () => {
+    // `disabled` es una propiedad del DOM, no una garantía del handler: la
+    // guarda de verdad vive en el hook. Sin ella, este clic cierra con las
+    // llaves equivocadas.
+    EN_CARTERA.cargando = true;
+    const llamadas = stubApi();
+    montar();
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(llamadas.some((l) => l.url.includes('cerrar-periodo'))).toBe(false);
+  });
+
+  it('en cuanto la cartera llega, el cierre se habilita y usa las llaves del aparato', async () => {
+    // La otra mitad: la guarda no puede dejar el botón muerto para siempre.
+    stubApi();
+    montar();
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toHaveProperty('disabled', false);
+  });
+});
+
+
+describe('las dos rebabas de la derivación del error', () => {
+  /**
+   * Las dos sobrevivían a la mutación: se reportaron cerradas y no había con qué
+   * comprobarlo.
+   */
+  it('mientras la cartera carga NO se pinta el 404 de la ficha', async () => {
+    // Sin `|| cartera.loading`, una recarga directa sobre un cliente propio
+    // pintaba el 404 en rojo hasta 2500 ms y luego lo quitaba sola: un error
+    // que aparece y desaparece es peor que ninguno.
+    EN_CARTERA.cargando = true;
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('despacho/clientes')) {
+        return Promise.resolve({
+          ok: false, status: 404,
+          json: () => Promise.resolve({ exito: false, error: 'El cliente no está en la cartera de la demo.' }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ eventos: [] }) });
+    }));
+
+    montar();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/no está en la cartera de la demo/)).toBeNull();
+  });
+
+  it('el error de carga se limpia al volver a un cliente que ya carga bien', async () => {
+    // A → B → A **sin desmontar**, que es el caso real: el estado sobrevive a la
+    // navegación y `errorCargaDe` sigue guardado con el id de A. Si nadie lo
+    // borra al cargar bien, al volver se pinta el error viejo aunque la ficha
+    // llegó. Desmontar y volver a montar NO lo prueba: ahí el estado nace
+    // limpio y la mutación sobrevive — lo comprobé.
+    let fallaA = true;
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('despacho/clientes')) {
+        const id = url.split('/').pop() ?? '';
+        if (id === CLIENTE && fallaA) {
+          fallaA = false;
+          return Promise.resolve({
+            ok: false, status: 500,
+            json: () => Promise.resolve({ exito: false, error: 'La API se estaba reiniciando.' }),
+          });
+        }
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({
+            id, nombre: `Cliente ${id}`, giro: 'G', origen: 'sintetico',
+            num_empleados: 0, prima_riesgo: '0.0113065', clase_riesgo: 2,
+            clave_periodicidad: '04', zona: 'general', fecha_referencia: '2026-09-01',
+            empleados: [], periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ eventos: [] }) });
+    }));
+
+    // La cartera NO conoce a estos clientes, así que el error de carga sí se
+    // pinta: es lo que hace visible la rebaba.
+    EN_CARTERA.ausente = true;
+    render(
+      <MemoryRouter initialEntries={[`/app/clientes/${CLIENTE}/nomina`]}>
+        <Routes>
+          <Route path="/app/clientes/:id/nomina" element={<ConNavegacion />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // A falla.
+    expect(await screen.findByText(/se estaba reiniciando/)).toBeTruthy();
+    // A → B → A, sin desmontar.
+    fireEvent.click(screen.getByRole('button', { name: 'ir a otro' }));
+    await waitFor(() => expect(screen.queryByText(/se estaba reiniciando/)).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'volver' }));
+
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    expect(screen.queryByText(/se estaba reiniciando/)).toBeNull();
+  });
+});
+
+
+describe('una periodicidad que no cuadra con el periodo no se calcula', () => {
+  /**
+   * Nadie más lo valida: `periodo.py` sólo comprueba que las incidencias midan
+   * lo mismo entre sí. Un cliente Mensual con una base de 15-16 días recibiría
+   * la tarifa mensual del Art. 96 — **ISR subestimado, con recibo creíble**.
+   * El alta ya sólo ofrece quincenal, pero un cliente guardado antes con otra
+   * clave sigue vivo y nada lo detectaba.
+   */
+  it('un cliente Mensual con una quincena no calcula, y dice por qué', async () => {
+    EN_CARTERA.periodicidad = '05';
+    const llamadas = stubApi();
+    montar();
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    await screen.findByText('PERSONA E-07');
+    fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
+
+    expect(await screen.findByText(/aplicaría la tarifa de ISR de otra periodicidad/)).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(llamadas.some((l) => l.url.includes('calcular-periodo'))).toBe(false);
+  });
+
+  it('un cliente quincenal calcula normal', async () => {
+    const llamadas = stubApi();
+    montar();
+    await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    await screen.findByText('PERSONA E-07');
+    fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
+
+    await waitFor(() => expect(llamadas.some((l) => l.url.includes('calcular-periodo'))).toBe(true));
   });
 });

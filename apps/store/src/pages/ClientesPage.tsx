@@ -97,6 +97,13 @@ export default function ClientesPage() {
   // del cliente activo dejaba `cartera.error` sin renderizar en ningún lado y
   // hacía que un fallo del proveedor se viera como "la cartera está vacía —
   // revisa que la API esté corriendo", un diagnóstico equivocado.
+  //
+  // **`cartera.error` es hoy casi inalcanzable, y se dice aquí en vez de que
+  // alguien lo descubra leyendo.** `CarteraContext` sólo lo escribe en el
+  // `.catch` de `cargarCartera`, y `cargarCartera` tiene garantizado que no
+  // rechaza —lo dice su docstring y lo fija un test—. La señal REAL de que algo
+  // salió mal es `motivoFallback`, que se pinta arriba. Este bloque queda como
+  // red por si el proveedor gana algún día un camino que sí lance.
   const error = cartera.error;
   const recargar = cartera.recargar;
   const [modalAbierto, setModalAbierto] = useState(false);

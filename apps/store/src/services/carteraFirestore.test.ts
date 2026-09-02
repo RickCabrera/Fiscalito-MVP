@@ -139,6 +139,42 @@ describe('cargarCartera', () => {
     vi.useRealTimers();
   });
 
+  it('si el CATÁLOGO se cuelga, tampoco cuelga la carga', async () => {
+    // El respaldo también va cotado. Sin cota, con Firestore vacío y la API
+    // colgada, `cargarCartera` no resolvía nunca — y el respaldo es justo el
+    // camino al que se cae cuando algo ya salió mal.
+    vi.useFakeTimers();
+    getDocs.mockResolvedValue({ docs: [] });
+    obtenerClientes.mockReturnValue(new Promise(() => {}));
+
+    const promesa = cargarCartera('uid-1');
+    await vi.advanceTimersByTimeAsync(9000);
+    const r = await promesa;
+
+    expect(r.clientes).toEqual([]);
+    expect(r.motivoFallback).toContain('tampoco respondió');
+    vi.useRealTimers();
+  });
+
+  it('el respaldo aguanta un backend LENTO, no sólo uno colgado', async () => {
+    // Siete requests contra un arranque en frío pueden pasar de 2500 ms. Con el
+    // tope de Firestore, un backend lento pero vivo devolvía la pantalla vacía
+    // que este archivo existe para evitar.
+    vi.useFakeTimers();
+    getDocs.mockResolvedValue({ docs: [] });
+    obtenerClientes.mockReturnValue(
+      new Promise((resolver) => setTimeout(() => resolver([RESUMEN]), 4000)),
+    );
+
+    const promesa = cargarCartera('uid-1');
+    await vi.advanceTimersByTimeAsync(9000);
+    const r = await promesa;
+
+    expect(r.origen).toBe('backend');
+    expect(r.clientes).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
   it('nunca lanza, pase lo que pase en Firestore', async () => {
     getDocs.mockRejectedValue(new Error('lo que sea'));
     await expect(cargarCartera('uid-1')).resolves.toBeDefined();

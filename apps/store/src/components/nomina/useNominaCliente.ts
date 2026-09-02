@@ -272,8 +272,49 @@ export function useNominaCliente(clienteId: string) {
         }
       : resultado;
 
+  /**
+   * Un cliente cuya periodicidad no cuadra con la duración del periodo.
+   *
+   * **Nadie más lo valida.** `periodo.py` sólo comprueba que todas las
+   * incidencias midan lo mismo, no que el periodo case con la clave. Un cliente
+   * marcado Mensual (05) recibiría la tarifa mensual del Art. 96 sobre una base
+   * de 15-16 días: **ISR subestimado, con recibo creíble y sin un solo error**.
+   *
+   * El alta ya sólo ofrece quincenal, pero eso no alcanza: un cliente guardado
+   * antes con otra clave —o capturado durante el desarrollo de esta rama— sigue
+   * vivo en Firestore y nada lo detecta. Aquí se detiene el cálculo en vez de
+   * emitirlo mal.
+   */
+  const dias = cliente
+    ? Math.round(
+        (new Date(`${fin}T00:00:00`).getTime() - new Date(`${inicio}T00:00:00`).getTime()) /
+          86_400_000,
+      ) + 1
+    : 0;
+  const periodicidadNoCuadra =
+    Boolean(cliente) &&
+    // Sólo las claves que TIENEN tarifa periódica propia y por tanto se
+    // aplicarían mal en silencio: diaria, semanal y mensual
+    // (`tablas_isr_periodicas.py`). Las demás —catorcenal, bimestral, unidad de
+    // obra, comisión…— no tienen tarifa y el motor las rechaza con su propio
+    // mensaje, que es mejor que uno inventado aquí.
+    ['01', '02', '05'].includes(cliente!.clave_periodicidad) &&
+    dias >= 14 &&
+    dias <= 17;
+
   const cerrar = async () => {
     if (!cliente) return;
+    // **La guarda va AQUÍ, no en el badge del paso.** `PasoNomina` es
+    // presentacional: pinta `bloqueado` en gris y renderiza `{children}` sin
+    // condición, así que el botón seguía vivo. Y `disabled` es una propiedad
+    // del DOM, no una garantía del handler.
+    //
+    // Cerrar mientras la cartera carga usaría las llaves del CATÁLOGO en vez de
+    // las del aparato: cero checadas encontradas para quien tenga número
+    // propio, y cuando la cartera llegue la plantilla vuelve a cuadrar por
+    // `empleado_no`, así que nada levanta — recibo con faltas de más y en
+    // silencio. Es el bug de G-02 entrando por la puerta del tiempo.
+    if (cartera.loading) return;
     const id = cliente.id;
     setConfirmarPara(null);
     setOcupado(true);
@@ -301,6 +342,17 @@ export function useNominaCliente(clienteId: string) {
 
   const calcular = async () => {
     if (!cliente || !cierre) return;
+    if (periodicidadNoCuadra) {
+      setErrorDe({
+        id: cliente.id,
+        valor:
+          `Este cliente está registrado con periodicidad "${cliente.clave_periodicidad}" y el ` +
+          `periodo mide ${dias} días, que es una quincena. Calcularlo aplicaría la tarifa de ` +
+          'ISR de otra periodicidad y el resultado sería incorrecto sin avisar. ' +
+          'Corrige la periodicidad del cliente antes de calcular.',
+      });
+      return;
+    }
     const id = cliente.id;
     setOcupado(true);
     setErrorDe(null);
@@ -350,7 +402,7 @@ export function useNominaCliente(clienteId: string) {
     // los días no laborables, así que la nómina se ve completa y creíble con la
     // ausencia escondida. Mejor preguntar que enseñar eso enfrente de alguien.
     pedirCierre: () => {
-      if (!cliente) return;
+      if (!cliente || cartera.loading) return;
       if (sinChecadasEnElPeriodo) setConfirmarPara(cliente.id);
       else void cerrar();
     },
