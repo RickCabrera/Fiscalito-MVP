@@ -53,6 +53,28 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
   crudos: jerarquía tipográfica, espaciado, estados de carga y vacío, tabla de recibos
   legible. *Listo cuando:* se proyecta en pantalla grande sin verse a medio hacer.
 
+**Segunda tanda (2026-09-02, MODO RÁPIDO autorizado por Ricardo):** E-06 → E-07 → E-05, las tres
+en una rama, un plan, un revisor de plan, un revisor de entregable y un PR. El motor de E-07
+llevó **revisor aparte**, que es la excepción que Ricardo dejó en pie.
+
+- [ ] **E-05 · Onboarding y perfil del despacho** — cuando el tipo es "Despacho / Contador", el
+  wizard pide SOLO: nombre del contador, nombre del despacho y teléfono. Nada de RFC, régimen
+  fiscal, actividad económica ni código postal — esos son del contribuyente y a un despacho no le
+  calculamos su declaración. En Perfil, si el tipo es despacho, no mostrar el selector de los
+  otros 5 tipos de cuenta. *Listo cuando:* creo cuenta de despacho y sólo me piden esos tres
+  datos, y en Perfil no hay dónde cambiarme de tipo.
+- [ ] **E-06 · La pantalla de nómina se explica sola** — convertir el flujo en 4 pasos numerados y
+  visibles ("1. Checadas recibidas · 2. Cerrar quincena · 3. Calcular nómina · 4. Exportar"), cada
+  uno con una línea de qué hace. Los pasos 2-4 se habilitan en orden. Además: en la nómina de un
+  cliente, el sidebar y el título dejan claro en qué cliente estoy, y **"Nómina" queda resaltado,
+  no "Clientes"**. *Listo cuando:* se proyecta y se entiende el orden sin que nadie lo explique.
+- [ ] **E-07 · Calendario patronal** — "Calendario" mostraba declaraciones ISR+IVA del
+  contribuyente, que no aplican a un despacho de nómina. Se conecta al calendario laboral de
+  F1-06: obligaciones patronales por cliente (entero mensual IMSS día 17, bimestral
+  RCV/Infonavit, avisos de variables), agrupadas por fecha con el nombre del cliente, con
+  endpoint nuevo. *Listo cuando:* el contador abre Calendario y ve vencimientos patronales de sus
+  clientes, no sus propias declaraciones.
+
 ## S — Saneamiento (deuda que estorba al bucle)
 
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
@@ -263,10 +285,30 @@ cliente**, **quincenal**, sin IDSE, sin `apps/despacho`.
   F1-05 no lo re-litiga.
 - [ ] **F1-06 · `calendario_laboral.py`** — obligaciones patronales (pago mensual día
   17, bimestral, avisos de variables) fusionables con el calendario SAT existente.
+  **PARCIALMENTE ENTREGADA POR E-07, y por eso NO se marca.** Ya existen
+  `app/nomina_engine/calendario_laboral.py` (catálogo de obligaciones) y `plazos_patronales.py`
+  (las cinco reglas de plazo), con las 12 fechas de 2026 contrastadas contra la tabla publicada
+  del doc 25 §3. **Lo que falta y por qué:** la parte de "fusionables con el calendario SAT"
+  choca de frente con la advertencia de `dias_habiles.py:8-14` —el del SAT corre por sexto dígito
+  del RFC y el del IMSS por viernes o inhábil, y el doc 25 §4 dice que juntarlos sin distinguir
+  "es un bug esperando"—. E-07 los mantuvo separados y etiquetó cada obligación con su
+  `regimen_de_plazo`. **Decisión para Ricardo:** si "fusionable" significaba una sola vista, ya
+  está; si significaba un solo generador, hay que reabrir la advertencia. Faltan además: ISN
+  (sin fuente estatal en el repo, §D24) y el ajuste por sexto dígito (el modelo de cliente no
+  guarda RFC).
+  **Defecto preexistente detectado y NO arreglado aquí:** `fiscal_engine/calendario.py`
+  `_fecha_limite_dia_17()` con `dias_extra=0` devuelve el día 17 crudo, domingos incluidos,
+  porque sólo suma días hábiles hacia adelante y nunca corrige el día de partida. Afecta al
+  calendario del CONTRIBUYENTE. Fuera del alcance de E-07; que lo recoja F1-07 o S-03.
 - [ ] **F1-07 · Routes + schemas nómina** — `app/routes/nomina/` y
   `app/schemas/nomina/` (sbc, cuotas, recibo, calendario), errores con
   `FiscalAgentError`, explicación LLM con fallback. *Listo cuando:* `docs/api-contract.md`
   actualizado en el mismo PR.
+  **OJO — E-07 se comió su parte de "calendario":** ya existen `GET /api/v1/despacho/calendario`
+  y `app/schemas/calendario_laboral.py`, documentados en el contrato. **F1-07 no debe crear un
+  segundo endpoint de calendario**; si acaso, mover el existente a `routes/nomina/` cuando esa
+  carpeta exista. La cola decía S-03 → F1-07 → F1-08 → F1-06 y esta corrida se saltó ese orden
+  por instrucción directa de Ricardo (demo del 2026-09-02), no por la regla de la cola.
 - [ ] **F1-08 · Tools de agente + `POST /agente/nomina`** — extender `agent_tools.py`
   (calcular_sbc, calcular_cuotas, generar_recibo) con RequestContext.
 
