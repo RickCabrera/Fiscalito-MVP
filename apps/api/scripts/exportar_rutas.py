@@ -47,26 +47,49 @@ def rutas_publicadas() -> list[dict[str, Any]]:
     """
     Las rutas de la app real, ordenadas y estables.
 
-    Se excluyen las que FastAPI monta por su cuenta (`/docs`, `/openapi.json`,
-    `/redoc`…): no son contrato con el front y cambian con la versión del
-    framework, lo que haría fallar el test por una razón que no es la nuestra.
+    SE LEE DEL OPENAPI, NO DE `app.routes`
+    --------------------------------------
+    La primera versión recorría `app.routes` y leía `route.methods`. Pasaba en
+    local (starlette 1.0) y devolvía **cero rutas** en CI (starlette 1.6), donde
+    ese atributo dejó de ser legible como se esperaba: el filtro `if not metodos`
+    descartaba las 18 en silencio y el test acusaba "contrato desactualizado"
+    cuando lo que estaba roto era el exportador. Un exportador que se cae hacia
+    la lista vacía es la peor forma de fallar, porque parece un diff.
+
+    `app.openapi()` es contrato público de FastAPI, estable entre versiones, y
+    además es **exactamente lo que el front consume**. De paso resuelve solo lo
+    que antes era una lista negra: `/docs`, `/openapi.json` y `/redoc` no
+    aparecen en el esquema.
 
     Los métodos se agrupan **por path**, una entrada por ruta. Emitir una
     entrada por combinación (path, método) hacía que
     `/api/v1/asistencia/eventos` apareciera dos veces (GET y POST), y el lado
     del front busca por path y se queda con la primera: un POST legítimo a esa
     ruta habría fallado acusando un método que el backend sí acepta.
+
+    Raises:
+        RuntimeError: si el esquema sale vacío. Es el modo de falla de arriba, y
+            reventar es lo correcto: escribir `{"rutas": []}` dejaría el contrato
+            en un estado que se lee como "la API no publica nada".
     """
-    fuera = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+    esquema = app.openapi()
     por_path: dict[str, set[str]] = {}
-    for r in app.routes:
-        path = getattr(r, "path", None)
-        metodos = getattr(r, "methods", None)
-        if not path or not metodos or path in fuera:
-            continue
-        visibles = set(metodos) - METODOS_IGNORADOS
+    for path, operaciones in esquema.get("paths", {}).items():
+        visibles = {
+            metodo.upper()
+            for metodo in operaciones
+            if metodo.upper() not in METODOS_IGNORADOS
+        }
         if visibles:
-            por_path.setdefault(path, set()).update(visibles)
+            por_path[path] = visibles
+
+    if not por_path:
+        raise RuntimeError(
+            "El OpenAPI de app.main:app salió sin rutas. No es que la API no "
+            "publique nada: es que este exportador dejó de entender el esquema. "
+            "Arréglalo aquí en vez de regenerar el contrato en vacío."
+        )
+
     return [
         {"path": path, "metodos": sorted(por_path[path])} for path in sorted(por_path)
     ]
