@@ -171,6 +171,41 @@ está declarado *stateless* y no tiene `firebase-admin`: la única persistencia 
 otro almacén en RAM, que haría literalmente falso el criterio de G-01 después de cualquier
 reinicio — o sea, a media demo.
 
+## R — Reparaciones para que la app sea usable (2026-09-02, MODO RÁPIDO)
+
+Pedidas por Ricardo el 2026-09-02, **no venían del backlog**, en orden estricto de lo más
+vital a lo menos. Régimen de la corrida: revisor 1× al plan y 1× al cierre, más revisor de
+motor obligatorio en lo que toque cálculo (R-03, R-06 y R-07). Tests por área durante la
+corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.**
+
+- [ ] **R-01 · Desbloquear Firestore** — bloque `firestore` en `apps/store/firebase.json`,
+  revisión de `firestore.rules`, despliegue, y verificación en la app corriendo.
+  *Listo cuando:* creo un cliente y doy de alta un empleado desde la UI y sobrevive a
+  recargar la página.
+- [ ] **R-02 · Siembra automática** — un comando que levante la API y siembre los tres
+  clientes del checador. El camino manual se queda como está. *Listo cuando:* un solo
+  comando levanta API + datos de checador.
+- [ ] **R-03 · Campo NSS en el modal de empleado** — recortado en G-01, se restaura.
+  Validación de 11 dígitos + dígito verificador. El NSS sólo persiste bajo el uid dueño,
+  jamás en el catálogo demo. *Listo cuando:* alta con NSS válido guarda, inválido bloquea
+  con mensaje claro.
+- [ ] **R-04 · Pantalla de dispositivos biométricos** — recortada en G-02, se restaura.
+  Listar, agregar/editar (nombre, IP, serial) y enrolamiento de empleados por dispositivo
+  usando la vinculación por `employeeNo` de G-02. *Listo cuando:* doy de alta un
+  dispositivo y veo qué empleados están enrolados.
+- [ ] **R-05 · Empleados y Dispositivos en la navegación lateral** — entradas propias junto
+  a Clientes/Nómina/Calendario/Perfil, operando sobre el cliente activo. *Listo cuando:*
+  llego a empleados y dispositivos del cliente activo en un clic.
+- [ ] **R-06 · Sacar el mock del flujo de producción** — la pestaña Plantilla tras flag de
+  desarrollo (sin borrar fixtures ni sus tests), los clientes de demostración sólo en
+  cuentas de desarrollo, y el catálogo de sólo-lectura deja de hacerse pasar por la
+  cartera. *Listo cuando:* una cuenta nueva ve una app vacía y funcional, sin datos que no
+  sean suyos.
+- [ ] **R-07 · Backend dueño del dato** — `firebase-admin` en `apps/api`; el CRUD de
+  clientes y empleados pasa a endpoints del backend. Decisión tomada por Ricardo: el
+  servicio deja de ser stateless. *Listo cuando:* alta/edición/baja de empleado pasa por el
+  backend, sobrevive reinicio de la API, y el cálculo de nómina lee la misma fuente.
+
 ## S — Saneamiento (deuda que estorba al bucle)
 
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el

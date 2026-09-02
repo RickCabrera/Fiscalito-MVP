@@ -212,7 +212,40 @@ la empresa y es suyo. Dejarlo escrito antes de la demo, no después.
    **El orden importa y no es negociable:** el chequeo y el relanzamiento van
    *antes* de sembrar, porque reiniciar después borra las 194 checadas (punto 2).
 
-### Los comandos
+### El camino de un comando (R-02)
+
+Desde `apps/api`, esto levanta la API **y** le siembra los tres clientes:
+
+```bash
+.venv/Scripts/python.exe scripts/levantar_demo.py
+#    -> "API viva en http://127.0.0.1:8000"
+#    -> "cliente demo | recibidos=194 duplicados=0"
+#    -> "cliente cafeteria | recibidos=86 duplicados=0"
+#    -> "cliente taller | recibidos=260 duplicados=0"
+#    -> "Listo. La API sigue corriendo; Ctrl+C para parar."
+```
+
+Son los **mismos** 194 / 86 / 260 del camino manual de abajo, verificados
+end-to-end el 2026-09-02. Deja la API corriendo en primer plano; Ctrl+C la para.
+
+Dos cosas que este camino resuelve solo, y por eso conviene preferirlo:
+
+- **El paso 0 no aplica.** El modo de falla 4 —un `uvicorn` de antes del último
+  merge sirviendo rutas viejas— es imposible aquí: el proceso nace del commit
+  que estás corriendo.
+- **El orden correcto está forzado.** Levanta primero y siembra después, que es
+  lo que el almacén en memoria exige y lo que a mano se olvida.
+
+Sigue **sin** `--reload`, por la misma razón de siempre (punto 2 de arriba).
+Si el puerto está ocupado, lo dice en 10 segundos en vez de colgarse:
+`--puerto 8899` para levantar otra al lado. `--sin-sembrar` equivale al uvicorn
+pelado. Después de esto, salta al **paso 3** (el front).
+
+### Los comandos, a mano
+
+Sigue funcionando igual y no ha cambiado. Úsalo si necesitas sembrar un periodo
+distinto, un solo cliente, o el modo `--en-vivo`.
+
 
 ```bash
 # 0. PRE-FLIGHT: ¿la API que responde conoce las rutas de este commit?
