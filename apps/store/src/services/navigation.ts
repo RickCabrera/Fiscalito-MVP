@@ -65,6 +65,26 @@ export function rutaInicial(tipo: ContributorType | null): string {
 }
 
 // ────────────────────────────────────────────────────────────
+// Alcance de cliente (E-02)
+// ────────────────────────────────────────────────────────────
+
+/** Rutas cuyo contenido depende del cliente activo del despacho. */
+const RUTAS_CON_CLIENTE = ['/app/clientes', '/app/nomina-demo'];
+
+/**
+ * Si la ruta habla de UN cliente. Decide dónde se muestra el selector de
+ * cliente activo.
+ *
+ * Calendario y Perfil quedan fuera a propósito: son del DESPACHO. §D21 fija que
+ * el calendario de una cuenta de despacho muestra sus obligaciones propias y
+ * nada patronal, así que un selector de cliente ahí le mentiría al contador
+ * sobre lo que está viendo.
+ */
+export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
+  return RUTAS_CON_CLIENTE.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+}
+
+// ────────────────────────────────────────────────────────────
 // Tabs del servicio Fiscalito
 // ────────────────────────────────────────────────────────────
 

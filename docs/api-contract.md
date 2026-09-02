@@ -1,7 +1,7 @@
 # Contrato de la API — Fiscal Agent
 
-> **PARCIAL.** Cubre únicamente los endpoints de la **épica D**: los de **asistencia**
-> que agregó D-04 y el de **nómina** que agregó D-06.
+> **PARCIAL.** Cubre los endpoints de la **épica D** —los de **asistencia** que agregó D-04 y
+> el de **nómina** que agregó D-06— y los de **despacho** que agregó E-02.
 > **S-03 lo completa** con los 11 endpoints existentes exportados del OpenAPI de FastAPI y
 > reemplaza por una referencia a este archivo las secciones duplicadas de
 > `apps/api/CLAUDE.md` y `apps/store/CLAUDE.md`. Ese trabajo **no** está hecho: S-03 sigue
@@ -102,6 +102,109 @@ Respuesta: `{exito, cliente, periodo, incidencias[], empleados_desconocidos[]}`.
 **Limitaciones conocidas** (F1-09): toda ausencia cuenta como falta —no se distinguen
 vacaciones, permisos ni incapacidades, que legalmente no son ausentismo injustificado— y los
 turnos nocturnos caen en dos días calendario.
+
+---
+
+## Despacho (épica E — cartera de clientes)
+
+> ⚠️ **DEMO — sin autenticación, datos estáticos, no desplegar.**
+>
+> Mismo estatus que la épica D. Es un **catálogo estático de tres clientes**, no una base de
+> datos: el alta de clientes y la persistencia son F1-09. La auth del resto de `/api/v1` es
+> S-00b.
+
+Los tres clientes: `demo` (el caso real anonimizado de S-04, con sus 9 empleados, reusando
+`PLANTILLA_DEMO`), `cafeteria` (4 empleados) y `taller` (12 empleados), estos dos **sintéticos
+completos** — personas, salarios y fechas inventados.
+
+### `GET /api/v1/despacho/clientes`
+
+Cartera del despacho, para la lista y el selector de cliente activo.
+
+```json
+{
+  "exito": true,
+  "clientes": [
+    {
+      "id": "demo",
+      "nombre": "Servicios Administrativos del Golfo",
+      "giro": "Servicios administrativos",
+      "origen": "fixtures-s04",
+      "num_empleados": 9,
+      "prima_riesgo": "0.0054355",
+      "clase_riesgo": null,
+      "clave_periodicidad": "04",
+      "zona": "general"
+    }
+  ]
+}
+```
+
+- `origen` — `fixtures-s04` (caso real anonimizado) o `sintetico`. La pantalla **distingue los
+  dos**: presentar datos inventados con el mismo peso que los reales sería engañoso.
+- `prima_riesgo` — del caso real es la **autodeterminada** por ese patrón (Art. 74 LSS); de los
+  sintéticos es la **prima media de su clase** (Art. 73 LSS, vía `prima_media_clase()`). Nunca
+  es tasa de ley.
+- `clase_riesgo` — `null` para el caso real. Para los sintéticos es un **SUPUESTO**: la
+  asignación giro → clase sale del catálogo del RACERF, que no está en el repo. Ver
+  `docs/decisiones-nomina.md` **D22**.
+- `num_empleados` es derivado de la plantilla, nunca un literal.
+
+### `GET /api/v1/despacho/clientes/{cliente_id}`
+
+La ficha: el resumen de arriba más `empleados`, `periodo_sugerido` y `fecha_referencia`.
+
+```json
+{
+  "exito": true,
+  "id": "cafeteria",
+  "empleados": [
+    {
+      "empleado_no": "C-01",
+      "nombre": "MARISOL ABREGO QUINTERO",
+      "puesto": "Encargada de tienda",
+      "salario_diario": "520.00",
+      "salario_diario_integrado": "548.50",
+      "zona": "general",
+      "fecha_alta": "2021-02-01",
+      "antiguedad_anios": 5,
+      "factor": "1.0548",
+      "factor_implicito": false
+    }
+  ],
+  "periodo_sugerido": { "inicio": "2026-08-16", "fin": "2026-08-31", "fecha_pago": "2026-08-31" },
+  "fecha_referencia": "2026-09-01"
+}
+```
+
+- **Los cinco primeros campos del empleado son un superconjunto compatible de
+  `EmpleadoNominaSchema`**: `empleado_no`, `nombre`, `salario_diario`,
+  `salario_diario_integrado` y `zona` se llaman y se tipan igual, para que la pantalla los mande
+  tal cual a `POST /nomina/calcular-periodo` sin remapear. `zona` va **por empleado** porque el
+  motor la lee por empleado para el piso del SBC.
+- `fecha_alta` y `antiguedad_anios` son `null` para el caso real: el CFDI timbrado no trae la
+  fecha de alta y **no se inventa**. §D9 documenta que ahí el SBC no se deriva de la antigüedad.
+- `factor_implicito: true` ⇒ el factor es un **cociente observado** (SBC ÷ salario diario), que
+  puede incluir prestaciones superiores que el CFDI no desglosa: **no es** el factor de ley del
+  Art. 27 LSS y no es comparable con el mínimo de una antigüedad.
+- `fecha_referencia` — la fecha FIJA contra la que se midieron antigüedad, factor y clamp de los
+  clientes sintéticos. **No es `hoy`**: si lo fuera, el SBC subiría solo al cruzar un
+  aniversario (Art. 76 LFT) y las cuotas del cliente de demostración cambiarían sin que nadie
+  tocara código.
+- `periodo_sugerido` sale de la **misma** `quincena()` que usan el simulador y
+  `GET /nomina/demo/plantilla`. Existe para que la pantalla no derive el periodo de las fechas
+  de las checadas: eso da 15 días donde la quincena tiene 16 y mueve cuotas e ISR.
+
+**404 — cliente desconocido.** Usa el sobre de dominio, **no** el `{"detail": ...}` de
+`HTTPException`, para que el front tenga un solo camino de lectura de errores:
+
+```json
+{ "exito": false, "error": "El cliente 'x' no está en la cartera de la demo. Clientes disponibles: demo, cafeteria, taller." }
+```
+
+> Nota de inconsistencia conocida: `GET /nomina/demo/plantilla` responde **422** (no 404) para
+> un cliente que no sea `demo`, porque ahí es una validación de dominio. No se unificó: tocar
+> `nomina.py` queda fuera del alcance de E-02.
 
 ---
 
