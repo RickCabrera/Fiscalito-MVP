@@ -493,3 +493,29 @@ por periodo y en memoria.
 **Pregunta para la contadora:** ¿sobre qué ventana se cuenta el ausentismo, y quién lleva el
 acumulado cuando la nómina es quincenal? Y **para F1-09**: si la ventana es mensual, la
 persistencia tiene que permitir consultarla.
+
+---
+
+## D21 · Qué muestra "Calendario" en una cuenta de despacho — PROVISIONAL
+
+**Contexto (E-01).** El sidebar del contador lleva cuatro entradas, y una es **Calendario**.
+La pantalla detrás es el tab de calendario de Fiscalito, que llama a
+`POST /api/v1/calendario`. Ese endpoint valida `contributor_type` contra un set de cinco
+(`app/routes/calendario.py:19`) y responde **400** con cualquier otro valor; `contador` no
+está en el set, y el front lo mandaba tal cual. El sidebar se veía correcto y el primer clic
+pintaba un banner de error.
+
+**Decisión provisional, la conservadora:** "Calendario" muestra las **obligaciones propias del
+despacho**. Un despacho, con los dos regímenes que E-01 le permite (612 y 626), es persona
+física, así que sus obligaciones son las de un **independiente** con ese régimen. El mapeo
+vive en el front (`tipoParaCalendario` en `services/fiscalAgentApi.ts`), con test, y **no toca
+el backend ni `docs/api-contract.md`**.
+
+**La alternativa que NO se implementó**, y por la que hay que preguntar antes de planear
+E-02/E-03: que "Calendario" signifique el **calendario patronal de sus clientes** — pago
+mensual del día 17, bimestral, avisos de modificación de variables. Eso es **F1-06
+(`calendario_laboral.py`), que todavía no existe**. Si la respuesta es ésa, el enlace del
+sidebar cambia de destino y la tarea que lo habilita es F1-06, no una de la Épica E.
+
+**Que quede claro para quien planee E-02 y E-03:** hoy "Calendario" NO significa nada
+patronal. No se puede asumir que ya cubre las obligaciones IMSS de los clientes.

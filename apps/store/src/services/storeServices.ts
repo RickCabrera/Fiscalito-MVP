@@ -24,7 +24,7 @@ export const SERVICES: StoreService[] = [
     icon: '⚖',
     status: 'active',
     category: 'fiscal',
-    appliesTo: ['asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme'],
+    appliesTo: ['contador', 'asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme'],
     features: [
       'Pre-declaracion mensual, bimestral y anual',
       'Parseo automatico de XML CFDI',

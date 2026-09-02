@@ -13,10 +13,11 @@ export default function StepTipo({ tipo, setTipo }: StepTipoProps) {
   return (
     <div>
       <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>
-        ¿Que tipo de contribuyente eres?
+        ¿Que tipo de cuenta es?
       </h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 32 }}>
         Esto nos permite mostrarte solo los servicios y obligaciones que aplican a tu situacion.
+        Si llevas la contabilidad de varios clientes, elige Despacho / Contador.
       </p>
 
       <div style={{ display: 'grid', gap: 12 }}>

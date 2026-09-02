@@ -1,5 +1,7 @@
 /** Servicio para comunicación con el Fiscal Agent API */
 
+import type { ContributorType } from './contributorProfiles';
+
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
 
 // ── Interfaces de request (coinciden con OpenAPI schemas) ──
@@ -15,6 +17,55 @@ export interface PerfilContribuyente {
   retenedor_iva?: boolean;
   fecha_inicio_actividades?: string | null;
   contributor_type?: 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme' | null;
+}
+
+// ── Frontera de tipos front → API ──────────────────────────────────────────
+//
+// `PerfilContribuyente.contributor_type` espeja a mano el enum de Python
+// (`app/schemas/fiscal.py:49`). NO se ensancha: si se pusiera `string`, agregar
+// un tipo nuevo en el front dejaria de romper el build y pasaria a romperse en
+// vivo con un 422 de Pydantic. Estas dos funciones son el unico paso permitido
+// de `ContributorType` (front) a lo que el backend acepta.
+
+/** Los 5 tipos que el backend conoce. */
+export type ApiContributorType = NonNullable<PerfilContribuyente['contributor_type']>;
+
+/** Mapa exhaustivo a proposito: un tipo nuevo en `ContributorType` rompe el
+ *  build aqui y obliga a decidir que se le manda al backend. */
+const TIPO_API: Record<ContributorType, ApiContributorType | null> = {
+  // Un despacho NO es el sujeto del calculo, sus clientes lo son: se omite.
+  contador: null,
+  asalariado: 'asalariado',
+  independiente: 'independiente',
+  arrendamiento: 'arrendamiento',
+  plataformas: 'plataformas',
+  pyme: 'pyme',
+};
+
+/** Tipo de contribuyente tal como viaja en los requests de calculo. */
+export function tipoParaApi(tipo: ContributorType | null): ApiContributorType | null {
+  return tipo ? TIPO_API[tipo] : null;
+}
+
+/** `/calendario` exige un tipo concreto (400 si no esta en su set), a diferencia
+ *  de los calculos, donde el campo es opcional. El calendario que ve un despacho
+ *  es el de SUS PROPIAS obligaciones como persona fisica con regimen 612 o 626,
+ *  o sea las de un independiente.
+ *
+ *  DECISION PROVISIONAL (E-01, ver docs/decisiones-nomina.md D21): si lo que se
+ *  quiere mostrar es el calendario PATRONAL de sus clientes (dia 17 IMSS,
+ *  bimestral, avisos de variables), eso es F1-06 y todavia no existe. */
+const TIPO_CALENDARIO: Record<ContributorType, ApiContributorType> = {
+  contador: 'independiente',
+  asalariado: 'asalariado',
+  independiente: 'independiente',
+  arrendamiento: 'arrendamiento',
+  plataformas: 'plataformas',
+  pyme: 'pyme',
+};
+
+export function tipoParaCalendario(tipo: ContributorType | null): ApiContributorType {
+  return tipo ? TIPO_CALENDARIO[tipo] : 'independiente';
 }
 
 export interface CFDI {

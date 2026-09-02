@@ -1,13 +1,26 @@
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio } from 'lucide-react';
+import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar } from 'lucide-react';
+import { getSidebarLinks, type NavId } from '../services/navigation';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
 
+/** Icono de cada entrada del sidebar. La lista de entradas y su orden viven en
+ *  `services/navigation.ts` (modulo puro); aqui solo se les pone cara. */
+const ICONOS: Record<NavId, React.ReactNode> = {
+  dashboard: <LayoutDashboard size={20} />,
+  fiscalito: <Scale size={20} />,
+  historial: <History size={20} />,
+  nomina: <Radio size={20} />,
+  clientes: <Users size={20} />,
+  calendario: <Calendar size={20} />,
+  perfil: <User size={20} />,
+};
+
 export default function AppLayout() {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { isOnboardingComplete, loading: profileLoading } = useProfile();
+  const { isOnboardingComplete, loading: profileLoading, profile } = useProfile();
   const navigate = useNavigate();
 
   if (authLoading || profileLoading) {
@@ -31,16 +44,7 @@ export default function AppLayout() {
     navigate('/');
   };
 
-  const links = [
-    { to: '/app', icon: <LayoutDashboard size={20} />, label: 'Dashboard', end: true },
-    { to: '/app/store/fiscalito/use', icon: <Scale size={20} />, label: 'Fiscalito' },
-    { to: '/app/historial', icon: <History size={20} />, label: 'Historial' },
-    // DEMO D-07: se borra en F2. Va en el sidebar y no sólo por URL porque el
-    // criterio de la tarea es recorrer el flujo sin tocar consola, y teclear
-    // una ruta a mano enfrente del cliente es justo lo que falla en vivo.
-    { to: '/app/nomina-demo', icon: <Radio size={20} />, label: 'Nómina (demo)' },
-    { to: '/app/profile', icon: <User size={20} />, label: 'Perfil' },
-  ];
+  const links = getSidebarLinks(profile.contributorType);
 
   const sidebarBase: React.CSSProperties = {
     background: 'var(--bg-surface)',
@@ -64,7 +68,7 @@ export default function AppLayout() {
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {links.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end}
+            <NavLink key={link.id} to={link.to} end={link.end}
               className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -76,7 +80,7 @@ export default function AppLayout() {
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
             >
-              {link.icon}{link.label}
+              {ICONOS[link.id]}{link.label}
             </NavLink>
           ))}
         </nav>
@@ -102,7 +106,7 @@ export default function AppLayout() {
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
           {links.map((link) => (
-            <NavLink key={link.to} to={link.to} end={link.end}
+            <NavLink key={link.id} to={link.to} end={link.end}
               title={link.label}
               className={({ isActive }) => `nav-item${isActive ? ' nav-item-active' : ''}`}
               style={({ isActive }) => ({
@@ -113,7 +117,7 @@ export default function AppLayout() {
                 transition: 'all 0.2s', textDecoration: 'none',
               })}
             >
-              {link.icon}
+              {ICONOS[link.id]}
             </NavLink>
           ))}
         </nav>

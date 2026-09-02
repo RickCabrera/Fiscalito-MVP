@@ -1,6 +1,6 @@
 /** Perfiles de contribuyente — mapea tipo → regímenes, obligaciones, servicios */
 
-export type ContributorType = 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme';
+export type ContributorType = 'contador' | 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme';
 
 export interface ContributorProfile {
   id: ContributorType;
@@ -14,6 +14,28 @@ export interface ContributorProfile {
 }
 
 export const CONTRIBUTOR_PROFILES: Record<ContributorType, ContributorProfile> = {
+  // E-01: va primero porque es el perfil del producto (un despacho que lleva la
+  // nomina de varios clientes), no un contribuyente mas de la lista.
+  contador: {
+    id: 'contador',
+    label: 'Despacho / Contador',
+    description: 'Despacho o contador que lleva la contabilidad y la nomina de varios clientes.',
+    icon: '🧾',
+    // Solo 612 y 626: son los dos regimenes que el motor y el calendario ya
+    // manejan para persona fisica. 601 (General de Ley PM) queda fuera hasta
+    // que algo aguas abajo lo soporte.
+    allowedRegimens: [
+      { code: '612', name: 'Actividad Empresarial y Profesional' },
+      { code: '626', name: 'RESICO (Regimen Simplificado de Confianza)' },
+    ],
+    obligations: [
+      'Nomina y cuotas obrero-patronales de sus clientes',
+      'Declaracion mensual o bimestral de ISR e IVA propios',
+      'Declaracion anual propia',
+    ],
+    applicableServices: ['fiscalito'],
+    extraFields: ['nombreDespacho'],
+  },
   asalariado: {
     id: 'asalariado',
     label: 'Asalariado',

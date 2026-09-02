@@ -16,6 +16,8 @@ export interface UserProfile {
   telefono: string;
   nombreNegocio: string;
   numEmpleados: string;
+  /** Solo perfil contador (E-01). Cuenta vieja sin el campo -> '' via DEFAULT_PROFILE. */
+  nombreDespacho: string;
   onboardingComplete: boolean;
 }
 
@@ -29,6 +31,7 @@ const DEFAULT_PROFILE: UserProfile = {
   telefono: '',
   nombreNegocio: '',
   numEmpleados: '',
+  nombreDespacho: '',
   onboardingComplete: false,
 };
 

@@ -21,6 +21,8 @@ import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
 import HistorialPage from './pages/HistorialPage';
+// E-01: stub; E-02 la llena con los clientes del despacho.
+import ClientesPage from './pages/ClientesPage';
 // DEMO D-07: se borra en F2 junto con la pantalla.
 import NominaDemoPage from './pages/NominaDemoPage';
 import './styles/global.css';
@@ -52,6 +54,7 @@ function App() {
                 }>
                   <Route index element={<DashboardPage />} />
                   <Route path="historial" element={<HistorialPage />} />
+                  <Route path="clientes" element={<ClientesPage />} />
                   <Route path="store" element={<MarketplacePage />} />
                   <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
                   <Route path="store/:serviceId" element={<ServiceDetailPage />} />
