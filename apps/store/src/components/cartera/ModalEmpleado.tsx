@@ -329,7 +329,9 @@ export default function ModalEmpleado({
                     : `1px solid var(--${nss.gravedad === 'error' ? 'danger' : 'warning'})`,
               }}
               inputMode="numeric"
-              maxLength={17}
+              // Sin `maxLength`: truncar en silencio un pegado largo puede
+              // dejar 11 dígitos con aspecto de buenos. La longitud la juzga
+              // `validarNSS`, que sí lo dice.
               value={datos.nss}
               onChange={(e) => set('nss', e.target.value)}
               placeholder="Si no lo tienes, déjalo vacío"

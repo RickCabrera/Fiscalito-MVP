@@ -132,15 +132,27 @@ export function validarNSS(entrada: string): ResultadoNSS {
     // segunda frase, el contador con un NSS de 10 dígitos calcula el onceavo a
     // mano — que es justo el dato inventado que no queremos.
     const falta = LARGO_NSS - digitos.length;
-    const cuantos =
-      falta > 0 ? `Faltan ${falta}.` : `Sobran ${-falta}.`;
+    const cuantos = falta > 0 ? `Faltan ${falta}.` : `Sobran ${-falta}.`;
+    // La explicación de la asignación antigua **sólo aplica a 10 dígitos**.
+    // Incondicional, le decía "un número de 10 dígitos es..." a quien capturó
+    // 13, que es incongruente y hace desconfiar del resto del mensaje.
+    //
+    // Y va en potencial, no en indicativo: `nss.ts` es enfático en que no hay
+    // norma primaria publicada, y §D25 le pregunta a la contadora si existen
+    // NSS vigentes de otra longitud. Afirmarle al contador como hecho lo que el
+    // propio módulo declara desconocido sería el doble estándar que este
+    // archivo se pasa el docstring evitando.
+    const explicacion =
+      digitos.length === LARGO_NSS - 1
+        ? 'Un número de 10 dígitos suele ser una asignación previa al dígito ' +
+          'verificador: pídelo actualizado, no lo completes a mano. '
+        : '';
     return {
       gravedad: 'error',
       puedeGuardar: false,
       motivo:
         `El NSS son ${LARGO_NSS} dígitos y capturaste ${digitos.length}. ${cuantos} ` +
-        'Un número de 10 dígitos es una asignación previa al dígito verificador: ' +
-        'pídelo actualizado, no lo completes a mano. Si no lo tienes, déjalo vacío.',
+        `${explicacion}Si no lo tienes, déjalo vacío.`,
     };
   }
 

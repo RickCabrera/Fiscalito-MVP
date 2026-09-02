@@ -24,7 +24,10 @@ import {
  */
 const VALIDOS = [
   '12345678903', // el ejemplo canónico, verificado a mano en el docstring
-  '00000000000', // payload de ceros: verificador 0
+  // NO es un artefacto: es el único vector que fija el módulo EXTERNO de
+  // `(10 - (suma % 10)) % 10`. Sin ese `% 10` final, `digitoVerificador`
+  // devolvería 10 para un payload cuya suma es múltiplo de 10.
+  '00000000000',
   '11111111115', // payload de unos: 5 duplicados (2 c/u) + 5 sueltos = 15 -> 5
 ];
 
@@ -32,6 +35,22 @@ describe('digitoVerificador (Luhn)', () => {
   it('reproduce el ejemplo canónico calculado a mano', () => {
     // 22 (duplicados) + 25 (sin duplicar) = 47 -> (10 - 7) % 10 = 3
     expect(digitoVerificador('1234567890')).toBe(3);
+  });
+
+  it.each([
+    // ANCLAS EXTERNAS. El test de propiedad de abajo construye el número CON
+    // `digitoVerificador` y luego lo verifica con la misma función: no puede
+    // detectar un algoritmo equivocado, sólo una inconsistencia consigo mismo.
+    // Estos son números Luhn-válidos publicados fuera de este repo, así que
+    // anclan la PARIDAD —qué posiciones se duplican—, que es donde este
+    // algoritmo se implementa mal más a menudo.
+    ['7992739871', 3],
+    ['411111111111111', 1],
+    ['550000555555555', 9],
+    ['37828224631000', 5],
+    ['453957876362148', 6],
+  ])('coincide con un número Luhn publicado: %s -> %i', (payload, esperado) => {
+    expect(digitoVerificador(payload)).toBe(esperado);
   });
 
   it('el dígito que calcula siempre cierra el Luhn del número completo', () => {
@@ -88,6 +107,15 @@ describe('validarNSS', () => {
       const motivo = validarNSS('1234567890').motivo ?? '';
       expect(motivo).toMatch(/no lo completes a mano/i);
       expect(motivo).toMatch(/déjalo vacío/i);
+    });
+
+    it('la explicación de la asignación antigua sólo sale con 10 dígitos', () => {
+      // Incondicional, le decía "un número de 10 dígitos es..." a quien capturó
+      // 13. Y va en potencial: `nss.ts` declara que no hay norma publicada, así
+      // que no puede afirmarlo como hecho en la UI.
+      expect(validarNSS('1234567890').motivo).toMatch(/suele ser una asignación previa/);
+      expect(validarNSS('123456789034').motivo).not.toMatch(/asignación previa/);
+      expect(validarNSS('123456789034').motivo).toMatch(/Sobran 1\./);
     });
 
     it('texto sin un solo dígito es error, no "vacío"', () => {

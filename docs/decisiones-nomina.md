@@ -696,6 +696,21 @@ desapareciera, el bloqueo por longitud tendría que caerse con ella.
    despacho, **el bloqueo por longitud está mal** y tiene que bajar a advertencia. Esta
    pregunta es tan de contadora como la primera y no se puede contestar desde el código.
 
+**Hallazgo colateral: las fixtures anonimizadas del repo no pasan este validador.** De los 9
+NSS distintos en `apps/api/tests/fixtures/nomina/**/*.xml`, **7 fallan el dígito
+verificador** (`01010101011`, `...022`, `...033`, `...055`, `...066`, `...088`, `...099`);
+sólo `01010101044` y `01010101077` cuadran. Es esperable: son sintéticos evidentes
+—`scripts/anonimizar_nomina.py` los genera con un patrón `010101010XX` y **no** aplica
+Luhn— y **eso es bueno para la privacidad**: ningún NSS de las fixtures puede ser el de una
+persona. Pero tiene una consecuencia concreta:
+
+> **Cuando R-07 agregue el validador de pydantic con este mismo vector, esas fixtures
+> empezarán a advertir.** No a fallar —advertir no bloquea— pero ensuciará la salida de los
+> tests del caso real. Las dos salidas son: regenerar las fixtures con el verificador
+> correcto (`anonimizar_nomina.py` aplicando Luhn), o eximir explícitamente a las fixtures.
+> **No se decide aquí**, se deja anotado para que quien haga R-07 no lo descubra con la
+> suite en amarillo.
+
 **Cómo se cambia.** Es una constante: `BLOQUEA_VERIFICADOR` en `nss.ts`. Está aislada a
 propósito para que la política sea una línea y no una cacería por el formulario.
 
