@@ -32,6 +32,9 @@ import ClienteDetallePage from './pages/ClienteDetallePage';
 // DEMO E-03: la nómina vive dentro del cliente. Se borra en F2.
 import NominaClientePage from './pages/NominaClientePage';
 import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
+// R-05: empleados y dispositivos del cliente activo, entradas propias del sidebar.
+import EmpleadosPage from './pages/EmpleadosPage';
+import DispositivosPage from './pages/DispositivosPage';
 // DEMO E-07: calendario patronal de la cartera. Se borra en F2.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
 
@@ -63,6 +66,10 @@ export default function AppRoutes() {
         <Route path="clientes/:id/nomina" element={<NominaClientePage />} />
         {/* Enlace del sidebar del contador: no conoce el id, lo resuelve. */}
         <Route path="nomina" element={<NominaDelClienteActivo />} />
+        {/* R-05: mismo patrón — resuelven el cliente activo, y sin cliente lo
+            piden en vez de caer en un default silencioso. */}
+        <Route path="empleados" element={<EmpleadosPage />} />
+        <Route path="dispositivos" element={<DispositivosPage />} />
         {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
         <Route path="store" element={<MarketplacePage />} />

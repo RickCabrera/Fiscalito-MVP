@@ -323,6 +323,32 @@ En el sidebar, **Calendario**. Ya no son las declaraciones ISR/IVA del contribuy
 (Art. 3 RACERF) y hábil para el SAT (CFF Art. 12). Es la diferencia que el doc 25 §4 advierte que
 no hay que fundir, y por eso cada renglón lleva su insignia.
 
+### Dispositivos y empleados por cliente (R-04, R-05)
+
+El sidebar del contador tiene ahora **Empleados** y **Dispositivos** como entradas propias,
+operando sobre el cliente activo del selector superior. Antes los empleados sólo se
+alcanzaban entrando a la ficha del cliente y cambiando de pestaña, y los dispositivos no
+existían (G-02 los recortó).
+
+| Qué mirar | Qué debe verse |
+|---|---|
+| Sidebar del contador | **seis** entradas: Clientes · Empleados · Dispositivos · Nómina · Calendario · Perfil |
+| Sin cliente activo | Empleados y Dispositivos **piden elegir uno**, no caen en `demo` |
+| Dispositivos, cliente sin aparatos | "Este cliente no tiene dispositivos registrados" + botón de alta |
+| Alta de dispositivo | nombre, IP, puerto, marca, modelo, serie; y la lista de empleados para marcar quién está enrolado |
+| Empleado sin `employeeNo` | aparece en la lista **deshabilitado**, con la razón — no se esconde |
+| Enrolado que no está en la cartera | aviso ámbar: sus checadas llegarán y no habrá a quién atribuirlas |
+| Vinculado que no está en ningún aparato | aviso ámbar: entra al cálculo y saldrá con falta en **todos** los días laborables |
+
+**Lo que esta pantalla NO puede decir, y lo dice:** cuántas checadas mandó cada aparato.
+`EventoChecada` no identifica el dispositivo (`serial_no` es el consecutivo del evento, no la
+serie del equipo), así que "sin checadas" significa que la persona no ha checado **en ningún
+aparato del cliente**, no que ese equipo esté apagado. Está impreso al pie de la pantalla.
+
+**La IP se registra, no se consulta.** Conectarse por ISAPI es D-08 y necesita el aparato en
+la misma red; desde el navegador además significaría mandarle al cliente las credenciales del
+dispositivo.
+
 ### Alta de una cuenta de despacho (E-05)
 
 Al crear cuenta y elegir "Despacho / Contador": **tres campos y tres pasos**, no cuatro. Nombre

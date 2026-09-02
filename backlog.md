@@ -206,10 +206,16 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
 - [ ] **R-04 · Pantalla de dispositivos biométricos** — recortada en G-02, se restaura.
   Listar, agregar/editar (nombre, IP, serial) y enrolamiento de empleados por dispositivo
   usando la vinculación por `employeeNo` de G-02. *Listo cuando:* doy de alta un
-  dispositivo y veo qué empleados están enrolados.
+  dispositivo y veo qué empleados están enrolados. **PR abierta.** Cierra el tercer lado
+  del triángulo de G-02 (enrolado-fantasma) y un cuarto que nadie cubría: el vinculado
+  que no está en ningún aparato, que entra al cálculo y saldría con falta en todos los
+  días laborables. **La pantalla no afirma cuántas checadas mandó cada aparato** porque
+  `EventoChecada` no identifica el dispositivo; lo dice al pie.
 - [ ] **R-05 · Empleados y Dispositivos en la navegación lateral** — entradas propias junto
   a Clientes/Nómina/Calendario/Perfil, operando sobre el cliente activo. *Listo cuando:*
-  llego a empleados y dispositivos del cliente activo en un clic.
+  llego a empleados y dispositivos del cliente activo en un clic. **PR abierta.** Las
+  pestañas dentro de la ficha se quedan, como autorizaste. `EmpleadosPage` **reusa**
+  `EmpleadosTab`, no lo copia.
 - [ ] **R-06 · Sacar el mock del flujo de producción** — la pestaña Plantilla tras flag de
   desarrollo (sin borrar fixtures ni sus tests), los clientes de demostración sólo en
   cuentas de desarrollo, y el catálogo de sólo-lectura deja de hacerse pasar por la

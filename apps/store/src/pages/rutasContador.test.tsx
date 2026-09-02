@@ -79,7 +79,10 @@ vi.mock('../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
     clientes: [{ id: 'demo', nombre: 'Cliente Demo', giro: 'Servicios', origen: 'sintetico', num_empleados: 3, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' }],
     clienteId: 'demo',
-    cliente: null,
+    // R-05: con `cliente: null` las pantallas nuevas caen al id crudo, y la
+    // aserción de que RESUELVEN el cliente activo se volvía blanda. El doble
+    // ahora trae el mismo cliente que `clientes`, que es lo que pasa en la app.
+    cliente: { id: 'demo', nombre: 'Cliente Demo', giro: 'Servicios', origen: 'sintetico', num_empleados: 3, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
     loading: false,
     error: null,
     setClienteId: vi.fn(),
@@ -102,6 +105,11 @@ vi.mock('../services/declaracionesHistory', () => ({
 
 const { default: DashboardPage } = await import('./DashboardPage');
 const { default: ClientesPage } = await import('./ClientesPage');
+// R-05: las dos entradas nuevas del sidebar. Se montan aquí porque el modo de
+// falla que importa es el mismo que el punto 1 del encabezado —una entrada del
+// sidebar sin `<Route>` deja el contenido EN BLANCO, sin error— y ahora el
+// contador tiene seis enlaces, no cuatro.
+const { default: EmpleadosPage } = await import('./EmpleadosPage');
 
 function montar(ruta: string) {
   return render(
@@ -109,6 +117,7 @@ function montar(ruta: string) {
       <Routes>
         <Route path="/app" element={<DashboardPage />} />
         <Route path="/app/clientes" element={<ClientesPage />} />
+        <Route path="/app/empleados" element={<EmpleadosPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -136,6 +145,18 @@ describe('rutas del contador', () => {
     expect(screen.getByRole('heading', { name: 'Clientes' })).toBeTruthy();
     expect(screen.getByText('Cliente Demo')).toBeTruthy();
     expect(container.querySelector('.page-container')).toBeTruthy();
+  });
+
+  it('/app/empleados RESUELVE el cliente activo, no sólo monta', () => {
+    // La aserción que importa no es "pintó algo" —eso pasaría con un `<div/>`
+    // vacío— sino que la pantalla habla del cliente que el selector afirma.
+    // El doble de `clienteActivoStore` fija `demo` / "Cliente Demo".
+    perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612', nombreDespacho: 'Despacho Demo' };
+    montar('/app/empleados');
+
+    expect(screen.getByRole('heading', { name: 'Empleados' })).toBeTruthy();
+    // Sin esto, una página que ignorara el cliente activo pasaría igual.
+    expect(screen.getByText(/Cliente Demo/)).toBeTruthy();
   });
 
   it('el contribuyente sigue viendo su dashboard en /app', () => {

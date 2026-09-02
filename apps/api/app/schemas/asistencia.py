@@ -48,7 +48,14 @@ class EventoChecada(BaseModel):
     tipo: TipoChecada
     fuente: FuenteChecada
     serial_no: int | None = Field(
-        default=None, description="serialNo del dispositivo, para deduplicar reintentos"
+        default=None,
+        description="serialNo consecutivo DEL EVENTO, para deduplicar reintentos. "
+        "**No identifica al aparato**: dos dispositivos del mismo cliente producen "
+        "series indistinguibles, asi que este modelo no permite atribuir una checada "
+        "a un dispositivo concreto. La descripcion anterior decia 'serialNo del "
+        "dispositivo' y es justo la frase que llevaria a construir 'checadas por "
+        "aparato' sobre una premisa falsa (lo encontro R-04 al escribir la pantalla "
+        "de dispositivos, que por esto NO afirma cuantas checadas mando cada equipo).",
     )
     raw: dict | None = Field(default=None, description="Evento original del dispositivo")
 

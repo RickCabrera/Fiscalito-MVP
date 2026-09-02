@@ -191,13 +191,38 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
 });
 
 describe('sidebar de AppLayout', () => {
-  it('el contador ve exactamente sus cuatro enlaces', () => {
+  it('el contador ve exactamente sus seis enlaces', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     const { container } = montar();
 
     // Lista completa y en orden: si alguien agrega un enlace de contribuyente
-    // al sidebar del despacho, esto se cae.
-    expect(enlacesDelSidebar(container)).toEqual(['Clientes', 'Nómina', 'Calendario', 'Perfil']);
+    // al sidebar del despacho, esto se cae. R-05 sumó Empleados y Dispositivos.
+    expect(enlacesDelSidebar(container)).toEqual([
+      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario', 'Perfil',
+    ]);
+  });
+
+  it('cada enlace del sidebar lleva su icono', () => {
+    // NO se cuenta cuántos enlaces hay: eso ya lo afirma `navigation.test.ts`,
+    // y contar seis no prueba nada de este archivo.
+    //
+    // El riesgo REAL de `AppLayout` es el mapa `ICONOS`, que se indexa por
+    // `NavId`: una clave faltante renderiza **nada** y la etiqueta del enlace
+    // sale igual, así que el sidebar se ve casi bien y nadie lo nota. Con
+    // `NavId` creciendo de 7 a 9 en R-05, es el error probable.
+    perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
+    const { container } = montar();
+
+    const enlaces = Array.from(
+      container.querySelectorAll('.sidebar-full nav a'),
+    ) as HTMLElement[];
+    expect(enlaces.length).toBeGreaterThan(0);
+    for (const enlace of enlaces) {
+      expect(
+        enlace.querySelector('svg'),
+        `el enlace "${enlace.textContent}" no tiene icono: falta su clave en ICONOS`,
+      ).not.toBeNull();
+    }
   });
 
   it('el contador no ve Dashboard, Fiscalito ni Historial', () => {

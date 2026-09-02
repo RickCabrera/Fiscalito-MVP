@@ -17,7 +17,9 @@ import type { ContributorType } from './contributorProfiles';
 // ────────────────────────────────────────────────────────────
 
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
-export type NavId = 'dashboard' | 'fiscalito' | 'historial' | 'nomina' | 'perfil' | 'clientes' | 'calendario';
+export type NavId =
+  | 'dashboard' | 'fiscalito' | 'historial' | 'nomina' | 'perfil'
+  | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
 
 export interface SidebarLink {
   id: NavId;
@@ -48,6 +50,10 @@ const LINKS_CONTRIBUYENTE: SidebarLink[] = [
  */
 const LINKS_CONTADOR: SidebarLink[] = [
   { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
+  // R-05: Empleados y Dispositivos son entradas propias, no pestañas escondidas
+  // dentro de la ficha. Operan sobre el cliente activo, igual que Nómina.
+  { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
+  { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
@@ -101,7 +107,13 @@ export function navActivo(link: SidebarLink, pathname: string): boolean {
   if (link.id === 'clientes') {
     return bajoLaRuta(pathname, '/app/clientes') && !esRutaDeNomina(pathname);
   }
-  // El resto conserva la semántica de `NavLink`: `end` compara exacto y el
+  // R-05: Empleados y Dispositivos son rutas HERMANAS de `/app/clientes`
+  // (`/app/empleados`), no hijas (`/app/clientes/x/empleados`), así que
+  // `bajoLaRuta` no las confunde y no hace falta restarlas como se restó la
+  // nómina. Se fija con test: si alguien las moviera a colgar de `/app/clientes`
+  // volvería el bug de E-06 —dos entradas encendidas— sin que nada avise.
+  //
+  // Del resto se conserva la semántica de `NavLink`: `end` compara exacto y el
   // query string del destino no participa (el tab lo resuelve la pantalla).
   const destino = link.to.split('?')[0];
   return link.end ? pathname === destino : bajoLaRuta(pathname, destino);
@@ -138,7 +150,7 @@ export function rutaInicial(tipo: ContributorType | null): string {
  * E-03 mueve la nómina a `/app/clientes/:id/nomina`, esta constante se mueve
  * con ella o el selector desaparece justo donde más se necesita.
  */
-const RUTAS_CON_CLIENTE = ['/app/clientes'];
+const RUTAS_CON_CLIENTE = ['/app/clientes', '/app/empleados', '/app/dispositivos'];
 
 /**
  * Si la ruta habla de UN cliente. Decide dónde se muestra el selector de
