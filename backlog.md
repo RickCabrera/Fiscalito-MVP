@@ -11,10 +11,13 @@ Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no 
 cada una vive en su seccion de abajo. **S-00 no esta aqui a proposito:** su criterio de
 cierre exige probar el chat de voz con microfono, asi que es diurna.
 
-1. D-04
-2. D-05
-3. D-06
-4. D-07
+**CAMBIO DE PRIORIDAD (2026-09-01, demo del 2026-09-02): la Épica E va al frente.**
+D-04…D-07 ya están cerradas; S-03 y lo que sigue quedan en pausa hasta que E-04 cierre.
+
+1. E-01
+2. E-02
+3. E-03
+4. E-04
 5. S-03
 6. F1-07
 7. F1-08
@@ -23,7 +26,32 @@ cierre exige probar el chat de voz con microfono, asi que es diurna.
 10. S-01b
 
 **D-08 no está en la cola**, igual que S-00: necesita el checador físico enfrente, así que es
-diurna. F0-01, F0-02 y F1-01…F1-05 ya están cerradas.
+diurna. F0-01, F0-02, F1-01…F1-05 y D-04…D-07 ya están cerradas.
+
+## E — Épica de despacho (para la demo del 2026-09-02)
+
+**El porqué.** Nómina quedó como una pestaña dentro de la app del CONTRIBUYENTE, pero el
+producto es para un CONTADOR que lleva la nómina de varios clientes. **No se crea
+`apps/despacho`** (PLAN_NOMINA §0 lo proponía; no cabe antes de la demo): se adapta
+`apps/store`, que ya tiene auth, tema, PDF y componentes. Prioridad sobre todo lo demás.
+
+- [ ] **E-01 · Perfil de contador** — tipo "Despacho / Contador" en `OnboardingWizard` y
+  `ProfileContext`, con sus campos (nombre del despacho, RFC). `getTabsForProfile`: si es
+  contador, el sidebar muestra **Clientes / Nómina / Calendario / Perfil** y OCULTA los tabs
+  de contribuyente — **no se borran, solo no se muestran**. *Listo cuando:* creo cuenta como
+  contador y veo el sidebar correcto.
+- [ ] **E-02 · Clientes** — Backend: `GET /api/v1/despacho/clientes` y `/clientes/{id}` con 3
+  clientes demo — uno es el de las fixtures S-04 con sus 9 empleados, dos sintéticos con
+  distinto giro y número de empleados. Front: pantalla de lista + selector de cliente activo
+  en el header, y ficha `/clientes/:id` con sus empleados (SBC, salario diario, alta, factor).
+  *Listo cuando:* cambio de cliente y todo lo demás cambia con él.
+- [ ] **E-03 · Nómina dentro del cliente** — mover el flujo de `/app/nomina-demo` al contexto
+  del cliente seleccionado: checador en vivo, cerrar quincena, calcular nómina, cuotas por
+  ramo, PDF. **Mismo motor, misma API.** *Listo cuando:* el flujo completo corre para el
+  cliente de fixtures y para uno sintético.
+- [ ] **E-04 · Pulido visual** — los inputs de fecha y los botones de la pantalla actual se ven
+  crudos: jerarquía tipográfica, espaciado, estados de carga y vacío, tabla de recibos
+  legible. *Listo cuando:* se proyecta en pantalla grande sin verse a medio hacer.
 
 ## S — Saneamiento (deuda que estorba al bucle)
 
