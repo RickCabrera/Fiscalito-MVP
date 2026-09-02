@@ -13,35 +13,69 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import type { ClienteResumen } from '../services/despachoApi';
+import type { ClienteCartera, EmpleadoCartera } from '../services/carteraApi';
 
-// G-03: las pantallas piden la cartera. El doble viene vacío, así que
-// `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
-// camino que estas pruebas medían antes de G-01.
-vi.mock('../context/carteraStore', async () => {
-  const { carteraDePrueba } = await import('../test/carteraDePrueba');
-  return { useCartera: () => carteraDePrueba() };
-});
+/**
+ * G-03: **la LISTA sale de la cartera**, no del contexto del cliente activo.
+ * Pintarla desde el backend hacía que un cliente recién capturado no apareciera
+ * nunca, sin error y sin mensaje — por eso este doble trae clientes de verdad y
+ * no el vacío por default.
+ */
+function emp(n: string): EmpleadoCartera {
+  return {
+    empleado_no: n, nombre: `EMPLEADO ${n}`, puesto: '', salario_diario: '316.00',
+    salario_diario_integrado: '331.58', zona: 'general', fecha_alta: null,
+    tipo_contrato: 'indeterminado',
+    prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+    nss: '', employee_no: n, enrolamiento: 'enrolado',
+  };
+}
 
+const PERIODO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null };
 
-const CARTERA: ClienteResumen[] = [
-  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios administrativos', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
-  { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos y bebidas', origen: 'sintetico', num_empleados: 4, prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general' },
+const CARTERA: ClienteCartera[] = [
+  {
+    id: 'demo', nombre: 'Servicios Administrativos Integrales',
+    giro: 'Servicios administrativos', origen: 'fixtures-s04',
+    prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04',
+    zona: 'general', periodo_sugerido: PERIODO,
+    empleados: Array.from({ length: 9 }, (_, i) => emp(`E-0${i + 1}`)),
+  },
+  {
+    id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos y bebidas',
+    origen: 'sintetico', prima_riesgo: '0.0113065', clase_riesgo: 2,
+    clave_periodicidad: '04', zona: 'general', periodo_sugerido: PERIODO,
+    empleados: Array.from({ length: 4 }, (_, i) => emp(`C-0${i + 1}`)),
+  },
 ];
 
 const navigate = vi.fn();
 const setClienteId = vi.fn();
 const recargar = vi.fn();
 const estado = {
-  clientes: CARTERA as ClienteResumen[],
+  clientes: CARTERA,
   clienteId: 'demo' as string | null,
   loading: false,
   error: null as string | null,
 };
 
+vi.mock('../context/carteraStore', async () => {
+  const { carteraDePrueba } = await import('../test/carteraDePrueba');
+  return {
+    useCartera: () =>
+      carteraDePrueba({
+        clientes: estado.clientes,
+        loading: estado.loading,
+        origen: 'firestore',
+        soloLectura: false,
+        clientePorId: (id: string) => estado.clientes.find((c) => c.id === id) ?? null,
+      }),
+  };
+});
+
 vi.mock('../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
-    clientes: estado.clientes,
+    clientes: [],
     clienteId: estado.clienteId,
     cliente: null,
     loading: estado.loading,

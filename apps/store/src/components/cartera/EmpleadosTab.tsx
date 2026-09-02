@@ -58,6 +58,12 @@ export default function EmpleadosTab({
 }) {
   const [editando, setEditando] = useState<EmpleadoCartera | null>(null);
   const [abierto, setAbierto] = useState(false);
+  // La confirmación es ESTADO, no `window.confirm`: es el patrón que ya usa
+  // `useNominaCliente` para no cerrar una quincena sin preguntar. Un borrado en
+  // Firestore es irreversible y cambia la nómina del cliente desde ese momento;
+  // el botón es un icono de 15 px y en una demo con el proyector encendido, un
+  // misclic se lleva a un empleado para siempre.
+  const [porBorrar, setPorBorrar] = useState<EmpleadoCartera | null>(null);
 
   const sinVincular = useMemo(() => contarSinVincular(empleados), [empleados]);
   const llaves = useMemo(() => empleados.map((e) => e.empleado_no), [empleados]);
@@ -149,7 +155,7 @@ export default function EmpleadosTab({
                     </button>
                     <button
                       aria-label={`Dar de baja a ${e.nombre}`}
-                      onClick={() => onBorrar(e.empleado_no)}
+                      onClick={() => setPorBorrar(e)}
                       style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
                     >
                       <Trash2 size={15} />
@@ -172,6 +178,34 @@ export default function EmpleadosTab({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
           Estás viendo el catálogo de demostración, que es de sólo lectura. Para dar de alta
           empleados hace falta que tu cartera esté guardada en tu cuenta.
+        </p>
+      )}
+
+      {porBorrar && (
+        <p
+          role="alert"
+          style={{
+            margin: 0, background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
+            borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)',
+            fontSize: '0.88rem', display: 'flex', gap: 'var(--space-sm)',
+            alignItems: 'center', flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            ¿Dar de baja a <strong>{porBorrar.nombre}</strong>? Deja de aparecer en la nómina
+            de este cliente y no se puede deshacer.
+          </span>
+          <button className="btn-secondary" onClick={() => setPorBorrar(null)}>Cancelar</button>
+          <button
+            className="btn-primary"
+            onClick={async () => {
+              const quien = porBorrar.empleado_no;
+              setPorBorrar(null);
+              await onBorrar(quien);
+            }}
+          >
+            Sí, dar de baja
+          </button>
         </p>
       )}
 

@@ -14,12 +14,12 @@ import { useCartera } from '../context/carteraStore';
 import type { ClienteCartera } from '../services/carteraApi';
 import { Building2, ChevronRight, Loader, Plus, RefreshCw, Users } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
-import { etiquetaOrigen, primaComoPorcentaje, type ClienteResumen } from '../services/despachoApi';
+import { etiquetaOrigen, primaComoPorcentaje } from '../services/despachoApi';
 import ErrorAlert from '../components/common/ErrorAlert';
 
 function TarjetaCliente({
   cliente, activo, onAbrir,
-}: { cliente: ClienteResumen; activo: boolean; onAbrir: () => void }) {
+}: { cliente: ClienteCartera; activo: boolean; onAbrir: () => void }) {
   return (
     <button
       onClick={onAbrir}
@@ -67,7 +67,7 @@ function TarjetaCliente({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
             <Users size={14} color="var(--text-muted)" />
             <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-              {cliente.num_empleados}
+              {cliente.empleados.length}
             </span>
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>empleados</div>
@@ -85,9 +85,16 @@ function TarjetaCliente({
 }
 
 export default function ClientesPage() {
-  const { clientes, clienteId, loading, error, setClienteId, recargar } = useClienteActivo();
+  // El cliente ACTIVO sigue saliendo del contexto de E-02 (es lo que lee el
+  // selector del header). La LISTA sale de la cartera, que es donde el alta
+  // escribe: pintarla desde el backend hacía que un cliente recién capturado
+  // no apareciera nunca, sin error y sin mensaje.
+  const { clienteId, error, setClienteId, recargar } = useClienteActivo();
   const cartera = useCartera();
+  const clientes = cartera.clientes;
+  const loading = cartera.loading;
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [errorSembrar, setErrorSembrar] = useState<string | null>(null);
   const [editando, setEditando] = useState<Omit<ClienteCartera, 'empleados'> | null>(null);
   const navigate = useNavigate();
 
@@ -113,8 +120,26 @@ export default function ClientesPage() {
             padding: 'var(--space-sm) var(--space-md)', fontSize: '0.86rem',
           }}
         >
-          {cartera.motivoFallback} Las altas y ediciones están deshabilitadas hasta que tu
-          cartera se pueda guardar en tu cuenta.
+          <div>
+            {cartera.motivoFallback} Las altas y ediciones están deshabilitadas hasta que tu
+            cartera viva en tu cuenta.
+          </div>
+          <button
+            className="btn-primary"
+            style={{ marginTop: 'var(--space-sm)' }}
+            onClick={() => {
+              cartera.sembrar().catch((e: unknown) =>
+                setErrorSembrar(e instanceof Error ? e.message : 'No se pudo guardar la cartera'),
+              );
+            }}
+          >
+            Guardar esta cartera en mi cuenta
+          </button>
+          {errorSembrar && (
+            <div role="alert" style={{ marginTop: 'var(--space-xs)', color: 'var(--danger)' }}>
+              {errorSembrar}
+            </div>
+          )}
         </div>
       )}
 

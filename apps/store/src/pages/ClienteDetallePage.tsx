@@ -56,16 +56,20 @@ type Resultado = { id: string; cliente?: ClienteDetalle; error?: string };
 
 /**
  * G-01: la ficha gana un tab de **Empleados**, que es el editable y sale de la
- * cartera del uid. El tab **Plantilla** es la vista de E-02/E-04 y se queda
- * intacta: es el camino probado, y dejarlo alcanzable es lo que hace que la
- * demo siga funcionando aunque el camino de Firestore falle.
+ * cartera del uid. El tab **Plantilla** es la vista de E-02/E-04, se queda
+ * intacta y **sigue siendo el default**: es el camino probado y el guion
+ * ensayado de la demo.
  */
 type Vista = 'empleados' | 'plantilla';
 
 export default function ClienteDetallePage() {
   const { id } = useParams();
   const [resultado, setResultado] = useState<Resultado | null>(null);
-  const [vista, setVista] = useState<Vista>('empleados');
+  // **El default es Plantilla, no Empleados**, y es deliberado: es la vista que
+  // E-02/E-04 dejaron pulida y con la que está ensayada la demo. Cambiar el
+  // aterrizaje de la ficha la mañana de la demo sería mover el guion sin que
+  // Ricardo lo pida. Empleados está a un clic y visible.
+  const [vista, setVista] = useState<Vista>('plantilla');
   const cartera = useCartera();
 
   useEffect(() => {
@@ -86,18 +90,28 @@ export default function ClienteDetallePage() {
     return () => { cancelado = true; };
   }, [id]);
 
-  const alDia = resultado !== null && resultado.id === id;
-  const cliente = alDia ? resultado.cliente ?? null : null;
-  const error = alDia ? resultado.error ?? null : null;
-  const loading = !alDia;
-
-  const hayFactorImplicito = cliente?.empleados.some((e) => e.factor_implicito) ?? false;
-
-  // Los empleados EDITABLES salen de la cartera, no de la ficha del backend: si
-  // esta pantalla siguiera leyendo `obtenerCliente()`, un alta nueva no
-  // aparecería aquí ni en el cálculo, y el criterio de G-01 fallaría callado.
+  // Los empleados EDITABLES salen de la cartera, no de la ficha del backend.
   const deLaCartera = id ? cartera.clientePorId(id) : null;
   const empleadosCartera = deLaCartera?.empleados ?? [];
+
+  const alDia = resultado !== null && resultado.id === id;
+  const cliente = alDia ? resultado.cliente ?? null : null;
+
+  /**
+   * La cabecera se pinta con la ficha del backend cuando existe, y si no con la
+   * de la cartera. **Un cliente dado de alta por el contador no tiene ficha en
+   * el backend** —`GET /despacho/clientes/{id}` sólo conoce los tres de
+   * demostración—, y dejar que ese 404 apagara la pantalla habría dejado la
+   * mitad de G-03 en un callejón: se puede capturar un cliente y no se puede
+   * abrir.
+   */
+  const cabecera = cliente ?? deLaCartera;
+
+  // El error sólo sobrevive si el cliente TAMPOCO está en la cartera.
+  const error = alDia && !deLaCartera ? resultado.error ?? null : null;
+  const loading = !alDia && !deLaCartera;
+
+  const hayFactorImplicito = cliente?.empleados.some((e) => e.factor_implicito) ?? false;
 
   return (
     <div className="page-container">
@@ -117,11 +131,11 @@ export default function ClienteDetallePage() {
 
       {error && <ErrorAlert message={error} />}
 
-      {cliente && (
+      {cabecera && (
         <>
           <div className="page-header animate-in">
-            <h1>{cliente.nombre}</h1>
-            <p>{cliente.giro} · {etiquetaOrigen(cliente.origen)}</p>
+            <h1>{cabecera.nombre}</h1>
+            <p>{cabecera.giro} · {etiquetaOrigen(cabecera.origen)}</p>
           </div>
 
           <div
@@ -131,17 +145,17 @@ export default function ClienteDetallePage() {
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 20,
             }}
           >
-            <Dato etiqueta="Empleados" valor={String(cliente.num_empleados)} mono />
-            <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cliente.prima_riesgo)} mono />
+            <Dato etiqueta="Empleados" valor={String(empleadosCartera.length || cliente?.num_empleados || 0)} mono />
+            <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cabecera.prima_riesgo)} mono />
             <Dato
               etiqueta="Clase de riesgo"
               // "No aplica" sería falso: todo patrón tiene clase. Lo que no
               // aplica es haber DEDUCIDO su prima de una clase.
-              valor={cliente.clase_riesgo === null ? 'Autodeterminada (Art. 74)' : `${cliente.clase_riesgo} (supuesta)`}
+              valor={cabecera.clase_riesgo === null ? 'Autodeterminada (Art. 74)' : `${cabecera.clase_riesgo} (supuesta)`}
             />
             <Dato
               etiqueta="Quincena sugerida"
-              valor={`${cliente.periodo_sugerido.inicio} a ${cliente.periodo_sugerido.fin}`}
+              valor={`${cabecera.periodo_sugerido.inicio} a ${cabecera.periodo_sugerido.fin}`}
               mono
             />
           </div>
@@ -182,7 +196,17 @@ export default function ClienteDetallePage() {
               </div>
             )}
 
-            {vista === 'plantilla' && (
+            {vista === 'plantilla' && !cliente && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                  Este cliente lo diste de alta tú, así que no tiene ficha en el catálogo de
+                  demostración. La pestaña <strong>Empleados</strong> es la que lleva su
+                  plantilla.
+                </p>
+              </div>
+            )}
+
+            {vista === 'plantilla' && cliente && (
             <>
             <div className="card" style={{ padding: 'var(--space-lg)' }}>
               <div style={envoltura}>

@@ -30,17 +30,19 @@
  * las cuotas del IMSS y un día menos pagado.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   calcularNomina,
   cerrarPeriodo,
+  type EmpleadoNominaRequest,
   obtenerEventos,
   type CierrePeriodo,
   type EventoChecada,
   type NominaPeriodo,
 } from '../../services/nominaDemoApi';
 import { useCartera } from '../../context/carteraStore';
-import { estaVinculado, contarSinVincular } from '../../services/carteraApi';
+import { plantillaDeNomina } from './plantillaDeNomina';
+import { contarSinVincular } from '../../services/carteraApi';
 import { obtenerCliente, type ClienteDetalle } from '../../services/despachoApi';
 import { useClienteActivo } from '../../context/clienteActivoStore';
 
@@ -88,6 +90,16 @@ export function useNominaCliente(clienteId: string) {
   // que corresponde, para que no sobreviva a un cambio de cliente.
   const [confirmarPara, setConfirmarPara] = useState<string | null>(null);
   const cartera = useCartera();
+  // El efecto de carga NO puede depender de `cartera`: el valor del contexto
+  // cambia de identidad en cada render, así que el efecto volvería a correr y
+  // **revertiría las fechas que el operador acaba de mover** — lo cazó el test
+  // de la fecha de pago. Se lee por ref, y el ref se actualiza en un efecto y
+  // no durante el render: tocar `.current` mientras se renderiza es lo que
+  // hace que un componente no se actualice como se espera.
+  const carteraRef = useRef(cartera);
+  useEffect(() => {
+    carteraRef.current = cartera;
+  });
 
   // El contexto SIGUE a la ruta. Al revés, el header afirmaría un cliente y la
   // pantalla calcularía otro.
@@ -106,7 +118,21 @@ export function useNominaCliente(clienteId: string) {
         setFin(c.periodo_sugerido.fin);
       })
       .catch((e: Error) => {
-        if (!cancelado) setErrorDe({ id: clienteId, valor: e.message });
+        if (cancelado) return;
+        // Un cliente dado de alta por el contador **no tiene ficha en el
+        // backend**: `GET /despacho/clientes/{id}` sólo conoce los tres de
+        // demostración. Antes de G-03 eso era imposible; ahora es lo normal, y
+        // dejar prendido el error apagaría la pantalla entera de un cliente
+        // que sí existe. La cartera tiene todo lo que hace falta para calcular
+        // —prima, periodicidad, zona, periodo sugerido y plantilla—, así que se
+        // usa esa. El error sólo sobrevive si el cliente tampoco está ahí.
+        const suyoEnCartera = carteraRef.current.clientePorId(clienteId);
+        if (suyoEnCartera) {
+          setInicio(suyoEnCartera.periodo_sugerido.inicio);
+          setFin(suyoEnCartera.periodo_sugerido.fin);
+          return;
+        }
+        setErrorDe({ id: clienteId, valor: e.message });
       });
     return () => { cancelado = true; };
   }, [clienteId]);
@@ -127,7 +153,37 @@ export function useNominaCliente(clienteId: string) {
     return () => clearInterval(id);
   }, [refrescar]);
 
-  const cliente = suyo(cargada, clienteId, null);
+  const fichaBackend = suyo(cargada, clienteId, null);
+
+  /**
+   * El cliente con el que se calcula.
+   *
+   * La ficha del backend cuando existe —trae `fecha_referencia` y los factores
+   * observados que la pantalla Plantilla enseña—, y si no, la de la cartera. Un
+   * cliente dado de alta por el contador sólo existe en la cartera, y tiene que
+   * poder correr su nómina igual.
+   */
+  const cliente: ClienteDetalle | null = useMemo(() => {
+    if (fichaBackend) return fichaBackend;
+    const c = clienteId ? cartera.clientePorId(clienteId) : null;
+    if (!c) return null;
+    return {
+      id: c.id,
+      nombre: c.nombre,
+      giro: c.giro,
+      origen: c.origen,
+      num_empleados: c.empleados.length,
+      prima_riesgo: c.prima_riesgo,
+      clase_riesgo: c.clase_riesgo,
+      clave_periodicidad: c.clave_periodicidad,
+      zona: c.zona,
+      periodo_sugerido: c.periodo_sugerido,
+      // No hay fecha de referencia: este cliente no se midió contra ninguna.
+      fecha_referencia: '',
+      empleados: [],
+    };
+  }, [fichaBackend, clienteId, cartera]);
+
   const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
   const cierre = suyo(cierreDe, clienteId, null);
   const nomina = suyo(nominaDe, clienteId, null);
@@ -156,27 +212,22 @@ export function useNominaCliente(clienteId: string) {
   // atribuirle, y mandarlo al cierre con una llave vacía lo haría colisionar
   // con cualquier otro sin vincular. Los excluidos NO desaparecen callados —
   // `sinVincular` los cuenta y la pantalla lo dice.
-  const deLaCartera = clienteId ? cartera.clientePorId(clienteId) : null;
+  // **Mientras la cartera carga no se decide nada.** Sin esta guardia,
+  // `clientePorId` devuelve `null`, la plantilla cae a la ficha del backend
+  // —con todos, vinculados o no— y `sinVincular` vale 0, así que tampoco sale
+  // el aviso. Entrar directo a la nómina con el proveedor frío y cerrar en esa
+  // ventana calcularía una plantilla distinta a la de un segundo después.
+  const deLaCartera =
+    clienteId && !cartera.loading ? cartera.clientePorId(clienteId) : null;
   const empleadosCartera = deLaCartera?.empleados ?? null;
   const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
 
-  /** La plantilla que se manda al backend: la de la cartera si la hay. */
-  const plantilla = useMemo(() => {
-    if (!cliente) return [];
-    if (!empleadosCartera) return cliente.empleados;
-    return empleadosCartera.filter(estaVinculado).map((e) => ({
-      empleado_no: e.empleado_no,
-      nombre: e.nombre,
-      puesto: e.puesto,
-      salario_diario: e.salario_diario,
-      salario_diario_integrado: e.salario_diario_integrado,
-      zona: e.zona,
-      fecha_alta: e.fecha_alta,
-      antiguedad_anios: null,
-      factor: '0',
-      factor_implicito: false,
-    }));
-  }, [cliente, empleadosCartera]);
+  // La decisión de quién entra vive en `plantillaDeNomina`, que se prueba
+  // directo: es la que carga los dos criterios de la épica.
+  const plantilla: EmpleadoNominaRequest[] = useMemo(
+    () => plantillaDeNomina(cliente?.empleados ?? [], empleadosCartera),
+    [cliente, empleadosCartera],
+  );
 
   const cerrar = async () => {
     if (!cliente) return;
@@ -215,9 +266,11 @@ export function useNominaCliente(clienteId: string) {
           id,
           { inicio, fin, fecha_pago: fechaDePago(cliente, inicio, fin) },
           cierre.incidencias,
-          // La ficha con la plantilla de la cartera: es lo que hace que un
-          // empleado dado de alta hoy aparezca en los recibos de hoy.
-          { ...cliente, empleados: plantilla },
+          cliente,
+          // La plantilla va aparte y explícita: es lo que hace que un empleado
+          // dado de alta hoy aparezca en los recibos de hoy, sin tener que
+          // fabricar una ficha con campos inventados.
+          plantilla,
         ),
       });
     } catch (e) {

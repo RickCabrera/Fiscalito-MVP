@@ -33,6 +33,7 @@ export function carteraDePrueba(
     borrarCliente: vi.fn().mockResolvedValue(undefined),
     guardarEmpleado: vi.fn().mockResolvedValue(undefined),
     borrarEmpleado: vi.fn().mockResolvedValue(undefined),
+    sembrar: vi.fn().mockResolvedValue(undefined),
     recargar: vi.fn(),
     ...override,
   };

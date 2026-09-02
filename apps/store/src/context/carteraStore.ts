@@ -11,10 +11,16 @@
  * contexto nuevo en vez de ensanchar el viejo: quien necesita empleados los pide
  * aquí, y quien sólo necesita el cliente en foco sigue con el otro.
  *
- * **Las tres costuras que leían el backend por su cuenta** —el proveedor del
- * cliente activo, la ficha del cliente y `useNominaCliente`— pasan por aquí. Si
- * alguna se quedara llamando `obtenerCliente()`, un alta nueva no aparecería en
- * el cálculo y el criterio de G-01 fallaría **en silencio**.
+ * **Eran CUATRO las costuras que leían el backend por su cuenta**, no tres: la
+ * lista de `ClientesPage`, la ficha del cliente, `useNominaCliente` y el
+ * proveedor del cliente activo. Las tres primeras pasan por aquí. La cuarta
+ * —`ClienteActivoContext`— **sigue leyendo el backend a propósito**: sólo
+ * necesita resúmenes para el selector del header, y el cliente en foco existe
+ * en las dos fuentes.
+ *
+ * Que la lista faltara no era un detalle: se pintaba desde el backend mientras
+ * el alta escribía aquí, así que un cliente recién capturado **no aparecía
+ * nunca**, sin error y sin mensaje.
  */
 
 import { createContext, useContext } from 'react';
@@ -38,6 +44,12 @@ export interface CarteraContextType {
   borrarCliente: (clienteId: string) => Promise<void>;
   guardarEmpleado: (clienteId: string, empleado: EmpleadoCartera) => Promise<void>;
   borrarEmpleado: (clienteId: string, empleadoNo: string) => Promise<void>;
+  /**
+   * Copia los 3 clientes de demostración a la cuenta. **Explícito a propósito**:
+   * escribe salarios de terceros en Firestore, y esa escalada no debe ocurrir
+   * como efecto colateral del primer login. Ver `CarteraContext`.
+   */
+  sembrar: () => Promise<void>;
   recargar: () => void;
 }
 

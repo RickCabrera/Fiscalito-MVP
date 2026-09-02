@@ -132,3 +132,27 @@ export async function integrarSBC(req: SBCRequest): Promise<SBCResponse> {
   });
   return leer<SBCResponse>(res, 'No se pudo integrar el salario');
 }
+
+// ── Primas de riesgo ──
+
+export interface PrimasDeRiesgo {
+  fecha: string;
+  /** Art. 72 LSS. */
+  minima: string;
+  maxima: string;
+  /** Clase (1-5) → prima media. Aplica a EMPRESA NUEVA (Art. 73 LSS). */
+  medias_por_clase: Record<string, string>;
+  fundamento: string;
+}
+
+/**
+ * Primas medias por clase, **con su vigencia**, desde el motor.
+ *
+ * No se copian a TypeScript. Una tabla fiscal sin año, sin fuente y sin test
+ * propone en silencio las primas del año pasado en cuanto cambia el año — y la
+ * del Art. 73 es por año, leída en el motor con función de vigencia.
+ */
+export async function obtenerPrimasDeRiesgo(fecha: string): Promise<PrimasDeRiesgo> {
+  const res = await fetch(`${V1}/despacho/primas-de-riesgo?fecha=${encodeURIComponent(fecha)}`);
+  return leer<PrimasDeRiesgo>(res, 'No se pudieron cargar las primas de riesgo');
+}

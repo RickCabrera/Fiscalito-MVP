@@ -73,16 +73,6 @@ vi.mock('../services/despachoApi', async () => {
 
 const { default: ClienteDetallePage } = await import('./ClienteDetallePage');
 
-/**
- * G-01: la ficha abre en el tab **Empleados**, que es el editable y sale de la
- * cartera. Estas pruebas miden el tab **Plantilla** (la vista de E-02/E-04, que
- * sigue intacta), así que lo seleccionan explícitamente. El default lo fija su
- * propia prueba, abajo.
- */
-async function verPlantilla() {
-  fireEvent.click(await screen.findByRole('button', { name: 'Plantilla' }));
-}
-
 function montar(id: string) {
   return render(
     <MemoryRouter initialEntries={[`/app/clientes/${id}`]}>
@@ -102,7 +92,6 @@ afterEach(() => {
 describe('ficha del caso real anonimizado', () => {
   it('pinta la plantilla con salario diario y SBC', async () => {
     montar('demo');
-    await verPlantilla();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy());
 
     expect(screen.getByText('PERSONA UNO')).toBeTruthy();
@@ -112,7 +101,6 @@ describe('ficha del caso real anonimizado', () => {
 
   it('marca el factor como observado y no enseña alta inventada', async () => {
     montar('demo');
-    await verPlantilla();
     await waitFor(() => expect(screen.getByText('PERSONA UNO')).toBeTruthy());
 
     // Cada renglón afectado lleva su marca, no sólo la nota al pie: la tabla se
@@ -137,7 +125,6 @@ describe('ficha de un cliente sintético', () => {
   it('enseña alta, antigüedad y puesto', async () => {
     respuesta.actual = SINTETICO;
     montar('cafeteria');
-    await verPlantilla();
     await waitFor(() => expect(screen.getByText('MARISOL ABREGO QUINTERO')).toBeTruthy());
 
     expect(screen.getByText('2021-02-01')).toBeTruthy();
@@ -148,7 +135,6 @@ describe('ficha de un cliente sintético', () => {
   it('dice contra qué fecha se midió la antigüedad, y no la llama "hoy"', async () => {
     respuesta.actual = SINTETICO;
     montar('cafeteria');
-    await verPlantilla();
     await waitFor(() => expect(screen.getByText(/medidos al/i)).toBeTruthy());
     expect(screen.getByText('2026-09-01')).toBeTruthy();
   });
@@ -162,7 +148,6 @@ describe('ficha de un cliente sintético', () => {
   it('no marca su factor como implícito', async () => {
     respuesta.actual = SINTETICO;
     montar('cafeteria');
-    await verPlantilla();
     await waitFor(() => expect(screen.getByText('MARISOL ABREGO QUINTERO')).toBeTruthy());
     expect(screen.queryByText(/cociente observado/i)).toBeNull();
     expect(screen.queryAllByTitle(/Cociente observado/i)).toHaveLength(0);
@@ -180,22 +165,22 @@ describe('cliente que no existe', () => {
 });
 
 describe('tabs de la ficha (G-01)', () => {
-  it('abre en Empleados, que es el tab editable', async () => {
-    // El default es deliberado: G-01 pide que el contador llegue a la gestión
-    // de empleados, no a la vista de sólo lectura. Si alguien lo invierte, esta
-    // prueba lo dice en vez de dejarlo pasar como un cambio de estilo.
+  it('abre en Plantilla: no se cambia el guion ensayado de la demo', async () => {
+    // El default es deliberado. Plantilla es la vista que E-02/E-04 dejaron
+    // pulida y con la que está ensayada la demo; mover el aterrizaje de la
+    // ficha la mañana de la demo sería cambiar el guion sin que nadie lo pida.
+    // Si alguien lo invierte, esta prueba lo dice en vez de dejarlo pasar como
+    // un cambio de estilo.
     montar('demo');
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Empleados' }).getAttribute('aria-current')).toBe('true'),
+      expect(screen.getByRole('button', { name: 'Plantilla' }).getAttribute('aria-current')).toBe('true'),
     );
   });
 
-  it('el tab Plantilla sigue alcanzable y es el camino probado de E-02/E-04', async () => {
-    // Dejarlo alcanzable es lo que hace que la demo siga teniendo su vista
-    // verificada aunque el camino de Firestore falle.
+  it('el tab Empleados está visible y a un clic', async () => {
     montar('demo');
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Plantilla' }));
-    expect(screen.getByText('PERSONA UNO')).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Empleados' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Empleados' }));
+    expect(screen.getByRole('button', { name: 'Empleados' }).getAttribute('aria-current')).toBe('true');
   });
 });

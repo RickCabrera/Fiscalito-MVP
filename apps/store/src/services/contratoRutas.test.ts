@@ -134,11 +134,13 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
         { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
         [],
         FICHA_VACIA,
+        [],
       ),
   },
   'carteraApi.ts': {
     obtenerEmpleadosSemilla: () => carteraApi.obtenerEmpleadosSemilla('demo'),
     integrarSBC: () => carteraApi.integrarSBC({ salario_diario: '500.00', fecha: '2026-09-01' }),
+    obtenerPrimasDeRiesgo: () => carteraApi.obtenerPrimasDeRiesgo('2026-09-01'),
   },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),

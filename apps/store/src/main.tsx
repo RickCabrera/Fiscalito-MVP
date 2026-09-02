@@ -26,8 +26,9 @@ function App() {
           {/* DEMO E-02: la cartera sólo se carga para un perfil de contador. */}
           <ClienteActivoProvider>
             {/* G-03: la cartera por uid. Va DENTRO del cliente activo porque
-                el selector del header sigue leyendo de aquel, y FUERA del
-                agente para que sus tools puedan verla. */}
+                el selector del header sigue leyendo de aquel. Ningún tool del
+                agente la consume todavía; el orden respecto de `AgentProvider`
+                es indiferente hoy. */}
             <CarteraProvider>
             <AgentProvider>
               <BrowserRouter>

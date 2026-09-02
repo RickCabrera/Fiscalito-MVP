@@ -11,18 +11,13 @@
  * medias, para que nadie las confunda con la prima del cliente.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import type { ClienteCartera } from '../../services/carteraApi';
-
-/** Primas medias por clase (Art. 73 LSS). Aplican a EMPRESA NUEVA. */
-const PRIMA_MEDIA: Record<number, string> = {
-  1: '0.0054355',
-  2: '0.0113065',
-  3: '0.0259840',
-  4: '0.0465325',
-  5: '0.0758875',
-};
+import {
+  obtenerPrimasDeRiesgo,
+  type ClienteCartera,
+  type PrimasDeRiesgo,
+} from '../../services/carteraApi';
 
 const campo: React.CSSProperties = {
   width: '100%',
@@ -51,7 +46,7 @@ function vacio(): Datos {
     nombre: '',
     giro: '',
     origen: 'propio',
-    prima_riesgo: PRIMA_MEDIA[1],
+    prima_riesgo: '',
     clase_riesgo: 1,
     clave_periodicidad: '04',
     zona: 'general',
@@ -74,10 +69,36 @@ export default function ModalCliente({
   const [datos, setDatos] = useState<Datos>(() => cliente ?? vacio());
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [primas, setPrimas] = useState<PrimasDeRiesgo | null>(null);
+
+  // Las primas medias las trae el MOTOR, con su fecha de vigencia. Copiarlas
+  // aquí las dejaría sin año, sin fuente y sin test: en 2027 propondrían las de
+  // 2026 en silencio.
+  useEffect(() => {
+    let cancelado = false;
+    obtenerPrimasDeRiesgo(new Date().toISOString().slice(0, 10))
+      .then((p) => !cancelado && setPrimas(p))
+      .catch(() => undefined);
+    return () => { cancelado = true; };
+  }, []);
+
+  const prima = Number(datos.prima_riesgo);
+  /** Art. 72 LSS. Teclear 5.4355 en vez de 0.0054355 multiplica RT por mil. */
+  const primaFueraDeRango =
+    primas !== null &&
+    datos.prima_riesgo !== '' &&
+    (!Number.isFinite(prima) ||
+      prima < Number(primas.minima) ||
+      prima > Number(primas.maxima));
 
   const idRepetido = esAlta && idsExistentes.includes(datos.id.trim());
   const puedeGuardar =
-    datos.id.trim() !== '' && datos.nombre.trim() !== '' && !idRepetido && !guardando;
+    datos.id.trim() !== '' &&
+    datos.nombre.trim() !== '' &&
+    datos.prima_riesgo !== '' &&
+    !primaFueraDeRango &&
+    !idRepetido &&
+    !guardando;
 
   async function guardar() {
     setGuardando(true);
@@ -163,7 +184,11 @@ export default function ModalCliente({
               value={datos.clase_riesgo ?? 1}
               onChange={(e) => {
                 const clase = Number(e.target.value);
-                setDatos({ ...datos, clase_riesgo: clase, prima_riesgo: PRIMA_MEDIA[clase] });
+                setDatos({
+                  ...datos,
+                  clase_riesgo: clase,
+                  prima_riesgo: primas?.medias_por_clase[String(clase)] ?? datos.prima_riesgo,
+                });
               }}
             >
               {[1, 2, 3, 4, 5].map((c) => (
@@ -194,6 +219,14 @@ export default function ModalCliente({
             </select>
           </div>
         </div>
+
+        {primaFueraDeRango && (
+          <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
+            La prima debe estar entre {primas?.minima} y {primas?.maxima} (Art. 72 LSS).
+            Ojo con el punto decimal: <strong>5.4355</strong> en vez de{' '}
+            <strong>0.0054355</strong> multiplica Riesgos de Trabajo por mil.
+          </p>
+        )}
 
         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           Al elegir clase se propone la <strong>prima media</strong> de esa clase (Art. 73 LSS),

@@ -27,7 +27,15 @@ function isr(recibo: ReciboNomina): number {
  *
  * Colgaba de `origen_plantilla === 'demo'`, que dejó de variar en E-03.
  */
-export function exportarNominaPDF(data: NominaPeriodo, cliente: ClienteDetalle): void {
+export function exportarNominaPDF(
+  data: NominaPeriodo,
+  cliente: ClienteDetalle,
+  /**
+   * Cuántos empleados de la cartera quedaron FUERA de este cálculo por no
+   * tener `employeeNo` (G-02). Default 0 para no romper a quien no lo sepa.
+   */
+  sinVincular = 0,
+): void {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const mL = 20;
@@ -81,7 +89,31 @@ export function exportarNominaPDF(data: NominaPeriodo, cliente: ClienteDetalle):
   doc.text(`Periodo: ${data.periodo.inicio} a ${data.periodo.fin}`, mL, y);
   y += 5;
   doc.text(`Fecha de pago: ${data.fecha_pago_efectiva}`, mL, y);
-  y += 8;
+  y += 5;
+
+  // G-02: excluir gente del cálculo es una decisión con consecuencia fiscal, y
+  // este papel es el que llega al contador y al patrón. Si la pantalla lo dice
+  // y el PDF no, la honestidad se queda en la sala — y aquí es peor que en el
+  // encabezado del cliente, porque además las cuotas patronales de abajo salen
+  // cortas: se calculan sólo sobre los incluidos.
+  if (sinVincular > 0) {
+    doc.setTextColor(...PDF_COLORS.demo);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `${sinVincular} ${sinVincular === 1 ? 'empleado no está vinculado' : 'empleados no están vinculados'} ` +
+        `al checador y NO ${sinVincular === 1 ? 'entra' : 'entran'} en este cálculo.`,
+      mL,
+      y,
+    );
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Las cuotas patronales de abajo sólo cubren a los incluidos.', mL, y);
+    doc.setFontSize(10);
+    y += 5;
+    doc.setTextColor(...PDF_COLORS.gray);
+  }
+  y += 3;
 
   doc.setDrawColor(200, 200, 200);
   doc.line(mL, y, pageW - 20, y);

@@ -32,6 +32,11 @@ from app.nomina_engine.calendario_laboral import (
     ObligacionPatronal,
     calendario_patronal,
 )
+from app.nomina_engine.tablas_imss import (
+    PRIMA_RT_MAXIMA,
+    PRIMA_RT_MINIMA,
+    prima_media_clase,
+)
 from app.schemas.calendario_laboral import (
     CalendarioPatronalResponse,
     ObligacionPatronalSchema,
@@ -42,6 +47,7 @@ from app.schemas.despacho import (
     ClienteResumen,
     ClientesResponse,
     EmpleadoClienteSchema,
+    PrimasDeRiesgoResponse,
 )
 from app.schemas.empleado import (
     EmpleadoCarteraSchema,
@@ -284,4 +290,35 @@ async def empleados_del_cliente(cliente_id: str) -> EmpleadosClienteResponse:
         # acuerde de filtrar es un aviso que un día no sale.
         sin_vincular=sum(1 for e in empleados if not e.vinculado_al_checador),
         empleados=empleados,
+    )
+
+
+@router.get(
+    "/despacho/primas-de-riesgo",
+    response_model=PrimasDeRiesgoResponse,
+    responses={422: {"model": ErrorResponse}},
+    summary=_AVISO + "Primas medias por clase de riesgo, con su vigencia",
+    description=_AVISO
+    + "Las primas **medias** por clase (Art. 73 LSS), que son las que aplican a una "
+    "empresa nueva, más los límites del Art. 72. Existe para que el formulario de alta "
+    "de cliente no las copie a TypeScript: ahí quedarían **sin vigencia, sin fuente y sin "
+    "test**, y en el año siguiente propondrían en silencio las primas del anterior. En el "
+    "motor se leen por `prima_media_clase(clase, fecha)`, con función de vigencia.\n\n"
+    "**Son un punto de partida, no la prima del cliente:** la prima real la autodetermina "
+    "el patrón cada febrero con su siniestralidad (Art. 74 LSS).",
+)
+async def primas_de_riesgo(
+    fecha: date = Query(
+        default_factory=date.today,
+        description="Fecha de vigencia. La tabla es por año.",
+    ),
+) -> PrimasDeRiesgoResponse:
+    return PrimasDeRiesgoResponse(
+        fecha=fecha,
+        minima=PRIMA_RT_MINIMA,
+        maxima=PRIMA_RT_MAXIMA,
+        medias_por_clase={
+            str(clase): prima_media_clase(clase, fecha) for clase in (1, 2, 3, 4, 5)
+        },
+        fundamento="Arts. 72 y 73 LSS. La prima real se autodetermina en febrero (Art. 74).",
     )

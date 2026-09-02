@@ -65,6 +65,12 @@
       ]
     },
     {
+      "path": "/api/v1/despacho/primas-de-riesgo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/diot",
       "metodos": [
         "POST"

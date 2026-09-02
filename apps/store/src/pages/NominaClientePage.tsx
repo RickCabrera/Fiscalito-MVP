@@ -51,7 +51,7 @@ export default function NominaClientePage() {
     // siempre —para que el paso 4 exista en pantalla desde el principio— y
     // `disabled` es una propiedad del DOM, no una garantía del handler.
     if (!nomina || !cliente) return;
-    exportarNominaPDF(nomina, cliente);
+    exportarNominaPDF(nomina, cliente, n.sinVincular);
   };
 
   // Los estados se derivan en cascada: un paso está bloqueado mientras no

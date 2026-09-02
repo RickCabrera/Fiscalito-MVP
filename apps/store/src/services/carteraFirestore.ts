@@ -136,11 +136,23 @@ export async function carteraDelBackend(): Promise<ClienteCartera[]> {
  * cartera del backend y el motivo. Que la pantalla decida qué decir.
  */
 export async function cargarCartera(uid: string | null): Promise<CarteraCargada> {
-  const respaldo = async (motivo: string): Promise<CarteraCargada> => ({
-    clientes: await carteraDelBackend(),
-    origen: 'backend',
-    motivoFallback: motivo,
-  });
+  // El respaldo TAMPOCO puede lanzar. La versión anterior hacía
+  // `await carteraDelBackend()` a pelo: con la API caída, `cargarCartera`
+  // rechazaba pese a que su docstring prometía lo contrario, y el proveedor
+  // caía a `clientes: []` — la pantalla vacía que todo este diseño existe para
+  // evitar, con el fallback puesto y todo.
+  const respaldo = async (motivo: string): Promise<CarteraCargada> => {
+    try {
+      return { clientes: await carteraDelBackend(), origen: 'backend', motivoFallback: motivo };
+    } catch (e) {
+      const porQue = e instanceof Error ? e.message : 'error desconocido';
+      return {
+        clientes: [],
+        origen: 'backend',
+        motivoFallback: `${motivo} Y el catálogo de demostración tampoco respondió (${porQue}).`,
+      };
+    }
+  };
 
   if (!uid) return respaldo('No hay sesión: se muestra el catálogo de demostración.');
 

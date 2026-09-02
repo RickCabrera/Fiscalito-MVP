@@ -82,28 +82,6 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
           error: null,
         });
 
-        // Siembra en segundo plano. La pantalla YA pintó. Si esto falla, el
-        // contador sigue viendo el catálogo del backend y el motivo del
-        // fallback ya está en pantalla: no se convierte un fallo de escritura
-        // en una pantalla vacía.
-        if (uid && cargada.origen === 'backend') {
-          try {
-            if (await sembrarDemo(uid)) {
-              const conSemilla = await cargarCartera(uid);
-              if (!cancelado && conSemilla.origen === 'firestore') {
-                setEstado({
-                  para: uid,
-                  clientes: conSemilla.clientes,
-                  origen: 'firestore',
-                  motivoFallback: null,
-                  error: null,
-                });
-              }
-            }
-          } catch {
-            // Sembrar es best-effort por diseño. El estado de arriba se queda.
-          }
-        }
       })
       .catch((e: unknown) => {
         // `cargarCartera` no lanza; esto es la red por si algún día lo hace.
@@ -119,6 +97,24 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
   }, [habilitado, uid, intento]);
 
   const recargar = useCallback(() => setIntento((n) => n + 1), []);
+
+  /**
+   * Copia los tres clientes de demostración a la cuenta del contador.
+   *
+   * **Es un acto explícito, no automático, y eso es una desviación consciente
+   * del enunciado de G-03** ("los 3 demo se siembran para cuentas nuevas").
+   * Sembrar en el primer login escribiría el salario de trabajadores de terceros
+   * —montos reales del CFDI, aunque con nombres anonimizados— en un Firestore
+   * cuyas reglas **nadie ha revisado todavía**: `firestore.rules` está
+   * versionado y sin desplegar. Hacerlo en segundo plano convertiría esa
+   * escalada de sensibilidad en un efecto colateral en vez de una decisión.
+   * Cuesta un clic y la demo funciona igual sin darlo.
+   */
+  const sembrar = useCallback(async () => {
+    if (!uid) throw new Error('Hace falta una sesión para guardar la cartera.');
+    await sembrarDemo(uid);
+    setIntento((n) => n + 1);
+  }, [uid]);
   // `loading` derivado: cierto mientras lo cargado no sea de este uid.
   const alDia = estado.para === uid;
   const cargando = habilitado && !alDia;
@@ -149,15 +145,29 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
       clientePorId: (id: string) =>
         (alDia ? estado.clientes.find((c) => c.id === id) : null) ?? null,
       guardarCliente: (c: Omit<ClienteCartera, 'empleados'>) =>
-        escribir(() => guardarClienteFs(uid as string, c)),
+        escribir(() =>
+          guardarClienteFs(uid as string, {
+            ...c,
+            // Un cliente nuevo no trae periodo sugerido y sin él su nómina
+            // arrancaría con las fechas vacías. Se COPIA del catálogo en vez de
+            // calcularlo aquí: el sugerido es `quincena(hoy)` —la última ya
+            // terminada, igual para todos los clientes— y esa regla vive en
+            // `demo_nomina.quincena()`. Replicarla en TypeScript sería una
+            // segunda verdad sobre qué periodo se está calculando.
+            periodo_sugerido: c.periodo_sugerido.inicio
+              ? c.periodo_sugerido
+              : estado.clientes[0]?.periodo_sugerido ?? c.periodo_sugerido,
+          }),
+        ),
       borrarCliente: (id: string) => escribir(() => borrarClienteFs(uid as string, id)),
       guardarEmpleado: (clienteId: string, e: EmpleadoCartera) =>
         escribir(() => guardarEmpleadoFs(uid as string, clienteId, e)),
       borrarEmpleado: (clienteId: string, empleadoNo: string) =>
         escribir(() => borrarEmpleadoFs(uid as string, clienteId, empleadoNo)),
+      sembrar,
       recargar,
     }),
-    [estado, alDia, cargando, soloLectura, uid, escribir, recargar],
+    [estado, alDia, cargando, soloLectura, uid, escribir, sembrar, recargar],
   );
 
   return <CarteraContext.Provider value={valor}>{children}</CarteraContext.Provider>;
