@@ -75,6 +75,25 @@ llevó **revisor aparte**, que es la excepción que Ricardo dejó en pie.
   endpoint nuevo. *Listo cuando:* el contador abre Calendario y ve vencimientos patronales de sus
   clientes, no sus propias declaraciones.
 
+## X — Arreglos de la demo (2026-09-02, MODO RÁPIDO)
+
+Dos arreglos pedidos por Ricardo la mañana de la demo. Una rama, un plan, un revisor de
+plan, un revisor de entregable, un PR. **PR #25, mergeada.**
+
+- [x] **X-01 · El calendario patronal daba 404 en el navegador** — **no era un bug de path.**
+  La ruta existía y respondía 200; el uvicorn que estaba corriendo se había levantado antes
+  del merge de E-07 (PR #24), así que servía los endpoints viejos con 200 y el nuevo con 404
+  `{"detail":"Not Found"}`. Entregado: paso 0 de pre-flight en el runbook (**sin** `--reload`,
+  que habría borrado las checadas sembradas), un 404/405 que se explica solo en `errorApi.ts`,
+  y el test que faltaba — `exportar_rutas.py` + `rutasBackend.json` + `test_rutas_publicadas.py`
+  del lado del backend, y `contratoRutas.test.ts` del lado del front, que llama a las 18
+  funciones de verdad. *Listo cuando:* la ruta responde 200 con la API corriendo — **verificado**.
+- [x] **X-02 · La columna "días cotizados" se leía al revés** — "el ausentismo no reduce EyM"
+  se entendía como *EyM no se toma en cuenta*. Reescrito en positivo y acotado a ausencias de
+  hasta 7 días al mes (la fr. II del Art. 31 no está implementada, §D3), con la lista **cerrada**
+  de los seis ramos que sí descuentan — incluye Cesantía y Vejez, que vive en `ceav.py` y se
+  había omitido. Solo texto: `git diff -- apps/api/app/` vacío.
+
 ## S — Saneamiento (deuda que estorba al bucle)
 
 - [x] **S-01 · Lint backend a cero y al CI** — `ruff check --fix` (43 auto) + limpiar el
