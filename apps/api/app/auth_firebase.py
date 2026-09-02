@@ -1,0 +1,161 @@
+"""
+Quién está preguntando: verificación del ID token de Firebase. (R-07)
+
+EL `uid` NUNCA VIAJA EN EL CUERPO NI EN UN QUERY PARAM
+------------------------------------------------------
+Es la decisión que hace que R-07 no sea un agujero. La cartera de un despacho
+guarda el salario y el NSS de trabajadores de terceros; si el uid llegara como
+un campo más, cualquiera con `curl` leería la cartera de cualquiera cambiando un
+renglón. Llega como **ID token firmado por Firebase** en
+`Authorization: Bearer …`, y `firebase-admin` verifica la firma, el emisor, la
+audiencia y la expiración contra las llaves públicas de Google.
+
+**El Admin SDK ignora las reglas de Firestore**, por diseño: son credenciales
+privilegiadas. Las reglas que desplegó R-01 siguen protegiendo el acceso directo
+desde el navegador. La defensa de ESTE camino es este archivo, y no hay otra.
+
+CREDENCIALES: LO QUE FALTA PARA QUE R-07 QUEDE CERRADA
+------------------------------------------------------
+`firebase-admin` necesita una de estas, y **en la máquina donde se escribió esto
+no había ninguna**:
+
+1. `GOOGLE_APPLICATION_CREDENTIALS` apuntando a un JSON de service account, o
+2. Application Default Credentials (`gcloud auth application-default login`), o
+3. correr dentro de GCP, donde las toma del metadata server.
+
+Por eso R-07 se entrega con el interruptor del front **apagado**
+(`VITE_CARTERA_BACKEND`) y la tarea queda ABIERTA: encender el front sin
+credenciales daría 503 en todo el CRUD, o sea una app rota a sabiendas. Lo que
+falta es una acción de Ricardo, no código.
+
+Mientras tanto **sí hay cobertura real**: `FIRESTORE_EMULATOR_HOST` levanta el
+emulador de Firestore, que no pide autenticación, y contra él corren los mismos
+casos que contra el doble en memoria (`pytest -m emulador`).
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from functools import lru_cache
+from typing import Any
+
+from fastapi import Header
+
+from app.exceptions import FiscalAgentError
+
+logger = logging.getLogger(__name__)
+
+# Project id de respaldo para el emulador, que no valida credenciales pero sí
+# necesita un proyecto al que colgar los datos.
+PROYECTO_POR_DEFECTO = "fiscalito-mvp"
+
+
+class CredencialesFaltantes(FiscalAgentError):
+    """
+    No hay con qué hablarle a Firebase.
+
+    Es 503 y no 500 a propósito: no es un error del request, es que el servicio
+    no está configurado. El mensaje dice **qué falta**, porque el modo de falla
+    contrario —un 500 genérico— manda a buscar el bug en el lugar equivocado.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "El backend no tiene credenciales de Firebase, así que no puede ser dueño de "
+            "la cartera. Define GOOGLE_APPLICATION_CREDENTIALS con un service account, o "
+            "corre `gcloud auth application-default login`. Para pruebas locales, levanta "
+            "el emulador y exporta FIRESTORE_EMULATOR_HOST=127.0.0.1:8080.",
+            status_code=503,
+        )
+
+
+@lru_cache(maxsize=1)
+def _app_firebase() -> Any:
+    """
+    Inicializa `firebase_admin` una sola vez, o levanta `CredencialesFaltantes`.
+
+    Cacheado porque `initialize_app` revienta si se llama dos veces, y este
+    módulo lo puede pedir desde cualquier request.
+    """
+    import firebase_admin
+    from firebase_admin import credentials
+
+    if firebase_admin._apps:  # noqa: SLF001 — es la API que hay para preguntarlo
+        return firebase_admin.get_app()
+
+    proyecto = os.environ.get("FIREBASE_PROJECT_ID", PROYECTO_POR_DEFECTO)
+
+    # Con el emulador no hay credenciales que buscar: se declara anónimo a
+    # propósito, porque pedirle credenciales reales a un emulador sería exigir
+    # justo lo que el emulador existe para no necesitar.
+    if os.environ.get("FIRESTORE_EMULATOR_HOST"):
+        return firebase_admin.initialize_app(
+            credentials.AnonymousCredentials()
+            if hasattr(credentials, "AnonymousCredentials")
+            else None,
+            {"projectId": proyecto},
+        )
+
+    try:
+        return firebase_admin.initialize_app(
+            credentials.ApplicationDefault(), {"projectId": proyecto}
+        )
+    except Exception as exc:  # noqa: BLE001 — el SDK lanza varios tipos distintos
+        logger.warning("Sin credenciales de Firebase: %s", type(exc).__name__)
+        raise CredencialesFaltantes() from exc
+
+
+def cliente_firestore() -> Any:
+    """El cliente de Firestore del Admin SDK. Levanta si no hay credenciales."""
+    from firebase_admin import firestore
+
+    return firestore.client(_app_firebase())
+
+
+def uid_del_token(token: str) -> str:
+    """
+    Verifica el ID token y devuelve el uid.
+
+    **Con el emulador el token NO se verifica**, y hay que decirlo: el emulador
+    de Firestore no trae emulador de Auth, así que no hay llaves contra las que
+    validar. Los tests pasan el uid como token literal. Eso es seguro porque el
+    emulador sólo existe cuando `FIRESTORE_EMULATOR_HOST` está puesto —una
+    variable que nadie define en producción— pero es una puerta y por eso se
+    nombra aquí en vez de esconderse en un `if`.
+    """
+    if os.environ.get("FIRESTORE_EMULATOR_HOST"):
+        return token
+
+    from firebase_admin import auth as auth_admin
+
+    try:
+        return str(auth_admin.verify_id_token(token, app=_app_firebase())["uid"])
+    except CredencialesFaltantes:
+        raise
+    except Exception as exc:  # noqa: BLE001 — el SDK lanza varios tipos distintos
+        # El detalle del SDK NO se propaga: distingue "token expirado" de "token
+        # de otro proyecto" y eso le sirve a quien sondea, no al usuario.
+        logger.info("ID token rechazado: %s", type(exc).__name__)
+        raise FiscalAgentError(
+            "Tu sesión no es válida o expiró. Vuelve a iniciar sesión.", status_code=401
+        ) from exc
+
+
+async def usuario_actual(authorization: str | None = Header(default=None)) -> str:
+    """
+    Dependencia de FastAPI: el uid de quien hace el request.
+
+    Sin encabezado, o con uno mal formado, es **401 y no 403**: 403 diría "sé
+    quién eres y no puedes", y aquí no se sabe quién es.
+    """
+    if not authorization:
+        raise FiscalAgentError(
+            "Falta el encabezado Authorization con tu sesión de Firebase.", status_code=401
+        )
+    partes = authorization.split(None, 1)
+    if len(partes) != 2 or partes[0].lower() != "bearer" or not partes[1].strip():
+        raise FiscalAgentError(
+            "El encabezado Authorization debe ser 'Bearer <ID token>'.", status_code=401
+        )
+    return uid_del_token(partes[1].strip())

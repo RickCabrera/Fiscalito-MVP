@@ -26,3 +26,10 @@ apps/store/.firebase/
 
 # Salida del runner nocturno: log de corrida, no se versiona
 docs/nocturno-run.txt
+
+# Logs del emulador de Firestore (R-07). Se generan al correr los tests contra
+# el emulador y no aportan nada al repo.
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
