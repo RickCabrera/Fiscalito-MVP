@@ -35,7 +35,7 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
 `apps/despacho`** (PLAN_NOMINA §0 lo proponía; no cabe antes de la demo): se adapta
 `apps/store`, que ya tiene auth, tema, PDF y componentes. Prioridad sobre todo lo demás.
 
-- [ ] **E-01 · Perfil de contador** — tipo "Despacho / Contador" en `OnboardingWizard` y
+- [x] **E-01 · Perfil de contador** — tipo "Despacho / Contador" en `OnboardingWizard` y
   `ProfileContext`, con sus campos (nombre del despacho, RFC). `getTabsForProfile`: si es
   contador, el sidebar muestra **Clientes / Nómina / Calendario / Perfil** y OCULTA los tabs
   de contribuyente — **no se borran, solo no se muestran**. *Listo cuando:* creo cuenta como
