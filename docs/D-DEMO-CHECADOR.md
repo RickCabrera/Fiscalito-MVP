@@ -274,6 +274,27 @@ cliente no movió un centavo.
 **Cuota patronal** es la suma de la porción mensual y la bimestral del periodo,
 no el entero del Art. 39 LSS — la pantalla lo advierte y el PDF lo imprime.
 
+### Los dos minutos de revisión visual que sólo Ricardo puede hacer (E-04)
+
+`apps/store/CLAUDE.md` pide **probar visualmente en los tres temas antes del merge**, y eso no
+se pudo cumplir desde la sesión autónoma: no hay navegador y todo está detrás de Firebase Auth.
+Lo que sí se garantizó por construcción es que **no hay una sola variable CSS nueva ni un color
+fuera de los tokens**, que es la condición para que los tres temas sigan funcionando. Falta
+mirarlo. Con el toggle de tema del sidebar, en `/app/clientes/demo/nomina` después de calcular:
+
+1. **La columna Neto de la tabla de recibos alinea**, dígito con dígito, y ningún importe está
+   cortado con puntos suspensivos. Un `$93,27…` es un número equivocado.
+2. **Las filas alternas se distinguen** en los tres temas — la cebra usa `--bg-card-hover`, que
+   en vanilla es sutil.
+3. **Faltas y retardos se ven en ámbar** cuando son mayores que cero, y se localizan de un
+   vistazo desde lejos.
+4. **Los botones "Cerrar quincena" y "Calcular nómina" se leen como botones** y el
+   deshabilitado se distingue del habilitado.
+5. **En una ventana angosta las tablas hacen scroll horizontal**, y la página **no** se mueve
+   de lado.
+
+Si algo de eso falla, es cosmético y se arregla sin tocar cálculo.
+
 ### Si algo se ve raro y no es un bug
 
 - **Tres empleados retienen ~$463 de ISR y los demás ~$91.** Es correcto:
