@@ -45,7 +45,7 @@ const LINKS_CONTRIBUYENTE: SidebarLink[] = [
  */
 const LINKS_CONTADOR: SidebarLink[] = [
   { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
-  { id: 'nomina', to: '/app/nomina-demo', label: 'Nómina' },
+  { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/store/fiscalito/use?tab=calendario', label: 'Calendario' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];

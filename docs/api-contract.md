@@ -197,6 +197,12 @@ La ficha: el resumen de arriba más `empleados`, `periodo_sugerido` y `fecha_ref
   `GET /nomina/demo/plantilla`. Existe para que la pantalla no derive el periodo de las fechas
   de las checadas: eso da 15 días donde la quincena tiene 16 y mueve cuotas e ISR.
 
+> **Desde E-03 la pantalla de nómina toma de aquí la plantilla y la manda en el body de
+> `POST /nomina/calcular-periodo`** (obligatorio para los clientes sintéticos: omitirla sólo es
+> válido para `demo`). Consecuencia: `origen_plantilla` de la respuesta vale `"request"` para
+> los tres clientes, y **ya no distingue nada**. Lo que dependía de ese campo —la banda
+> "DATOS DE DEMOSTRACIÓN" del PDF— pasó a colgar del cliente.
+
 **404 — cliente desconocido.** Usa el sobre de dominio, **no** el `{"detail": ...}` de
 `HTTPException`, para que el front tenga un solo camino de lectura de errores:
 

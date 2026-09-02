@@ -32,9 +32,17 @@ export default function SelectorCliente() {
 
   const cambiar = (nuevo: string) => {
     setClienteId(nuevo);
-    // Si se está viendo la ficha de un cliente, el selector tiene que mover la
-    // ficha también: si no, el header diría una cosa y la pantalla otra.
-    if (idDeLaRuta) navigate(`/app/clientes/${nuevo}`);
+    // Si se está viendo algo DE un cliente, el selector tiene que mover esa
+    // pantalla también: si no, el header diría una cosa y el contenido otra.
+    //
+    // La ruta se arma desde el patrón, no sustituyendo el id sobre el pathname:
+    // un id puede volver a aparecer en la cadena (`/app/clientes/demo/nomina`
+    // con un cliente llamado "nomina" es rebuscado, pero un `replace()` ciego
+    // sí lo rompería).
+    if (idDeLaRuta) {
+      const subruta = pathname.endsWith('/nomina') ? '/nomina' : '';
+      navigate(`/app/clientes/${nuevo}${subruta}`);
+    }
   };
 
   return (

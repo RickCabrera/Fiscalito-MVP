@@ -1,5 +1,5 @@
 /**
- * Tests de la pantalla de la demo del checador (D-07).
+ * Tests de la pantalla de nómina de un cliente (E-03; era la de D-07).
  *
  * QUE PRUEBAN Y QUE NO
  * --------------------
@@ -17,21 +17,37 @@
 
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
-import NominaDemoPage from './NominaDemoPage';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-const PLANTILLA = {
-  cliente: 'demo',
-  origen: 'demo',
+const setClienteId = vi.fn();
+vi.mock('../context/clienteActivoStore', () => ({
+  useClienteActivo: () => ({
+    clientes: [], clienteId: 'demo', cliente: null, loading: false, error: null,
+    setClienteId, recargar: vi.fn(),
+  }),
+}));
+
+const { default: NominaClientePage } = await import('./NominaClientePage');
+
+/** La ficha del cliente, que desde E-03 es la fuente de la pantalla. */
+const FICHA = {
+  id: 'demo',
+  nombre: 'Cliente De Prueba',
+  giro: 'Servicios',
+  origen: 'fixtures-s04',
+  num_empleados: 2,
+  clase_riesgo: null,
+  zona: 'general',
+  fecha_referencia: '2026-09-01',
   empleados: [
-    { empleado_no: 'E-01', nombre: 'PERSONA UNO' },
-    { empleado_no: 'E-02', nombre: 'PERSONA DOS' },
+    { empleado_no: 'E-01', nombre: 'PERSONA UNO', puesto: '', salario_diario: '316.00', salario_diario_integrado: '331.58', zona: 'general', fecha_alta: null, antiguedad_anios: null, factor: '1.0493', factor_implicito: true },
+    { empleado_no: 'E-02', nombre: 'PERSONA DOS', puesto: '', salario_diario: '326.84', salario_diario_integrado: '357.44', zona: 'general', fecha_alta: null, antiguedad_anios: null, factor: '1.0936', factor_implicito: true },
   ],
   // A propósito NO es la prima real del cliente demo (0.0054355): si la
   // fixture usara ese valor, hardcodearlo en el front pasaría el test y la
   // aserción se estaría validando sola.
   prima_riesgo: '0.0271830',
   clave_periodicidad: '07',
-  zona: 'general',
   periodo_sugerido: { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' },
 };
 
@@ -111,7 +127,7 @@ const NOMINA = {
 function stubApi(overrides: Record<string, unknown> = {}) {
   const llamadas: Array<{ url: string; init?: RequestInit }> = [];
   const respuestas: Record<string, unknown> = {
-    'demo/plantilla': PLANTILLA,
+    'despacho/clientes': FICHA,
     'asistencia/eventos': EVENTOS,
     'cerrar-periodo': CIERRE,
     'calcular-periodo': NOMINA,
@@ -133,11 +149,21 @@ function stubApi(overrides: Record<string, unknown> = {}) {
   return llamadas;
 }
 
+function montar(clienteId = 'demo') {
+  return render(
+    <MemoryRouter initialEntries={[`/app/clientes/${clienteId}/nomina`]}>
+      <Routes>
+        <Route path="/app/clientes/:id/nomina" element={<NominaClientePage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 /**
- * Espera a que la plantilla haya cargado.
+ * Espera a que la ficha del cliente haya cargado.
  *
  * NO basta con esperar a que el botón exista: existe desde el primer render,
- * **deshabilitado** hasta que llega `GET /nomina/demo/plantilla`, y un click
+ * **deshabilitado** hasta que llega `GET /despacho/clientes/{id}`, y un click
  * sobre él no hace nada. Esperar sólo su existencia hacía el test dependiente
  * de que la promesa resolviera rápido — verde en local, rojo en CI.
  *
@@ -151,7 +177,7 @@ async function esperarPlantilla() {
   return boton;
 }
 
-describe('NominaDemoPage', () => {
+describe('NominaClientePage', () => {
   beforeEach(() => {
     vi.useRealTimers();
   });
@@ -163,7 +189,7 @@ describe('NominaDemoPage', () => {
 
   it('pinta las checadas con nombre y hora', async () => {
     stubApi();
-    render(<NominaDemoPage />);
+    montar();
     expect(await screen.findByText(/PERSONA UNO/)).toBeTruthy();
     expect(screen.getByText('08:05')).toBeTruthy();
   });
@@ -176,7 +202,7 @@ describe('NominaDemoPage', () => {
      * llevar offset — un `desde` naive revienta en el almacén.
      */
     const llamadas = stubApi();
-    render(<NominaDemoPage />);
+    montar();
     await waitFor(() => expect(llamadas.some((l) => l.url.includes('asistencia/eventos'))).toBe(true));
     const eventos = llamadas.filter((l) => l.url.includes('asistencia/eventos'));
     for (const l of eventos) {
@@ -191,20 +217,20 @@ describe('NominaDemoPage', () => {
      * la base de las cuotas y los días pagados.
      */
     stubApi();
-    render(<NominaDemoPage />);
+    montar();
     await waitFor(() => expect(screen.getByDisplayValue('2026-08-16')).toBeTruthy());
     expect(screen.getByDisplayValue('2026-08-31')).toBeTruthy();
   });
 
   it('muestra la fecha de pago con la que se va a calcular', async () => {
     stubApi();
-    render(<NominaDemoPage />);
+    montar();
     await waitFor(() => expect(screen.getAllByText(/2026-08-31/).length).toBeGreaterThan(0));
   });
 
   it('al cerrar pinta faltas, retardos y los empleados desconocidos', async () => {
     stubApi();
-    render(<NominaDemoPage />);
+    montar();
     fireEvent.click(await esperarPlantilla());
     expect(await screen.findByText(/Checadas de empleados que no están en la plantilla/)).toBeTruthy();
     expect(screen.getByText(/E-99/)).toBeTruthy();
@@ -226,7 +252,7 @@ describe('NominaDemoPage', () => {
      * que nadie la lea como si protegiera.
      */
     const llamadas = stubApi();
-    render(<NominaDemoPage />);
+    montar();
     fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
@@ -240,8 +266,8 @@ describe('NominaDemoPage', () => {
     ]);
     // Los parámetros del patrón salen de la plantilla del backend, no del
     // front: son constantes con fundamento legal (Art. 72/74 LSS).
-    expect(cuerpo.parametros.prima_riesgo).toBe(PLANTILLA.prima_riesgo);
-    expect(cuerpo.parametros.clave_periodicidad).toBe(PLANTILLA.clave_periodicidad);
+    expect(cuerpo.parametros.prima_riesgo).toBe(FICHA.prima_riesgo);
+    expect(cuerpo.parametros.clave_periodicidad).toBe(FICHA.clave_periodicidad);
   });
 
   it('si el operador mueve el periodo, la fecha de pago la resuelve el backend', async () => {
@@ -252,11 +278,14 @@ describe('NominaDemoPage', () => {
      * y el backend resuelve; la pantalla imprime `fecha_pago_efectiva`.
      */
     const llamadas = stubApi();
-    render(<NominaDemoPage />);
+    montar();
     await esperarPlantilla();
     fireEvent.change(screen.getByDisplayValue('2026-08-16'), { target: { value: '2026-01-16' } });
     fireEvent.change(screen.getByDisplayValue('2026-08-31'), { target: { value: '2026-01-31' } });
     fireEvent.click(screen.getByRole('button', { name: /Cerrar quincena/ }));
+    // Las checadas del panel son de agosto y el periodo ahora es de enero: la
+    // pantalla pregunta antes de cerrar, y con razón.
+    fireEvent.click(await screen.findByRole('button', { name: 'Cerrar de todos modos' }));
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 
@@ -269,7 +298,7 @@ describe('NominaDemoPage', () => {
 
   it('sin tocar el periodo se manda la fecha de pago sugerida', async () => {
     const llamadas = stubApi();
-    render(<NominaDemoPage />);
+    montar();
     fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
@@ -283,7 +312,7 @@ describe('NominaDemoPage', () => {
 
   it('pinta recibos, cuotas por ramo y las advertencias del backend', async () => {
     stubApi();
-    render(<NominaDemoPage />);
+    montar();
     fireEvent.click(await esperarPlantilla());
     await screen.findByText('PERSONA DOS');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
@@ -295,7 +324,7 @@ describe('NominaDemoPage', () => {
 
   it('un error de red se muestra en pantalla y no deja la página en blanco', async () => {
     stubApi({ 'asistencia/eventos': new Error('conexión rechazada') });
-    render(<NominaDemoPage />);
+    montar();
     expect(await screen.findByText(/No se pudieron leer las checadas/)).toBeTruthy();
     expect(screen.getByText(/conexión rechazada/)).toBeTruthy();
   });
