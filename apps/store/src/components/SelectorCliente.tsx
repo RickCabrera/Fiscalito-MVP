@@ -47,7 +47,12 @@ export default function SelectorCliente() {
       }}
     >
       <Building2 size={16} color="var(--text-secondary)" />
-      <label htmlFor="selector-cliente" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+      {/* Sin `htmlFor` cuando no hay `<select>` que etiquetar: en la rama de
+          error el control no se renderiza y el `for` apuntaría al vacío. */}
+      <label
+        htmlFor={error ? undefined : 'selector-cliente'}
+        style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}
+      >
         Cliente activo
       </label>
       {error ? (
