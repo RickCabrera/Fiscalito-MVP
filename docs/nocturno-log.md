@@ -1042,3 +1042,92 @@ posterior.
 - `EmpleadoClienteSchema` ya es superconjunto compatible de `EmpleadoNominaSchema`, con `zona`
   por empleado, y la ficha trae `periodo_sugerido` resuelto con la misma `quincena()`.
 
+---
+
+## E-03 · la nómina vive dentro del cliente (2026-09-02, sesión autónoma)
+
+**PR #22, mergeada. Tests: 1018 → 1037 backend, 128 → 156 frontend.**
+**CI verde al primer intento** (Backend 28 s, Frontend 1 m 19 s).
+`pytest -q` → `1037 passed` · `ruff check .` limpio · `npm run build` limpio · `npm test` →
+`156 passed` · `npx eslint .` → 20/8, la línea base preexistente de S-02.
+
+### EL BLOQUEANTE QUE LA REVISIÓN EVITÓ — y es la segunda vez de la misma especie
+
+Mandar la plantilla en el request es **obligatorio** (omitirla sólo vale para `demo`), y eso
+hace que `origen_plantilla` valga `"request"` siempre. **La banda "DATOS DE DEMOSTRACIÓN" del
+PDF colgaba justo de ese campo** (`pdfExportNomina.ts:37`): habría desaparecido de los tres
+clientes, y nadie lo habría notado porque el PDF se sigue generando igual. Un papel con nueve
+nombres, nueve sueldos y cuotas IMSS reales saldría de la sala sin la única marca que dice que
+no es la nómina de un cliente de verdad.
+
+Misma especie que el bloqueante de E-02: **un cambio en el front que apaga en silencio una
+salvaguarda anclada en el backend, sin tocarla.** Dos veces seguidas por la misma puerta.
+
+**La regla que queda de esto:** si un cambio hace que un campo del backend deje de variar, hay
+que buscar quién decidía en función de ese campo. Un `grep origen_plantilla` habría bastado.
+
+### Decisiones tomadas sin Ricardo
+
+1. **La banda del PDF cuelga del CLIENTE, no de `origen_plantilla`.** Toda la cartera de E-02
+   es de demostración hasta que exista el alta real de clientes (F1-09), así que es
+   incondicional; el día que haya clientes reales, la condición se escribe ahí y no se olvida.
+   El PDF además imprime el nombre del cliente y su origen, y el archivo lleva el cliente en el
+   nombre —antes los tres exportaban el mismo y caían en Descargas como `…(1)`, `…(2)`.
+2. **La nómina sin checadas NO se toca en el motor.** Descubrimiento de la tarea: no da recibos
+   en cero. `dias_pagados = dias_periodo − faltas` y `faltas` sólo cuenta días **laborables**,
+   así que doce personas que no fueron un solo día cobran los 5 días de descanso: ~$30,800 de
+   neto y ~$14,300 de cuotas, con aspecto de nómina normal. Es **§D17 en su extremo**, sigue
+   abierta y pendiente de la contadora, y cambiar la semántica movería los números del caso real
+   que hoy cuadran contra el timbrado. Se hizo ruidoso en su lugar: confirmación antes de
+   cerrar, aviso arriba si algún empleado no tiene una sola checada, y un test que **fija los
+   números observados** en vez de asertar cero.
+3. **El disparador de esa confirmación es "ninguna checada DENTRO del periodo"**, no "el panel
+   está vacío". El modo de falla probable de la demo es el panel **lleno de la quincena
+   equivocada**: `obtenerEventos` no manda `desde` a propósito, y sembrar el día 15 para
+   demostrar el 16 son dos quincenas distintas.
+4. **Siembra escalada para los sintéticos** —1 falta por cada 6 empleados, 1 retardo por cada 4,
+   mínimo 1 de cada uno— frente a **`SIEMBRA_DEMO` literal** para el caso real, que es el
+   contrato del runbook de D-07. Forzar una fórmula a reproducir esos cinco casos habría dado
+   números mágicos que encajan por construcción y no significan nada.
+5. **La ruta es la fuente de verdad del cliente; el contexto la sigue.** Y todo el estado de la
+   pantalla va etiquetado con el id que lo produjo: un efecto de limpieza puede olvidarse de una
+   pieza nueva, la derivación no.
+
+### ERROR DE PROCESO, PARA QUE NO SE REPITA
+
+**El primer commit de E-03 nació en `main`, no en `feat/E-03`.** Creé la rama al empezar y
+**nunca verifiqué en cuál estaba** antes de commitear. El `CLAUDE.md` permite exactamente un
+commit directo a main —el que marca `[x]` en `backlog.md`, y sólo ése—; éste tocaba 20 archivos.
+
+No hubo daño porque no estaba pusheado. Se recuperó con `git branch -f feat/E-03 <sha>` y
+`git branch -f main origin/main`, que mueven punteros sin tocar el árbol de trabajo (más seguro
+que `reset --hard`, y además el hard reset está bloqueado en la sesión).
+
+**Hábito que queda:** verificar la rama antes de cada commit de tarea, no sólo al crearla.
+
+### Verificación
+
+**23 mutaciones, 23 en rojo.** Cuatro sobrevivieron al primer intento, y las cuatro enseñan
+algo:
+
+1. **Revertir el CLI a `plantilla_desde_fixtures()` no rompía nada**, porque los tests
+   ejercitaban `checador_sintetico` y no `simular_checador.main()` — **y `main()` es lo que se
+   corre en la demo**. Es el mejor hallazgo de la corrida.
+2. **Tres del arrastre entre clientes**, invisibles porque la fixture le daba a todos los
+   clientes empleados llamados "PERSONA UNA". **Una fixture con datos indistinguibles entre
+   casos vuelve ciega a la prueba aunque la prueba esté bien escrita.** La corrección fue
+   asertar sobre `empleado_no`, no sobre el nombre.
+
+### Ensayo real contra la API viva (no jsdom)
+
+Sembrar → panel → cerrar → calcular, para los tres clientes. Los números están en
+`docs/D-DEMO-CHECADOR.md`. **El caso real sigue dando E-05 y E-08 con 15 días pagados y
+$4,740.00**: la mudanza al contexto del cliente no movió un centavo.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador**, igual que E-01 y E-02.
+- `inicio`/`fin` y `errorPanel` no van etiquetados por cliente. Hoy es inocuo —los tres clientes
+  comparten periodo porque sale de la misma `quincena()`, y con la ficha aún nula los botones
+  están deshabilitados—, pero queda anotado.
+
