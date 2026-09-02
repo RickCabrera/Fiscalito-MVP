@@ -40,7 +40,7 @@ producto es para un CONTADOR que lleva la nómina de varios clientes. **No se cr
   contador, el sidebar muestra **Clientes / Nómina / Calendario / Perfil** y OCULTA los tabs
   de contribuyente — **no se borran, solo no se muestran**. *Listo cuando:* creo cuenta como
   contador y veo el sidebar correcto.
-- [ ] **E-02 · Clientes** — Backend: `GET /api/v1/despacho/clientes` y `/clientes/{id}` con 3
+- [x] **E-02 · Clientes** — Backend: `GET /api/v1/despacho/clientes` y `/clientes/{id}` con 3
   clientes demo — uno es el de las fixtures S-04 con sus 9 empleados, dos sintéticos con
   distinto giro y número de empleados. Front: pantalla de lista + selector de cliente activo
   en el header, y ficha `/clientes/:id` con sus empleados (SBC, salario diario, alta, factor).
