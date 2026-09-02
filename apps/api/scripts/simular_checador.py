@@ -81,6 +81,8 @@ dias_laborables = _gen.dias_laborables
 envolver = _gen.envolver
 generar_checadas = _gen.generar_checadas
 plantilla_desde_fixtures = _gen.plantilla_desde_fixtures
+plantilla_de_cliente = _gen.plantilla_de_cliente
+siembra_para = _gen.siembra_para
 repartir = _gen.repartir
 ventana_entrada_normal = _gen.ventana_entrada_normal
 
@@ -175,16 +177,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     # La GENERACION va dentro del try, no solo el envio: una fecha o una siembra
     # imposible salia como traceback crudo enfrente del cliente.
     try:
-        empleados = plantilla_desde_fixtures()
+        # E-03: la plantilla sale de la CARTERA, no de las fixtures. Con
+        # `plantilla_desde_fixtures()` los únicos `employeeNo` que se sabían
+        # generar eran los nueve de S-04, así que sembrar `--cliente taller`
+        # mandaba checadas de E-01..E-09 que su panel no reconoce.
+        empleados = plantilla_de_cliente(args.cliente)
         eventos = generar_checadas(
-            empleados, periodo, horario, args.offset, SIEMBRA_DEMO, args.serial_base
+            empleados,
+            periodo,
+            horario,
+            args.offset,
+            siembra_para(args.cliente, empleados),
+            args.serial_base,
         )
     except (FiscalValidationError, ValueError) as exc:
         print(f"No se pudieron generar las checadas: {exc}", file=sys.stderr)
         return 2
     print(
-        f"{len(empleados)} empleados | {periodo.inicio} a {periodo.fin} | "
-        f"{len(eventos)} checadas | serial {args.serial_base}"
+        f"cliente {args.cliente} | {len(empleados)} empleados | "
+        f"{periodo.inicio} a {periodo.fin} | {len(eventos)} checadas | "
+        f"serial {args.serial_base}"
     )
 
     if args.dry_run:

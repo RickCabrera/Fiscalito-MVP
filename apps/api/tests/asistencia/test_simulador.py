@@ -21,6 +21,7 @@ asercion. `quincena()` se prueba aparte, pasandole el `hoy` por parametro.
 """
 
 import importlib.util
+import json
 import sys
 from datetime import date, time
 from pathlib import Path
@@ -371,6 +372,32 @@ class TestCLI:
             ["--dry-run", "--inicio", "2026-08-16", "--fin", "2026-08-31"]
         ) == 0
         capsys.readouterr().out.encode("cp1252")
+
+    @pytest.mark.parametrize(
+        ("cliente", "prefijo", "cuantos"),
+        [("demo", "E-", 9), ("cafeteria", "C-", 4), ("taller", "T-", 12)],
+    )
+    def test_el_cli_siembra_al_cliente_que_se_le_pide(
+        self, capsys, cliente, prefijo, cuantos
+    ):
+        """
+        E-03. **El CLI es lo que se corre en la demo**, y probar sólo el
+        generador deja este camino descubierto: si `main()` volviera a
+        `plantilla_desde_fixtures()`, sembrar `--cliente taller` mandaría
+        checadas de E-01..E-09 —empleados que el taller no tiene— y su panel
+        saldría vacío sin que nada fallara.
+        """
+        assert sim.main(
+            ["--dry-run", "--cliente", cliente, "--inicio", "2026-08-16", "--fin", "2026-08-31"]
+        ) == 0
+
+        salida = capsys.readouterr().out
+        payload = json.loads(salida[salida.index("{"):])
+        numeros = {
+            info["employeeNoString"] for info in payload["AcsEvent"]["InfoList"]
+        }
+        assert len(numeros) == cuantos
+        assert all(n.startswith(prefijo) for n in numeros), numeros
 
     def test_inicio_sin_fin_no_arranca(self, capsys):
         """Media fecha daría un periodo que nadie pidió; mejor no correr."""

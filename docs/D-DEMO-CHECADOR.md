@@ -178,7 +178,7 @@ Fiscalito desarrolladas por Ricardo** → mismo régimen que el núcleo: propied
 licencia de uso/reventa para la empresa. El hardware (checador, red, instalación) lo aporta
 la empresa y es suyo. Dejarlo escrito antes de la demo, no después.
 
-## Ensayo de la demo, paso a paso (D-07)
+## Ensayo de la demo, paso a paso (D-07, actualizado por E-03)
 
 > **Esto NO lo cubre CI.** Los tests del front corren en jsdom con `fetch`
 > stubbeado: prueban qué pide la pantalla, qué manda y qué pinta, pero no que
@@ -187,7 +187,12 @@ la empresa y es suyo. Dejarlo escrito antes de la demo, no después.
 
 ### Antes de empezar, tres cosas que hacen fallar el ensayo
 
-1. **La pantalla exige sesión.** `/app/nomina-demo` está detrás de
+0. **La nómina vive DENTRO del cliente desde E-03.** La ruta es
+   `/app/clientes/{id}/nomina`; el enlace "Nómina" del sidebar del contador
+   pasa por `/app/nomina`, que resuelve el cliente activo. `/app/nomina-demo`
+   **sigue funcionando** como redirección al cliente `demo`, para que los
+   enlaces viejos y este runbook no queden colgados.
+1. **La pantalla exige sesión.** `/app/clientes/demo/nomina` está detrás de
    `ProtectedRoute` **y** del gate `isOnboardingComplete()` de `AppLayout`. Con
    una cuenta sin onboarding terminado la app redirige al wizard y la pantalla
    no abre. Usa una cuenta que ya lo haya completado.
@@ -209,15 +214,25 @@ cd apps/api
 # 2. Sembrar la quincena (en otra terminal)
 cd apps/api
 .venv/Scripts/python.exe scripts/simular_checador.py
-#    → "9 empleados | 2026-08-16 a 2026-08-31 | 194 checadas | serial 900001"
+#    → "cliente demo | 9 empleados | 2026-08-16 a 2026-08-31 | 194 checadas | serial 900001"
 #    → "recibidos=194 duplicados=0"
+
+#    E-03: el simulador siembra CUALQUIER cliente de la cartera. Si vas a
+#    enseñar más de uno, siémbralos todos ANTES de empezar — un cliente sin
+#    checadas no da una nómina en ceros, da una nómina completa y creíble con
+#    todos los días laborables en falta (ver abajo).
+.venv/Scripts/python.exe scripts/simular_checador.py --cliente cafeteria --serial-base 2000000
+#    → "cliente cafeteria | 4 empleados | ... | 86 checadas"
+.venv/Scripts/python.exe scripts/simular_checador.py --cliente taller --serial-base 3000000
+#    → "cliente taller | 12 empleados | ... | 260 checadas"
 
 # 3. Front (en otra terminal, desde la raíz del repo)
 npm run dev --workspace fiscalito-store
 #    → http://localhost:3000
 
-# 4. En el navegador: entrar, iniciar sesión, y abrir "Nómina (demo)" en el sidebar
-#    (ruta directa: http://localhost:3000/app/nomina-demo)
+# 4. En el navegador: entrar, iniciar sesión, y abrir "Clientes" en el sidebar.
+#    Elegir un cliente → su ficha → "Nómina". O directo:
+#    http://localhost:3000/app/clientes/demo/nomina
 ```
 
 **Para el efecto en vivo**, en vez del paso 2:
@@ -238,7 +253,26 @@ npm run dev --workspace fiscalito-store
 | "Cerrar quincena" | Tabla de 9 empleados; **E-05 y E-08 con 1 falta**; **E-02, E-06 y E-09 con 1 retardo** |
 | "Calcular nómina" | 9 recibos. E-05 y E-08 con **15 días pagados y $4,740.00**; los demás con 16 |
 | Cuotas | Desglose por ramo, y la **advertencia** de que son la porción del periodo |
-| "Exportar PDF" | PDF con la banda naranja **"DATOS DE DEMOSTRACIÓN"** |
+| "Exportar PDF" | PDF con la banda naranja **"DATOS DE DEMOSTRACIÓN"** y el **nombre del cliente** |
+
+### Los tres clientes, corridos de verdad (E-03)
+
+Números del ensayo end-to-end contra la API viva, no de un test con `fetch`
+stubbeado. Sembrar → panel → cerrar quincena → calcular, para los tres:
+
+| Cliente | Checadas | Faltas | Retardos | Recibos | Neto | Cuota patronal |
+|---|---:|---:|---:|---:|---:|---:|
+| Servicios Administrativos Integrales (caso real) | 194 | 2 | 3 | 9 | 44,422.71 | 12,870.25 |
+| Cafetería La Estación (sintético) | 86 | 1 | 1 | 4 | 25,819.32 | 7,720.24 |
+| Taller Mecánico Nogal (sintético) | 260 | 2 | 3 | 12 | 93,276.16 | 29,710.16 |
+
+El cliente del caso real sigue dando **exactamente** lo que promete la tabla de
+arriba: E-05 y E-08 con 1 falta, E-02/E-06/E-09 con 1 retardo, y **15 días
+pagados con $4,740.00** para los dos que faltaron. La mudanza al contexto del
+cliente no movió un centavo.
+
+**Cuota patronal** es la suma de la porción mensual y la bimestral del periodo,
+no el entero del Art. 39 LSS — la pantalla lo advierte y el PDF lo imprime.
 
 ### Si algo se ve raro y no es un bug
 
@@ -250,3 +284,16 @@ npm run dev --workspace fiscalito-store
   con `--serial-base 5000000` para volver a sembrar sin reiniciar la API.
 - **Las cuotas no son "lo que se paga al mes".** Son lo devengado en la
   quincena. Decirlo así si sale la pregunta.
+- **Un cliente sin sembrar NO da una nómina en ceros.** Da una nómina completa:
+  `dias_pagados = dias_periodo − faltas` y `faltas` sólo cuenta días
+  **laborables**, así que quien no fue un solo día cobra los 5 días de descanso
+  de la quincena. Doce personas ausentes producen ~$30,800 de neto y ~$14,300 de
+  cuotas patronales, con aspecto de nómina normal. La pantalla **pide
+  confirmación** antes de cerrar con el panel vacío y **avisa arriba** si algún
+  empleado no tiene una sola checada, pero si eso aparece en vivo, la respuesta
+  es "a este cliente no le sembré el periodo", no un problema del motor. El
+  tratamiento de fondo es §D17, pendiente de la contadora.
+- **Si preguntan por un empleado con comisiones o percepciones variables:** el
+  motor tiene `sbc_variable` y `sbc_mixto` desde F1-02; la cartera de la demo es
+  toda de salario fijo, zona general y periodicidad quincenal, y no los
+  ejercita.

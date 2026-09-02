@@ -13,7 +13,7 @@
  * ruta sin tocar el historial del navegador.
  */
 
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 import LandingPage from './pages/LandingPage';
@@ -29,8 +29,9 @@ import HistorialPage from './pages/HistorialPage';
 // DEMO E-02: cartera del despacho. Se borra en F2.
 import ClientesPage from './pages/ClientesPage';
 import ClienteDetallePage from './pages/ClienteDetallePage';
-// DEMO D-07: se borra en F2 junto con la pantalla.
-import NominaDemoPage from './pages/NominaDemoPage';
+// DEMO E-03: la nómina vive dentro del cliente. Se borra en F2.
+import NominaClientePage from './pages/NominaClientePage';
+import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
 
 export default function AppRoutes() {
   return (
@@ -57,13 +58,17 @@ export default function AppRoutes() {
         {/* DEMO E-02 */}
         <Route path="clientes" element={<ClientesPage />} />
         <Route path="clientes/:id" element={<ClienteDetallePage />} />
+        <Route path="clientes/:id/nomina" element={<NominaClientePage />} />
+        {/* Enlace del sidebar del contador: no conoce el id, lo resuelve. */}
+        <Route path="nomina" element={<NominaDelClienteActivo />} />
         <Route path="store" element={<MarketplacePage />} />
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
         <Route path="store/:serviceId" element={<ServiceDetailPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="admin" element={<AdminPage />} />
-        {/* DEMO D-07: se borra en F2 */}
-        <Route path="nomina-demo" element={<NominaDemoPage />} />
+        {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
+            y los enlaces viejos apuntan ahí. */}
+        <Route path="nomina-demo" element={<Navigate to="/app/clientes/demo/nomina" replace />} />
       </Route>
     </Routes>
   );

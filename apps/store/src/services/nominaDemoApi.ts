@@ -14,6 +14,8 @@
  * diverjan de `app/demo_nomina.py`.
  */
 
+import type { ClienteDetalle } from './despachoApi';
+
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
 const V1 = `${BASE_URL}/api/v1`;
 
@@ -193,7 +195,7 @@ export function calcularNomina(
   cliente: string,
   periodo: PeriodoNomina,
   incidencias: IncidenciasEmpleado[],
-  plantilla: PlantillaDemo,
+  ficha: ClienteDetalle,
 ): Promise<NominaPeriodo> {
   return pedir('/nomina/calcular-periodo', {
     method: 'POST',
@@ -207,9 +209,21 @@ export function calcularNomina(
         dias_ausentismo: i.dias_ausentismo,
       })),
       parametros: {
-        prima_riesgo: plantilla.prima_riesgo,
-        clave_periodicidad: plantilla.clave_periodicidad,
+        prima_riesgo: ficha.prima_riesgo,
+        clave_periodicidad: ficha.clave_periodicidad,
       },
+      // E-03: la plantilla viaja SIEMPRE. Omitirla sólo es válido para el
+      // cliente `demo` (`routes/nomina.py`), así que sin esto los sintéticos no
+      // se pueden calcular. Los campos salen tal cual de la ficha: son un
+      // superconjunto compatible de `EmpleadoNominaSchema` y remapearlos aquí
+      // sería mover datos fiscales desde la UI.
+      empleados: ficha.empleados.map((e) => ({
+        empleado_no: e.empleado_no,
+        nombre: e.nombre,
+        salario_diario: e.salario_diario,
+        salario_diario_integrado: e.salario_diario_integrado,
+        zona: e.zona,
+      })),
     }),
   });
 }

@@ -141,6 +141,8 @@ fiscalito-store-app/
 │   │   ├── HistorialPage.tsx        # Historial de declaraciones con filtros y export PDF
 │   │   ├── ClientesPage.tsx         # Cartera del despacho (E-02)
 │   │   ├── ClienteDetallePage.tsx   # Ficha del cliente con su plantilla (E-02)
+│   │   ├── NominaClientePage.tsx    # Nomina del cliente: checador, cierre, calculo, PDF (E-03)
+│   │   ├── NominaDelClienteActivo.tsx # /app/nomina -> nomina del cliente activo (E-03)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
@@ -174,6 +176,9 @@ fiscalito-store-app/
 /app/historial                 → HistorialPage (protegida)
 /app/clientes                  → ClientesPage (protegida, cartera del despacho — solo contador)
 /app/clientes/:id              → ClienteDetallePage (protegida, ficha con la plantilla del cliente)
+/app/clientes/:id/nomina       → NominaClientePage (protegida, checador + cierre + calculo + PDF)
+/app/nomina                    → NominaDelClienteActivo (redirige a la nomina del cliente activo)
+/app/nomina-demo               → redireccion a /app/clientes/demo/nomina (ruta vieja de D-07)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
@@ -224,10 +229,25 @@ cartera **cae al primero** y se corrige lo guardado: si no, la ficha pediría un
 y el backend respondería 404.
 
 El **selector de cliente** vive en una barra sobre el `<Outlet />` de `AppLayout` y se muestra
-solo en las rutas con alcance de cliente (`rutaTieneAlcanceDeCliente` en `navigation.ts`):
-Clientes y Nomina. **NO** en Calendario ni Perfil, que son del DESPACHO — §D21 fija que el
-calendario de una cuenta de despacho muestra sus obligaciones propias y nada patronal, asi que
-un selector de cliente ahi le mentiria al contador sobre lo que esta viendo.
+solo en las rutas con alcance de cliente (`rutaTieneAlcanceDeCliente` en `navigation.ts`): todo
+lo que cuelga de `/app/clientes`, incluida la nomina. **NO** en Calendario ni Perfil, que son
+del DESPACHO — §D21 fija que el calendario de una cuenta de despacho muestra sus obligaciones
+propias y nada patronal, asi que un selector de cliente ahi le mentiria al contador.
+
+**REGLA PARA AGREGAR UNA RUTA A ESA LISTA:** no basta con que la pantalla HABLE de clientes;
+tiene que LEER el cliente activo y pedirle los datos a ese cliente. Si no, el selector afirma un
+cliente y la pantalla ensena otro.
+
+### La ruta es la fuente de verdad del cliente (E-03)
+
+`NominaClientePage` toma el cliente de `useParams` y **sincroniza el contexto a la ruta**, nunca
+al reves. Al reves, entrar por `/app/clientes/demo/nomina` con `taller` guardado en
+`localStorage` dejaria el header diciendo Taller y la pantalla calculando demo.
+
+La pantalla manda **siempre** `empleados` en `POST /nomina/calcular-periodo`, tomados de la
+ficha: omitirlos solo es valido para el cliente `demo`. Por eso `origen_plantilla` vale
+`"request"` para todos y **la banda "DATOS DE DEMOSTRACION" del PDF cuelga del cliente**, no de
+ese campo.
 
 ### Frontera de tipos front → API
 

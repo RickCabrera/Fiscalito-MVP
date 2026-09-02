@@ -68,8 +68,9 @@ vi.mock('./services/despachoApi', async () => {
   return {
     ...real,
     obtenerClientes: vi.fn(async () => CLIENTES),
-    obtenerCliente: vi.fn(async () => ({
+    obtenerCliente: vi.fn(async (id: string) => ({
       ...CLIENTES[0],
+      id,
       empleados: [
         {
           empleado_no: 'E-01', nombre: 'PERSONA UNO', puesto: '',
@@ -116,6 +117,25 @@ describe('rutas registradas', () => {
   it('/app/profile sigue registrada', async () => {
     montar('/app/profile');
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeTruthy());
+  });
+
+  it('/app/clientes/:id/nomina resuelve la nómina del cliente', async () => {
+    montar('/app/clientes/demo/nomina');
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /Nómina de/ })).toBeTruthy(),
+    );
+  });
+
+  it('/app/nomina-demo redirige a la nómina del cliente demo', async () => {
+    /**
+     * La ruta de D-07 sobrevive como redirección: el runbook de la demo y los
+     * enlaces viejos apuntan ahí, y un 404 silencioso enfrente de alguien es
+     * peor que una redirección.
+     */
+    montar('/app/nomina-demo');
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /Nómina de/ })).toBeTruthy(),
+    );
   });
 
   it('/login es pública y no pasa por el layout', () => {

@@ -22,7 +22,9 @@ describe('getSidebarLinks', () => {
   it('el contador ve Clientes / Nómina / Calendario / Perfil, en ese orden', () => {
     expect(getSidebarLinks('contador')).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
-      { id: 'nomina', to: '/app/nomina-demo', label: 'Nómina' },
+      // E-03: el enlace no conoce el id del cliente; `/app/nomina` lo resuelve
+      // desde el contexto. Así `getSidebarLinks` sigue siendo pura del perfil.
+      { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
       { id: 'calendario', to: '/app/store/fiscalito/use?tab=calendario', label: 'Calendario' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);

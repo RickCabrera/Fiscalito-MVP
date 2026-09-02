@@ -35,6 +35,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from app.asistencia.hikvision import MAJOR_ACCESO, MINORS_AUTENTICACION_VALIDA
+from app.constants import CLIENTE_DEMO
 from app.exceptions import FiscalValidationError
 from app.schemas.asistencia import HorarioLaboral, Periodo
 
@@ -120,6 +121,82 @@ SIEMBRA_DEMO = Siembra(
     faltas=(Falta("E-05", 2), Falta("E-08", 5)),
     retardos=(Retardo("E-02", 1, 35), Retardo("E-06", 3, 22), Retardo("E-09", 7, 48)),
 )
+
+# Regla de siembra para los clientes que NO son `demo` (E-03). Declarada, no
+# derivada de `SIEMBRA_DEMO`: forzar una formula a reproducir esos cinco casos
+# daria numeros magicos que encajan por construccion y no significan nada.
+#
+# Una falta por cada 6 empleados y un retardo por cada 4, con minimo de 1 de
+# cada uno. Para la cafeteria (4) da 1 y 1; para el taller (12), 2 y 3.
+_EMPLEADOS_POR_FALTA = 6
+_EMPLEADOS_POR_RETARDO = 4
+# Minutos de tardanza de los retardos generados, ciclicos. Todos por encima de
+# la tolerancia default (15 min) y lejos de la hora de salida: `_validar_siembra`
+# rechaza los dos bordes, pero es mejor no acercarse.
+_MINUTOS_RETARDO = (35, 22, 48, 27)
+
+
+def siembra_para(cliente_id: str, empleados: Sequence[EmpleadoDemo]) -> Siembra:
+    """
+    Las incidencias a sembrar para un cliente.
+
+    `demo` conserva `SIEMBRA_DEMO` **literal**: es el contrato del runbook de
+    D-07, que promete 2 faltas y 3 retardos con nombre y apellido (E-05 y E-08
+    con 15 dias pagados). Cualquier generalizacion que lo reprodujera "por
+    casualidad" seria fragil justo donde mas se mira.
+
+    Los demas usan la regla declarada arriba, escalada a su plantilla. Las
+    posiciones se reparten con un paso fijo para que no se amontonen en los
+    primeros empleados ni en el primer dia.
+    """
+    if cliente_id == CLIENTE_DEMO:
+        return SIEMBRA_DEMO
+    if not empleados:
+        raise FiscalValidationError(
+            f"El cliente {cliente_id!r} no tiene empleados: no hay a quien sembrarle checadas."
+        )
+
+    total = len(empleados)
+    n_faltas = max(1, total // _EMPLEADOS_POR_FALTA)
+    n_retardos = max(1, total // _EMPLEADOS_POR_RETARDO)
+
+    faltas = tuple(
+        Falta(empleados[(i * 3) % total].numero, dia_laborable=2 + i * 3)
+        for i in range(n_faltas)
+    )
+    retardos = tuple(
+        Retardo(
+            empleados[(1 + i * 2) % total].numero,
+            dia_laborable=1 + i * 2,
+            minutos_tarde=_MINUTOS_RETARDO[i % len(_MINUTOS_RETARDO)],
+        )
+        for i in range(n_retardos)
+    )
+    return Siembra(faltas=faltas, retardos=retardos)
+
+
+def plantilla_de_cliente(cliente_id: str) -> tuple[EmpleadoDemo, ...]:
+    """
+    La plantilla de cualquier cliente de la cartera (E-03), no solo la de S-04.
+
+    Lee `app/despacho_demo.py`, que es el duenio del catalogo, en vez de las
+    fixtures. Asi el simulador sirve para los tres clientes; con
+    `plantilla_desde_fixtures()` los unicos `employeeNo` que sabia generar eran
+    los nueve de S-04, y sembrar el taller mandaba checadas de E-01..E-09 que
+    su panel ni siquiera reconoce.
+
+    Para `demo` devuelve exactamente lo mismo que `plantilla_desde_fixtures()`,
+    y hay un test que lo verifica: `despacho_demo` reusa `PLANTILLA_DEMO`, que a
+    su vez no diverge de las fixtures por `test_plantilla_demo.py`.
+    """
+    from app.despacho_demo import cliente_por_id
+
+    cliente = cliente_por_id(cliente_id)
+    if cliente is None:
+        raise FiscalValidationError(
+            f"El cliente {cliente_id!r} no esta en la cartera de la demo."
+        )
+    return tuple(EmpleadoDemo(e.empleado_no, e.nombre) for e in cliente.empleados)
 
 
 def plantilla_desde_fixtures() -> tuple[EmpleadoDemo, ...]:

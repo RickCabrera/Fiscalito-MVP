@@ -3,6 +3,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { NominaPeriodo, ReciboNomina } from './nominaDemoApi';
+import { etiquetaOrigen, type ClienteDetalle } from './despachoApi';
 import {
   PDF_COLORS, fmtMoney, addFooter,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
@@ -15,14 +16,18 @@ function isr(recibo: ReciboNomina): number {
 }
 
 /**
- * Exporta la nómina del periodo.
+ * Exporta la nómina del periodo, con el cliente al que pertenece.
  *
- * La banda "DATOS DE DEMOSTRACIÓN" se pinta **si y sólo si** la plantilla salió
- * del servidor de demo. Un PDF con nueve nombres y nueve sueldos que circule
- * sin esa banda parece la nómina de un cliente real; y ponérsela a una nómina
- * que sí es real sería igual de falso.
+ * LA BANDA "DATOS DE DEMOSTRACIÓN" ES PARTE DE LA PRIVACIDAD, NO DE LA ESTÉTICA.
+ * Un PDF con nueve nombres, nueve sueldos y cuotas IMSS reales que circule sin
+ * ella parece la nómina de un cliente de verdad. Por eso se pinta para **toda**
+ * la cartera: los tres clientes de E-02 son de demostración hasta que exista el
+ * alta real (F1-09), y el día que haya clientes reales esta condición tiene que
+ * volverse explícita en vez de desaparecer.
+ *
+ * Colgaba de `origen_plantilla === 'demo'`, que dejó de variar en E-03.
  */
-export function exportarNominaPDF(data: NominaPeriodo): void {
+export function exportarNominaPDF(data: NominaPeriodo, cliente: ClienteDetalle): void {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const mL = 20;
@@ -34,7 +39,21 @@ export function exportarNominaPDF(data: NominaPeriodo): void {
   doc.text('Fiscalito — Nómina del periodo', mL, y);
   y += 8;
 
-  if (data.origen_plantilla === 'demo') {
+  // La banda cuelga del CLIENTE, no de `origen_plantilla` (E-03).
+  //
+  // Colgaba de `origen_plantilla === 'demo'`, y ese campo vale "request" desde
+  // que la pantalla manda la plantilla en el request — obligatorio para los
+  // clientes sintéticos. Dejarlo así habría **apagado la banda en los tres**:
+  // un PDF con nueve nombres, nueve sueldos y cuotas IMSS reales saldría de la
+  // sala sin la única marca que dice que no es la nómina de un cliente de
+  // verdad.
+  //
+  // Toda la cartera de E-02 es de demostración hasta que exista el alta real de
+  // clientes (F1-09), así que la banda es incondicional.
+  // Incondicional hoy — ver el docstring. `cliente` viaja para que el día que
+  // deje de serlo, la condición se escriba aquí y no se olvide.
+  const esDeDemostracion = true;
+  if (esDeDemostracion) {
     doc.setFillColor(...PDF_COLORS.demo);
     doc.rect(mL, y - 4, pageW - mL - 20, 7, 'F');
     doc.setTextColor(...PDF_COLORS.white);
@@ -42,6 +61,19 @@ export function exportarNominaPDF(data: NominaPeriodo): void {
     doc.text('DATOS DE DEMOSTRACIÓN — identidades sintéticas, no es la nómina de un cliente', mL + 2, y + 1);
     y += 10;
   }
+
+  // De quién es esta nómina. Si la pantalla lo dice y el papel no, la honestidad
+  // se queda en la sala y el PDF se va sin ella.
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...PDF_COLORS.dark);
+  doc.text(`Cliente: ${cliente.nombre}`, mL, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...PDF_COLORS.gray);
+  doc.text(`${cliente.giro} · ${etiquetaOrigen(cliente.origen)}`, mL, y);
+  y += 7;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
