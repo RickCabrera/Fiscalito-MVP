@@ -15,7 +15,14 @@ El Fiscal Agent API es el "cerebro contable" del ecosistema Fiscalito. Es un mic
 **ES**: Un motor de cálculo fiscal determinístico + LLM para explicaciones
 
 ### Principios de diseño:
-- **Stateless**: No guarda datos del usuario. Todo viene en el request, se procesa, se responde.
+- **Stateless, con UNA excepción declarada (R-07)**: el motor fiscal no guarda nada — todo
+  viene en el request, se procesa, se responde. La excepción es `/api/v1/cartera/*`, donde
+  Ricardo decidió que el backend fuera **dueño del dato** de la cartera del despacho
+  (`firebase-admin` sobre `users/{uid}/clientes/...`). La razón: había dos dueños del mismo
+  dato —el front escribía Firestore directo y el backend calculaba sobre la plantilla que el
+  front le mandaba en el body—, y con la plantilla viajando por el cliente, *afirmar un
+  cliente y calcular otro* cabe en un JSON. **Ningún cálculo fiscal guarda nada**: la
+  excepción es el CRUD, no el motor.
 - **Determinístico primero**: Los cálculos fiscales usan tablas ISR codificadas, NO el LLM. El LLM solo explica.
 - **Dual LLM**: Configurable entre OpenAI y Anthropic vía .env. Si ninguno está disponible, fallback estático.
 - **Reutilizable**: Cualquier app (Fiscalito Store, Fiscalito Flutter) puede consumirlo.
@@ -366,6 +373,7 @@ El sistema soporta 5 tipos de contribuyente (enum `ContributorType`). El tipo af
 ### NUNCA:
 - Usar el LLM para calcular ISR/IVA (solo para explicaciones)
 - Hardcodear API keys
-- Guardar datos del usuario (stateless)
+- Guardar datos del usuario desde el MOTOR fiscal. La única persistencia permitida es el
+  CRUD de `/api/v1/cartera/*` (R-07), que es explícito, está autenticado y no calcula nada.
 - Romper los 93 tests existentes
 - Cambiar las tablas ISR sin fuente oficial

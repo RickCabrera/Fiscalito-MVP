@@ -48,7 +48,7 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.constants import ZonaSalarioMinimo
 from app.nomina_engine.integracion import (
@@ -180,8 +180,43 @@ class EmpleadoCarteraSchema(BaseModel):
         default="",
         max_length=11,
         description="Número de Seguridad Social. **Vacío cuando no se conoce y nunca "
-        "inventado**: un NSS bien formado es el NSS de alguien. La semilla va vacía.",
+        "inventado**: un NSS bien formado es el NSS de alguien. La semilla va vacía. "
+        "Si viene, son 11 dígitos; el dígito verificador se valida en el front y NO se "
+        "exige aquí (ver §D25 de docs/decisiones-nomina.md).",
     )
+
+    @field_validator("nss")
+    @classmethod
+    def _nss_bien_formado(cls, valor: str) -> str:
+        """
+        11 dígitos, o vacío. **El dígito verificador NO se exige.**
+
+        MISMA POLÍTICA QUE `apps/store/src/services/nss.ts`, Y ES A PROPÓSITO QUE
+        SEA LA MISMA. Son dos implementaciones del mismo criterio —una para dar
+        respuesta al teclear y otra para ser la autoridad del contrato— y el
+        vector de casos de los dos tests es el mismo, citado en ambos, para que
+        divergir rompa una prueba en vez de pasar callado.
+
+        Se bloquea la longitud y se deja pasar el verificador porque no hay norma
+        primaria del IMSS publicada que lo especifique, y porque
+        `tests/xsd/nomina12.xsd` declara `NumSeguridadSocial` con
+        `use="optional"` y patrón `[0-9]{1,15}`: el SAT timbra sin exigirlo.
+        Rechazar aquí un NSS bueno empujaría al contador a teclear uno que pase
+        Luhn — un número INVENTADO junto a datos reales, que es justo lo que
+        `routes/despacho.py` argumenta que nunca debe pasar.
+
+        Vacío siempre se acepta, y **eso es lo que hace seguro bloquear por
+        longitud**: el contador nunca queda acorralado.
+        """
+        limpio = valor.strip()
+        if limpio == "":
+            return ""
+        if not limpio.isdigit() or len(limpio) != 11:
+            raise ValueError(
+                f"El NSS son 11 dígitos y llegaron {len(limpio)} caracteres: {limpio!r}. "
+                "Si no se conoce, va vacío — nunca inventado."
+            )
+        return limpio
 
     employee_no: str | None = Field(
         default=None,

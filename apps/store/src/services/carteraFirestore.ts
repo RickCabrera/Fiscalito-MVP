@@ -223,7 +223,7 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
  * `deLaCartera` en `null` para siempre, que rompe la auto-sanación del error de
  * carga. Es el mismo agujero que se acababa de cerrar en `sembrarDemo`.
  */
-async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCartera[]> {
+export async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCartera[]> {
   if (clientes.length === 0) return clientes;
   try {
     const { periodo_sugerido } = await conTimeout(

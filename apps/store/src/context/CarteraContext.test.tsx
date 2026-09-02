@@ -57,7 +57,14 @@ const GUARDADOS = [
   cli('mio', 'Cliente Que Yo Capturé', 'propio'),
 ];
 
-vi.mock('../services/carteraFirestore', () => ({
+/**
+ * R-07: `CarteraContext` importa el DESPACHADOR (`services/cartera`), no
+ * `carteraFirestore` directo — quién es el dueño del dato lo decide un solo
+ * archivo. Doblar el módulo viejo dejaba pasar el real, que arrastra
+ * `carteraBackend` -> `services/firebase` -> `getAuth()`, y eso **lanza sin las
+ * llaves de Firebase**: local verde, CI rojo.
+ */
+vi.mock('../services/cartera', () => ({
   cargarCartera: async () => ({ clientes: GUARDADOS, origen: 'firestore', error: null }),
   guardarCliente: vi.fn(), borrarCliente: vi.fn(),
   guardarEmpleado: vi.fn(), borrarEmpleado: vi.fn(), sembrarDemo: vi.fn(),
@@ -119,7 +126,7 @@ describe('CarteraProvider · el periodo del cliente nuevo', () => {
      * cliente de toda cuenta nueva sin periodo, que es el hueco de E4.
      */
     vi.stubEnv('DEV', false);
-    const { guardarCliente } = await import('../services/carteraFirestore');
+    const { guardarCliente } = await import('../services/cartera');
     render(<CarteraProvider><Alta /></CarteraProvider>);
 
     await waitFor(() => expect(screen.getByTestId('listo').textContent).toBe('sí'));

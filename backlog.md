@@ -237,6 +237,28 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   clientes y empleados pasa a endpoints del backend. Decisión tomada por Ricardo: el
   servicio deja de ser stateless. *Listo cuando:* alta/edición/baja de empleado pasa por el
   backend, sobrevive reinicio de la API, y el cálculo de nómina lee la misma fuente.
+  **ABIERTA, y le falta código Y credenciales — dos cosas distintas.**
+
+  **(a) Falta código: el TERCER criterio no está construido.** "El cálculo de nómina lee la
+  misma fuente" **no se cumple**, ni con el interruptor apagado ni encendido.
+  `routes/nomina.py` no se tocó: `POST /nomina/calcular-periodo` sigue recibiendo
+  `empleados` en el cuerpo y el front sigue armándolo con `plantillaDeNomina`. Encender el
+  flag sólo cambia de dónde saca el navegador la plantilla que sigue mandando. Una versión
+  anterior de esta entrada decía "lo que falta NO es código"; **era falso**, y lo encontró el
+  revisor de motor. Cablear el cálculo a `listar_empleados` es **tarea propia**.
+
+  **(b) Faltan credenciales para lo que SÍ está construido.** El CRUD y su dueño están
+  hechos y probados —45 tests, de los cuales 5 corren contra el **emulador de Firestore**,
+  incluido el de "sobrevive reinicio" que contra un doble en memoria sería tautológico—, con
+  su contrato en `docs/api-contract.md`. Lo que falta son **credenciales**
+  (`GOOGLE_APPLICATION_CREDENTIALS` o `gcloud auth application-default login`): en esta
+  máquina no había ninguna, y crear una llave de service account está prohibido en modo
+  autónomo. Encender el front sin ellas daría **503 en todo el CRUD**, o sea una app rota a
+  sabiendas. Para cerrarla: (1) credenciales en `apps/api`; (2) comprobar que
+  `GET /api/v1/cartera/clientes` responde 200; (3) `VITE_CARTERA_BACKEND=1` en
+  `apps/store/.env`. **No hay migración de datos** — las rutas de Firestore son las mismas
+  de los dos lados. Los **dispositivos** de R-04 no se movieron: hacerlo en la misma corrida
+  habría hecho nacer esa colección con dos dueños, que es el problema que R-07 cierra.
 
 ## S — Saneamiento (deuda que estorba al bucle)
 

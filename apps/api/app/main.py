@@ -21,6 +21,7 @@ from app.routes import (
     agente,
     asistencia,
     calendario,
+    cartera,
     comparador,
     declaraciones,
     despacho,
@@ -75,7 +76,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=cors_origins != ["*"],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    # R-07: el CRUD de la cartera usa PUT y DELETE. Sin ellos el navegador
+    # falla en el PREFLIGHT, y eso no se ve como un problema de permisos: se ve
+    # como red caída, que manda a buscar el bug al lugar equivocado.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -100,5 +104,8 @@ app.include_router(agente.router, prefix="/api/v1")
 app.include_router(asistencia.router, prefix="/api/v1")
 app.include_router(nomina.router, prefix="/api/v1")
 app.include_router(despacho.router, prefix="/api/v1")
+# R-07: el único router del repo que EXIGE autenticación. El resto de /api/v1
+# sigue abierto (S-00b) y eso no cambia aquí.
+app.include_router(cartera.router, prefix="/api/v1")
 
 logger.info("Fiscal Agent API inicializada correctamente")

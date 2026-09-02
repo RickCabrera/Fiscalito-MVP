@@ -30,6 +30,9 @@ import { useAuth } from './AuthContext';
 import { useProfile } from './ProfileContext';
 import { esContador } from '../services/navigation';
 import type { EmpleadoCartera, ClienteCartera } from '../services/carteraApi';
+// R-07: quién es el dueño del dato lo decide `services/cartera.ts`. Este
+// archivo no sabe si detrás hay Firestore o el backend, y ésa es la idea: el
+// interruptor se prueba y se enciende en un solo lugar.
 import {
   borrarCliente as borrarClienteFs,
   borrarEmpleado as borrarEmpleadoFs,
@@ -38,7 +41,7 @@ import {
   guardarEmpleado as guardarEmpleadoFs,
   sembrarDemo,
   type OrigenCartera,
-} from '../services/carteraFirestore';
+} from '../services/cartera';
 import { esClienteDemo, esCuentaDeDesarrollo } from '../services/entorno';
 import { CarteraContext } from './carteraStore';
 
