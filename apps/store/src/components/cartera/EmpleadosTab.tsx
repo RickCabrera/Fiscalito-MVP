@@ -22,6 +22,7 @@ import {
   estaVinculado,
   type EmpleadoCartera,
 } from '../../services/carteraApi';
+import { nssPorVerificar } from '../../services/nss';
 import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from '../nomina/estilosTabla';
 import ModalEmpleado from './ModalEmpleado';
 
@@ -116,7 +117,7 @@ export default function EmpleadosTab({
       )}
 
       <div style={envoltura}>
-        <table style={tabla(900)}>
+        <table style={tabla(1000)}>
           <thead>
             <tr>
               <th style={th}>Núm.</th>
@@ -125,6 +126,7 @@ export default function EmpleadosTab({
               <th style={thNum}>Salario diario</th>
               <th style={thNum}>SBC</th>
               <th style={th}>Alta</th>
+              <th style={th}>NSS</th>
               <th style={th}>Checador</th>
               {!soloLectura && <th style={th} aria-label="Acciones" />}
             </tr>
@@ -138,6 +140,22 @@ export default function EmpleadosTab({
                 <td style={num}>${e.salario_diario}</td>
                 <td style={num}>${e.salario_diario_integrado}</td>
                 <td style={{ ...td, color: 'var(--text-secondary)' }}>{e.fecha_alta ?? '—'}</td>
+                {/* R-03: un NSS guardado con el dígito verificador en desacuerdo
+                    NO se pierde de vista. El modal deja guardarlo a propósito
+                    —bloquearlo empujaría a inventar uno que pase Luhn— y el
+                    precio de esa decisión es que aquí tiene que verse. */}
+                <td style={td}>
+                  {e.nss ? (
+                    <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{e.nss}</span>
+                      {nssPorVerificar(e.nss) && (
+                        <Insignia texto="Por verificar" color="var(--warning)" />
+                      )}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </td>
                 <td style={td}>
                   {estaVinculado(e) ? (
                     <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>

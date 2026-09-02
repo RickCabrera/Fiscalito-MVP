@@ -158,3 +158,73 @@ describe('ModalEmpleado · el SBC lo calcula el motor', () => {
     expect(integrarSBC.mock.calls[0][0].fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
+
+describe('ModalEmpleado · NSS (R-03)', () => {
+  it('vacío guarda: es la salida del contador que no tiene el número', async () => {
+    // No es un caso de borde: es lo que hace seguro rechazar por longitud sin
+    // acorralar a nadie. Si esto dejara de guardar, el bloqueo por longitud
+    // tendría que caerse con él.
+    const onGuardar = pintar();
+    await llenarBasico();
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', false));
+
+    fireEvent.click(botonAlta());
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].nss).toBe('');
+  });
+
+  it('longitud mala BLOQUEA, y no sólo por el atributo `disabled`', async () => {
+    // LA TRAMPA DE LA CORRIDA G: `fireEvent.click` sobre un botón `disabled`
+    // **no despacha `onClick`**, así que un test que sólo mirara el atributo
+    // pasaría verde aunque el gate no existiera. Por eso se afirman las dos
+    // cosas, y la que importa es la segunda.
+    const onGuardar = pintar();
+    await llenarBasico();
+    capturar(/NSS/, '1234567890'); // 10 dígitos
+
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+    fireEvent.click(botonAlta());
+    expect(onGuardar).not.toHaveBeenCalled();
+  });
+
+  it('el mensaje de longitud cierra el atajo de completar el dígito a mano', async () => {
+    pintar();
+    await llenarBasico();
+    capturar(/NSS/, '1234567890');
+
+    const alerta = await waitFor(() =>
+      screen.getAllByRole('alert').find((a) => a.textContent?.includes('11 dígitos')),
+    );
+    expect(alerta?.textContent).toContain('no lo completes a mano');
+  });
+
+  it('el dígito verificador ADVIERTE pero SÍ deja guardar', async () => {
+    // La desviación consciente del enunciado de R-03. Bloquear aquí empujaría a
+    // teclear un NSS que pase Luhn — un número inventado junto a datos reales.
+    const onGuardar = pintar();
+    await llenarBasico();
+    capturar(/NSS/, '12345678900'); // 11 dígitos, verificador 0 en vez de 3
+
+    // Se anuncia como `status`, no como `alert`: una advertencia que se anuncia
+    // como error entrena a ignorarlas.
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toContain('no coincide'),
+    );
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', false));
+
+    fireEvent.click(botonAlta());
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].nss).toBe('12345678900');
+  });
+
+  it('guarda el NSS normalizado: se captura con separadores, se guarda en dígitos', async () => {
+    const onGuardar = pintar();
+    await llenarBasico();
+    capturar(/NSS/, '12-34 5678 903');
+
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', false));
+    fireEvent.click(botonAlta());
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].nss).toBe('12345678903');
+  });
+});

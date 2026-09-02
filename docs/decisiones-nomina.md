@@ -654,3 +654,51 @@ omitiendo?
 **Y para F1-09**, que es quien pone clientes reales: registrar RFC, estado, personalidad jurídica
 y tipo de salario convierte casi todo lo condicional de arriba en firme, y habilita el ajuste por
 sexto dígito.
+
+## D25 · El dígito verificador del NSS — ABIERTA, para la contadora
+
+**Contexto.** R-03 restauró el campo NSS en el alta de empleado (`ModalEmpleado`), con
+validación en `apps/store/src/services/nss.ts`. El NSS son 11 dígitos: 10 de payload y uno
+verificador, calculado con el **algoritmo de Luhn** (módulo 10, ISO/IEC 7812-1).
+
+**El problema.** No se encontró **norma primaria del IMSS publicada** que especifique ese
+algoritmo. Lo que hay son fuentes secundarias. No es DOF, no es un anexo, no es un acuerdo.
+Y en la dirección contraria hay evidencia dura *dentro del repo*:
+`apps/api/tests/xsd/nomina12.xsd` declara `NumSeguridadSocial` con `use="optional"` y patrón
+`[0-9]{1,15}` — el complemento de nómina del SAT **se timbra sin exigir dígito verificador y
+sin exigir once dígitos**.
+
+**Qué se hizo mientras tanto**, y la asimetría es deliberada:
+
+| Caso | Conducta | Razón |
+|---|---|---|
+| vacío | guarda | el campo es opcional, y es la salida del contador que no tiene el número |
+| no numérico, o longitud ≠ 11 | **bloquea** | es lo que Ricardo pidió, es inequívoco, y no hay ninguna transformación que "haga pasar" el dato |
+| 11 dígitos, verificador no casa | **advierte y guarda** | ver abajo |
+
+**Por qué el verificador no bloquea.** Bloquearlo empujaría al contador que tiene el NSS real
+en la mano a teclear uno que sí pase Luhn — un NSS **inventado** puesto junto a datos reales,
+que es exactamente lo que `app/routes/despacho.py` argumenta que nunca debe pasar ("un NSS de
+11 dígitos bien formado es el NSS de alguien"). Sería construir la presión que ese docstring
+existe para evitar, y además con un validador más estricto que el del SAT y con la norma sin
+publicar de nuestro lado. El empleado guardado así lleva insignia **"Por verificar"** en
+`EmpleadosTab`: advertir no es callar.
+
+**Lo que hace seguro bloquear por longitud es que vacío siempre guarda.** Si esa salida
+desapareciera, el bloqueo por longitud tendría que caerse con ella.
+
+**Las dos preguntas para la contadora** — son dos, no una:
+
+1. **¿El dígito verificador del NSS es efectivamente Luhn, y el IMSS lo confirma por escrito?**
+   Si hay fuente primaria, se cita aquí y en `nss.ts`, y se puede reconsiderar el bloqueo.
+2. **¿Algún trabajador vigente carga hoy un NSS que no sea de 11 dígitos?** Existen
+   asignaciones antiguas previas al dígito verificador. Si las hay entre los clientes del
+   despacho, **el bloqueo por longitud está mal** y tiene que bajar a advertencia. Esta
+   pregunta es tan de contadora como la primera y no se puede contestar desde el código.
+
+**Cómo se cambia.** Es una constante: `BLOQUEA_VERIFICADOR` en `nss.ts`. Está aislada a
+propósito para que la política sea una línea y no una cacería por el formulario.
+
+**Consecuencia declarada:** el criterio literal de R-03 ("inválido bloquea con mensaje claro")
+queda **cumplido para el formato y desviado para el verificador**. Es desviación consciente,
+no descuido.
