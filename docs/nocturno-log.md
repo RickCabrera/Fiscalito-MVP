@@ -1448,3 +1448,104 @@ Cuatro tests de pantalla (`SelectorCliente.test.tsx:132`, `ClientesPage.test.tsx
 render, siguen verdes, y no pueden producir un falso verde en `errorApi` —el que decide es
 `errorApi.ts`, que tiene sus propios tests—. Tocarlos habría sido cuatro archivos "de pasada".
 Que entren cuando alguien toque esas pantallas.
+
+---
+
+## G-01 + G-02 + G-03 · Épica de cartera (2026-09-02, MODO RÁPIDO)
+
+**PR #26, mergeada.** CI verde al primer intento (Backend 29 s, Frontend 1 m 33 s).
+Backend 1113 → **1161**, frontend 237 → **332**. `ruff` limpio · `npm run build` limpio ·
+`npx eslint .` 20/8, la línea base de S-02, con **cero hallazgos en archivos de la rama**.
+
+### Régimen de esta corrida
+
+MODO RÁPIDO otra vez: tres tareas, una rama, un PR. Con la excepción de cálculo en pie, que se
+usó **dos veces**: `POST /nomina/sbc` y la traducción de llaves del cierre.
+
+**Seis pasadas del revisor del entregable y dos del de motor.** No es normal y hay que decir por
+qué: las tres primeras encontraron defectos reales; **las tres últimas encontraron que yo había
+reportado como cerrado algo que no lo estaba**. Eso es lo que hay que leer de esta entrada.
+
+### Lo más importante: las dos llaves
+
+`employee_no` **ya existía y era requerido**, y es la llave de dedupe del almacén de checadas.
+G-02 no era "agregar un campo": era volver nullable una llave de join. Un empleado nuevo sin ella
+o revienta con 422 y tumba la nómina entera, o entra con `""` y **colisiona** con cualquier otro
+sin vincular. Se separaron: `empleado_no` es la del CÁLCULO y nunca es nula; `employee_no` es la
+del CHECADOR y puede serlo.
+
+Y de ahí salió el defecto fiscal más grave de la corrida: **el cierre de periodo mandaba la llave
+del cálculo donde `asistencia/incidencias.py:113` casa la del checador**. Para un empleado con
+número de aparato propio eso significa no encontrar ni una de sus checadas — falta todo el
+periodo, menos días pagados, menor base de cuotas y menor ISR — y sus checadas reales reportadas
+como "desconocidas", que el contador lee como "nadie sembró a este cliente". **Invisible en la
+demo** porque la semilla pone `employee_no = empleado_no` en los 25.
+
+### Decisiones tomadas sin Ricardo
+
+1. **No se construyó el CRUD de empleados en el backend, que él pidió con esas palabras.** Dos
+   dueños del mismo dato, y el backend no puede ser uno: está declarado *stateless* y no tiene
+   `firebase-admin`. La única persistencia posible hoy sería otro almacén en RAM, que haría
+   literalmente falso el criterio de G-01 después de cualquier reinicio.
+2. **La siembra dejó de ser automática.** Escribía salario de terceros en un Firestore cuyas
+   reglas nadie ha revisado, como efecto colateral del primer login. Es un botón. **Desviación
+   consciente del enunciado de G-03.**
+3. **El campo NSS no se pide en el modal.** El modelo lo tiene y la semilla va vacía; el
+   formulario se abre enfrente de gente en una demo.
+4. **El selector de periodicidad quedó fijo en quincenal.** Nadie valida que la duración del
+   periodo case con la clave, así que un cliente Mensual habría recibido la tarifa mensual del
+   Art. 96 sobre 15-16 días: **ISR subestimado con recibo creíble**. Más una guarda en el
+   cálculo para los clientes que ya estuvieran guardados con otra clave.
+5. **El tab por default de la ficha se dejó en Plantilla.** Lo había cambiado a Empleados; eso
+   mueve el guion ensayado de la demo, la mañana de la demo, sin que Ricardo lo pida.
+6. **`users/{uid}` y no `contadores/{uid}`**, contra lo que decía PLAN_NOMINA §3.3 — que se
+   corrigió en el mismo PR para que la próxima sesión no escriba reglas para el árbol equivocado.
+
+### Los tres defectos que reporté como cerrados y no lo estaban
+
+Vale la pena listarlos juntos porque son el mismo hábito:
+
+1. **`docs/api-contract.md`.** Escribí "está en el contrato". `git diff -- docs/` salía vacío.
+2. **El gate del cierre mientras carga la cartera.** Lo puse en el badge del paso. `PasoNomina`
+   es presentacional y renderiza `{children}` sin condición: el botón quedaba **vivo**, en gris,
+   con un letrero que no impedía nada.
+3. **La prueba de ese gate.** `fireEvent.click` sobre un botón `disabled` **no despacha el
+   `onClick`**, así que el test pasaba por el atributo. Revertir las dos guardas del hook y dejar
+   el `disabled` daba **cero fallas**.
+
+Y dos afirmaciones de cobertura sin cobertura: el encabezado de `ModalEmpleado.test.tsx`
+reclamaba probar la cota del Art. 72, que ni siquiera vive en ese archivo; y la etiqueta de
+`ClientesPage` que reporté escrita y no existía.
+
+### Lo que la mutación encontró y la lectura no
+
+- Revertir el fix de llaves **entero** dejaba 291 de 291 en verde: el cableado no tenía test,
+  sólo las funciones puras.
+- Mi guarda de cobertura de `plantillaDeNomina` pasaba con `deLaCartera && deLaCartera.length`
+  de más — una caída a la ficha que **resucitaría a los empleados excluidos**.
+- Al arreglar las llaves introduje una regresión que **habría roto la demo**: sin cartera, el
+  cierre se quedaba con cero empleados. La cazó un test que ya existía.
+- Meter `cartera` en las dependencias del efecto de carga **revertía las fechas que el operador
+  acababa de mover**. La cazó el test de la fecha de pago.
+- `conPeriodoAlDia` metía un `await` sin cota en el primer pintado, en el archivo cuyo
+  encabezado promete que no hay ninguno — reintroduciendo el agujero que se acababa de cerrar en
+  la función de al lado.
+- Mi `conTimeout` del respaldo introdujo otro: siete requests con el tope de Firestore hacían que
+  un backend lento pero **vivo** devolviera la pantalla vacía que ese archivo existe para evitar.
+
+### Lo que NO está verificado
+
+- **Nada se ha visto en un navegador.** Igual que E-01…E-07 y X-01/X-02. La regla de
+  `apps/store/CLAUDE.md:87` sigue sin cumplirse, ahora por novena tarea.
+- **`firestore.rules` no está desplegado**, y sin él **G-03 no cumple su criterio**: la app cae al
+  catálogo del backend y dos cuentas ven los mismos tres clientes. Gana la demo, que Ricardo puso
+  primero.
+- `motivoBloqueo` del botón y el `clearTimeout` de `conTimeout` no tienen test. Declarado.
+
+### Decisiones abiertas para Ricardo
+
+Están en `backlog.md`, sección G: la receta de despliegue de las reglas que **no funciona como
+está escrita**; la colisión de nomenclatura con F1-09; la periodicidad fija; la deuda de las 300
+líneas y por qué se difirió; el cliente mensual con **periodo parcial** (alta o baja a mitad de
+mes), que toca a la contadora; y el hueco simétrico —cliente quincenal con las fechas arrastradas
+a un mes— que sigue abierto y que nada pretende tapar.
