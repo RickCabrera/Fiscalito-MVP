@@ -13,12 +13,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteResumen } from '../services/despachoApi';
 
 const CARTERA: ClienteResumen[] = [
-  { id: 'demo', nombre: 'Servicios del Golfo', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
+  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
   { id: 'taller', nombre: 'Taller Nogal', giro: 'Reparacion', origen: 'sintetico', num_empleados: 12, prima_riesgo: '0.0259840', clase_riesgo: 3, clave_periodicidad: '04', zona: 'general' },
 ];
 
 const setClienteId = vi.fn();
-const estado = { clienteId: 'demo', loading: false, clientes: CARTERA };
+const estado = { clienteId: 'demo', loading: false, clientes: CARTERA, error: null as string | null };
 
 vi.mock('../context/clienteActivoStore', () => ({
   useClienteActivo: () => ({
@@ -26,7 +26,7 @@ vi.mock('../context/clienteActivoStore', () => ({
     clienteId: estado.clienteId,
     cliente: estado.clientes.find((c) => c.id === estado.clienteId) ?? null,
     loading: estado.loading,
-    error: null,
+    error: estado.error,
     setClienteId,
     recargar: vi.fn(),
   }),
@@ -53,12 +53,13 @@ afterEach(() => {
   estado.clienteId = 'demo';
   estado.loading = false;
   estado.clientes = CARTERA;
+  estado.error = null;
   setClienteId.mockClear();
   cleanup();
 });
 
 describe('dónde se muestra el selector', () => {
-  it.each(['/app/clientes', '/app/clientes/taller', '/app/nomina-demo'])(
+  it.each(['/app/clientes', '/app/clientes/taller'])(
     'aparece en %s, que depende del cliente',
     (ruta) => {
       montar(ruta);
@@ -74,10 +75,21 @@ describe('dónde se muestra el selector', () => {
     },
   );
 
+  /**
+   * La pantalla de nómina todavía NO lee el cliente activo: cae en los defaults
+   * de `nominaDemoApi`, que son los del cliente `demo`. Un selector encima
+   * afirmaría "Taller Nogal" sobre los nueve empleados del caso real y su PDF.
+   * **E-03 la cablea y entonces sí entra.**
+   */
+  it('NO aparece en /app/nomina-demo, que todavía no lee el cliente activo', () => {
+    montar('/app/nomina-demo');
+    expect(screen.queryByLabelText('Cliente activo')).toBeNull();
+  });
+
   it('la regla de alcance es explícita y no un prefijo suelto', () => {
     expect(rutaTieneAlcanceDeCliente('/app/clientes')).toBe(true);
     expect(rutaTieneAlcanceDeCliente('/app/clientes/taller')).toBe(true);
-    expect(rutaTieneAlcanceDeCliente('/app/nomina-demo')).toBe(true);
+    expect(rutaTieneAlcanceDeCliente('/app/nomina-demo')).toBe(false);
     expect(rutaTieneAlcanceDeCliente('/app/profile')).toBe(false);
     expect(rutaTieneAlcanceDeCliente('/app')).toBe(false);
     // Un prefijo que sólo comparte texto no cuenta.
@@ -90,7 +102,7 @@ describe('comportamiento del selector', () => {
     montar('/app/clientes');
     const opciones = screen.getAllByRole('option').map((o) => o.textContent);
     expect(opciones).toEqual([
-      'Servicios del Golfo · 9 empleados',
+      'Servicios Administrativos Integrales · 9 empleados',
       'Taller Nogal · 12 empleados',
     ]);
   });
@@ -107,10 +119,21 @@ describe('comportamiento del selector', () => {
     expect(setClienteId).toHaveBeenCalledWith('taller');
   });
 
-  it('se deshabilita si la cartera vino vacía, en vez de fingir opciones', () => {
+  it('no se pinta si no hay cartera, en vez de sugerir que está vacía', () => {
+    // Es lo que ve un contribuyente que entra por URL: no tiene cartera, y una
+    // barra que diga "Sin clientes" afirmaría que el despacho no tiene ninguno.
     estado.clientes = [];
     montar('/app/clientes');
-    expect((screen.getByLabelText('Cliente activo') as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('Cliente activo')).toBeNull();
+  });
+
+  it('una API caída no se ve igual que una cartera vacía', () => {
+    estado.clientes = [];
+    estado.error = 'No se pudo cargar la cartera: HTTP 500';
+    montar('/app/clientes');
+
+    expect(screen.getByText('No se pudo cargar la cartera')).toBeTruthy();
+    expect(screen.queryByLabelText('Cliente activo')).toBeNull();
   });
 
   it('mientras carga no enseña un selector vacío', () => {

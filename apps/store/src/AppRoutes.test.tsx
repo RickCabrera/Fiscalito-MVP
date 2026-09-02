@@ -57,7 +57,7 @@ vi.mock('./services/declaracionesHistory', () => ({
 
 const CLIENTES = [
   {
-    id: 'demo', nombre: 'Servicios del Golfo', giro: 'Servicios', origen: 'fixtures-s04',
+    id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04',
     num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null,
     clave_periodicidad: '04', zona: 'general',
   },
@@ -102,13 +102,13 @@ describe('rutas registradas', () => {
   it('/app/clientes pinta la cartera, no un hueco en blanco', async () => {
     montar('/app/clientes');
     expect(await screen.findByRole('heading', { name: 'Clientes' })).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('Servicios del Golfo')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Servicios Administrativos Integrales')).toBeTruthy());
   });
 
   it('/app/clientes/:id pinta la ficha del cliente', async () => {
     montar('/app/clientes/demo');
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Servicios del Golfo' })).toBeTruthy(),
+      expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy(),
     );
     expect(screen.getByText('Plantilla')).toBeTruthy();
   });

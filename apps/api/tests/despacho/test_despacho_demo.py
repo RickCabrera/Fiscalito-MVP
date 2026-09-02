@@ -22,7 +22,7 @@ from decimal import Decimal
 import pytest
 
 from app.constants import ZonaSalarioMinimo, salario_minimo_vigente
-from app.demo_nomina import PLANTILLA_DEMO
+from app.demo_nomina import PLANTILLA_DEMO, PRIMA_RIESGO_DEMO
 from app.despacho_demo import (
     CLIENTES,
     FECHA_REFERENCIA_DEMO,
@@ -107,11 +107,16 @@ class TestClienteDeFixtures:
             ).quantize(Decimal("0.0001"))
             assert empleado.factor == esperado
 
-    def test_su_prima_no_se_dedujo_de_una_clase(self):
-        """Es la autodeterminada del patrón del caso real (Art. 74 LSS)."""
+    def test_su_prima_es_la_del_patron_real_y_no_se_dedujo_de_una_clase(self):
+        """
+        Es la autodeterminada de ese patrón (Art. 74 LSS), la misma que usan los
+        tests del caso real de F1-03 y F1-04. Sin fijar el valor, nada impediría
+        cambiarla y descuadrar las cuotas contra el timbrado.
+        """
         demo = cliente_por_id("demo")
         assert demo is not None
         assert demo.clase_riesgo is None
+        assert demo.prima_riesgo == PRIMA_RIESGO_DEMO
 
 
 class TestClientesSinteticos:
@@ -141,12 +146,53 @@ class TestClientesSinteticos:
             (3, "1.0521"),
             (4, "1.0534"),
             (5, "1.0548"),
+            # El renglón 6–10 de la tabla. T-01 (10 años) tiene el SDI más alto
+            # de toda la cartera y sin estos dos casos su factor sólo estaría
+            # validado contra el motor, que es justo el agujero que este test
+            # existe para tapar.
+            (6, "1.0562"),
+            (8, "1.0562"),
+            (10, "1.0562"),
         ],
     )
     def test_el_factor_de_ley_coincide_con_la_tabla_publicada(
         self, anios_cumplidos, factor_publicado
     ):
         assert factor_integracion_de_ley(anios_cumplidos) == Decimal(factor_publicado)
+
+    def test_las_antiguedades_usadas_estan_todas_en_la_tabla_publicada(self):
+        """
+        Que el hueco no se reabra al agregar un empleado con una antigüedad que
+        nadie contrastó contra §2.2.
+
+        El 0 se exceptúa a propósito: la tabla publicada empieza en el año 1, y
+        para un alta nueva el motor usa los 12 días que va a devengar en su
+        primer año — lo justifica el docstring de `dias_vacaciones_de_ley`.
+        """
+        parametrizadas = {1, 2, 3, 4, 5, 6, 8, 10}
+        usadas = {
+            e.antiguedad_anios
+            for c in SINTETICOS
+            for e in c.empleados
+            if e.antiguedad_anios != 0
+        }
+        assert usadas <= parametrizadas, f"sin contrastar contra §2.2: {usadas - parametrizadas}"
+
+    def test_el_factor_que_pinta_la_ficha_es_el_de_ley(self):
+        """
+        `factor` se calcula como SDI ÷ SD cuantizado, y la ficha lo muestra SIN
+        marca, o sea afirmando que es el del Art. 27. Que hoy el round-trip dé
+        exacto es aritmética afortunada, no un invariante: mover un salario
+        puede cuantizar a otro valor y la pantalla enseñaría un factor
+        equivocado sin advertirlo.
+        """
+        for cliente in SINTETICOS:
+            for empleado in cliente.empleados:
+                anios = empleado.antiguedad_anios
+                assert anios is not None
+                assert empleado.factor == factor_integracion_de_ley(anios), (
+                    f"{cliente.id}/{empleado.empleado_no}"
+                )
 
     def test_el_clamp_no_muerde_a_la_fecha_de_referencia(self):
         """

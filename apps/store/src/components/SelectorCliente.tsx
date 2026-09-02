@@ -16,12 +16,19 @@ import { useClienteActivo } from '../context/clienteActivoStore';
 import { rutaTieneAlcanceDeCliente } from '../services/navigation';
 
 export default function SelectorCliente() {
-  const { clientes, clienteId, loading, setClienteId } = useClienteActivo();
+  const { clientes, clienteId, loading, error, setClienteId } = useClienteActivo();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { id: idDeLaRuta } = useParams();
 
   if (!rutaTieneAlcanceDeCliente(pathname)) return null;
+
+  // Sin cartera y sin carga en curso no hay nada que seleccionar: es el caso de
+  // un contribuyente que entra por URL. Una barra con un selector deshabilitado
+  // que dice "Sin clientes" sugiere que el despacho tiene la cartera vacía.
+  // El error sí se muestra: una API caída no puede verse igual que no tener
+  // clientes.
+  if (!loading && !error && clientes.length === 0) return null;
 
   const cambiar = (nuevo: string) => {
     setClienteId(nuevo);
@@ -43,7 +50,11 @@ export default function SelectorCliente() {
       <label htmlFor="selector-cliente" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
         Cliente activo
       </label>
-      {loading ? (
+      {error ? (
+        <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
+          No se pudo cargar la cartera
+        </span>
+      ) : loading ? (
         <Loader size={14} className="spin" color="var(--text-muted)" />
       ) : (
         <select
@@ -51,10 +62,8 @@ export default function SelectorCliente() {
           className="input-field"
           value={clienteId ?? ''}
           onChange={(e) => cambiar(e.target.value)}
-          disabled={clientes.length === 0}
           style={{ width: 'auto', minWidth: 220, padding: '6px 10px', cursor: 'pointer' }}
         >
-          {clientes.length === 0 && <option value="">Sin clientes</option>}
           {clientes.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nombre} · {c.num_empleados} empleados

@@ -127,7 +127,7 @@ Cartera del despacho, para la lista y el selector de cliente activo.
   "clientes": [
     {
       "id": "demo",
-      "nombre": "Servicios Administrativos del Golfo",
+      "nombre": "Servicios Administrativos Integrales",
       "giro": "Servicios administrativos",
       "origen": "fixtures-s04",
       "num_empleados": 9,
@@ -145,7 +145,9 @@ Cartera del despacho, para la lista y el selector de cliente activo.
 - `prima_riesgo` — del caso real es la **autodeterminada** por ese patrón (Art. 74 LSS); de los
   sintéticos es la **prima media de su clase** (Art. 73 LSS, vía `prima_media_clase()`). Nunca
   es tasa de ley.
-- `clase_riesgo` — `null` para el caso real. Para los sintéticos es un **SUPUESTO**: la
+- `clase_riesgo` — `null` para el caso real, cuya prima es **autodeterminada** (Art. 74 LSS)
+  y no se dedujo de ninguna clase; la ficha lo imprime así, no como "no aplica" (todo patrón
+  tiene clase). Para los sintéticos es un **SUPUESTO**: la
   asignación giro → clase sale del catálogo del RACERF, que no está en el repo. Ver
   `docs/decisiones-nomina.md` **D22**.
 - `num_empleados` es derivado de la plantilla, nunca un literal.

@@ -36,6 +36,15 @@ devuelve el motor. Calcularlo en el import tendría dos consecuencias malas:
 Por eso toda antigüedad, factor y clamp de este módulo se miden contra
 `FECHA_REFERENCIA_DEMO`, que es fija, **nunca contra `date.today()`**.
 
+PARA QUÉ MÁS SIRVE ESTO (handoff a E-03)
+----------------------------------------
+`scripts/checador_sintetico.py` sólo sabe generar los nueve `employeeNo` de las
+fixtures, porque los lee de `tests/fixtures/` — que no existe fuera del repo. El
+camino limpio para sembrar la asistencia de CUALQUIER cliente es que el
+simulador pida `GET /despacho/clientes/{id}` y genere checadas de esos
+`empleado_no`. Sin eso, seleccionar un cliente sintético y cerrar el periodo da
+falta en todo día laborable.
+
 EL `empleado_no` NO SE REPITE ENTRE CLIENTES
 --------------------------------------------
 `C-01…`, `T-01…` y los `E-01…` de fixtures. El almacén de asistencia es por
@@ -101,6 +110,11 @@ class EmpleadoCliente:
         `True` cuando el factor es un cociente OBSERVADO (SDI ÷ SD) y no el de
         ley: puede incluir prestaciones superiores que el CFDI no desglosa, así
         que no es comparable con el factor del Art. 27 LSS.
+
+        OJO: se define como "no hay fecha de alta", y esa equivalencia es
+        CIRCUNSTANCIAL, no causal — vale mientras los únicos empleados sin alta
+        sean los del caso real. Un cliente con alta conocida Y prestaciones
+        superiores tendría factor implícito y esto diría `False`.
         """
         return self.fecha_alta is None
 
@@ -339,7 +353,7 @@ def _empleados_de_fixtures() -> tuple[EmpleadoCliente, ...]:
 CLIENTES: tuple[ClienteDespacho, ...] = (
     ClienteDespacho(
         id="demo",
-        nombre="Servicios Administrativos del Golfo",
+        nombre="Servicios Administrativos Integrales",
         giro="Servicios administrativos",
         origen="fixtures-s04",
         # La del caso real: autodeterminada por ese patrón, no prima media.

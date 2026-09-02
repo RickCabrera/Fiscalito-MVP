@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import type { ClienteResumen } from '../services/despachoApi';
 
 const CARTERA: ClienteResumen[] = [
-  { id: 'demo', nombre: 'Servicios del Golfo', giro: 'Servicios administrativos', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
+  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios administrativos', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
   { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos y bebidas', origen: 'sintetico', num_empleados: 4, prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general' },
 ];
 
@@ -68,7 +68,7 @@ describe('lista de clientes', () => {
   it('pinta la cartera con giro, empleados y prima', () => {
     montar();
 
-    expect(screen.getByText('Servicios del Golfo')).toBeTruthy();
+    expect(screen.getByText('Servicios Administrativos Integrales')).toBeTruthy();
     expect(screen.getByText('Cafeteria La Estacion')).toBeTruthy();
     expect(screen.getByText('9')).toBeTruthy();
     expect(screen.getByText('4')).toBeTruthy();

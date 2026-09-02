@@ -39,7 +39,7 @@ vi.mock('./ProfileContext', () => ({
 }));
 
 const CARTERA: ClienteResumen[] = [
-  { id: 'demo', nombre: 'Servicios del Golfo', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
+  { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },
   { id: 'cafeteria', nombre: 'Cafeteria La Estacion', giro: 'Alimentos', origen: 'sintetico', num_empleados: 4, prima_riesgo: '0.0113065', clase_riesgo: 2, clave_periodicidad: '04', zona: 'general' },
 ];
 
@@ -83,7 +83,7 @@ describe('ClienteActivoContext', () => {
   it('carga la cartera y activa el primer cliente', async () => {
     montar();
     await waitFor(() => expect(screen.getByTestId('id').textContent).toBe('demo'));
-    expect(screen.getByTestId('nombre').textContent).toBe('Servicios del Golfo');
+    expect(screen.getByTestId('nombre').textContent).toBe('Servicios Administrativos Integrales');
     expect(screen.getByTestId('total').textContent).toBe('2');
   });
 
@@ -138,7 +138,7 @@ describe('ClienteActivoContext', () => {
       </ClienteActivoProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('nombre').textContent).toBe('Servicios del Golfo'));
+    await waitFor(() => expect(screen.getByTestId('nombre').textContent).toBe('Servicios Administrativos Integrales'));
     act(() => screen.getByText('cambiar').click());
 
     expect(screen.getByTestId('nombre').textContent).toBe('Cafeteria La Estacion');

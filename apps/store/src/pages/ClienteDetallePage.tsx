@@ -125,7 +125,9 @@ export default function ClienteDetallePage() {
             <Dato etiqueta="Prima de RT" valor={primaComoPorcentaje(cliente.prima_riesgo)} mono />
             <Dato
               etiqueta="Clase de riesgo"
-              valor={cliente.clase_riesgo === null ? 'No aplica' : `${cliente.clase_riesgo} (supuesta)`}
+              // "No aplica" sería falso: todo patrón tiene clase. Lo que no
+              // aplica es haber DEDUCIDO su prima de una clase.
+              valor={cliente.clase_riesgo === null ? 'Autodeterminada (Art. 74)' : `${cliente.clase_riesgo} (supuesta)`}
             />
             <Dato
               etiqueta="Quincena sugerida"

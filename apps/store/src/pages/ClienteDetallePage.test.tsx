@@ -15,7 +15,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteDetalle } from '../services/despachoApi';
 
 const CASO_REAL: ClienteDetalle = {
-  id: 'demo', nombre: 'Servicios del Golfo', giro: 'Servicios administrativos',
+  id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios administrativos',
   origen: 'fixtures-s04', num_empleados: 2, prima_riesgo: '0.0054355',
   clase_riesgo: null, clave_periodicidad: '04', zona: 'general',
   empleados: [
@@ -83,7 +83,7 @@ afterEach(() => {
 describe('ficha del caso real anonimizado', () => {
   it('pinta la plantilla con salario diario y SBC', async () => {
     montar('demo');
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Servicios del Golfo' })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy());
 
     expect(screen.getByText('PERSONA UNO')).toBeTruthy();
     expect(screen.getByText('316.00')).toBeTruthy();
@@ -104,9 +104,11 @@ describe('ficha del caso real anonimizado', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(4);
   });
 
-  it('no le atribuye una clase de riesgo', async () => {
+  it('dice que su prima es autodeterminada, no que no tenga clase', async () => {
+    // Todo patrón tiene clase de riesgo; lo que no se hizo fue deducir su prima
+    // de una clase. "No aplica" habría sido falso.
     montar('demo');
-    await waitFor(() => expect(screen.getByText('No aplica')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Autodeterminada (Art. 74)')).toBeTruthy());
   });
 });
 
