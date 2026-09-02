@@ -144,6 +144,25 @@ destructivas.
    con la razón en pantalla. Abrir las otras tres exige que el motor rechace un periodo cuya
    duración no case con la clave — es tarea propia, y toca a la contadora.
 
+4. **Deuda declarada: dos archivos rebasan el tope de 300 líneas** de
+   `apps/store/CLAUDE.md`, que está en la sección NUNCA. `ModalEmpleado.tsx` nació por encima
+   (no creció hasta ahí) y `useNominaCliente.ts` pasó de 226 a ~420. **No se extrajeron a
+   propósito y con el visto bueno del revisor:** el archivo a partir es justo el que contiene
+   las guardas del cierre, y hacerlo a las puertas del merge podía borrarlas con la suite en
+   verde — que es exactamente lo que pasó dos veces en esta corrida. Se difiere **con las
+   guardas ya pinneadas por tests**, no antes. Tarea propia.
+
+5. **¿Cómo se calcula un cliente mensual con un periodo PARCIAL** (alta o baja a mitad de
+   mes)? Tabla mensual del Art. 96 sobre base parcial, o prorrateo. No está en
+   `docs/decisiones-nomina.md` —D10 cubre las claves sin tarifa y D11 el tope del subsidio— y
+   roza lo que `PLAN_NOMINA.md` §5 dejó para la contadora. Hoy la guarda lo **bloquea**, que
+   es lo conservador, y el mensaje lo dice explícitamente en vez de culpar a la periodicidad.
+
+6. **Hueco preexistente que sigue abierto:** nadie detecta el caso simétrico —cliente
+   quincenal al que el operador le arrastra las fechas a un mes completo—, que aplicaría la
+   tarifa quincenal sobre base mensual. Los dos inputs de fecha son libres y `periodo.py` sólo
+   compara las incidencias entre sí. La guarda de G-03 cubre una sola dirección y lo dice.
+
 **Decisión de arquitectura que necesita la firma de Ricardo:** G-01 pedía CRUD de empleados en
 el backend y G-03 pedía la cartera en Firestore. Eso son dos dueños del mismo dato. Se
 construyó el modelo, la semilla y el cálculo en el backend, y el CRUD contra Firestore desde el

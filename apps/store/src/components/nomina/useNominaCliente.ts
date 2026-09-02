@@ -273,7 +273,14 @@ export function useNominaCliente(clienteId: string) {
       : resultado;
 
   /**
-   * Un cliente cuya periodicidad no cuadra con la duración del periodo.
+   * Un cliente **mensual, semanal o diario** al que se le va a calcular una
+   * quincena.
+   *
+   * **Cubre una sola dirección, y hay que decirlo.** El caso simétrico —cliente
+   * quincenal y el operador arrastra las fechas a un mes completo— aplica la
+   * tarifa quincenal sobre base mensual y **tampoco lo detecta nadie**: los dos
+   * inputs de fecha son libres y `periodo.py` sólo compara las incidencias
+   * entre sí. Ese hueco es preexistente y sigue abierto; esto no lo tapa.
    *
    * **Nadie más lo valida.** `periodo.py` sólo comprueba que todas las
    * incidencias midan lo mismo, no que el periodo case con la clave. Un cliente
@@ -293,11 +300,13 @@ export function useNominaCliente(clienteId: string) {
     : 0;
   const periodicidadNoCuadra =
     Boolean(cliente) &&
-    // Sólo las claves que TIENEN tarifa periódica propia y por tanto se
-    // aplicarían mal en silencio: diaria, semanal y mensual
-    // (`tablas_isr_periodicas.py`). Las demás —catorcenal, bimestral, unidad de
-    // obra, comisión…— no tienen tarifa y el motor las rechaza con su propio
-    // mensaje, que es mejor que uno inventado aquí.
+    // Diaria, semanal y mensual: las tres que tienen tarifa propia en
+    // `tablas_isr_periodicas.py` **y que no son la del periodo que se está
+    // calculando**. La `04` también tiene la suya —es justamente la que
+    // corresponde a 14-17 días—, y por eso se excluye: no hay discrepancia que
+    // avisar. Las demás claves (catorcenal, bimestral, unidad de obra,
+    // comisión…) no tienen tarifa y el motor las rechaza con su propio mensaje,
+    // que es mejor que uno inventado aquí.
     ['01', '02', '05'].includes(cliente!.clave_periodicidad) &&
     dias >= 14 &&
     dias <= 17;
@@ -349,7 +358,9 @@ export function useNominaCliente(clienteId: string) {
           `Este cliente está registrado con periodicidad "${cliente.clave_periodicidad}" y el ` +
           `periodo mide ${dias} días, que es una quincena. Calcularlo aplicaría la tarifa de ` +
           'ISR de otra periodicidad y el resultado sería incorrecto sin avisar. ' +
-          'Corrige la periodicidad del cliente antes de calcular.',
+          'Corrige la periodicidad del cliente, o el periodo, antes de calcular. ' +
+          'Si lo que quieres es un periodo PARCIAL de un cliente mensual (un alta o una baja ' +
+          'a mitad de mes), eso todavía no se puede calcular aquí.',
       });
       return;
     }

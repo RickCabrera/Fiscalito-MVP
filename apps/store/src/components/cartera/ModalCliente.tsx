@@ -18,25 +18,8 @@ import {
   type ClienteCartera,
   type PrimasDeRiesgo,
 } from '../../services/carteraApi';
-
-const campo: React.CSSProperties = {
-  width: '100%',
-  padding: 'var(--space-sm)',
-  background: 'var(--bg-input)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-primary)',
-  fontSize: '0.9rem',
-};
-
-const etiqueta: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.75rem',
-  color: 'var(--text-secondary)',
-  marginBottom: 4,
-  textTransform: 'uppercase',
-  letterSpacing: 0.4,
-};
+import Campo from './Campo';
+import { campoInput as campo } from './estilosCampo';
 
 type Datos = Omit<ClienteCartera, 'empleados'>;
 
@@ -149,8 +132,7 @@ export default function ModalCliente({
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <div style={{ flex: '1 1 180px' }}>
-            <label style={etiqueta}>Identificador *</label>
+          <Campo label="Identificador *" ancho="1 1 180px">
             <input
               style={campo}
               value={datos.id}
@@ -158,23 +140,21 @@ export default function ModalCliente({
               onChange={(e) => setDatos({ ...datos, id: e.target.value })}
               placeholder="tortilleria-lopez"
             />
-          </div>
-          <div style={{ flex: '2 1 260px' }}>
-            <label style={etiqueta}>Razón social o nombre *</label>
+          </Campo>
+          <Campo label="Razón social o nombre *" ancho="2 1 260px">
             <input
               style={campo}
               value={datos.nombre}
               onChange={(e) => setDatos({ ...datos, nombre: e.target.value })}
             />
-          </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <label style={etiqueta}>Giro</label>
+          </Campo>
+          <Campo label="Giro" ancho="1 1 200px">
             <input
               style={campo}
               value={datos.giro}
               onChange={(e) => setDatos({ ...datos, giro: e.target.value })}
             />
-          </div>
+          </Campo>
         </div>
 
         {idRepetido && (
@@ -184,8 +164,7 @@ export default function ModalCliente({
         )}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <div style={{ flex: '1 1 180px' }}>
-            <label style={etiqueta}>Clase de riesgo</label>
+          <Campo label="Clase de riesgo" ancho="1 1 180px">
             <select
               style={campo}
               value={datos.clase_riesgo ?? 1}
@@ -202,19 +181,16 @@ export default function ModalCliente({
                 <option key={c} value={c}>Clase {c}</option>
               ))}
             </select>
-          </div>
-          <div style={{ flex: '1 1 180px' }}>
-            <label style={etiqueta}>Prima de RT (proporción)</label>
+          </Campo>
+          <Campo label="Prima de RT (proporción)" ancho="1 1 180px">
             <input
               style={campo}
               inputMode="decimal"
               value={datos.prima_riesgo}
               onChange={(e) => setDatos({ ...datos, prima_riesgo: e.target.value })}
             />
-          </div>
-          <div style={{ flex: '1 1 180px' }}>
-            <label style={etiqueta}>Periodicidad de pago</label>
-            {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app
+          </Campo>
+          {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app
                 calcula es siempre `quincena(hoy)`, y nadie valida que la
                 duración del periodo case con esta clave: un cliente marcado
                 Mensual recibiría la tarifa mensual del Art. 96 sobre una base
@@ -223,6 +199,7 @@ export default function ModalCliente({
                 siquiera puede calcular: no hay tarifa publicada (§D10).
                 Abrir las otras tres exige que el motor rechace un periodo cuya
                 duración no case con la clave. Queda anotado en el backlog. */}
+          <Campo label="Periodicidad de pago" ancho="1 1 180px">
             <select
               style={campo}
               value={datos.clave_periodicidad}
@@ -231,7 +208,7 @@ export default function ModalCliente({
             >
               <option value="04">Quincenal</option>
             </select>
-          </div>
+          </Campo>
         </div>
 
         {errorPrimas && (

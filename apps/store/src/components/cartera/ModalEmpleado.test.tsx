@@ -11,8 +11,13 @@
  *    por número, así que una de las dos personas se queda sin incidencias y el
  *    cálculo revienta con "estos empleados no traen incidencias del periodo",
  *    un mensaje que manda a cerrar un periodo que sí se cerró.
- * 3. Sin los límites del Art. 72 no se guarda — si el endpoint de primas falla,
- *    dejar pasar la captura permitiría `5.4355` en vez de `0.0054355`.
+ * 3. Sin el SBC del motor no se guarda — el front no calcula el Art. 27, así
+ *    que si `POST /nomina/sbc` falla no hay SDI que escribir.
+ *
+ * **Lo que este archivo NO prueba:** la cota de la prima de RT del Art. 72. Esa
+ * validación vive en `ModalCliente`, no aquí, y la prueba
+ * `ModalCliente.test.tsx`. El encabezado la reclamaba: era una afirmación de
+ * cobertura que no existía, del mismo tipo que este entregable ya cazó dos veces.
  */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';

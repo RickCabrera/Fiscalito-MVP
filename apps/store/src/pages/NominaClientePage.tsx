@@ -124,7 +124,11 @@ export default function NominaClientePage() {
         titulo="Cerrar quincena"
         descripcion="Convierte las checadas en días trabajados, faltas y retardos."
         estado={estadoPaso2}
-        motivoBloqueo="Espera a que cargue la plantilla del cliente."
+        motivoBloqueo={
+          n.carteraCargando
+            ? 'Cargando tu cartera… El cierre espera a saber con qué números del checador buscar.'
+            : 'Espera a que cargue la plantilla del cliente.'
+        }
       >
         <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
           <label style={{ flex: '0 1 190px' }}>

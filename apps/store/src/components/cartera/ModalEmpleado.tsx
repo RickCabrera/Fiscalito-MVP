@@ -23,7 +23,7 @@
  * anotada como decisión abierta para Ricardo.
  */
 
-import { cloneElement, useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader, X } from 'lucide-react';
 import {
   integrarSBC,
@@ -31,6 +31,8 @@ import {
   type SBCResponse,
   type TipoContrato,
 } from '../../services/carteraApi';
+import Campo from './Campo';
+import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
   { valor: 'indeterminado', etiqueta: 'Indeterminado' },
@@ -67,44 +69,6 @@ function vacio(): EmpleadoCartera {
     employee_no: null,
     enrolamiento: 'pendiente',
   };
-}
-
-const campo: React.CSSProperties = {
-  width: '100%',
-  padding: 'var(--space-sm)',
-  background: 'var(--bg-input)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-primary)',
-  fontSize: '0.9rem',
-};
-
-const etiqueta: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.75rem',
-  color: 'var(--text-secondary)',
-  marginBottom: 4,
-  textTransform: 'uppercase',
-  letterSpacing: 0.4,
-};
-
-/**
- * Un campo del formulario, con su etiqueta **asociada al control**.
- *
- * `htmlFor`/`id` no es adorno: sin ellos un lector de pantalla lee el input sin
- * nombre, y `getByLabelText` no encuentra nada — que es como se descubrió.
- * `useId` da un id estable por instancia y único entre modales.
- */
-function Campo({
-  label, children, ancho = '1 1 200px',
-}: { label: string; children: React.ReactElement<{ id?: string }>; ancho?: string }) {
-  const id = useId();
-  return (
-    <div style={{ flex: ancho, minWidth: 0 }}>
-      <label htmlFor={id} style={etiqueta}>{label}</label>
-      {cloneElement(children, { id })}
-    </div>
-  );
 }
 
 export default function ModalEmpleado({
