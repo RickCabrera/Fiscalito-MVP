@@ -540,6 +540,24 @@ export function useNominaCliente(clienteId: string) {
     cliente,
     /** Empleados de la cartera que NO están vinculados al checador (G-02). */
     sinVincular,
+    /**
+     * Los empleados de la CARTERA, para los exportadores de O-04.
+     *
+     * El recibo no trae NSS, ni apellidos por separado, ni fecha de alta:
+     * `ReciboNomina` tiene `empleado_no` y `nombre`. El layout del IMSS pide
+     * los tres apellidos en campos distintos y el NSS con su verificador, así
+     * que hay que cruzar por `empleado_no`.
+     */
+    empleadosDeLaCartera: empleadosCartera ?? [],
+    /**
+     * Registro patronal y guía de la subdelegación, del documento de la empresa.
+     *
+     * Vacíos cuando no se han capturado, y **el exportador levanta en vez de
+     * emitir un archivo con el registro patronal en blanco** — que el IMSS
+     * rechazaría sin decir cuál de los dos faltaba.
+     */
+    registroPatronal: cartera.empresa.registroPatronal,
+    guiaSubdelegacion: cartera.empresa.guiaSubdelegacion,
     /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
     carteraCargando: cartera.loading,
     /**

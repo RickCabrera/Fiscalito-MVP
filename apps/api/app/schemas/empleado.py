@@ -158,6 +158,27 @@ class EmpleadoCarteraSchema(BaseModel):
         description="Llave del CÁLCULO. Siempre presente, única dentro del cliente.",
     )
     nombre: str = Field(min_length=1)
+
+    # O-04: el layout de movimientos afiliatorios del IMSS pide los apellidos y
+    # el nombre de pila en TRES campos de 27 posiciones (23-49, 50-76, 77-103).
+    #
+    # **Se capturan; no se parten.** Partir "MARIA DE LOS ANGELES SANTA CRUZ
+    # RIVERA" a la adivina produce un movimiento afiliatorio con el apellido
+    # equivocado, y en español el apellido compuesto es la norma, no el borde.
+    # Es la misma política del NSS y de `fecha_alta`: vacío cuando no se conoce,
+    # y **nunca inventado**.
+    #
+    # Vacíos por default para no romper una cartera escrita antes de O-04. Quien
+    # los tenga vacíos no se exporta, y el exportador lo dice con su razón.
+    apellido_paterno: str = Field(default="", max_length=27)
+    apellido_materno: str = Field(default="", max_length=27)
+    nombres: str = Field(
+        default="",
+        max_length=27,
+        description="Nombre(s) de pila, sin apellidos. Los tres campos son del layout "
+        "del IMSS; `nombre` sigue siendo el completo, que es lo que se pinta.",
+    )
+
     puesto: str = ""
 
     salario_diario: Decimal = Field(gt=0)

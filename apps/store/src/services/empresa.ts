@@ -109,6 +109,15 @@ export interface ConfigEmpresa {
    */
   clavePeriodicidad: string;
   /**
+   * Número de guía que la subdelegación del IMSS le asignó al patrón (O-04).
+   *
+   * Va en las posiciones 134-138 de **cada** registro de movimientos
+   * afiliatorios y en el de cifras de control. **No se calcula ni se deduce**:
+   * lo asigna la subdelegación y el patrón lo tiene en su papelería. Vacío
+   * significa que no se puede emitir el archivo, y el exportador lo dice.
+   */
+  guiaSubdelegacion: string;
+  /**
    * Prestaciones y horario del patrón (O-03).
    *
    * Alimentan el **factor de integración** y con él el SBC —que es la base de
@@ -127,6 +136,7 @@ export const EMPRESA_POR_DEFECTO: ConfigEmpresa = {
   claseRiesgo: null,
   zona: 'general',
   clavePeriodicidad: '04',
+  guiaSubdelegacion: '',
   parametros: PARAMETROS_DE_LEY,
 };
 
@@ -150,6 +160,7 @@ export function deClienteCartera(c: ClienteCartera | null | undefined): ConfigEm
     // Una cartera escrita antes de O-03 no trae `parametros`: cae al mínimo de
     // ley, que es exactamente lo que la app venía aplicando.
     parametros: c.parametros ?? PARAMETROS_DE_LEY,
+    guiaSubdelegacion: c.guia_subdelegacion ?? '',
   };
 }
 
@@ -185,6 +196,7 @@ export function aClienteCartera(
     clave_periodicidad: empresa.clavePeriodicidad,
     zona: empresa.zona,
     parametros: empresa.parametros,
+    guia_subdelegacion: empresa.guiaSubdelegacion,
     periodo_sugerido: periodoSugerido,
     empleados,
   };

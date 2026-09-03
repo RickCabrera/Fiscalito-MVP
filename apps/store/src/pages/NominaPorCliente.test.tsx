@@ -121,6 +121,10 @@ const NOMINA_VACIA = {
   recibos: [],
   porcion_mensual: { periodicidad: 'mensual', por_ramo: {}, total_patron: '0', total_obrero: '0', total: '0', empleados: 0 },
   porcion_bimestral: { periodicidad: 'bimestral', por_ramo: {}, total_patron: '0', total_obrero: '0', total: '0', empleados: 0 },
+  // O-04: los totales del MOTOR viajan en la respuesta.
+  total_percepciones: '0.00',
+  total_neto: '0.00',
+  total_isr: '0.00',
   advertencias: [],
 };
 

@@ -311,6 +311,14 @@ async def calcular(req: CalcularPeriodoRequest) -> CalcularPeriodoResponse:
         recibos=tuple(_a_schema(r) for r in resultado.recibos),
         porcion_mensual=_porcion(resultado.porcion_mensual),
         porcion_bimestral=_porcion(resultado.porcion_bimestral),
+        # O-04: los totales salen del MOTOR y no se recomponen en el cliente.
+        # Son el ancla del cuadre de los exportadores: comparar el PDF contra
+        # los TXT cuando los dos derivan del mismo módulo del front sería
+        # tautológico — sólo cazaría un campo mal posicionado, no una suma mal
+        # hecha.
+        total_percepciones=resultado.total_percepciones,
+        total_neto=resultado.total_neto,
+        total_isr=resultado.total_isr,
         advertencias=resultado.advertencias,
         explicacion=explicacion,
     )

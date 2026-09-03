@@ -246,6 +246,26 @@ class PorcionConsolidada(BaseModel):
 
 
 class CalcularPeriodoResponse(BaseModel):
+    """
+    El resultado del periodo.
+
+    LOS TRES TOTALES SON EL ANCLA DEL CUADRE DE O-04
+    ------------------------------------------------
+    `ResultadoPeriodo` ya los calculaba —los usa `_resumen_para_llm`— y **no
+    viajaban**. El front los recomponía sumando los recibos para el PDF, y O-04
+    iba a hacer lo mismo para los TXT.
+
+    Un revisor lo llamó por su nombre: comparar el PDF contra los TXT cuando los
+    dos derivan del mismo módulo del front es **tautológico**. Sólo puede fallar
+    si un generador escribe el campo en la posición equivocada; un error en la
+    suma pasa verde en los dos lados.
+
+    Con estos tres campos el cuadre tiene un tercer punto que no depende del
+    navegador: los bytes emitidos se parsean de vuelta y se comparan **contra el
+    motor**. Las cuotas obrera y patronal ya eran derivables de
+    `porcion_mensual` / `porcion_bimestral`, así que no se duplican aquí.
+    """
+
     exito: bool = True
     cliente: str
     periodo: PeriodoNomina
@@ -264,6 +284,14 @@ class CalcularPeriodoResponse(BaseModel):
     recibos: tuple[ReciboSchema, ...]
     porcion_mensual: PorcionConsolidada
     porcion_bimestral: PorcionConsolidada
+
+    total_percepciones: Decimal = Field(
+        description="Suma de las percepciones de todos los recibos. **Del MOTOR**, no "
+        "recompuesta por el cliente (O-04)."
+    )
+    total_neto: Decimal = Field(description="Suma de los netos. Del motor.")
+    total_isr: Decimal = Field(description="Suma del ISR retenido. Del motor.")
+
     advertencias: tuple[str, ...] = ()
     explicacion: str | None = None
 

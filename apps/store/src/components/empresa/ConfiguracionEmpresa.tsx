@@ -62,6 +62,7 @@ export default function ConfiguracionEmpresa({
   const [rfc, setRfc] = useState(empresa.rfc);
   const [registroPatronal, setRegistroPatronal] = useState(empresa.registroPatronal);
   const [primaPct, setPrimaPct] = useState(aPorcentaje(empresa.primaRiesgo));
+  const [guia, setGuia] = useState(empresa.guiaSubdelegacion);
   const [claseRiesgo, setClaseRiesgo] = useState(
     empresa.claseRiesgo === null ? '' : String(empresa.claseRiesgo),
   );
@@ -94,6 +95,7 @@ export default function ConfiguracionEmpresa({
         primaRiesgo: aFraccion(primaPct),
         claseRiesgo: claseRiesgo === '' ? null : Number(claseRiesgo),
         clavePeriodicidad,
+        guiaSubdelegacion: guia.trim(),
         parametros,
       });
       setGuardado(true);
@@ -171,6 +173,20 @@ export default function ConfiguracionEmpresa({
             value={primaPct}
             onChange={(e) => setPrimaPct(e.target.value)}
             placeholder="0.54355"
+          />
+        </Campo>
+        <Campo label="Guía de la subdelegación">
+          <input
+            className="input-field"
+            style={campoInput}
+            inputMode="numeric"
+            value={guia}
+            /* O-04: va en las posiciones 134-138 de CADA movimiento afiliatorio
+               y en el registro de cifras de control. La asigna la subdelegación
+               del IMSS: no se calcula ni se deduce. Sin ella el archivo no se
+               puede emitir, y el exportador lo dice en vez de mandarlo vacío. */
+            onChange={(e) => setGuia(e.target.value)}
+            placeholder="00001"
           />
         </Campo>
         <Campo label="Clase de riesgo">

@@ -1959,3 +1959,236 @@ cumplirse. Cero variables CSS nuevas, que es la condición necesaria y verificab
 Backend **1215 verdes** (+6) y `ruff` limpio. Frontend **526 verdes** (+52),
 `tsc` y `npm run build` limpios, `npx eslint .` en **20 errores / 8 warnings** —
 la línea base exacta de S-02, con cero nuevos.
+
+---
+
+## O-02 · Rebrand a "Orca Ordorica — Nómina" (PR #32, mergeada)
+
+Todo texto visible salió de `src/services/marca.ts`: `MARCA`, `MARCA_CORTA`, las
+dos mitades del logo, la inicial, el nombre del asistente de voz y el prefijo de
+los archivos exportados. Un rebrand futuro es un archivo, no cuarenta cadenas.
+
+**Los nombres internos NO se tocaron**, y fue decisión, no olvido: la ruta
+`/app/store/fiscalito/use`, los ids de servicio, `TabFiscalito`, los nombres de
+archivo y las llaves `fiscalito_*` de `localStorage`. Renombrarlos rompe enlaces
+guardados y sesiones vivas a cambio de nada — nadie los ve. Lo vigila
+`marca.test.ts`, que escanea las fuentes y **tacha los nombres internos
+permitidos antes de buscar**, en vez de perdonar la línea entera.
+
+### Dos veces el guardián no guardaba nada
+
+1. **El test pasaba en vacío.** `new URL(...).pathname` en Windows devuelve
+   `/C:/...`, que no existe: el escaneo leía **cero archivos** y el `expect`
+   sobre una lista vacía pasaba. Se arregló con `fileURLToPath` y con un
+   `expect(fuentes.length).toBeGreaterThan(80)` que mata esa clase entera.
+2. **La lista de permitidos perdonaba la línea completa.** El renglón del
+   sidebar con `id: 'fiscalito'` y su ruta contenía un nombre interno legítimo,
+   así que el `label: 'Fiscalito'` —texto **visible**, justo lo que la tarea
+   prohíbe— pasaba con él. Se cambió a tachar los internos y revisar lo que
+   queda; apareció y se corrigió.
+
+### CI en rojo, y no era del rebrand
+
+`auth/invalid-api-key`: en CI no hay `.env`, y `rutasEmpresaUnica.test.tsx`
+montaba el árbol real de rutas, que inicializa Firebase. Se reprodujo local
+creando un `.env.test.local` de llaves vacías (borrado después), se arregló con
+el mock de firebase, y **el caso se agregó a `sinLlavesDeFirebase.test.ts`**
+para que la próxima vez muera local y no en CI.
+
+---
+
+## O-03 · Parámetros salariales editables (PR #33, mergeada)
+
+Aguinaldo (mín. 15 días, Art. 87 LFT), prima vacacional (mín. 25%, Art. 80),
+tabla de vacaciones por antigüedad (mínimos LFT 2026, se permiten superiores),
+horario y tolerancia del checador, y periodicidad de pago. Todo alimenta el
+factor de integración y el SBC. **Las tablas de ISR, las cuotas del IMSS y
+UMA/SM siguen sin ser editables**, como pidió el enunciado.
+
+### El revisor del plan encontró un defecto latente, antes de escribir código
+
+La guarda de duración de periodo iba a nacer con el rango de la quincena en
+14 a 17 días. Pero la quincena de demostración devuelve **16–28 de febrero = 13
+días**, que es exactamente lo que la app propone al abrir marzo. La guarda habría
+rechazado el periodo que la propia app sugiere. Quedó en 13 a 16 con un test que
+barre año completo y muere si el rango se toca.
+
+### Dos veces las guardas no estaban cableadas (revisor de motor)
+
+- **B-1:** borrar **los dos** call sites de `validar_duracion_periodo` dejaba
+  1297 tests verdes. El validador estaba probado; que alguien lo llamara, no. Se
+  agregaron 6 tests de orquestador y 2 de endpoint con `monkeypatch`: la misma
+  mutación ahora mata 5.
+- **B-2:** la mitad de front no estaba probada. Tres mutaciones dejaban 543
+  verdes, y con ellas la app **aceptaba un aguinaldo de 10 días y una prima del
+  5%** — por debajo del mínimo de ley, que es justo lo que la tarea prohíbe.
+  Ahora las tres matan 11.
+
+### Schemas que prometían validaciones que no hacían
+
+La descripción de `tabla_vacaciones` decía "se rechaza renglón por renglón" y no
+rechazaba nada; `HorarioSchema` aceptaba una hora imposible y días laborables
+fuera de rango, incluso negativos. Se cablearon con `field_validator` llamando al
+validador del motor y un `model_validator`. Una descripción que miente es peor
+que no tenerla: se lee como garantía.
+
+---
+
+## O-04 · Exportador TXT multi-formato (PR #34)
+
+### El cuadre pedido era tautológico, y se cambió el ancla
+
+Ricardo pidió que "los importes de cada TXT cuadren AL CENTAVO con el PDF del
+mismo periodo". Tal cual, el PDF y los TXT salen del **mismo objeto del front**:
+la comparación sólo cazaría un campo escrito en la posición equivocada, y un
+error en la suma pasaría verde de los dos lados.
+
+**Decisión (nocturno):** se agregó un tercer punto que sí es independiente. El
+motor ya calculaba `total_percepciones`, `total_neto` y `total_isr` en
+`ResultadoPeriodo` y **no se serializaban** — el front los recomponía sumando
+recibos. Ahora viajan en `CalcularPeriodoResponse` y son el ancla. El cuadre es
+de tres puntos: bytes del TXT parseados de vuelta, renglones del PDF capturados
+espiando `jspdf-autotable`, y los totales del motor. En **centavos enteros**: en
+flotantes, el propio "cuadre" sería el que mete el error.
+
+### Lo que NO se emite, y por qué no es recorte
+
+**Bajas (02) y modificaciones de salario (07).** Los tres layouts están
+transcritos y probados en `layoutImss.ts` — falta el **dato**, no el código: el
+modelo no guarda fecha de baja, causa de baja ni historial de SBC, así que no hay
+forma de saber quién causó baja ni a quién le cambió el salario. **QUEDA
+ABIERTO.** Cerrarlo es una tarea de modelo, no de exportador.
+
+**"Un alta por cada empleado activo" como carga inicial al SUA.** Era la forma
+fácil de que (a) y (b) fueran dos formatos distintos, y el revisor del plan la
+bloqueó con razón: un registro 08 es *un alta con su fecha*, y emitir uno por
+cada empleado activo declara que **toda la plantilla ingresó ese día**. Ese
+archivo por IDSE reafilia a todo el mundo.
+
+### (a) SUA y (b) IDSE son el mismo layout
+
+El enunciado los pedía como dos formatos. El documento oficial que vive en
+`imss.gob.mx/sites/all/statics/sua/dispmag/` —168 posiciones fijas— es el que
+alimenta **las dos** vías. Se declara en la ficha del formato en vez de inventar
+un segundo layout para que la lista tenga dos renglones.
+
+### Dos desviaciones del enunciado, por el manual oficial
+
+| Pedido | Entregado | Por qué |
+|---|---|---|
+| ANSI | **ASCII** | El manual especifica ASCII. ANSI admitiría bytes mayores a 127 que el IMSS rechaza. |
+| `DD/MM/AAAA` | **`DDMMAAAA`** | Es un registro de posiciones fijas: las diagonales no caben en el campo de 8. |
+
+### La transliteración es un cambio de apellido, y se dice
+
+Quitar la eñe de un apellido en un movimiento afiliatorio no es una decisión de
+codificación. **DECISIÓN PROVISIONAL (nocturno):** no está confirmado si el IMSS
+acepta la eñe en este layout; el manual dice ASCII y la eñe no es ASCII, así que
+se translitera —la opción conservadora— y la pantalla **lista cada nombre que se
+cambió** para que el operador lo revise. Vale la pena preguntarle a la contadora.
+
+### Los generadores levantan; nunca truncan
+
+Un apellido cortado a 27 posiciones produce un movimiento afiliatorio **sobre
+otra persona**, y el archivo mide 168 igual: el IMSS lo acepta y nadie se entera.
+`escribirRegistro` levanta. Lo mismo con el registro patronal y la guía de
+subdelegación: sin ellos no se emite nada, porque el IMSS rechaza el archivo
+entero **sin decir cuál de los dos faltaba**.
+
+### Lo que no está verificado
+
+- **Los tres layouts bancarios (BBVA, Banamex, Banorte) son "por validar"**, y va
+  escrito en la lista del selector y **en el nombre del archivo**. Sus manuales
+  viven detrás del portal de banca empresarial; no hay fuente pública que citar.
+  Los **importes** sí están verificados: salen del mismo cálculo y cuadran contra
+  el motor. Lo que está sin confirmar es el **orden y ancho de los campos**.
+- **UMF (clínica de adscripción)** va en ceros: el modelo no la guarda. La CURP
+  el propio manual la marca como opcional. **ABIERTO.**
+- **La cuenta bancaria (CLABE) no está en el modelo.** Se escribió aquí primero
+  que "la dispersión sale con el campo vacío", y era **peor que eso**: salía un
+  archivo de cero bytes. Ver el bloqueo 4 del revisor, más abajo, que es la
+  versión correcta. **ABIERTO**, y es lo que falta para que ese formato sirva.
+- Nada de O-04 se ha visto en un navegador. Cero variables CSS nuevas.
+
+### Deuda de tamaño
+
+`ModalEmpleado.tsx` pasó de 477 a 556 con los tres campos del IMSS; se extrajo
+`IdentidadEmpleado.tsx` y bajó a 510. **Sigue por encima del tope de 300** — ya
+estaba antes del pivote, y esta tarea al menos no lo dejó peor de como lo empujó.
+
+### El revisor del cuadre BLOQUEÓ, y tenía razón en las cuatro
+
+Corrió 22 mutaciones. Aprobó el ancla —los tres totales salen del motor
+(`periodo_tipos.py`) y la ruta los pasa tal cual, sin recomponer— y confirmó que
+la mayoría de las columnas sí se miden. Pero encontró cuatro cosas, y dos eran
+justo el modo de falla que este módulo dice existir para evitar.
+
+**1. El archivo de tests del selector no estaba en el commit.** Untracked. Corría
+en local y no habría corrido en CI: el componente que le dice al operador quién
+quedó fuera y qué layout está por validar viajaba sin una sola prueba.
+
+**2. El renglón TOTAL del genérico mentía.** Tomaba `porcion_mensual.total_obrero`
+y omitía la bimestral —Retiro, CEAV, Infonavit—, mientras la columna por empleado
+sí las traía. En un periodo con Infonavit (5% del SBC) y Retiro (2%) el TOTAL se
+quedaba corto contra su propia columna. Y no había red: poner en cero las dos
+columnas de cuotas dejaba 40/40 en verde. **Dos de las once columnas estaban sin
+medir.** Arreglado sumando las dos porciones en centavos, con cuatro tests; las
+tres mutaciones ahora matan 3, 1 y 1.
+
+**3. El tercer punto del cuadre no estaba medido.** El test se llamaba *"su
+renglón TOTAL es el del motor, no una suma del front"* y no distinguía una cosa
+de la otra: en la fixture los totales del motor **eran** exactamente la suma de
+los recibos, así que las dos ramas daban el mismo string. La tautología que el
+encabezado del archivo denuncia, viva dentro del archivo. Se agregó una sonda
+donde los totales difieren un centavo a propósito; recomponer en el front ahora
+mata un test.
+
+**4. La dispersión bancaria "cuadraba" con un campo que la app no tiene.**
+`cuenta_bancaria` no existe en `EmpleadoCartera` ni en el backend ni en ninguna
+pantalla: sólo en un cast del exportador y en la fixture que lo inventaba. En
+producción **todos** los recibos caían en `noExportables`, y el generador emitía
+un `.txt` de **0 bytes** que el navegador descargaba sin decir nada. Un archivo
+vacío parece un archivo: se manda al banco y el rechazo llega días después.
+
+Ahora **levanta**, diciendo cuántos empleados y por qué. Y hay que decirlo con
+todas sus letras: **la dispersión bancaria no cumple "totales idénticos" en
+ningún periodo real**, porque no puede exportar a nadie. El cuadre que existe es
+sobre datos fabricados y mide lo que valdrá el día que el dato exista. Capturar
+la CLABE es lo que falta, y es tarea de modelo.
+
+### Observaciones del revisor, también atendidas
+
+- **`dinero.ts` no tenía tests propios.** Aflojar la guarda a tres decimales, o
+  cambiar el parseo exacto por `Math.round(Number(x) * 100)`, dejaba la suite en
+  verde: la sección más argumentada de su docstring estaba indefensa. Se agregó
+  `dinero.test.ts` (41 tests, con `sbcSeisPosiciones` y `fechaDDMMAAAA` medidos
+  de frente en sus bordes). Las dos mutaciones matan 3 y 6.
+- **El NSS se partía con `slice`.** Era el único punto del módulo donde un dato
+  se acortaba en silencio en vez de que `escribirRegistro` levantara. Con 10
+  dígitos el movimiento salía sobre **otra persona** en un archivo de 168
+  posiciones que el IMSS acepta. Ahora exige 11 exactos o no exporta.
+
+**Queda sin hacer, y es del revisor:** el PDF no imprime ningún renglón de
+totales, así que el contador que lee el papel nunca ve el total del motor. El
+cuadre se hace sumando los renglones —vale como medida— pero cerrar el círculo
+de forma visible es una tarea propia, no un "de pasada" a las puertas del merge.
+
+### Un tropiezo propio que vale anotar
+
+Al revertir una mutación con `git checkout --` se borraron los arreglos de los
+bloqueos 2 y 4, que estaban sin commitear. Las tres corridas siguientes midieron
+"el arreglo no está" y no la mutación. Se detectó, se repusieron los arreglos y
+se rehizo la tanda con respaldo a archivo. **Mutar sobre un working tree sucio
+mide otra cosa**; el respaldo va a archivo, no a git.
+
+### Cierre de la corrida O
+
+Frontend **664 verdes** (57 archivos), `tsc` y `npm run build` limpios.
+Backend **1308 verdes**, `ruff` limpio. `eslint` en **20 errores / 8 warnings**:
+la línea base exacta de S-02, con cero nuevos.
+
+**Desviación del protocolo, declarada:** Ricardo fijó el revisor a mitad de
+corrida "al cerrar O-03", pero el revisor del plan bloqueó mergear O-01 sin
+revisión citando `CLAUDE.md`, así que esa pasada se movió al entregable de O-01.
+Los apartes de cálculo fiscal (O-03 y el cuadre de O-04) se corrieron completos
+como se pidió.

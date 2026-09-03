@@ -34,6 +34,7 @@ const ORCA: ConfigEmpresa = {
   claseRiesgo: 3,
   zona: 'general',
   clavePeriodicidad: '04',
+  guiaSubdelegacion: '00001',
   parametros: PARAMETROS_DE_LEY,
 };
 

@@ -8,6 +8,7 @@ errores, forma de la respuesta— y **no** la aritmética, que ya mide
 
 import json
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -401,3 +402,60 @@ class TestToolDelAgente:
             calcular_nomina_periodo({"periodo_inicio": "ayer", "periodo_fin": "hoy"})
         )
         assert "error" in salida
+
+
+class TestLosTotalesDelMotorViajan:
+    """
+    Los tres totales del periodo salen del MOTOR. (O-04)
+
+    POR QUÉ SE AGREGARON
+    --------------------
+    `ResultadoPeriodo` ya los calculaba —los usa `_resumen_para_llm`— y no
+    viajaban. El front los recomponía sumando los recibos para el PDF, y los
+    exportadores de O-04 iban a hacer lo mismo.
+
+    Un revisor lo llamó por su nombre: comparar el PDF contra los TXT cuando los
+    dos derivan del mismo módulo del front es **tautológico**. Sólo cazaría un
+    campo escrito en la posición equivocada; un error en la suma pasaría verde
+    en los dos lados. Con estos campos el cuadre tiene un ancla que no depende
+    del navegador.
+    """
+
+    def test_los_tres_totales_vienen_en_la_respuesta(self, cliente_http):
+        cuerpo = cliente_http.post(CALCULAR, json=_cuerpo()).json()
+        for campo in ("total_percepciones", "total_neto", "total_isr"):
+            assert campo in cuerpo, f"falta {campo}"
+
+    def test_y_son_la_suma_EXACTA_de_los_recibos(self, cliente_http):
+        """
+        No es redundante con el motor: mide que el ROUTER no los recomponga ni
+        los redondee al traducir. Si el orquestador sumara por su cuenta, aquí
+        se vería la diferencia de centavos.
+        """
+        cuerpo = cliente_http.post(CALCULAR, json=_cuerpo()).json()
+        recibos = cuerpo["recibos"]
+
+        assert Decimal(cuerpo["total_percepciones"]) == sum(
+            (Decimal(r["total_percepciones"]) for r in recibos), start=Decimal("0")
+        )
+        assert Decimal(cuerpo["total_neto"]) == sum(
+            (Decimal(r["neto"]) for r in recibos), start=Decimal("0")
+        )
+
+    def test_el_ISR_es_la_suma_de_la_deduccion_002(self, cliente_http):
+        """
+        La clave `002` de `c_TipoDeduccion` es el ISR retenido. Que el total
+        cuadre con las partidas es lo que hace posible que un TXT lo imprima sin
+        volver a sumarlo.
+        """
+        cuerpo = cliente_http.post(CALCULAR, json=_cuerpo()).json()
+        de_las_partidas = sum(
+            (
+                Decimal(d["importe"])
+                for r in cuerpo["recibos"]
+                for d in r["deducciones"]
+                if d["tipo"] == "002"
+            ),
+            start=Decimal("0"),
+        )
+        assert Decimal(cuerpo["total_isr"]) == de_las_partidas

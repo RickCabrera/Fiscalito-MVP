@@ -30,6 +30,7 @@ import { exportarNominaPDF } from '../services/pdfExportNomina';
 import { etiquetaOrigen } from '../services/despachoApi';
 import { useParams } from 'react-router-dom';
 import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
+import SelectorExportacion from '../components/nomina/SelectorExportacion';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { labelStyle } from '../utils/styles';
 
@@ -279,19 +280,38 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
       <PasoNomina
         numero={4}
         titulo="Exportar"
-        descripcion="Genera el PDF con los recibos y las cuotas patronales del periodo."
+        descripcion="El PDF con los recibos y las cuotas, y los archivos TXT para el IMSS y el banco."
         estado={estadoPaso4}
         motivoBloqueo="Calcula la nómina primero (paso 3)."
       >
-        <div>
-          <button
-            className="btn-secondary"
-            onClick={exportar}
-            disabled={!nomina || !cliente}
-            style={ACCION}
-          >
-            <FileDown size={16} /> Exportar PDF
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div>
+            <button
+              className="btn-secondary"
+              onClick={exportar}
+              disabled={!nomina || !cliente}
+              style={ACCION}
+            >
+              <FileDown size={16} /> Exportar PDF
+            </button>
+          </div>
+          {/* O-04: los TXT van junto al PDF, no en su lugar. El PDF es el
+              documento que leen el contador y el patrón; los TXT son para las
+              máquinas — el IMSS y el banco. */}
+          <SelectorExportacion
+            deshabilitado={!nomina || !cliente}
+            datos={
+              nomina && cliente
+                ? {
+                    nomina,
+                    cliente,
+                    empleados: n.empleadosDeLaCartera,
+                    registroPatronal: n.registroPatronal,
+                    guia: n.guiaSubdelegacion,
+                  }
+                : null
+            }
+          />
         </div>
       </PasoNomina>
     </div>

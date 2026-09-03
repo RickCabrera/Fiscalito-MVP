@@ -36,7 +36,10 @@ export default function TarjetaEmpresa({ cartera }: { cartera: CarteraContextTyp
    * presupuesto que esta corrida tiene que dejar donde lo encontró.
    */
   const e = cartera.empresa;
-  const llave = [e.razonSocial, e.rfc, e.registroPatronal, e.primaRiesgo, e.claseRiesgo].join('|');
+  const llave = [
+    e.razonSocial, e.rfc, e.registroPatronal, e.primaRiesgo, e.claseRiesgo,
+    e.guiaSubdelegacion, e.clavePeriodicidad, JSON.stringify(e.parametros),
+  ].join('|');
 
   return (
     <ConfiguracionEmpresa

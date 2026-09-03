@@ -97,6 +97,10 @@ function nomina(origenPlantilla: string): NominaPeriodo {
     }],
     porcion_mensual: { periodicidad: 'mensual', por_ramo: {}, total_patron: '600.00', total_obrero: '125.99', total: '725.99', empleados: 1 },
     porcion_bimestral: { periodicidad: 'bimestral', por_ramo: {}, total_patron: '300.00', total_obrero: '0.00', total: '300.00', empleados: 1 },
+    // O-04: los totales del MOTOR viajan en la respuesta.
+    total_percepciones: '0.00',
+    total_neto: '0.00',
+    total_isr: '0.00',
     advertencias: ['Aviso del motor que tiene que llegar al papel'],
   };
 }
