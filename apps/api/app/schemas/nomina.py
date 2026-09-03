@@ -60,6 +60,31 @@ class EmpleadoDemoSchema(BaseModel):
     nombre: str
 
 
+class PeriodoSugeridoResponse(BaseModel):
+    """
+    El último periodo terminado para una periodicidad. (O-03)
+
+    Existe para que el front **no replique la regla del periodo**. De la
+    `fecha_pago` que sale de aquí dependen la UMA, el salario mínimo, la tarifa
+    del Anexo 8 y el transitorio de enero del subsidio (§D18): dos
+    implementaciones serían dos verdades sobre con qué valores se calcula la
+    nómina.
+
+    Antes de O-03 el front proponía **siempre una quincena** —copiaba la del
+    cliente de demostración a todos, sin mirar su clave— así que elegir Mensual
+    dejaba a la empresa con un periodo que el propio motor rechaza.
+
+    `dias_naturales` viaja calculado y no se deriva en el cliente: es el mismo
+    número que `duracion_periodo` valida, y restar fechas en JavaScript con
+    zonas horarias es de las cosas que dan 15 donde hay 16.
+    """
+
+    exito: bool = True
+    clave_periodicidad: str
+    periodo: PeriodoNomina
+    dias_naturales: int
+
+
 class PlantillaDemoResponse(BaseModel):
     """
     Todo lo que la pantalla de la demo necesita y **no puede inventarse**.
@@ -281,6 +306,17 @@ class SBCRequest(BaseModel):
         default=0, ge=0, description="0 = los de ley que le tocan a su antigüedad."
     )
     prima_vacacional: Decimal = Field(default=Decimal("0.25"), ge=0)
+    tabla_vacaciones: tuple[tuple[int, int], ...] = Field(
+        default=(),
+        description="Escala de vacaciones del PATRÓN: `[[años_cumplidos, días], ...]` "
+        "(O-03). El Art. 76 LFT fija el mínimo y el patrón puede otorgar más; se rechaza "
+        "renglón por renglón lo que quede por debajo. Vacía = manda la ley. "
+        "**El front manda la tabla y la antigüedad; NUNCA resuelve los días él mismo.** "
+        "`vacaciones_efectivas` ya define `0 = los de ley`, y con una tabla ese centinela "
+        "sería ambiguo — además de que buscar el renglón en TypeScript sería una segunda "
+        "implementación de la misma búsqueda. Los días aplicados vuelven en "
+        "`dias_vacaciones_aplicados`.",
+    )
 
 
 class SBCResponse(BaseModel):

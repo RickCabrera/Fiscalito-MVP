@@ -717,3 +717,84 @@ propósito para que la política sea una línea y no una cacería por el formula
 **Consecuencia declarada:** el criterio literal de R-03 ("inválido bloquea con mensaje claro")
 queda **cumplido para el formato y desviado para el verificador**. Es desviación consciente,
 no descuido.
+
+---
+
+## D26 · El periodo PARCIAL de un alta o una baja — ABIERTA, para la contadora
+
+**Contexto.** O-03 abre la periodicidad de pago a semanal, quincenal y mensual, y para que eso
+sea seguro sube al motor una guarda que **rechaza un periodo cuya duración no case con su
+clave** (`nomina_engine/duracion_periodo.py`). Sin ella, `backlog.md` §G puntos 3 y 6
+describen el agujero: un patrón Mensual con base de 15-16 días recibe la tarifa mensual del
+Art. 96 —**ISR subestimado, con recibo creíble y sin un solo error**— y el simétrico, tarifa
+quincenal sobre base mensual.
+
+**El efecto colateral, que es esta decisión.** La guarda también bloquea un caso **legítimo**:
+un alta o una baja a mitad de periodo produce un periodo corto real, que hasta O-03 sí se
+calculaba. Alguien que entra el 20 de agosto tiene 12 días trabajados de una quincena de 16.
+
+**La pregunta abierta.** ¿Cómo se retiene el ISR de un periodo parcial?
+
+1. **Tabla del Art. 96 de la periodicidad completa, sobre la base parcial.** Es lo que hacía
+   la app antes, y es lo que produce el error que la guarda viene a evitar: los límites
+   inferiores de la tarifa quincenal suponen 15 días de ingreso.
+2. **Prorrateo**: proyectar el ingreso a la periodicidad completa, aplicar la tarifa, y
+   retener la parte proporcional. Es lo que hacen varios despachos.
+3. **Tarifa diaria (clave 01) por los días trabajados.** El Anexo 8 sí la publica.
+
+**Lo que se hizo mientras tanto — DECISIÓN PROVISIONAL (nocturno):** se **bloquea**. Es la
+opción conservadora: cobrar de más o de menos en silencio es peor que no calcular. El motor
+responde 422 y **su mensaje distingue las dos causas** —la clave equivocada y el periodo
+parcial— porque tienen arreglos opuestos: si sólo dijera "no cuadra", el operador iría a
+cambiar la periodicidad del patrón, que es el dato bueno, y lo dejaría mal configurado para
+siempre.
+
+**Es una regresión funcional declarada**, no un descuido: la app calculaba esos periodos ayer
+y hoy los rechaza. Se prefiere así porque lo que calculaba era, precisamente, lo que el punto
+1 describe.
+
+**Qué desbloquea esto.** La respuesta de la contadora, o una decisión de producto de Ricardo.
+Cuando llegue, el cambio es acotado: `duracion_periodo.py` deja de levantar para el caso
+parcial y el motor aplica la regla elegida.
+
+**Relación con lo ya decidido.** §D10 explica por qué catorcenal y decenal no tienen tarifa;
+§D18 por qué la vigencia se lee de la fecha de pago. Ninguna de las dos cubre este caso.
+`PLAN_NOMINA.md` §5 lo roza al listar las preguntas para la contadora, sin llegar a él.
+
+---
+
+## D27 · La quincena de 13 días de febrero: ¿se pagan 13 o 15? — ABIERTA, para la contadora
+
+**Lo levantó el revisor de motor de O-03**, y es una pregunta que ninguna decisión previa
+cubre.
+
+**El hecho.** La guarda de `duracion_periodo` bendice el rango **13 a 16 días** para la clave
+`04`, porque ésos son los extremos que produce el calendario: del 16 al 28 de febrero en año
+común son 13 días. Y `dias_pagados = dias_periodo − faltas` (§D20 y `periodo.py`) hace que en
+esa quincena se paguen **13 días de salario** contra una tarifa quincenal que
+`tablas_isr_periodicas.py` deriva a **exactamente 15**.
+
+**La tensión, dicha de frente.** El docstring de `duracion_periodo.py` rechaza 17 días con el
+argumento de que *"tolerarlo era tolerar dos días de base sin tarifa"* — y acepta 13, que son
+dos días de base **de menos** contra esa misma tarifa. El rango de calendario está bien y no se
+toca: bloquear 13 rompería el periodo que la propia app propone entre el 1 y el 15 de marzo.
+Lo que está sin decidir es otra cosa.
+
+**La pregunta.** En la práctica mexicana la quincena se paga **siempre 15 días**, sea febrero o
+un mes de 31. ¿Es así en esta empresa?
+
+1. **Pagar los días naturales del periodo** (lo que hace hoy): 13 en la segunda quincena de
+   febrero, 16 en la de un mes de 31.
+2. **Pagar 15 siempre**, independientemente de los días naturales.
+
+**Estado.** No se cambió nada: hoy manda la opción 1, que es lo que la app viene haciendo desde
+D-06 y lo que cuadra con el caso real de S-04. **Mueve un número en cada febrero**, así que
+tiene que decidirse antes de la primera nómina de febrero, no antes.
+
+**La palanca ya existe.** `dias_pagados_override` de `calcular_periodo` implementa la opción 2
+sin tocar el motor: se le pasa 15 y pisa `dias_periodo − faltas` para toda la plantilla. Lo que
+falta es la decisión, no el código.
+
+**Relación con lo demás.** §D26 cubre el periodo PARCIAL de un alta o una baja, que es otro
+caso: ahí el periodo es corto porque la persona no estuvo todo el periodo. Aquí estuvo completo
+y el periodo mismo es corto.

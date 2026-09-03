@@ -23,6 +23,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { carteraDePrueba } from '../../test/carteraDePrueba';
 import type { CarteraContextType } from '../../context/carteraStore';
 import { EMPRESA_POR_DEFECTO, type ConfigEmpresa } from '../../services/empresa';
+import { PARAMETROS_DE_LEY } from '../../services/carteraApi';
 import TarjetaEmpresa from './TarjetaEmpresa';
 
 const ORCA: ConfigEmpresa = {
@@ -33,6 +34,7 @@ const ORCA: ConfigEmpresa = {
   claseRiesgo: 3,
   zona: 'general',
   clavePeriodicidad: '04',
+  parametros: PARAMETROS_DE_LEY,
 };
 
 function contexto(over: Partial<CarteraContextType> = {}): CarteraContextType {

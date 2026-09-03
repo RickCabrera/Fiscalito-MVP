@@ -292,3 +292,88 @@ class TestFilaDorada:
         assert cuerpo["tope"] == "2932.75"
         assert cuerpo["piso_aplicado"] is False
         assert cuerpo["tope_aplicado"] is False
+
+
+class TestTablaDeVacacionesDelPatron:
+    """
+    O-03: la escala de vacaciones del patrón llega al factor por el endpoint.
+
+    Sin esto, capturarla en la pantalla sería un formulario decorativo: el SBC
+    seguiría saliendo con los días de ley.
+
+    **El front manda la tabla y la antigüedad, y NUNCA resuelve los días.**
+    `vacaciones_efectivas` ya define `0 = los de ley`, y con una tabla ese
+    centinela sería ambiguo; además, buscar el renglón en TypeScript sería una
+    segunda implementación de la misma búsqueda. Por eso
+    `dias_vacaciones_aplicados` vuelve en la respuesta — y el modal ya lo pinta.
+    """
+
+    TABLA = [[1, 15], [3, 20], [5, 25], [10, 30]]
+
+    def test_la_tabla_cambia_el_factor_y_el_SBC(self, cliente_http):
+        sin_tabla = pedir(cliente_http, anios_servicio_cumplidos=3)
+        con_tabla = pedir(
+            cliente_http, anios_servicio_cumplidos=3, tabla_vacaciones=self.TABLA
+        )
+
+        # De ley son 16 días al tercer año; la tabla da 20.
+        assert sin_tabla["dias_vacaciones_aplicados"] == 16
+        assert con_tabla["dias_vacaciones_aplicados"] == 20
+        assert sin_tabla["factor"] == "1.0521"
+        assert con_tabla["factor"] == "1.0548"
+        # 500 x 0.0027 = 1.35, al centavo.
+        assert Decimal(con_tabla["sbc"]) - Decimal(sin_tabla["sbc"]) == Decimal("1.35")
+
+    def test_la_respuesta_DICE_con_cuantos_dias_integro(self, cliente_http):
+        """
+        Es lo que hace posible que el front no resuelva los días él mismo. Sin
+        este campo, la pantalla tendría que buscar el renglón para poder
+        explicar el número, y ahí nacería la segunda implementación.
+        """
+        cuerpo = pedir(
+            cliente_http, anios_servicio_cumplidos=7, tabla_vacaciones=self.TABLA
+        )
+        assert cuerpo["dias_vacaciones_aplicados"] == 25
+
+    def test_por_encima_del_ultimo_renglon_NO_le_bajan_los_dias(self, cliente_http):
+        """
+        Tabla hasta el año 10 con 30 días, trabajador con 11. La ley da 24: si
+        el endpoint cayera a la ley, su SBC **bajaría al cumplir un año más**.
+        """
+        cuerpo = pedir(
+            cliente_http, anios_servicio_cumplidos=11, tabla_vacaciones=self.TABLA
+        )
+        assert cuerpo["dias_vacaciones_aplicados"] == 30
+
+    def test_pero_la_LEY_gana_cuando_supera_a_la_tabla(self, cliente_http):
+        """Con 40 años la ley da 34, más que los 30 del último renglón."""
+        cuerpo = pedir(
+            cliente_http, anios_servicio_cumplidos=40, tabla_vacaciones=self.TABLA
+        )
+        assert cuerpo["dias_vacaciones_aplicados"] == 34
+
+    def test_una_tabla_bajo_el_minimo_de_ley_devuelve_422(self, cliente_http):
+        """
+        Art. 76 LFT. El 422 trae el sobre del proyecto y el renglón infractor,
+        para que quien la capturó pueda arreglarla sin adivinar.
+        """
+        r = cliente_http.post(
+            RUTA,
+            json={
+                "salario_diario": "500.00",
+                "fecha": FECHA,
+                "anios_servicio_cumplidos": 5,
+                "tabla_vacaciones": [[1, 15], [5, 19]],
+            },
+        )
+        assert r.status_code == 422
+        cuerpo = r.json()
+        assert cuerpo["exito"] is False
+        assert "19 días al año 5" in cuerpo["error"]
+        assert "Art. 76 LFT" in cuerpo["error"]
+
+    def test_sin_tabla_todo_sigue_exactamente_igual(self, cliente_http):
+        """El default no cambia para nadie: es la ley, como antes de O-03."""
+        cuerpo = pedir(cliente_http, anios_servicio_cumplidos=3)
+        assert cuerpo["factor"] == "1.0521"
+        assert cuerpo["dias_vacaciones_aplicados"] == 16

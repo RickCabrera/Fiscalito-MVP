@@ -17,6 +17,7 @@
 import type { ClienteDetalle } from './despachoApi';
 
 import { cuerpoDeError, detalleDelError } from './errorApi';
+import type { HorarioLaboral } from './carteraApi';
 
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
 const V1 = `${BASE_URL}/api/v1`;
@@ -191,10 +192,29 @@ export function cerrarPeriodo(
   cliente: string,
   empleados: string[],
   periodo: { inicio: string; fin: string },
+  /**
+   * O-03: el horario del patrón, contra el que se miden retardos y faltas.
+   *
+   * **Objeto de opciones y no un cuarto posicional, a propósito.** Un
+   * posicional opcional se olvida en un llamador y cae al default sin que nada
+   * avise — que es exactamente el defecto que O-03 viene a arreglar: hasta
+   * ahora el front NUNCA mandaba horario y el backend aplicaba 08:00-17:00 con
+   * 15 minutos a todo el mundo, aunque la empresa hubiera configurado otro.
+   *
+   * Omitirlo sigue siendo válido y significa "el default del backend", que es
+   * lo que el modo despacho necesita: ahí no hay una empresa única de la que
+   * sacarlo.
+   */
+  opciones: { horario?: HorarioLaboral } = {},
 ): Promise<CierrePeriodo> {
   return pedir('/asistencia/cerrar-periodo', {
     method: 'POST',
-    body: JSON.stringify({ cliente, empleados, periodo }),
+    body: JSON.stringify({
+      cliente,
+      empleados,
+      periodo,
+      ...(opciones.horario ? { horario: opciones.horario } : {}),
+    }),
   });
 }
 

@@ -27,7 +27,8 @@ import { Building2, Check, Save } from 'lucide-react';
 import Campo from '../cartera/Campo';
 import { campoInput } from '../cartera/estilosCampo';
 import { faltantesDeLaEmpresa, type ConfigEmpresa } from '../../services/empresa';
-import { aFraccion, aPorcentaje, validar } from './validacionEmpresa';
+import { aFraccion, aPorcentaje, erroresDeParametros, validar } from './validacionEmpresa';
+import ParametrosSalarialesForm from './ParametrosSalarialesForm';
 
 /**
  * LOS CAMPOS SE SIEMBRAN DEL PROP UNA SOLA VEZ, Y ESO BASTA **POR EL `key`**.
@@ -64,13 +65,21 @@ export default function ConfiguracionEmpresa({
   const [claseRiesgo, setClaseRiesgo] = useState(
     empresa.claseRiesgo === null ? '' : String(empresa.claseRiesgo),
   );
+  // O-03: los parámetros salariales viven en el mismo documento y se guardan
+  // con el mismo botón. Separarlos en dos formularios haría que el operador
+  // pudiera guardar la razón social y dejar el aguinaldo a medias, y sólo una
+  // de las dos mitades bloquea el cálculo.
+  const [parametros, setParametros] = useState(empresa.parametros);
+  const [clavePeriodicidad, setClavePeriodicidad] = useState(empresa.clavePeriodicidad);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
 
   const errores = validar(razonSocial, rfc, registroPatronal, primaPct);
-  const puedeGuardar = Object.keys(errores).length === 0 && !soloLectura;
+  const erroresParametros = erroresDeParametros(parametros);
+  const puedeGuardar =
+    Object.keys(errores).length === 0 && erroresParametros.length === 0 && !soloLectura;
 
   const guardar = async () => {
     if (!puedeGuardar) return;
@@ -84,6 +93,8 @@ export default function ConfiguracionEmpresa({
         registroPatronal: registroPatronal.trim().toUpperCase(),
         primaRiesgo: aFraccion(primaPct),
         claseRiesgo: claseRiesgo === '' ? null : Number(claseRiesgo),
+        clavePeriodicidad,
+        parametros,
       });
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
@@ -176,6 +187,15 @@ export default function ConfiguracionEmpresa({
           </select>
         </Campo>
       </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: 'var(--space-lg) 0' }} />
+
+      <ParametrosSalarialesForm
+        valor={parametros}
+        clavePeriodicidad={clavePeriodicidad}
+        onCambio={setParametros}
+        onCambioPeriodicidad={setClavePeriodicidad}
+      />
 
       {/* Los motivos, uno por uno. Un "hay errores" genérico obliga a adivinar
           cuál de los cinco campos es. */}

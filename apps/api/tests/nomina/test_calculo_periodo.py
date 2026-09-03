@@ -232,7 +232,18 @@ class TestConsolidados:
         prompt del LLM. Una afirmación legal sin fuente dirigida a quien entera
         las cuotas es exactamente lo que este repo no publica.
         """
-        avisos = _correr(incidencias=(_inc(dias=15, faltas=8),)).advertencias
+        # O-03: se le pasa `clave_periodicidad="04"` porque la fixture por
+        # defecto es SEMANAL y 15 días no es una semana. La guarda nueva de
+        # duración lo rechaza antes de llegar al cálculo, y este test mide la
+        # advertencia de ausentismo, no la periodicidad.
+        #
+        # **Cede la fixture, no el rango.** 15 días semanales es lo que estaba
+        # mal: ensanchar (7, 7) para que este caso pasara sería aflojar una
+        # validación para forzar el verde. 15 sí es una quincena válida, así que
+        # el caso sigue midiendo exactamente lo que medía.
+        avisos = _correr(
+            incidencias=(_inc(dias=15, faltas=8),), clave_periodicidad="04"
+        ).advertencias
         aviso = next(a for a in avisos if "revisión manual" in a)
         assert "E-08" in aviso
         assert "cobra de más, nunca de menos" in aviso
@@ -364,3 +375,70 @@ class TestCaracterizacionQuincenal:
         assert recibo.dias_pagados == 15
         assert recibo.recibo.total_percepciones == Decimal("4740.00")
         assert {d.tipo for d in recibo.recibo.deducciones} == {"001", "002"}
+
+
+class TestLaGuardaDeDuracionESTA_CABLEADA:
+    """
+    Que la guarda CORRA dentro de `calcular_periodo`, no que exista.
+
+    POR QUÉ ESTA CLASE EXISTE
+    -------------------------
+    Un revisor de motor borró la llamada a `validar_duracion_periodo` de
+    `periodo.py` y **la suite entera quedó en 1297 verdes**.
+    `test_duracion_periodo.py` prueba la función en aislamiento, exhaustivamente
+    — y nadie probaba que estuviera enchufada.
+
+    O sea: el agujero de `backlog.md` §G puntos 3 y 6 —un patrón Mensual con
+    base de 15-16 días recibiendo la tarifa mensual del Art. 96, **ISR
+    subestimado con recibo creíble**— no tenía una sola prueba de estar cerrado,
+    mientras el commit y `docs/api-contract.md` afirmaban que sí. Es el mismo
+    defecto de R-07: una garantía declarada que ningún test sostiene.
+
+    Estos casos mueren si alguien quita la línea del orquestador.
+    """
+
+    def test_mensual_con_una_quincena_lo_RECHAZA_el_orquestador(self):
+        """§G punto 3: la dirección que subestima el ISR."""
+        with pytest.raises(FiscalValidationError, match="mensual"):
+            _correr(incidencias=(_inc(dias=16),), clave_periodicidad="05")
+
+    def test_quincenal_con_un_mes_tambien(self):
+        """§G punto 6, el simétrico, que antes de O-03 no cubría nadie."""
+        with pytest.raises(FiscalValidationError, match="quincenal"):
+            _correr(incidencias=(_inc(dias=31),), clave_periodicidad="04")
+
+    def test_semanal_con_una_quincena_tambien(self):
+        with pytest.raises(FiscalValidationError, match="semanal"):
+            _correr(incidencias=(_inc(dias=15),))  # la fixture es SEMANAL
+
+    def test_y_lo_que_SI_cuadra_calcula_normal(self):
+        """
+        El contrapeso, y no es de relleno: una guarda que rechazara siempre
+        también dejaría verdes los tres casos de arriba.
+        """
+        resultado = _correr(incidencias=(_inc(dias=7),))
+        assert len(resultado.recibos) == 1
+
+    def test_el_mensaje_del_ORQUESTADOR_distingue_el_periodo_parcial(self):
+        """
+        El 422 que llega a la pantalla tiene que traer las dos causas. Si sólo
+        dijera "no cuadra", el operador iría a cambiar la periodicidad del
+        patrón —que es el dato bueno— y lo dejaría mal configurado para siempre.
+        """
+        with pytest.raises(FiscalValidationError) as e:
+            _correr(incidencias=(_inc(dias=8),), clave_periodicidad="04")
+        mensaje = str(e.value)
+        assert "PARCIAL" in mensaje
+        assert "§D26" in mensaje
+
+    def test_la_guarda_va_DESPUES_del_chequeo_de_duraciones_distintas(self):
+        """
+        El orden importa: un cierre que mezcla dos periodos tiene que decir
+        **eso**, no "no cuadra con la periodicidad", que manda a arreglar el
+        dato equivocado.
+        """
+        with pytest.raises(FiscalValidationError, match="distinta duración"):
+            _correr(
+                (_empleado("E-01"), _empleado("E-02")),
+                (_inc("E-01", dias=7), _inc("E-02", dias=15)),
+            )

@@ -32,9 +32,13 @@ vi.mock('./firebase', () => ({ db: {} }));
 
 const obtenerClientes = vi.fn();
 const obtenerCliente = vi.fn();
+// O-03: el periodo sale de `GET /nomina/periodo-sugerido`, por periodicidad, y
+// ya no de copiar la quincena del cliente `demo` a todos.
+const obtenerPeriodoSugerido = vi.fn();
 vi.mock('./despachoApi', () => ({
   obtenerClientes: () => obtenerClientes(),
   obtenerCliente: (id: string) => obtenerCliente(id),
+  obtenerPeriodoSugerido: (clave: string) => obtenerPeriodoSugerido(clave),
 }));
 
 const obtenerEmpleadosSemilla = vi.fn();
@@ -70,6 +74,11 @@ function backendResponde() {
     empleados: [],
     periodo_sugerido: PERIODO_DE_HOY,
     fecha_referencia: '2026-09-01',
+  });
+  obtenerPeriodoSugerido.mockResolvedValue({
+    clave_periodicidad: '04',
+    periodo: PERIODO_DE_HOY,
+    dias_naturales: 16,
   });
   obtenerEmpleadosSemilla.mockResolvedValue({
     cliente_id: 'demo', origen: 'fixtures-s04', total: 1, sin_vincular: 0,
@@ -203,7 +212,7 @@ describe('conPeriodoAlDia · el periodo sugerido no envejece', () => {
         docs: [{ id: 'mio', data: () => ({ nombre: 'Mi Cliente', periodo_sugerido: VIEJO }) }],
       })
       .mockResolvedValueOnce({ docs: [] });
-    obtenerCliente.mockRejectedValue(new Error('API caída'));
+    obtenerPeriodoSugerido.mockRejectedValue(new Error('API caída'));
 
     const r = await cargarCartera('uid-1');
     expect(r.origen).toBe('firestore');
@@ -220,7 +229,7 @@ describe('conPeriodoAlDia · el periodo sugerido no envejece', () => {
         docs: [{ id: 'mio', data: () => ({ nombre: 'Mi Cliente', periodo_sugerido: VIEJO }) }],
       })
       .mockResolvedValueOnce({ docs: [] });
-    obtenerCliente.mockReturnValue(new Promise(() => {}));
+    obtenerPeriodoSugerido.mockReturnValue(new Promise(() => {}));
 
     const promesa = cargarCartera('uid-1');
     await vi.advanceTimersByTimeAsync(3000);
@@ -259,5 +268,88 @@ describe('sembrarDemo', () => {
     const datosDelCliente = loteSet.mock.calls[0][1];
     expect(datosDelCliente).not.toHaveProperty('empleados');
     expect(datosDelCliente.nombre).toBe('Cliente Demo');
+  });
+});
+
+describe('O-03 · el periodo sigue a la PERIODICIDAD de cada cliente', () => {
+  /**
+   * EL CALLEJÓN QUE ESTO CIERRA.
+   *
+   * Hasta O-03 esta función copiaba la quincena del cliente `demo` a **todos**,
+   * sin mirar su clave — su propio docstring lo advertía: *"el día que se abran
+   * las otras claves ésta es la puerta que queda abierta"*.
+   *
+   * O-03 abre semanal y mensual y sube al motor la guarda de duración. Con la
+   * versión vieja, una empresa mensual recibía una quincena propuesta y el
+   * motor rechazaba el cálculo: **el selector rompía la app en dos de sus tres
+   * opciones**, y la culpa parecía del motor.
+   */
+  it('a un cliente mensual le propone un MES, no una quincena', async () => {
+    const MES = { inicio: '2026-08-01', fin: '2026-08-31', fecha_pago: '2026-08-31' };
+    obtenerPeriodoSugerido.mockImplementation(async (clave: string) => ({
+      clave_periodicidad: clave,
+      periodo: clave === '05' ? MES : PERIODO_DE_HOY,
+      dias_naturales: clave === '05' ? 31 : 16,
+    }));
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'mensual',
+            data: () => ({
+              nombre: 'Mensual', clave_periodicidad: '05', periodo_sugerido: VIEJO,
+            }),
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+
+    const r = await cargarCartera('uid-1');
+
+    expect(obtenerPeriodoSugerido).toHaveBeenCalledWith('05');
+    expect(r.clientes[0].periodo_sugerido).toEqual(MES);
+  });
+
+  it('pide UNA vez por clave, no una por cliente', async () => {
+    // Los clientes que comparten periodicidad comparten periodo. En modo
+    // empresa única esto es una sola llamada.
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 'a', data: () => ({ nombre: 'A', clave_periodicidad: '04' }) },
+          { id: 'b', data: () => ({ nombre: 'B', clave_periodicidad: '04' }) },
+          { id: 'c', data: () => ({ nombre: 'C', clave_periodicidad: '05' }) },
+        ],
+      })
+      .mockResolvedValue({ docs: [] });
+
+    await cargarCartera('uid-1');
+
+    expect(obtenerPeriodoSugerido).toHaveBeenCalledTimes(2);
+  });
+
+  it('una clave sin tarifa deja a ESE cliente con su snapshot, no con otro periodo', async () => {
+    /**
+     * Una clave sin tarifa publicada (§D10) responde 422. Darle entonces el
+     * periodo de otra periodicidad sería exactamente el bug que esto cierra:
+     * mejor un snapshot viejo —que la pantalla deja corregir a mano— que un
+     * periodo que no le corresponde.
+     */
+    obtenerPeriodoSugerido.mockRejectedValue(new Error('422 sin tarifa'));
+    getDocs
+      .mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'catorcenal',
+            data: () => ({
+              nombre: 'Catorcenal', clave_periodicidad: '03', periodo_sugerido: VIEJO,
+            }),
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+
+    const r = await cargarCartera('uid-1');
+    expect(r.clientes[0].periodo_sugerido).toEqual(VIEJO);
   });
 });

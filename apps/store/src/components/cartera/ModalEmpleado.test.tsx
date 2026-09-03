@@ -23,7 +23,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ModalEmpleado from './ModalEmpleado';
-import type { EmpleadoCartera } from '../../services/carteraApi';
+import type { EmpleadoCartera, ParametrosSalariales } from '../../services/carteraApi';
 
 const integrarSBC = vi.fn();
 vi.mock('../../services/carteraApi', async () => {
@@ -54,6 +54,7 @@ function pintar(opciones: {
   empleado?: EmpleadoCartera | null;
   existentes?: string[];
   enUsoPorOtro?: string[];
+  parametros?: ParametrosSalariales;
 } = {}) {
   const onGuardar = vi.fn().mockResolvedValue(undefined);
   integrarSBC.mockResolvedValue(SBC_OK);
@@ -64,6 +65,7 @@ function pintar(opciones: {
       enUsoPorOtro={opciones.enUsoPorOtro ?? []}
       onGuardar={onGuardar}
       onCerrar={vi.fn()}
+      parametros={opciones.parametros}
     />,
   );
   return onGuardar;
@@ -226,5 +228,79 @@ describe('ModalEmpleado · NSS (R-03)', () => {
     fireEvent.click(botonAlta());
     await waitFor(() => expect(onGuardar).toHaveBeenCalled());
     expect(onGuardar.mock.calls[0][0].nss).toBe('12345678903');
+  });
+});
+
+describe('O-03 · las prestaciones del PATRÓN llegan al motor', () => {
+  /**
+   * POR QUÉ ESTA SECCIÓN EXISTE
+   * ---------------------------
+   * Un revisor de motor borró `tabla_vacaciones: tablaVacaciones` del request
+   * de SBC y **las 543 pruebas del front quedaron verdes**. Con esa línea
+   * muerta, el formulario de "Vacaciones por antigüedad" de Configuración de
+   * empresa queda **decorativo**: se captura, se guarda, y el SBC sigue
+   * saliendo con los días de ley.
+   *
+   * Es literalmente el modo de falla contra el que O-03 se defiende en su
+   * propio mensaje de commit, y no tenía una sola prueba.
+   */
+
+  const PARAMETROS: ParametrosSalariales = {
+    dias_aguinaldo: 30,
+    prima_vacacional: '0.50',
+    tabla_vacaciones: [[1, 15], [3, 20], [10, 30]],
+    horario: {
+      hora_entrada: '08:00',
+      hora_salida: '17:00',
+      tolerancia_minutos: 15,
+      dias_laborables: [0, 1, 2, 3, 4],
+    },
+  };
+
+  it('la escala de vacaciones viaja ENTERA en el cuerpo de /nomina/sbc', async () => {
+    pintar({ parametros: PARAMETROS });
+    await llenarBasico();
+
+    const enviado = integrarSBC.mock.calls[integrarSBC.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(enviado.tabla_vacaciones).toEqual(PARAMETROS.tabla_vacaciones);
+  });
+
+  it('y el front NO resuelve los días él mismo', async () => {
+    /**
+     * Manda la tabla y la antigüedad; los días aplicados los devuelve el
+     * backend en `dias_vacaciones_aplicados`. Buscar el renglón aquí sería una
+     * segunda implementación de la misma búsqueda, y el centinela
+     * `dias_vacaciones: 0` ("los de ley") sería ambiguo con una tabla presente.
+     */
+    pintar({ parametros: PARAMETROS });
+    await llenarBasico();
+
+    const enviado = integrarSBC.mock.calls[integrarSBC.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(enviado).toHaveProperty('anios_servicio_cumplidos');
+    // El centinela sigue siendo 0: quien decide es el backend.
+    expect(enviado.dias_vacaciones).toBe(0);
+  });
+
+  it('el aguinaldo y la prima del patrón son el DEFAULT del alta', async () => {
+    // 30 días y 50 %, no el mínimo de ley: es la política de la empresa, que es
+    // lo que aplica a casi todos. Se puede pisar para un caso particular.
+    pintar({ parametros: PARAMETROS });
+    await llenarBasico();
+
+    const enviado = integrarSBC.mock.calls[integrarSBC.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(enviado.dias_aguinaldo).toBe(30);
+    expect(enviado.prima_vacacional).toBe('0.50');
+  });
+
+  it('sin parámetros manda el mínimo de ley, como antes de O-03', async () => {
+    // El modo despacho no tiene una empresa única de la que sacarlos, y ahí el
+    // comportamiento no puede cambiar.
+    pintar();
+    await llenarBasico();
+
+    const enviado = integrarSBC.mock.calls[integrarSBC.mock.calls.length - 1][0] as Record<string, unknown>;
+    expect(enviado.dias_aguinaldo).toBe(15);
+    expect(enviado.prima_vacacional).toBe('0.25');
+    expect(enviado.tabla_vacaciones).toEqual([]);
   });
 });

@@ -399,43 +399,25 @@ export function useNominaCliente(clienteId: string) {
       : resultado;
 
   /**
-   * Un cliente **mensual, semanal o diario** al que se le va a calcular una
-   * quincena.
+   * O-03: LA GUARDA DE PERIODICIDAD SE FUE AL MOTOR, Y AQUÍ NO QUEDA COPIA.
    *
-   * **Cubre una sola dirección, y hay que decirlo.** El caso simétrico —cliente
-   * quincenal y el operador arrastra las fechas a un mes completo— aplica la
-   * tarifa quincenal sobre base mensual y **tampoco lo detecta nadie**: los dos
-   * inputs de fecha son libres y `periodo.py` sólo compara las incidencias
-   * entre sí. Ese hueco es preexistente y sigue abierto; esto no lo tapa.
+   * Vivía aquí, con sus propios umbrales hardcodeados (`['01','02','05']` y
+   * `dias >= 14 && dias <= 17`), y era la ÚNICA defensa contra el agujero de
+   * `backlog.md` §G puntos 3 y 6: un patrón Mensual con base de quincena
+   * recibiendo la tarifa mensual del Art. 96 —ISR subestimado con recibo
+   * creíble— y el simétrico, que además no cubría.
    *
-   * **Nadie más lo valida.** `periodo.py` sólo comprueba que todas las
-   * incidencias midan lo mismo, no que el periodo case con la clave. Un cliente
-   * marcado Mensual (05) recibiría la tarifa mensual del Art. 96 sobre una base
-   * de 15-16 días: **ISR subestimado, con recibo creíble y sin un solo error**.
+   * Ahora la tiene `nomina_engine/duracion_periodo.py`, que corre en
+   * `calcular_periodo` y por lo tanto **no se puede saltar desde el navegador**.
+   * Dejar esta copia habría sido peor que quitarla: sus umbrales y los del
+   * motor discrepaban en los bordes —el rango real de una quincena es 13 a 16
+   * días, no 14 a 17— así que en el borde uno callaba y el otro rechazaba, o al
+   * revés. Dos verdades sobre la misma regla fiscal.
    *
-   * El alta ya sólo ofrece quincenal, pero eso no alcanza: un cliente guardado
-   * antes con otra clave —o capturado durante el desarrollo de esta rama— sigue
-   * vivo en Firestore y nada lo detecta. Aquí se detiene el cálculo en vez de
-   * emitirlo mal.
+   * El 422 del motor llega a la pantalla por el mismo camino que cualquier otro
+   * error de cálculo, y su mensaje distingue las dos causas —clave equivocada o
+   * periodo parcial— que es más de lo que decía éste.
    */
-  const dias = cliente
-    ? Math.round(
-        (new Date(`${fin}T00:00:00`).getTime() - new Date(`${inicio}T00:00:00`).getTime()) /
-          86_400_000,
-      ) + 1
-    : 0;
-  const periodicidadNoCuadra =
-    Boolean(cliente) &&
-    // Diaria, semanal y mensual: las tres que tienen tarifa propia en
-    // `tablas_isr_periodicas.py` **y que no son la del periodo que se está
-    // calculando**. La `04` también tiene la suya —es justamente la que
-    // corresponde a 14-17 días—, y por eso se excluye: no hay discrepancia que
-    // avisar. Las demás claves (catorcenal, bimestral, unidad de obra,
-    // comisión…) no tienen tarifa y el motor las rechaza con su propio mensaje,
-    // que es mejor que uno inventado aquí.
-    ['01', '02', '05'].includes(cliente!.clave_periodicidad) &&
-    dias >= 14 &&
-    dias <= 17;
 
   const cerrar = async () => {
     if (!cliente) return;
@@ -480,7 +462,16 @@ export function useNominaCliente(clienteId: string) {
         // no encontrara ni una de sus checadas: falta todo el periodo, menos
         // días pagados y menores cuotas, en silencio.
         valor: incidenciasDelCierre(
-          await cerrarPeriodo(id, llavesParaElCierre(plantilla, empleadosCartera), { inicio, fin }),
+          await cerrarPeriodo(
+            id,
+            llavesParaElCierre(plantilla, empleadosCartera),
+            { inicio, fin },
+            // O-03: el horario configurado por el patrón. Hasta aquí el front
+            // NUNCA lo mandaba, así que el backend aplicaba 08:00-17:00 con 15
+            // minutos de tolerancia a todo el mundo — y el formulario de
+            // "Horario y tolerancia del checador" habría sido decorativo.
+            { horario: empresaUnica ? cartera.empresa.parametros.horario : undefined },
+          ),
           empleadosCartera,
         ),
       });
@@ -516,20 +507,6 @@ export function useNominaCliente(clienteId: string) {
         valor:
           `Falta ${faltaDeLaEmpresa.join(' y ')} de la empresa. Sin eso no se pueden ` +
           'calcular las cuotas patronales. Captúralo en Perfil → Configuración de empresa.',
-      });
-      return;
-    }
-    if (periodicidadNoCuadra) {
-      setErrorDe({
-        id: cliente.id,
-        valor:
-          `${empresaUnica ? 'La empresa está registrada' : 'Este cliente está registrado'} ` +
-          `con periodicidad "${cliente.clave_periodicidad}" y el periodo mide ${dias} días, ` +
-          'que es una quincena. Calcularlo aplicaría la tarifa de ISR de otra periodicidad y ' +
-          'el resultado sería incorrecto sin avisar. Corrige la periodicidad ' +
-          `${empresaUnica ? 'en Perfil → Configuración de empresa' : 'del cliente'}, o el ` +
-          'periodo, antes de calcular. Si lo que quieres es un periodo PARCIAL (un alta o una ' +
-          'baja a mitad de mes), eso todavía no se puede calcular aquí.',
       });
       return;
     }

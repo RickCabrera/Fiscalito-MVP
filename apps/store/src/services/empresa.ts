@@ -37,7 +37,12 @@
  * la interfaz**: no hay lista de clientes, ni selector, ni rutas.
  */
 
-import type { ClienteCartera, EmpleadoCartera } from './carteraApi';
+import {
+  PARAMETROS_DE_LEY,
+  type ClienteCartera,
+  type EmpleadoCartera,
+  type ParametrosSalariales,
+} from './carteraApi';
 import { ID_EMPRESA } from './modoEmpresa';
 
 /** Periodo en blanco: la pantalla de nómina pide capturar las fechas (R-06). */
@@ -103,6 +108,15 @@ export interface ConfigEmpresa {
    * que hoy sólo vive en el navegador. Abierta en `docs/nocturno-log.md`.
    */
   clavePeriodicidad: string;
+  /**
+   * Prestaciones y horario del patrón (O-03).
+   *
+   * Alimentan el **factor de integración** y con él el SBC —que es la base de
+   * casi todas las cuotas— y el cierre del checador. Se guardan con la empresa
+   * y no por empleado: son política del patrón, no de la persona. El modal de
+   * empleado los toma como default y puede pisarlos para un caso particular.
+   */
+  parametros: ParametrosSalariales;
 }
 
 export const EMPRESA_POR_DEFECTO: ConfigEmpresa = {
@@ -113,6 +127,7 @@ export const EMPRESA_POR_DEFECTO: ConfigEmpresa = {
   claseRiesgo: null,
   zona: 'general',
   clavePeriodicidad: '04',
+  parametros: PARAMETROS_DE_LEY,
 };
 
 /**
@@ -132,6 +147,9 @@ export function deClienteCartera(c: ClienteCartera | null | undefined): ConfigEm
     claseRiesgo: c.clase_riesgo ?? null,
     zona: c.zona || EMPRESA_POR_DEFECTO.zona,
     clavePeriodicidad: c.clave_periodicidad || EMPRESA_POR_DEFECTO.clavePeriodicidad,
+    // Una cartera escrita antes de O-03 no trae `parametros`: cae al mínimo de
+    // ley, que es exactamente lo que la app venía aplicando.
+    parametros: c.parametros ?? PARAMETROS_DE_LEY,
   };
 }
 
@@ -166,6 +184,7 @@ export function aClienteCartera(
     clase_riesgo: empresa.claseRiesgo,
     clave_periodicidad: empresa.clavePeriodicidad,
     zona: empresa.zona,
+    parametros: empresa.parametros,
     periodo_sugerido: periodoSugerido,
     empleados,
   };

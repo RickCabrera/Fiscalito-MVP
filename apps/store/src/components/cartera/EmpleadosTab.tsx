@@ -26,6 +26,7 @@ import { nssPorVerificar } from '../../services/nss';
 import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from '../nomina/estilosTabla';
 import ModalEmpleado from './ModalEmpleado';
 import { modoEmpresaUnica } from '../../services/modoEmpresa';
+import type { ParametrosSalariales } from '../../services/carteraApi';
 
 const num: React.CSSProperties = {
   ...td,
@@ -51,11 +52,14 @@ export default function EmpleadosTab({
   soloLectura,
   onGuardar,
   onBorrar,
+  parametros,
 }: {
   empleados: EmpleadoCartera[];
   /** `true` cuando la cartera viene del backend y no se puede escribir. */
   soloLectura: boolean;
   onGuardar: (e: EmpleadoCartera) => Promise<void>;
+  /** Prestaciones del patrón (O-03): default del alta y escala del SBC. */
+  parametros?: ParametrosSalariales;
   onBorrar: (empleadoNo: string) => Promise<void>;
 }) {
   const [editando, setEditando] = useState<EmpleadoCartera | null>(null);
@@ -247,6 +251,7 @@ export default function EmpleadosTab({
           enUsoPorOtro={numerosDeAparato}
           onGuardar={onGuardar}
           onCerrar={() => setAbierto(false)}
+          parametros={parametros}
         />
       )}
     </section>

@@ -37,40 +37,29 @@ from decimal import Decimal
 
 from app.constants import ZonaSalarioMinimo, salario_minimo_vigente, uma_vigente
 from app.exceptions import FiscalValidationError
+
+# Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
+# espera encontrar aqui la escala de vacaciones. La implementacion se mudo a su
+# propio modulo en O-03 porque este archivo paso de 244 a 317 lineas, sobre el
+# limite de 300 de `apps/api/CLAUDE.md`.
+# Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
+# espera encontrar aqui la escala de vacaciones. La implementacion se mudo a
+# `vacaciones.py` en O-03, porque este archivo paso de 244 a 317 lineas y el
+# limite de `apps/api/CLAUDE.md` son 300. `dias_vacaciones_de_ley` se fue con
+# ella —es la misma regla del Art. 76— y eso ademas rompe el ciclo de imports
+# que habria si la escala viviera aqui y la tabla alla.
+from app.nomina_engine.vacaciones import (  # noqa: F401
+    TablaVacaciones,
+    dias_vacaciones_de_ley,
+    dias_vacaciones_efectivos,
+    validar_tabla_vacaciones,
+)
 from app.redondeo import redondear, redondear_factor
 
 DIAS_AGUINALDO_DE_LEY = 15
 PRIMA_VACACIONAL_DE_LEY = Decimal("0.25")
 DIAS_DEL_ANIO_PARA_INTEGRAR = Decimal("365")
 UMAS_TOPE_SBC = 25
-
-
-def dias_vacaciones_de_ley(anios_servicio_cumplidos: int) -> int:
-    """
-    Dias de vacaciones que marca el Art. 76 LFT segun la antiguedad.
-
-    `anios_servicio_cumplidos` son años CUMPLIDOS: **0 es el alta nueva**, que
-    para integrar el SBC usa los 12 dias que va a devengar en su primer año.
-    Rechazar el 0 haria imposible calcular el SBC de un alta — que es
-    justamente el caso con 5 dias habiles para presentar el aviso.
-
-    Escala vigente desde el 1-ene-2023 (reforma DOF 27-12-2022): 12 dias el
-    primer año, mas 2 por cada año subsecuente hasta llegar a 20, y a partir
-    del sexto año 2 dias mas por cada 5 de servicios.
-
-    La regla NO es una tabla cerrada: 36-40 años dan 34 dias, y asi
-    sucesivamente. Un trabajador de 37 años de antiguedad existe.
-    """
-    if anios_servicio_cumplidos < 0:
-        raise FiscalValidationError(
-            f"Los años de servicio no pueden ser negativos: {anios_servicio_cumplidos}."
-        )
-    if anios_servicio_cumplidos <= 1:
-        return 12
-    if anios_servicio_cumplidos <= 5:
-        return 12 + 2 * (anios_servicio_cumplidos - 1)
-    quinquenios = -(-(anios_servicio_cumplidos - 5) // 5)  # techo de la division
-    return 20 + 2 * quinquenios
 
 
 def factor_integracion(
