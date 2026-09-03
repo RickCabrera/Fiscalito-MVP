@@ -43,6 +43,7 @@ interface Errores {
   razonSocial?: string;
   rfc?: string;
   registroPatronal?: string;
+  guia?: string;
   primaPct?: string;
 }
 
@@ -53,7 +54,13 @@ interface Errores {
  * error que sólo rebota tres pantallas después, cuando el operador ya se fue a
  * calcular la nómina, es un error que nadie relaciona con lo que capturó.
  */
-export function validar(razonSocial: string, rfc: string, rp: string, primaPct: string): Errores {
+export function validar(
+  razonSocial: string,
+  rfc: string,
+  rp: string,
+  primaPct: string,
+  guia = '',
+): Errores {
   const e: Errores = {};
   if (razonSocial.trim() === '') {
     e.razonSocial = 'La razón social es obligatoria: es lo que sale impreso en los recibos.';
@@ -65,6 +72,16 @@ export function validar(razonSocial: string, rfc: string, rp: string, primaPct: 
     e.registroPatronal =
       'El registro patronal son 11 caracteres: los 10 del registro más su dígito verificador.';
   }
+  // O-cierre: el backend la declara `^\d{0,5}$` y ninguna de las dos pantallas
+  // que la capturan lo espejaba — mismo caso que el techo de vacaciones. Un 422
+  // sobre la guía, tres pantallas después, no lo relaciona nadie con lo que
+  // tecleó aquí.
+  if (guia.trim() !== '' && !/^\d{1,5}$/.test(guia.trim())) {
+    e.guia =
+      'La guía de la subdelegación son hasta 5 dígitos, sin letras ni guiones. La asigna ' +
+      'el IMSS.';
+  }
+
   const n = Number(primaPct);
   if (primaPct.trim() === '') {
     e.primaPct = 'Sin la prima de riesgos de trabajo no se pueden calcular las cuotas patronales.';

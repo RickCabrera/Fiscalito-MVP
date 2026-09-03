@@ -2358,9 +2358,68 @@ para la contadora.
   `NominaClientePage.tsx` (302→319). Ninguno cruzó el tope por culpa de esta
   corrida, pero el número que el log afirmaba no era el real.
 
+### El revisor de cierre volvió a BLOQUEAR B-3, y tenía razón otra vez
+
+Aprobó B-1 y B-2 —del segundo dijo que el arreglo era mejor que el que él habría
+aceptado, porque leer de la ficha del cliente activo tiene un fundamento fiscal
+(el registro patronal es de cada patrón) y no sólo cierra el callejón—, y verificó
+que `schemas/cartera.py` declara los dos campos con `default=""`, así que un
+cliente viejo no da 422 con el interruptor de R-07 encendido.
+
+**Pero el arreglo de B-3 reintroducía la subintegración que venía a eliminar, y
+ahora la escribía.** `reintegrarPlantilla` ignoraba `empleado.prestaciones` y le
+aplicaba a todos los del patrón. Falla real: un trabajador con 30 días de
+aguinaldo negociados en una empresa que da 15 se recalculaba a 15, su SBC
+**bajaba**, y se **guardaba**. El defecto original no escribía; éste sí.
+
+Y no era un descuido: había un test que lo fijaba, titulado *"manda los
+parámetros vigentes, no los guardados en la ficha del empleado"*. O sea, el repo
+afirmaba dos lecturas contradictorias a la vez —`ModalEmpleado` pinta esas
+prestaciones **editables** y dice que se pueden pisar "para un caso
+particular"— y ninguna citaba a la otra.
+
+**La salida fue una tercera opción, y quedó en `docs/decisiones-nomina.md` §D28
+como DECISIÓN PROVISIONAL:** el parámetro del patrón es un **piso**, no un
+reemplazo. Se integra con `max(patrón, ficha)`, así que subir el aguinaldo del
+patrón sí propaga —que es para lo que existe el formulario de O-03— y no se le
+baja a nadie. Fundamento: la política del patrón es una prestación mínima
+general y el contrato individual puede mejorarla, no empeorarla (Arts. 33 y 56
+LFT). Y como red final, **si el SBC nuevo resultara menor que el guardado no se
+escribe**: sale en `bajarian` para que lo mire una persona.
+
+Los días de vacaciones son la excepción y siguen siendo del empleado: el `0`
+significa "los de ley" y un `max` convertiría ese centinela en un número.
+
+**La pregunta para la contadora** —¿hay en Orca gente con prestaciones por encima
+de la política de la empresa?— decide cuál de las dos lecturas manda de verdad.
+Si la respuesta es no, sobran los tres inputs por empleado de `ModalEmpleado`: la
+app no puede ofrecer un campo que después pisa.
+
+### Dos cosas más del mismo bloque
+
+- **La pantalla prometía algo que el código no hacía.** Decía "aquí se ve quién
+  cambia antes de guardarlo" y guardaba en el mismo handler. Ahora **son dos
+  pasos de verdad**: calcular enseña la lista y no escribe nada; guardar es un
+  segundo clic que sólo aparece si hay algo que subir. No es ceremonia — quien lo
+  pulsa adquiere un movimiento 07 por cada empleado que esta app **no puede
+  generar** y va a tener que presentar a mano.
+- **El copy encuadraba sólo la subida.** Una bajada también es un 07 y es la
+  dirección peligrosa; en una lista plana se veía igual que una subida. Ahora van
+  separadas, con flecha, y las bajadas dicen que no se guardan.
+
+### Los dos nits que el revisor anotó de paso
+
+- **`ModalCliente` describía un hueco ya cerrado.** Decía que "nadie valida que
+  la duración del periodo case con esta clave" — y O-03 construyó exactamente esa
+  validación. El selector sigue cerrado, pero ahora por la razón correcta: falta
+  que la pantalla sugiera el periodo de cada clave, no que el motor lo rechace.
+- **La guía de subdelegación tenía `^\d{0,5}$` en el backend y ningún espejo en
+  las dos pantallas que la capturan.** Mismo caso que el techo de vacaciones que
+  se acababa de cerrar. Ya lo tiene.
+
 ### Cierre
 
-Frontend **711 verdes** (61 archivos, +47 sobre el cierre de O-04), backend
+Frontend **722 verdes** (61 archivos, +58 sobre el cierre de O-04), backend
 **1308**, `ruff` limpio, `tsc` y `npm run build` limpios, `eslint` en **20
 errores / 8 warnings** — la base exacta de S-02, sin subir en toda la corrida.
 

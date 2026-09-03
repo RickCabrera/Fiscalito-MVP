@@ -33,6 +33,30 @@
  * cumplida mueve los días de vacaciones y con ellos el factor. Un atajo que
  * calculara el factor una vez y lo aplicara a todos daría mal a quien acaba de
  * cumplir años de servicio.
+ *
+ * EL PARÁMETRO DEL PATRÓN ES UN **PISO**, NO UN REEMPLAZO (§D28)
+ * --------------------------------------------------------------
+ * Cada empleado guarda sus propias `prestaciones`, y `ModalEmpleado` las pinta
+ * **editables**: se siembran del patrón al dar de alta y se pueden pisar para un
+ * caso particular. La primera versión de este módulo las ignoraba y le aplicaba
+ * a todos los del patrón — y eso le **bajaba** el SBC al trabajador con 30 días
+ * de aguinaldo negociados en una empresa que da 15, y lo **guardaba**: la
+ * subintegración que este módulo venía a cerrar, sólo que ahora escrita. Lo cazó
+ * el revisor de cierre.
+ *
+ * Se integra con `max(patrón, ficha)`. Así **sube** con el patrón —que es para
+ * lo que existe el formulario de O-03— y **no le baja a nadie**. El fundamento:
+ * la política del patrón es una prestación mínima general y el contrato
+ * individual puede mejorarla, no empeorarla (Arts. 33 y 56 LFT, derechos
+ * adquiridos).
+ *
+ * Y como red final: si el SBC nuevo resultara **menor** que el guardado, **no se
+ * escribe**. Sale en `bajarian` para que lo mire una persona. Bajar un SBC en
+ * lote, desde una pantalla, sin que nadie lo vea, no.
+ *
+ * **DECISIÓN PROVISIONAL (nocturno):** cuál de las dos lecturas manda depende de
+ * si Orca tiene gente con prestaciones por encima de la política de la empresa.
+ * Ver `docs/decisiones-nomina.md` §D28. Esto es la conservadora.
  */
 
 import {
@@ -52,13 +76,32 @@ export interface CambioDeSBC {
 }
 
 export interface ResultadoReintegracion {
-  /** Sólo los que de verdad cambiaron de SBC. */
+  /** Los que SUBEN de SBC. Son los que se guardan. */
   cambios: CambioDeSBC[];
+  /**
+   * Los que BAJARÍAN de SBC. **No se guardan.**
+   *
+   * Bajar el SBC de alguien en lote y en silencio es lo contrario de lo que
+   * este módulo existe para evitar. Se reportan para que una persona decida.
+   */
+  bajarian: CambioDeSBC[];
   /** Los que el motor no pudo integrar. No se tocan. */
   fallidos: CambioDeSBC[];
   /** La plantilla completa, con el SDI nuevo donde lo hubo. */
   empleados: EmpleadoCartera[];
   revisados: number;
+}
+
+/**
+ * La mayor de dos primas vacacionales, comparadas como número.
+ *
+ * Viajan como cadenas decimales (`'0.25'`) porque el backend las guarda así.
+ * Se devuelve la **cadena original**, no el número: reconstruirla metería
+ * `0.25` → `'0.25'` bien, pero `0.30` → `'0.3'`, y el motor recibe un formato
+ * distinto del que la app guarda.
+ */
+export function mayorPrima(a: string, b: string): string {
+  return Number(b) > Number(a) ? b : a;
 }
 
 /** Años de servicio cumplidos a la fecha, o 0 si no hay fecha de alta. */
@@ -86,6 +129,7 @@ export async function reintegrarPlantilla(
 ): Promise<ResultadoReintegracion> {
   const fecha = hoy.toISOString().slice(0, 10);
   const cambios: CambioDeSBC[] = [];
+  const bajarian: CambioDeSBC[] = [];
   const fallidos: CambioDeSBC[] = [];
   const nuevos: EmpleadoCartera[] = [];
 
@@ -97,19 +141,39 @@ export async function reintegrarPlantilla(
         fecha,
         zona: empleado.zona,
         anios_servicio_cumplidos: antiguedadCumplida(empleado.fecha_alta, hoy),
-        dias_aguinaldo: parametros.dias_aguinaldo,
-        prima_vacacional: parametros.prima_vacacional,
+        // El piso, no el reemplazo. Ver §D28 y el encabezado.
+        dias_aguinaldo: Math.max(
+          parametros.dias_aguinaldo,
+          empleado.prestaciones.dias_aguinaldo,
+        ),
+        prima_vacacional: mayorPrima(
+          parametros.prima_vacacional,
+          empleado.prestaciones.prima_vacacional,
+        ),
+        // Los días de vacaciones sí son del empleado: `0` significa "los de
+        // ley", que la tabla del patrón resuelve por antigüedad. Un `max` aquí
+        // convertiría ese centinela en un número y rompería la escala.
+        dias_vacaciones: empleado.prestaciones.dias_vacaciones,
         tabla_vacaciones: parametros.tabla_vacaciones,
       });
-      if (r.sbc !== anterior) {
-        cambios.push({
-          empleadoNo: empleado.empleado_no,
-          nombre: empleado.nombre,
-          anterior,
-          nuevo: r.sbc,
-        });
+      const registro = {
+        empleadoNo: empleado.empleado_no,
+        nombre: empleado.nombre,
+        anterior,
+        nuevo: r.sbc,
+      };
+      if (r.sbc === anterior) {
+        nuevos.push(empleado);
+      } else if (Number(r.sbc) < Number(anterior)) {
+        // NO se escribe. Con el piso esto debería ser rarísimo —lo produciría
+        // un cambio de la tabla de vacaciones o del salario diario—, y
+        // precisamente por raro merece que lo mire alguien.
+        bajarian.push(registro);
+        nuevos.push(empleado);
+      } else {
+        cambios.push(registro);
+        nuevos.push({ ...empleado, salario_diario_integrado: r.sbc });
       }
-      nuevos.push({ ...empleado, salario_diario_integrado: r.sbc });
     } catch (e) {
       // Un empleado que el motor rechaza se deja EXACTAMENTE como estaba. Una
       // plantilla a medio reintegrar, con unos al valor nuevo y otros al viejo
@@ -125,5 +189,5 @@ export async function reintegrarPlantilla(
     }
   }
 
-  return { cambios, fallidos, empleados: nuevos, revisados: empleados.length };
+  return { cambios, bajarian, fallidos, empleados: nuevos, revisados: empleados.length };
 }

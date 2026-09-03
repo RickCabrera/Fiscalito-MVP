@@ -77,7 +77,7 @@ export default function ConfiguracionEmpresa({
   const [error, setError] = useState<string | null>(null);
 
 
-  const errores = validar(razonSocial, rfc, registroPatronal, primaPct);
+  const errores = validar(razonSocial, rfc, registroPatronal, primaPct, guia);
   const erroresParametros = erroresDeParametros(parametros);
   const puedeGuardar =
     Object.keys(errores).length === 0 && erroresParametros.length === 0 && !soloLectura;

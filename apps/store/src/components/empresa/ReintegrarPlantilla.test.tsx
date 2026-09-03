@@ -83,106 +83,159 @@ describe('el aviso está SIEMPRE, no sólo cuando se detecta el desfase', () => 
     expect(screen.getByText(/por debajo/)).toBeTruthy();
   });
 
-  it('avisa que cada cambio es un movimiento ante el IMSS', () => {
+  it('avisa que cada cambio es un movimiento ante el IMSS, suba o baje', () => {
+    // Una BAJADA tambien es un 07, y es la direccion peligrosa. El copy no
+    // puede encuadrar solo la subida.
     render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
     expect(screen.getByText(/movimiento 07/)).toBeTruthy();
+    expect(screen.getByText(/suba o baje/)).toBeTruthy();
+  });
+
+  it('y dice que la app NO puede generar ese aviso todavia', () => {
+    // Es lo que convierte el segundo clic en una decision y no en un tramite.
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
+    expect(screen.getByText(/no lo puede generar/)).toBeTruthy();
   });
 });
 
-describe('reintegrar guarda sólo a quien cambió', () => {
-  it('escribe al que cambió y NO al que ya estaba integrado', async () => {
-    reintegrarPlantilla.mockResolvedValue({
-      revisados: 2,
-      cambios: [{ empleadoNo: 'E-01', nombre: 'PERSONA E-01', anterior: '524.65', nuevo: '540.00' }],
-      fallidos: [],
-      empleados: [
-        { ...empleado('E-01'), salario_diario_integrado: '540.00' },
-        empleado('E-02'),
-      ],
-    });
+describe('son DOS pasos: calcular no escribe nada', () => {
+  /**
+   * La primera version decia en pantalla "aqui se ve quien cambia antes de
+   * guardarlo" y guardaba en el mismo handler. El revisor de cierre cazo la
+   * promesa incumplida.
+   *
+   * No es ceremonia: cada cambio de SBC es un movimiento 07 ante el IMSS que
+   * esta app **no puede generar**, asi que quien pulsa Guardar adquiere un
+   * tramite que va a presentar a mano. Tiene derecho a ver la lista primero.
+   */
+  const UNA_SUBIDA = {
+    revisados: 2,
+    cambios: [{ empleadoNo: 'E-01', nombre: 'PERSONA E-01', anterior: '524.65', nuevo: '540.00' }],
+    bajarian: [],
+    fallidos: [],
+    empleados: [{ ...empleado('E-01'), salario_diario_integrado: '540.00' }, empleado('E-02')],
+  };
+
+  it('calcular ensena la lista y NO guarda', async () => {
+    reintegrarPlantilla.mockResolvedValue(UNA_SUBIDA);
     render(<ReintegrarPlantilla cartera={cartera([empleado('E-01'), empleado('E-02')])} />);
-    fireEvent.click(screen.getByRole('button', { name: /Reintegrar la plantilla/ }));
-
-    await waitFor(() => expect(guardarEmpleado).toHaveBeenCalledTimes(1));
-    // `guardarEmpleado(clienteId, empleado)`: el segundo argumento.
-    const [, guardado] = guardarEmpleado.mock.calls[0] as unknown as [string, EmpleadoCartera];
-    expect(guardado).toMatchObject({
-      empleado_no: 'E-01',
-      salario_diario_integrado: '540.00',
-    });
-  });
-
-  it('el reporte nombra a quien cambió, con el antes y el después', async () => {
-    reintegrarPlantilla.mockResolvedValue({
-      revisados: 1,
-      cambios: [{ empleadoNo: 'E-01', nombre: 'PERSONA E-01', anterior: '524.65', nuevo: '540.00' }],
-      fallidos: [],
-      empleados: [{ ...empleado('E-01'), salario_diario_integrado: '540.00' }],
-    });
-    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
-    fireEvent.click(screen.getByRole('button', { name: /Reintegrar la plantilla/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
 
     const reporte = await screen.findByRole('status');
     expect(reporte.textContent).toMatch(/PERSONA E-01/);
-    expect(reporte.textContent).toMatch(/524\.65/);
-    expect(reporte.textContent).toMatch(/540\.00/);
-  });
-
-  it('sin cambios lo dice, en vez de dejar la pantalla igual', async () => {
-    reintegrarPlantilla.mockResolvedValue({
-      revisados: 2, cambios: [], fallidos: [],
-      empleados: [empleado('E-01'), empleado('E-02')],
-    });
-    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01'), empleado('E-02')])} />);
-    fireEvent.click(screen.getByRole('button', { name: /Reintegrar la plantilla/ }));
-
-    const reporte = await screen.findByRole('status');
-    expect(reporte.textContent).toMatch(/ninguno cambió/);
+    expect(reporte.textContent).toMatch(/no se ha guardado nada/);
     expect(guardarEmpleado).not.toHaveBeenCalled();
   });
 
-  it('los que fallaron se nombran, y se dice que quedaron como estaban', async () => {
+  it('el boton de guardar aparece SOLO despues de calcular', async () => {
+    reintegrarPlantilla.mockResolvedValue(UNA_SUBIDA);
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01'), empleado('E-02')])} />);
+    expect(screen.queryByRole('button', { name: /Guardar/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
+    expect(await screen.findByRole('button', { name: /Guardar 1 cambio/ })).toBeTruthy();
+  });
+
+  it('el segundo clic guarda, y solo a quien cambio', async () => {
+    reintegrarPlantilla.mockResolvedValue(UNA_SUBIDA);
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01'), empleado('E-02')])} />);
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Guardar 1 cambio/ }));
+
+    await waitFor(() => expect(guardarEmpleado).toHaveBeenCalledTimes(1));
+    const [, guardado] = guardarEmpleado.mock.calls[0] as unknown as [string, EmpleadoCartera];
+    expect(guardado).toMatchObject({ empleado_no: 'E-01', salario_diario_integrado: '540.00' });
+  });
+
+  it('sin nada que cambiar no ofrece guardar', async () => {
     reintegrarPlantilla.mockResolvedValue({
-      revisados: 1, cambios: [],
+      revisados: 2, cambios: [], bajarian: [], fallidos: [],
+      empleados: [empleado('E-01'), empleado('E-02')],
+    });
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01'), empleado('E-02')])} />);
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
+
+    const reporte = await screen.findByRole('status');
+    expect(reporte.textContent).toMatch(/ninguno cambia/);
+    expect(screen.queryByRole('button', { name: /Guardar/ })).toBeNull();
+  });
+});
+
+describe('las bajadas se ensenan distinto, y no se pueden guardar', () => {
+  /**
+   * Una bajada tambien es un movimiento 07, y es **la direccion peligrosa**:
+   * subintegra las cuotas. En una lista plana un 540.00 -> 524.65 se ve igual
+   * que una subida.
+   */
+  const UNA_BAJADA = {
+    revisados: 1, cambios: [],
+    bajarian: [{ empleadoNo: 'E-01', nombre: 'PERSONA E-01', anterior: '540.00', nuevo: '524.65' }],
+    fallidos: [],
+    empleados: [empleado('E-01')],
+  };
+
+  it('se dicen aparte, con que NO se van a guardar', async () => {
+    reintegrarPlantilla.mockResolvedValue(UNA_BAJADA);
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
+
+    const reporte = await screen.findByRole('status');
+    expect(reporte.textContent).toMatch(/NO se van a guardar/);
+    expect(reporte.textContent).toMatch(/subintegra/);
+  });
+
+  it('no aparece boton de guardar cuando lo unico que hay son bajadas', async () => {
+    reintegrarPlantilla.mockResolvedValue(UNA_BAJADA);
+    render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
+    await screen.findByRole('status');
+    expect(screen.queryByRole('button', { name: /Guardar/ })).toBeNull();
+  });
+});
+
+describe('los que el motor rechazo', () => {
+  it('se nombran, y se dice que quedaron como estaban', async () => {
+    reintegrarPlantilla.mockResolvedValue({
+      revisados: 1, cambios: [], bajarian: [],
       fallidos: [{
         empleadoNo: 'E-01', nombre: 'PERSONA E-01', anterior: '524.65', nuevo: '524.65',
-        fallo: 'Salario diario inválido',
+        fallo: 'Salario diario invalido',
       }],
       empleados: [empleado('E-01')],
     });
     render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
-    fireEvent.click(screen.getByRole('button', { name: /Reintegrar la plantilla/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
 
     const reporte = await screen.findByRole('status');
     expect(reporte.textContent).toMatch(/quedaron como estaban/);
-    expect(reporte.textContent).toMatch(/Salario diario inválido/);
+    expect(reporte.textContent).toMatch(/Salario diario invalido/);
   });
 });
 
-describe('las guardas del botón', () => {
-  it('sin empleados no se puede reintegrar', () => {
+describe('las guardas del boton', () => {
+  it('sin empleados no se puede calcular', () => {
     render(<ReintegrarPlantilla cartera={cartera([])} />);
-    const boton = screen.getByRole('button', { name: /Reintegrar la plantilla/ });
+    const boton = screen.getByRole('button', { name: /Calcular/ });
     expect((boton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(boton);
     expect(reintegrarPlantilla).not.toHaveBeenCalled();
   });
 
-  it('en sólo lectura tampoco: la cartera no es de este usuario', () => {
+  it('en solo lectura tampoco: la cartera no es de este usuario', () => {
     render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')], true)} />);
-    const boton = screen.getByRole('button', { name: /Reintegrar la plantilla/ });
+    const boton = screen.getByRole('button', { name: /Calcular/ });
     expect((boton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(boton);
     expect(reintegrarPlantilla).not.toHaveBeenCalled();
   });
 
   it('un fallo del servicio se pinta como error y no se guarda nada', async () => {
-    reintegrarPlantilla.mockRejectedValue(new Error('API caída'));
+    reintegrarPlantilla.mockRejectedValue(new Error('API caida'));
     render(<ReintegrarPlantilla cartera={cartera([empleado('E-01')])} />);
-    fireEvent.click(screen.getByRole('button', { name: /Reintegrar la plantilla/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Calcular/ }));
 
     const alerta = await screen.findByRole('alert');
-    expect(alerta.textContent).toMatch(/API caída/);
+    expect(alerta.textContent).toMatch(/API caida/);
     expect(guardarEmpleado).not.toHaveBeenCalled();
   });
 });

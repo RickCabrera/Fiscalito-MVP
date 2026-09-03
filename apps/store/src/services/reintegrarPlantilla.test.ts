@@ -76,9 +76,10 @@ describe('el SBC lo vuelve a calcular el MOTOR, uno por uno', () => {
     expect(integrarSBC).toHaveBeenCalledTimes(2);
   });
 
-  it('manda los parámetros vigentes, no los guardados en la ficha del empleado', async () => {
-    // La ficha del empleado trae `dias_aguinaldo: 15`. Lo que manda son los 30
-    // del patrón — que es el cambio que hay que propagar.
+  it('el parámetro del patrón SUBE al empleado que estaba por debajo', async () => {
+    // La ficha trae 15 días —se sembró con el valor viejo del patrón— y el
+    // patrón ahora da 30. Eso es lo que hay que propagar: es para lo que existe
+    // el formulario de O-03.
     integrarSBC.mockResolvedValue(sbc('540.00'));
     await reintegrarPlantilla([empleado('E-01', '524.65')], PARAMETROS);
     expect(integrarSBC.mock.calls[0][0]).toMatchObject({
@@ -186,5 +187,91 @@ describe('no escribe nada: guardar es de quien llama', () => {
     const r = await reintegrarPlantilla(original, PARAMETROS);
     expect(original[0].salario_diario_integrado).toBe('524.65');
     expect(r.empleados[0].salario_diario_integrado).toBe('540.00');
+  });
+});
+
+describe('el parámetro del patrón es un PISO, no un reemplazo (§D28)', () => {
+  /**
+   * La primera versión de este módulo ignoraba `empleado.prestaciones` y le
+   * aplicaba a todos los del patrón. Con eso, el trabajador con 30 días de
+   * aguinaldo **negociados** en una empresa que da 15 se recalculaba a 15, su
+   * SBC **bajaba**, y se **guardaba**: la subintegración que este módulo viene a
+   * cerrar, sólo que escrita. Lo cazó el revisor de cierre.
+   *
+   * `ModalEmpleado` pinta esas tres prestaciones **editables** y su docstring
+   * dice que se pueden pisar "para un caso particular". La app no puede ofrecer
+   * un campo y después pisarlo en silencio.
+   */
+  function negociado(dias: number, prima: string): EmpleadoCartera {
+    const e = empleado('E-09', '600.00');
+    return { ...e, prestaciones: { ...e.prestaciones, dias_aguinaldo: dias, prima_vacacional: prima } };
+  }
+
+  it('NO le baja el aguinaldo a quien tiene más que el patrón', async () => {
+    integrarSBC.mockResolvedValue(sbc('600.00'));
+    // Patrón 30, empleado 45: manda 45.
+    await reintegrarPlantilla([negociado(45, '0.25')], PARAMETROS);
+    expect(integrarSBC.mock.calls[0][0].dias_aguinaldo).toBe(45);
+  });
+
+  it('NO le baja la prima vacacional a quien tiene más', async () => {
+    integrarSBC.mockResolvedValue(sbc('600.00'));
+    await reintegrarPlantilla([negociado(15, '0.50')], PARAMETROS);
+    expect(integrarSBC.mock.calls[0][0].prima_vacacional).toBe('0.50');
+  });
+
+  it('la prima se manda como CADENA, no reconstruida de un número', async () => {
+    // `Number('0.30')` → `0.3` → `'0.3'`: un formato distinto del que la app
+    // guarda, mandado al motor sin que nadie lo note.
+    integrarSBC.mockResolvedValue(sbc('600.00'));
+    await reintegrarPlantilla([negociado(15, '0.30')], PARAMETROS);
+    expect(integrarSBC.mock.calls[0][0].prima_vacacional).toBe('0.30');
+  });
+
+  it('los días de vacaciones SÍ son del empleado: el 0 es un centinela', async () => {
+    // `0` significa "los de ley", que la tabla del patrón resuelve por
+    // antigüedad. Un `max` lo convertiría en un número y rompería la escala.
+    integrarSBC.mockResolvedValue(sbc('600.00'));
+    await reintegrarPlantilla([negociado(45, '0.25')], PARAMETROS);
+    expect(integrarSBC.mock.calls[0][0].dias_vacaciones).toBe(0);
+    expect(integrarSBC.mock.calls[0][0].tabla_vacaciones).toBe(PARAMETROS.tabla_vacaciones);
+  });
+});
+
+describe('una BAJADA de SBC no se escribe: se reporta', () => {
+  /**
+   * Con el piso esto debería ser rarísimo —lo produciría un cambio de la tabla
+   * de vacaciones o del salario diario—, y por raro merece que lo mire alguien.
+   * Bajar un salario integrado subintegra las cuotas, y hacerlo en lote desde
+   * una pantalla es exactamente lo que no puede pasar sin que nadie lo vea.
+   */
+  it('sale en `bajarian` y el empleado conserva su SDI', async () => {
+    integrarSBC.mockResolvedValue(sbc('500.00'));
+    const r = await reintegrarPlantilla([empleado('E-01', '524.65')], PARAMETROS);
+    expect(r.cambios).toEqual([]);
+    expect(r.bajarian).toHaveLength(1);
+    expect(r.bajarian[0]).toMatchObject({ anterior: '524.65', nuevo: '500.00' });
+    // Lo que se devuelve para guardar sigue siendo el valor viejo.
+    expect(r.empleados[0].salario_diario_integrado).toBe('524.65');
+  });
+
+  it('una subida sí entra en `cambios` y sí se propone guardar', async () => {
+    integrarSBC.mockResolvedValue(sbc('540.00'));
+    const r = await reintegrarPlantilla([empleado('E-01', '524.65')], PARAMETROS);
+    expect(r.bajarian).toEqual([]);
+    expect(r.cambios).toHaveLength(1);
+    expect(r.empleados[0].salario_diario_integrado).toBe('540.00');
+  });
+
+  it('subidas y bajadas en la misma corrida no se mezclan', async () => {
+    integrarSBC
+      .mockResolvedValueOnce(sbc('540.00'))
+      .mockResolvedValueOnce(sbc('500.00'));
+    const r = await reintegrarPlantilla(
+      [empleado('E-01', '524.65'), empleado('E-02', '524.65')],
+      PARAMETROS,
+    );
+    expect(r.cambios.map((c) => c.empleadoNo)).toEqual(['E-01']);
+    expect(r.bajarian.map((c) => c.empleadoNo)).toEqual(['E-02']);
   });
 });

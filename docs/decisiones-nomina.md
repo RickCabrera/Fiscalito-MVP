@@ -798,3 +798,54 @@ falta es la decisión, no el código.
 **Relación con lo demás.** §D26 cubre el periodo PARCIAL de un alta o una baja, que es otro
 caso: ahí el periodo es corto porque la persona no estuvo todo el periodo. Aquí estuvo completo
 y el periodo mismo es corto.
+
+---
+
+## D28 · Reintegrar la plantilla: ¿manda el patrón o la prestación negociada? — ABIERTA, para la contadora
+
+**El hecho.** La ficha de cada empleado guarda sus propias `prestaciones` —días de aguinaldo,
+días de vacaciones, prima vacacional— y `ModalEmpleado` las pinta **editables**: se siembran
+de los parámetros del patrón al dar de alta, y el operador puede pisarlas para un caso
+particular. O-03 lo dejó así a propósito.
+
+Cuando el patrón cambia sus parámetros en Configuración de empresa, la acción **Reintegrar la
+plantilla** (O-cierre) vuelve a pedirle el SBC al motor para cada empleado. Y ahí aparece la
+pregunta: ¿con qué prestaciones?
+
+**Las dos lecturas, y por qué ninguna es obviamente la buena.**
+
+1. **Manda el patrón.** Es lo que hace útil el formulario: subir el aguinaldo de 15 a 30 y que
+   la plantilla entera se reintegre. Pero **pisa en silencio** al trabajador que tiene 30 días
+   negociados en una empresa que da 15: su SBC **bajaría**, y las cuotas saldrían
+   subintegradas — la dirección exacta que esta app trata como la mala en todos lados. Y la
+   ficha quedaría diciendo 30 mientras el SDI ya refleja 15: dos datos en desacuerdo.
+2. **Manda la ficha del empleado.** No pisa a nadie, pero entonces cambiar el aguinaldo del
+   patrón **no propaga a nadie**, porque cada ficha se sembró con el valor viejo el día del
+   alta. El formulario de O-03 quedaría decorativo otra vez, que es justo el defecto que
+   O-cierre venía a cerrar.
+
+**Lo que se hizo, y es provisional.** Ni una ni otra: **el parámetro del patrón es un piso, no
+un reemplazo.** Para cada empleado se integra con `max(patrón, ficha)` en días de aguinaldo y
+prima vacacional. Así:
+
+- Subir el aguinaldo del patrón **sí** propaga a toda la plantilla.
+- Al trabajador con 30 negociados en una empresa de 15 **no se le baja nada**.
+- Y como red final: si aun así el SBC nuevo resultara **menor** que el guardado, **no se
+  escribe**. Se reporta aparte, para que una persona lo mire.
+
+**El fundamento de tratarlo como piso.** La política del patrón es una prestación mínima
+general; el contrato individual puede mejorarla y no empeorarla (Arts. 33 y 56 LFT, derechos
+adquiridos). Bajar una prestación ya otorgada no es algo que una pantalla deba hacer sola, y
+mucho menos en lote.
+
+**La pregunta para la contadora.** ¿Hay en Orca gente con prestaciones negociadas **por encima**
+de la política de la empresa? Si la respuesta es **no**, la opción 1 es más simple y los tres
+inputs por empleado de `ModalEmpleado` sobran — habría que quitarlos o volverlos de sólo
+lectura, porque la app no puede ofrecer un campo que después pisa. Si es **sí**, lo que hay hoy
+se queda y conviene que la ficha muestre cuál de los dos valores se usó.
+
+**Lo que NO se resolvió con esto.** Reintegrar cambia el SBC, y **cada cambio de SBC es un
+aviso de modificación de salario ante el IMSS (movimiento 07)**. La app lo dice en pantalla y
+no lo puede generar: O-04 dejó el 07 abierto por falta de dato (no hay historial de SBC en el
+modelo). O sea, hoy la app te ayuda a saber **que** el aviso hace falta y no a presentarlo.
+Ésa es otra decisión, y es de las caras.
