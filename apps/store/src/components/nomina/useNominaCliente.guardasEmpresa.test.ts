@@ -29,6 +29,14 @@ const CLIENTE_ID = 'empresa';
 /** Qué tan configurada está la empresa en cada caso. */
 const empresa = { razonSocial: 'Orca Ordorica Cristal Templado', primaRiesgo: '0.0113065' };
 
+/** El horario del patrón, distinto del default del backend a propósito. */
+const HORARIO = {
+  hora_entrada: '07:30',
+  hora_salida: '15:30',
+  tolerancia_minutos: 5,
+  dias_laborables: [0, 1, 2, 3, 4, 5],
+};
+
 vi.mock('../../context/carteraStore', async () => {
   const { carteraDePrueba } = await import('../../test/carteraDePrueba');
   const { EMPRESA_POR_DEFECTO } = await import('../../services/empresa');
@@ -52,7 +60,11 @@ vi.mock('../../context/carteraStore', async () => {
         origen: 'firestore',
         soloLectura: false,
         clientePorId: () => CLIENTE,
-        empresa: { ...EMPRESA_POR_DEFECTO, ...empresa },
+        empresa: {
+          ...EMPRESA_POR_DEFECTO,
+          ...empresa,
+          parametros: { ...EMPRESA_POR_DEFECTO.parametros, horario: HORARIO },
+        },
       });
     },
   };
@@ -71,12 +83,18 @@ const { useNominaCliente } = await import('./useNominaCliente');
  * Router de fetch. Devuelve las URLs pedidas para poder afirmar **ausencias**,
  * que es lo que mide una guarda: no que falle, sino que no llegue a pedir.
  */
+/** Los cuerpos enviados, para poder afirmar QUÉ viajó y no sólo a dónde. */
+const cuerposEnviados: Array<{ url: string; cuerpo: Record<string, unknown> }> = [];
+
 function stubApi(conChecadas: boolean) {
   const llamadas: string[] = [];
   vi.stubGlobal(
     'fetch',
-    vi.fn((url: string) => {
+    vi.fn((url: string, init?: RequestInit) => {
       llamadas.push(url);
+      if (init?.body) {
+        cuerposEnviados.push({ url, cuerpo: JSON.parse(init.body as string) });
+      }
       let cuerpo: unknown;
       if (url.includes('asistencia/eventos')) {
         cuerpo = {
@@ -129,6 +147,7 @@ async function montarHook(conChecadas: boolean) {
 }
 
 beforeEach(() => {
+  cuerposEnviados.length = 0;
   vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
   empresa.razonSocial = 'Orca Ordorica Cristal Templado';
   empresa.primaRiesgo = '0.0113065';
@@ -257,5 +276,45 @@ describe('con la empresa configurada, el flujo corre', () => {
     });
 
     expect(result.current.confirmarCierre).toBe(true);
+  });
+});
+
+describe('O-03 · el horario del patrón viaja al cierre', () => {
+  /**
+   * POR QUÉ ESTE BLOQUE EXISTE
+   * --------------------------
+   * Un revisor de motor cambió `{ horario: ... }` por `{}` en la llamada a
+   * `cerrarPeriodo` y **las 543 pruebas del front quedaron verdes**. Con esa
+   * línea muerta, el formulario de "Horario y tolerancia del checador" queda
+   * decorativo: el backend aplica 08:00-17:00 con 15 minutos a todo el mundo,
+   * aunque la empresa haya configurado otro.
+   *
+   * Y no es cosmético: de la tolerancia dependen los **retardos**, y de los
+   * días laborables las **faltas** — que entran a `dias_pagados` y por lo tanto
+   * al ISR y a las cuotas.
+   */
+  it('el cuerpo de cerrar-periodo lleva el horario configurado', async () => {
+    const { result } = await montarHook(true);
+    await act(async () => {
+      await result.current.pedirCierre();
+    });
+
+    const llamada = cuerposEnviados.find((c) => c.url.includes('cerrar-periodo'));
+    expect(llamada, 'no se llamó a cerrar-periodo').toBeDefined();
+    expect(llamada!.cuerpo.horario).toEqual(HORARIO);
+  });
+
+  it('y NO manda el default del backend disfrazado del de la empresa', async () => {
+    // Si alguien "arreglara" el bug mandando un objeto fijo, esto lo cazaría:
+    // el horario del patrón tiene tolerancia 5 y seis días laborables.
+    const { result } = await montarHook(true);
+    await act(async () => {
+      await result.current.pedirCierre();
+    });
+
+    const llamada = cuerposEnviados.find((c) => c.url.includes('cerrar-periodo'));
+    const horario = llamada!.cuerpo.horario as typeof HORARIO;
+    expect(horario.tolerancia_minutos).toBe(5);
+    expect(horario.dias_laborables).toHaveLength(6);
   });
 });

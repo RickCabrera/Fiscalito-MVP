@@ -478,6 +478,13 @@ empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador d
 
 #### `parametros` — las prestaciones del patrón (O-03)
 
+`tabla_vacaciones` y `horario` **se validan AL GUARDAR**, con el mismo validador que usa
+`POST /nomina/sbc`: una escala bajo el mínimo del Art. 76 devuelve 422 aquí, no tres pantallas
+después. `horario` acota las horas a `00:00`-`23:59`, los días laborables a 0-6 sin repetidos,
+y exige salida posterior a entrada — **sin días laborables el cierre no marca una sola falta y
+la nómina sale completa siempre**, así que no puede quedar en manos de una validación de
+navegador.
+
 Objeto anidado con `dias_aguinaldo` (mín. 15, Art. 87 LFT), `prima_vacacional` (proporción,
 mín. 0.25, Art. 80 LFT), `tabla_vacaciones` y `horario` (entrada, salida, tolerancia y días
 laborables del checador). **Con default completo**: una cartera escrita antes de O-03 no lo
@@ -709,7 +716,8 @@ sus propios umbrales.
 tarifa quincenal se deriva a exactamente 15 (`_derivar_tarifa(TARIFA_MENSUAL_2026, 15)`).
 
 **Bloquea también el periodo PARCIAL de un alta o una baja**, que es una regresión funcional
-declarada y conservadora: ver `docs/decisiones-nomina.md` §D26. Por eso el mensaje del 422
+declarada y conservadora: ver `docs/decisiones-nomina.md` §D26. Y aceptar 13 días abre una
+pregunta aparte —si esa quincena se paga 13 o 15— que queda en §D27. Por eso el mensaje del 422
 distingue las dos causas — tienen arreglos opuestos, y confundirlas lleva a cambiar la
 periodicidad del patrón, que es el dato bueno.
 

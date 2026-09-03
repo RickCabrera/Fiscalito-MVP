@@ -37,113 +37,29 @@ from decimal import Decimal
 
 from app.constants import ZonaSalarioMinimo, salario_minimo_vigente, uma_vigente
 from app.exceptions import FiscalValidationError
+
+# Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
+# espera encontrar aqui la escala de vacaciones. La implementacion se mudo a su
+# propio modulo en O-03 porque este archivo paso de 244 a 317 lineas, sobre el
+# limite de 300 de `apps/api/CLAUDE.md`.
+# Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
+# espera encontrar aqui la escala de vacaciones. La implementacion se mudo a
+# `vacaciones.py` en O-03, porque este archivo paso de 244 a 317 lineas y el
+# limite de `apps/api/CLAUDE.md` son 300. `dias_vacaciones_de_ley` se fue con
+# ella —es la misma regla del Art. 76— y eso ademas rompe el ciclo de imports
+# que habria si la escala viviera aqui y la tabla alla.
+from app.nomina_engine.vacaciones import (  # noqa: F401
+    TablaVacaciones,
+    dias_vacaciones_de_ley,
+    dias_vacaciones_efectivos,
+    validar_tabla_vacaciones,
+)
 from app.redondeo import redondear, redondear_factor
 
 DIAS_AGUINALDO_DE_LEY = 15
 PRIMA_VACACIONAL_DE_LEY = Decimal("0.25")
 DIAS_DEL_ANIO_PARA_INTEGRAR = Decimal("365")
 UMAS_TOPE_SBC = 25
-
-
-def dias_vacaciones_de_ley(anios_servicio_cumplidos: int) -> int:
-    """
-    Dias de vacaciones que marca el Art. 76 LFT segun la antiguedad.
-
-    `anios_servicio_cumplidos` son años CUMPLIDOS: **0 es el alta nueva**, que
-    para integrar el SBC usa los 12 dias que va a devengar en su primer año.
-    Rechazar el 0 haria imposible calcular el SBC de un alta — que es
-    justamente el caso con 5 dias habiles para presentar el aviso.
-
-    Escala vigente desde el 1-ene-2023 (reforma DOF 27-12-2022): 12 dias el
-    primer año, mas 2 por cada año subsecuente hasta llegar a 20, y a partir
-    del sexto año 2 dias mas por cada 5 de servicios.
-
-    La regla NO es una tabla cerrada: 36-40 años dan 34 dias, y asi
-    sucesivamente. Un trabajador de 37 años de antiguedad existe.
-    """
-    if anios_servicio_cumplidos < 0:
-        raise FiscalValidationError(
-            f"Los años de servicio no pueden ser negativos: {anios_servicio_cumplidos}."
-        )
-    if anios_servicio_cumplidos <= 1:
-        return 12
-    if anios_servicio_cumplidos <= 5:
-        return 12 + 2 * (anios_servicio_cumplidos - 1)
-    quinquenios = -(-(anios_servicio_cumplidos - 5) // 5)  # techo de la division
-    return 20 + 2 * quinquenios
-
-
-TablaVacaciones = tuple[tuple[int, int], ...]
-"""
-Escala de vacaciones propia del patron: `((anios_cumplidos, dias), ...)`.
-
-Es una PRESTACION, no una tabla fiscal: el Art. 76 fija el **minimo** y el
-patron puede otorgar mas. Por eso se captura y se valida contra la ley, en vez
-de vivir codificada.
-"""
-
-
-def validar_tabla_vacaciones(tabla: TablaVacaciones) -> None:
-    """
-    Rechaza una escala de vacaciones por DEBAJO del minimo del Art. 76 LFT.
-
-    Se valida renglon por renglon y no en promedio: una escala que diera de mas
-    en el año 1 y de menos en el 5 subintegraria el SBC de quien lleva cinco
-    años, y el promedio la taparia.
-
-    Superiores se aceptan, que es el punto entero de que la tabla exista: §D5
-    fija el minimo de ley solo como default y muchas empresas dan mas.
-
-    Raises:
-        FiscalValidationError: con el renglon infractor y lo que exige la ley.
-            No dice "la tabla es invalida": dice cual y por que, porque el que
-            la captura tiene que poder arreglarla sin adivinar.
-    """
-    for anios, dias in tabla:
-        if anios < 0:
-            raise FiscalValidationError(
-                f"Los años de servicio no pueden ser negativos: {anios}."
-            )
-        minimo = dias_vacaciones_de_ley(anios)
-        if dias < minimo:
-            raise FiscalValidationError(
-                f"La tabla de vacaciones da {dias} días al año {anios} de servicio y el "
-                f"mínimo de ley son {minimo} (Art. 76 LFT, reforma DOF 27-12-2022). "
-                f"Otorgar menos subintegraría el SBC y con él todas las cuotas."
-            )
-
-
-def dias_vacaciones_efectivos(
-    anios_servicio_cumplidos: int, tabla: TablaVacaciones | None = None
-) -> int:
-    """
-    Dias de vacaciones que le tocan, con la escala del patron si la hay.
-
-    SIN TABLA es la ley, igual que siempre.
-
-    CON TABLA se toma el renglon de mayor antiguedad que no pase de la suya
-    —una escala se lee "a partir de N años"— y se devuelve
-    **`max(ese renglon, la ley)`**.
-
-    EL `max` NO ES PARANOIA, Y AQUI ESTA EL CASO
-    --------------------------------------------
-    Una tabla capturada hasta el año 10 con 30 dias, y un trabajador con 11
-    años. Sin `max`, "por encima del ultimo renglon se cae a la ley" le daria
-    **24 dias** (Art. 76 para 11 años) y su SBC **bajaria al ganar antigüedad**.
-    El Art. 27 LSS integra lo que el patron **otorga**, no el minimo: nadie
-    pierde una prestacion por cumplir un año mas. Y subintegrar es la direccion
-    que este repo trata siempre como la mala.
-
-    La tabla no necesita estar ordenada: se busca el maximo, no el ultimo.
-    """
-    de_ley = dias_vacaciones_de_ley(anios_servicio_cumplidos)
-    if not tabla:
-        return de_ley
-    aplicables = [dias for anios, dias in tabla if anios <= anios_servicio_cumplidos]
-    if not aplicables:
-        # Su antigüedad es menor que el primer renglon capturado: manda la ley.
-        return de_ley
-    return max(max(aplicables), de_ley)
 
 
 def factor_integracion(

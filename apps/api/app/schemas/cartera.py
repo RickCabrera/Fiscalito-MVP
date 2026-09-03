@@ -16,17 +16,22 @@ escribe en Firestore — para que encender R-07 no exija migrar un solo document
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.constants import ZonaSalarioMinimo
 from app.nomina_engine.integracion import (
     DIAS_AGUINALDO_DE_LEY,
     PRIMA_VACACIONAL_DE_LEY,
+    validar_tabla_vacaciones,
 )
 from app.nomina_engine.tablas_imss import PRIMA_RT_MAXIMA, PRIMA_RT_MINIMA
 from app.schemas.empleado import EmpleadoCarteraSchema
 from app.schemas.nomina import PeriodoNomina
+
+# `\d{2}:\d{2}` aceptaba "99:99". Esto acota las dos mitades de verdad.
+HORA = r"^(?:[01]\d|2[0-3]):[0-5]\d$"
 
 
 class HorarioSchema(BaseModel):
@@ -42,10 +47,41 @@ class HorarioSchema(BaseModel):
     `dias_laborables` usa la convención de `datetime.weekday()`: 0 = lunes.
     """
 
-    hora_entrada: str = Field(default="08:00", pattern=r"^\d{2}:\d{2}$")
-    hora_salida: str = Field(default="17:00", pattern=r"^\d{2}:\d{2}$")
+    hora_entrada: str = Field(default="08:00", pattern=HORA)
+    hora_salida: str = Field(default="17:00", pattern=HORA)
     tolerancia_minutos: int = Field(default=15, ge=0, le=120)
-    dias_laborables: tuple[int, ...] = Field(default=(0, 1, 2, 3, 4))
+    dias_laborables: tuple[Annotated[int, Field(ge=0, le=6)], ...] = Field(
+        default=(0, 1, 2, 3, 4),
+        description="0 = lunes, como `datetime.weekday()`.",
+    )
+
+    @model_validator(mode="after")
+    def _horario_coherente(self) -> HorarioSchema:
+        r"""
+        Que la salida sea posterior a la entrada, y que haya al menos un día.
+
+        **Estaba prometido y no se hacía.** El patrón `\d{2}:\d{2}` acepta
+        `"99:99"`, `dias_laborables` aceptaba `(9, -4)`, y nada impedía una
+        salida anterior a la entrada. Las tres cosas las bloqueaba sólo el
+        navegador — y un número de nómina no puede depender de una validación
+        de formulario.
+
+        **Sin días laborables el cierre no marca una sola falta** y la nómina
+        sale completa siempre: es dinero decidido por un campo vacío.
+        """
+        if not self.dias_laborables:
+            raise ValueError(
+                "Tiene que haber al menos un día laborable: sin ninguno, el cierre no "
+                "marcaría una sola falta y la nómina saldría completa siempre."
+            )
+        if len(set(self.dias_laborables)) != len(self.dias_laborables):
+            raise ValueError(f"Días laborables repetidos: {self.dias_laborables}.")
+        if self.hora_salida <= self.hora_entrada:
+            raise ValueError(
+                f"La hora de salida ({self.hora_salida}) tiene que ser posterior a la "
+                f"de entrada ({self.hora_entrada})."
+            )
+        return self
 
 
 class ParametrosSalarialesSchema(BaseModel):
@@ -76,9 +112,32 @@ class ParametrosSalarialesSchema(BaseModel):
     tabla_vacaciones: tuple[tuple[int, int], ...] = Field(
         default=(),
         description="Escala propia del patrón `[[años, días], ...]`. Vacía = manda la "
-        "ley (Art. 76 LFT). Se rechaza renglón por renglón lo que quede por debajo.",
+        "ley (Art. 76 LFT). **Se rechaza al guardar** renglón por renglón lo que quede "
+        "por debajo del mínimo, con el mismo validador que usa `POST /nomina/sbc`.",
     )
     horario: HorarioSchema = Field(default_factory=HorarioSchema)
+
+    @field_validator("tabla_vacaciones")
+    @classmethod
+    def _tabla_sobre_la_ley(
+        cls, valor: tuple[tuple[int, int], ...]
+    ) -> tuple[tuple[int, int], ...]:
+        """
+        La escala se valida **al guardar**, no sólo al integrar el SBC.
+
+        La descripción de este campo decía "se rechaza renglón por renglón" y
+        era falso: `ParametrosSalarialesSchema(tabla_vacaciones=[[5, 3]])` se
+        construía sin error —la ley son 20 días al año 5— y se persistía tal
+        cual. La validación real ocurría después, en `POST /nomina/sbc`, así que
+        una tabla ilegal se quedaba guardada y reventaba cada vez que alguien
+        abría el alta de un empleado.
+
+        Es el patrón que este repo lleva tres corridas cazando: un contrato que
+        declara una propiedad que el código no tiene. Se llama al **mismo**
+        validador del motor, no a una copia.
+        """
+        validar_tabla_vacaciones(valor)
+        return valor
 
 
 class ClienteCarteraSchema(BaseModel):

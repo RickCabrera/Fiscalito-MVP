@@ -189,3 +189,60 @@ class TestElEndpoint:
         r = cliente_http.get(RUTA, params={"clave_periodicidad": "04"})
         assert r.status_code == 200
         assert r.json()["periodo"]["fin"] < date.today().isoformat()
+
+
+class TestElEndpointVALIDA_loQuePropone:
+    """
+    Que la línea de validación del endpoint **exista y corra**.
+
+    Un revisor de motor la señaló como "decorativa por definición": el endpoint
+    valida lo que él mismo produce, y lo que produce siempre cuadra — así que
+    borrarla no rompía nada. Pero `docs/api-contract.md` afirma *"El endpoint
+    valida lo que propone contra la misma guarda de duración que usa el
+    cálculo"*, y una garantía escrita en el contrato tiene que estar medida.
+
+    Se mide forzando el caso imposible: se monkeypatchea el generador para que
+    devuelva un periodo fuera de rango y se comprueba que el endpoint lo
+    **rechaza en vez de servirlo**. Si mañana alguien mete un bug en
+    `periodo_sugerido`, esta línea es la que impide que la app se proponga a sí
+    misma un periodo que su motor no puede calcular.
+    """
+
+    def test_un_periodo_fuera_de_rango_NO_se_sirve(self, cliente_http, monkeypatch):
+        from datetime import date as _date
+
+        from app.routes import nomina as ruta_nomina
+        from app.schemas.asistencia import Periodo
+
+        # 20 días con clave quincenal: imposible hoy, y el punto es que si
+        # alguna vez dejara de serlo, no saldría por la puerta.
+        monkeypatch.setattr(
+            ruta_nomina,
+            "periodo_sugerido",
+            lambda clave, hoy: Periodo(inicio=_date(2026, 8, 1), fin=_date(2026, 8, 20)),
+        )
+
+        r = cliente_http.get(
+            RUTA, params={"clave_periodicidad": "04", "fecha": "2026-09-03"}
+        )
+        assert r.status_code == 422, r.text
+        assert r.json()["exito"] is False
+        assert "quincenal" in r.json()["error"]
+
+    def test_y_uno_dentro_de_rango_si(self, cliente_http, monkeypatch):
+        """El contrapeso: la guarda no rechaza todo."""
+        from datetime import date as _date
+
+        from app.routes import nomina as ruta_nomina
+        from app.schemas.asistencia import Periodo
+
+        monkeypatch.setattr(
+            ruta_nomina,
+            "periodo_sugerido",
+            lambda clave, hoy: Periodo(inicio=_date(2026, 8, 16), fin=_date(2026, 8, 31)),
+        )
+        r = cliente_http.get(
+            RUTA, params={"clave_periodicidad": "04", "fecha": "2026-09-03"}
+        )
+        assert r.status_code == 200
+        assert r.json()["dias_naturales"] == 16

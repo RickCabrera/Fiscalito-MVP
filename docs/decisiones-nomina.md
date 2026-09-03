@@ -760,3 +760,41 @@ parcial y el motor aplica la regla elegida.
 **Relación con lo ya decidido.** §D10 explica por qué catorcenal y decenal no tienen tarifa;
 §D18 por qué la vigencia se lee de la fecha de pago. Ninguna de las dos cubre este caso.
 `PLAN_NOMINA.md` §5 lo roza al listar las preguntas para la contadora, sin llegar a él.
+
+---
+
+## D27 · La quincena de 13 días de febrero: ¿se pagan 13 o 15? — ABIERTA, para la contadora
+
+**Lo levantó el revisor de motor de O-03**, y es una pregunta que ninguna decisión previa
+cubre.
+
+**El hecho.** La guarda de `duracion_periodo` bendice el rango **13 a 16 días** para la clave
+`04`, porque ésos son los extremos que produce el calendario: del 16 al 28 de febrero en año
+común son 13 días. Y `dias_pagados = dias_periodo − faltas` (§D20 y `periodo.py`) hace que en
+esa quincena se paguen **13 días de salario** contra una tarifa quincenal que
+`tablas_isr_periodicas.py` deriva a **exactamente 15**.
+
+**La tensión, dicha de frente.** El docstring de `duracion_periodo.py` rechaza 17 días con el
+argumento de que *"tolerarlo era tolerar dos días de base sin tarifa"* — y acepta 13, que son
+dos días de base **de menos** contra esa misma tarifa. El rango de calendario está bien y no se
+toca: bloquear 13 rompería el periodo que la propia app propone entre el 1 y el 15 de marzo.
+Lo que está sin decidir es otra cosa.
+
+**La pregunta.** En la práctica mexicana la quincena se paga **siempre 15 días**, sea febrero o
+un mes de 31. ¿Es así en esta empresa?
+
+1. **Pagar los días naturales del periodo** (lo que hace hoy): 13 en la segunda quincena de
+   febrero, 16 en la de un mes de 31.
+2. **Pagar 15 siempre**, independientemente de los días naturales.
+
+**Estado.** No se cambió nada: hoy manda la opción 1, que es lo que la app viene haciendo desde
+D-06 y lo que cuadra con el caso real de S-04. **Mueve un número en cada febrero**, así que
+tiene que decidirse antes de la primera nómina de febrero, no antes.
+
+**La palanca ya existe.** `dias_pagados_override` de `calcular_periodo` implementa la opción 2
+sin tocar el motor: se le pasa 15 y pisa `dias_periodo − faltas` para toda la plantilla. Lo que
+falta es la decisión, no el código.
+
+**Relación con lo demás.** §D26 cubre el periodo PARCIAL de un alta o una baja, que es otro
+caso: ahí el periodo es corto porque la persona no estuvo todo el periodo. Aquí estuvo completo
+y el periodo mismo es corto.
