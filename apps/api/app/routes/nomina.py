@@ -25,7 +25,14 @@ from app.demo_nomina import (
 )
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.cuotas import Consolidado
-from app.nomina_engine.integracion import clamp_sbc, factor_integracion, sbc_fijo
+from app.nomina_engine.duracion_periodo import validar_duracion_periodo
+from app.nomina_engine.integracion import (
+    clamp_sbc,
+    dias_vacaciones_efectivos,
+    factor_integracion,
+    sbc_fijo,
+    validar_tabla_vacaciones,
+)
 from app.nomina_engine.periodo import (
     EmpleadoPeriodo,
     IncidenciasPeriodo,
@@ -33,6 +40,7 @@ from app.nomina_engine.periodo import (
     ResultadoPeriodo,
     calcular_periodo,
 )
+from app.nomina_engine.periodo_sugerido import periodo_sugerido
 from app.schemas.declaraciones import ErrorResponse
 from app.schemas.empleado import vacaciones_efectivas
 from app.schemas.nomina import (
@@ -42,6 +50,7 @@ from app.schemas.nomina import (
     EmpleadoDemoSchema,
     PartidaSchema,
     PeriodoNomina,
+    PeriodoSugeridoResponse,
     PlantillaDemoResponse,
     PorcionConsolidada,
     ReciboSchema,
@@ -181,6 +190,48 @@ def _resumen_para_llm(
 
 
 @router.get(
+    "/nomina/periodo-sugerido",
+    response_model=PeriodoSugeridoResponse,
+    responses={422: {"model": ErrorResponse}},
+    summary="Último periodo terminado para una periodicidad de pago",
+    description="El periodo que la app propone, **según la periodicidad del patrón**. "
+    "Antes de O-03 el front proponía siempre una quincena —copiaba la del cliente de "
+    "demostración a todos, sin mirar su clave— así que elegir Mensual dejaba a la empresa "
+    "con un periodo que el propio motor rechaza. La regla vive aquí y no en TypeScript "
+    "porque de la `fecha_pago` dependen la UMA, el salario mínimo, la tarifa del Anexo 8 y "
+    "el transitorio de enero del subsidio (§D18). "
+    "Siempre el último periodo **terminado**, nunca el que está en curso: `cerrar_periodo` "
+    "marca falta todo día laborable sin checada, incluidos los que aún no llegan.",
+)
+async def periodo_para_la_periodicidad(
+    clave_periodicidad: str = Query(
+        description="Clave de `c_PeriodicidadPago`: 01 diaria, 02 semanal, 04 quincenal, "
+        "05 mensual. Las demás no tienen tarifa publicada (§D10) y devuelven 422.",
+    ),
+    fecha: date | None = Query(
+        default=None,
+        description="Desde qué día se mira. Por defecto, hoy en el servidor.",
+    ),
+) -> PeriodoSugeridoResponse:
+    hoy = fecha or date.today()
+    sugerido = periodo_sugerido(clave_periodicidad, hoy)
+    dias = (sugerido.fin - sugerido.inicio).days + 1
+    # Se valida lo que se propone. Proponer un periodo que el propio motor
+    # rechazaría al calcular es el callejón sin salida que O-03 viene a cerrar,
+    # y sin esta línea sería una promesa del docstring en vez de una garantía.
+    validar_duracion_periodo(clave_periodicidad, dias)
+    return PeriodoSugeridoResponse(
+        clave_periodicidad=clave_periodicidad,
+        # `fecha_pago` explícita, no None: la pantalla tiene que poder mostrar
+        # con qué fecha se va a calcular sin replicar el default (§D18).
+        periodo=PeriodoNomina(
+            inicio=sugerido.inicio, fin=sugerido.fin, fecha_pago=sugerido.fin
+        ),
+        dias_naturales=dias,
+    )
+
+
+@router.get(
     "/nomina/demo/plantilla",
     response_model=PlantillaDemoResponse,
     summary=_AVISO + "Plantilla del cliente de demostración",
@@ -291,9 +342,20 @@ async def integrar_sbc(req: SBCRequest) -> SBCResponse:
     # reescribe aquí. Tenerla en dos lugares es la misma segunda verdad que este
     # endpoint existe para evitar, sólo que movida de TypeScript a Python: el día
     # que alguien cambie el centinela a `None`, cambiaría una sola.
-    dias_vacaciones = vacaciones_efectivas(
-        req.dias_vacaciones, req.anios_servicio_cumplidos
-    )
+    #
+    # O-03: con TABLA del patrón manda la tabla, y se valida antes de usarla.
+    # `dias_vacaciones_efectivos` devuelve `max(renglón, ley)`, así que una
+    # tabla corta no puede bajarle los días a quien gana antigüedad — el
+    # Art. 27 LSS integra lo que el patrón otorga, no el mínimo.
+    if req.tabla_vacaciones:
+        validar_tabla_vacaciones(req.tabla_vacaciones)
+        dias_vacaciones = dias_vacaciones_efectivos(
+            req.anios_servicio_cumplidos, req.tabla_vacaciones
+        )
+    else:
+        dias_vacaciones = vacaciones_efectivas(
+            req.dias_vacaciones, req.anios_servicio_cumplidos
+        )
 
     # `factor_integracion` levanta `FiscalValidationError` con aguinaldo < 15 y
     # con prima fuera de [0.25, 1]. NO se atrapa: ese segundo guard es el que

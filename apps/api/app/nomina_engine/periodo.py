@@ -44,6 +44,7 @@ from app.nomina_engine.cuotas import (
     consolidado_mensual,
     cuotas_empleado,
 )
+from app.nomina_engine.duracion_periodo import validar_duracion_periodo
 from app.nomina_engine.integracion import clamp_sbc
 from app.nomina_engine.isr_nomina import Percepcion
 
@@ -170,6 +171,19 @@ def calcular_periodo(
             f"Un solo cierre no puede mezclar periodos."
         )
     dias_del_periodo = dias_distintos[0]
+
+    # O-03: la duracion tiene que casar con la periodicidad.
+    #
+    # VA DESPUES del chequeo de duraciones distintas, y el orden importa: un
+    # cierre que mezcla dos periodos tiene que decir *eso* y no "no cuadra con
+    # la periodicidad", que manda a arreglar el dato equivocado.
+    #
+    # Hasta aqui nadie lo comprobaba, y era el agujero de `backlog.md` seccion
+    # G puntos 3 y 6: un patron Mensual con base de quincena recibia la tarifa
+    # mensual —ISR subestimado con recibo creible— y uno Quincenal con base
+    # mensual, la quincenal. La unica defensa vivia en el navegador
+    # (`useNominaCliente`), con sus propios umbrales hardcodeados.
+    validar_duracion_periodo(clave_periodicidad, dias_del_periodo)
 
     resultados: list[ReciboPeriodo] = []
     for empleado in empleados:

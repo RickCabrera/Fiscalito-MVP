@@ -30,6 +30,13 @@ const PERIODO_GUARDADO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: 
 vi.mock('./despachoApi', () => ({
   obtenerCliente: async () => ({ periodo_sugerido: PERIODO_VIVO }),
   obtenerClientes: async () => [],
+  // O-03: `conPeriodoAlDia` —que este módulo reusa— pide el periodo por
+  // periodicidad, y ya no copia la quincena del cliente `demo` a todos.
+  obtenerPeriodoSugerido: async (clave: string) => ({
+    clave_periodicidad: clave,
+    periodo: PERIODO_VIVO,
+    dias_naturales: 16,
+  }),
 }));
 
 const { cargarCartera, guardarEmpleado, borrarCliente } = await import('./carteraBackend');

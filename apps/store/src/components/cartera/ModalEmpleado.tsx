@@ -32,7 +32,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader, X } from 'lucide-react';
 import {
   integrarSBC,
+  PARAMETROS_DE_LEY,
   type EmpleadoCartera,
+  type ParametrosSalariales,
   type SBCResponse,
   type TipoContrato,
 } from '../../services/carteraApi';
@@ -61,7 +63,7 @@ function antiguedad(fechaAlta: string): number {
   return Math.max(0, anios);
 }
 
-function vacio(): EmpleadoCartera {
+function vacio(parametros?: ParametrosSalariales): EmpleadoCartera {
   return {
     empleado_no: '',
     nombre: '',
@@ -71,7 +73,14 @@ function vacio(): EmpleadoCartera {
     zona: 'general',
     fecha_alta: null,
     tipo_contrato: 'indeterminado',
-    prestaciones: { dias_aguinaldo: 15, dias_vacaciones: 0, prima_vacacional: '0.25' },
+    // O-03: el alta arranca con las prestaciones del PATRÓN, no con el mínimo
+    // de ley. Se pueden pisar para un caso particular; el default es la
+    // política de la empresa, que es lo que aplica a casi todos.
+    prestaciones: {
+      dias_aguinaldo: parametros?.dias_aguinaldo ?? 15,
+      dias_vacaciones: 0,
+      prima_vacacional: parametros?.prima_vacacional ?? '0.25',
+    },
     nss: '',
     employee_no: null,
     enrolamiento: 'pendiente',
@@ -84,6 +93,7 @@ export default function ModalEmpleado({
   enUsoPorOtro,
   onGuardar,
   onCerrar,
+  parametros,
 }: {
   /** `null` = alta. Con valor = edición. */
   empleado: EmpleadoCartera | null;
@@ -93,9 +103,18 @@ export default function ModalEmpleado({
   enUsoPorOtro: string[];
   onGuardar: (e: EmpleadoCartera) => Promise<void>;
   onCerrar: () => void;
+  /**
+   * Los parámetros del PATRÓN (O-03): sus prestaciones son el default de cada
+   * empleado, y su escala de vacaciones viaja al SBC.
+   *
+   * Opcional para no romper a los dos llamadores del modo despacho, donde no
+   * hay una empresa única de la que sacarlos: sin ellos manda el mínimo de ley,
+   * que es lo que la app aplicaba antes de O-03.
+   */
+  parametros?: ParametrosSalariales;
 }) {
   const esAlta = empleado === null;
-  const [datos, setDatos] = useState<EmpleadoCartera>(() => empleado ?? vacio());
+  const [datos, setDatos] = useState<EmpleadoCartera>(() => empleado ?? vacio(parametros));
   // El resultado guarda LA CLAVE de la petición que lo produjo, y `calculando`
   // se DERIVA de compararla con la clave actual. Es el patrón que ya usa
   // `ClienteDetallePage` con `resultado.id === id`, y evita llamar a setState
@@ -115,6 +134,29 @@ export default function ModalEmpleado({
   const salario = datos.salario_diario;
   const fechaAlta = datos.fecha_alta ?? '';
   const { dias_aguinaldo, dias_vacaciones, prima_vacacional } = datos.prestaciones;
+  /**
+   * O-03: la escala de vacaciones es del PATRÓN, no del empleado.
+   *
+   * No se copia a `datos.prestaciones` a propósito: si se guardara con cada
+   * empleado, cambiarla en Configuración de empresa dejaría a los ya dados de
+   * alta con la escala vieja, y nadie sabría por qué dos personas con la misma
+   * antigüedad integran distinto.
+   */
+  /**
+   * Identidad ESTABLE de la tabla.
+   *
+   * `deClienteCartera` reconstruye el arreglo en cada render del proveedor, así
+   * que depender del objeto dispararía una petición de SBC por render — y los
+   * 400 ms de debounce no alcanzan contra eso. Se memoiza sobre su forma
+   * serializada, que sólo cambia cuando la tabla cambia de verdad.
+   */
+  const claveTablaVacaciones = JSON.stringify(
+    (parametros ?? PARAMETROS_DE_LEY).tabla_vacaciones,
+  );
+  const tablaVacaciones = useMemo(
+    () => JSON.parse(claveTablaVacaciones) as [number, number][],
+    [claveTablaVacaciones],
+  );
 
   const salarioValido = Number(salario) > 0;
 
@@ -142,6 +184,11 @@ export default function ModalEmpleado({
         dias_aguinaldo,
         dias_vacaciones,
         prima_vacacional,
+        // O-03: la escala del patrón viaja entera. Cuando la hay, el backend
+        // ignora `dias_vacaciones` y devuelve los que aplicó — y el modal ya
+        // los pinta al lado del factor, así que el operador ve con cuántos se
+        // integró sin que el front tenga que buscarlos.
+        tabla_vacaciones: tablaVacaciones,
       })
         .then((r) => !cancelado && setResultado({ clave, sbc: r, error: null }))
         .catch((e: unknown) => {
@@ -157,7 +204,10 @@ export default function ModalEmpleado({
       cancelado = true;
       clearTimeout(t);
     };
-  }, [clave, salarioValido, salario, fechaAlta, datos.zona, dias_aguinaldo, dias_vacaciones, prima_vacacional]);
+  }, [
+    clave, salarioValido, salario, fechaAlta, datos.zona,
+    dias_aguinaldo, dias_vacaciones, prima_vacacional, tablaVacaciones,
+  ]);
 
   /** Vacío es válido: es la salida del contador que no tiene el número. */
   const nss = useMemo(() => validarNSS(datos.nss), [datos.nss]);

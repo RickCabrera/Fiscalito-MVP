@@ -127,6 +127,12 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/periodo-sugerido",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/sbc",
       "metodos": [
         "POST"

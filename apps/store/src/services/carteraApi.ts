@@ -54,6 +54,45 @@ export interface EmpleadoCartera {
   enrolamiento: EstatusEnrolamiento;
 }
 
+/** El horario contra el que el checador mide retardos y faltas. (O-03) */
+export interface HorarioLaboral {
+  /** `HH:MM`. */
+  hora_entrada: string;
+  hora_salida: string;
+  tolerancia_minutos: number;
+  /** Convención de `Date.getDay()` corrida: 0 = lunes, como `datetime.weekday()`. */
+  dias_laborables: number[];
+}
+
+/**
+ * Las prestaciones del patrón, que alimentan el factor de integración. (O-03)
+ *
+ * **Lo que NO está aquí es tan importante como lo que sí**: las tablas de ISR,
+ * las cuotas del IMSS, la UMA y el salario mínimo no se configuran. Son de ley,
+ * viven en el motor con su fuente publicada y se actualizan con el DOF.
+ */
+export interface ParametrosSalariales {
+  /** Mínimo 15 (Art. 87 LFT). */
+  dias_aguinaldo: number;
+  /** Proporción, no porcentaje. Mínimo 0.25 (Art. 80 LFT). */
+  prima_vacacional: string;
+  /** Escala propia `[[años, días], ...]`. Vacía = manda la ley (Art. 76 LFT). */
+  tabla_vacaciones: [number, number][];
+  horario: HorarioLaboral;
+}
+
+export const PARAMETROS_DE_LEY: ParametrosSalariales = {
+  dias_aguinaldo: 15,
+  prima_vacacional: '0.25',
+  tabla_vacaciones: [],
+  horario: {
+    hora_entrada: '08:00',
+    hora_salida: '17:00',
+    tolerancia_minutos: 15,
+    dias_laborables: [0, 1, 2, 3, 4],
+  },
+};
+
 export interface ClienteCartera {
   id: string;
   nombre: string;
@@ -75,6 +114,13 @@ export interface ClienteCartera {
   clase_riesgo: number | null;
   clave_periodicidad: string;
   zona: string;
+  /**
+   * Prestaciones y horario del patrón (O-03). **Opcional**: una cartera escrita
+   * antes de O-03 no lo trae, y exigirlo dejaría al operador sin sus empleados
+   * por un campo de más — el mismo modo de falla que `ilegibles[]` documenta.
+   * Quien lo lee cae a `PARAMETROS_DE_LEY`, que es lo que la app aplicaba.
+   */
+  parametros?: ParametrosSalariales;
   periodo_sugerido: { inicio: string; fin: string; fecha_pago: string | null };
   empleados: EmpleadoCartera[];
 }
@@ -115,6 +161,15 @@ export interface SBCRequest {
   dias_aguinaldo?: number;
   dias_vacaciones?: number;
   prima_vacacional?: string;
+  /**
+   * Escala de vacaciones del PATRÓN (O-03). Vacía o ausente = manda la ley.
+   *
+   * Se manda **entera**, con `anios_servicio_cumplidos`, y el backend devuelve
+   * `dias_vacaciones_aplicados`. El front **no busca el renglón**: sería una
+   * segunda implementación de la misma búsqueda, y el centinela
+   * `dias_vacaciones: 0` ("los de ley") sería ambiguo con una tabla presente.
+   */
+  tabla_vacaciones?: [number, number][];
 }
 
 export interface SBCResponse {

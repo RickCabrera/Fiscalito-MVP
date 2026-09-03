@@ -717,3 +717,46 @@ propósito para que la política sea una línea y no una cacería por el formula
 **Consecuencia declarada:** el criterio literal de R-03 ("inválido bloquea con mensaje claro")
 queda **cumplido para el formato y desviado para el verificador**. Es desviación consciente,
 no descuido.
+
+---
+
+## D26 · El periodo PARCIAL de un alta o una baja — ABIERTA, para la contadora
+
+**Contexto.** O-03 abre la periodicidad de pago a semanal, quincenal y mensual, y para que eso
+sea seguro sube al motor una guarda que **rechaza un periodo cuya duración no case con su
+clave** (`nomina_engine/duracion_periodo.py`). Sin ella, `backlog.md` §G puntos 3 y 6
+describen el agujero: un patrón Mensual con base de 15-16 días recibe la tarifa mensual del
+Art. 96 —**ISR subestimado, con recibo creíble y sin un solo error**— y el simétrico, tarifa
+quincenal sobre base mensual.
+
+**El efecto colateral, que es esta decisión.** La guarda también bloquea un caso **legítimo**:
+un alta o una baja a mitad de periodo produce un periodo corto real, que hasta O-03 sí se
+calculaba. Alguien que entra el 20 de agosto tiene 12 días trabajados de una quincena de 16.
+
+**La pregunta abierta.** ¿Cómo se retiene el ISR de un periodo parcial?
+
+1. **Tabla del Art. 96 de la periodicidad completa, sobre la base parcial.** Es lo que hacía
+   la app antes, y es lo que produce el error que la guarda viene a evitar: los límites
+   inferiores de la tarifa quincenal suponen 15 días de ingreso.
+2. **Prorrateo**: proyectar el ingreso a la periodicidad completa, aplicar la tarifa, y
+   retener la parte proporcional. Es lo que hacen varios despachos.
+3. **Tarifa diaria (clave 01) por los días trabajados.** El Anexo 8 sí la publica.
+
+**Lo que se hizo mientras tanto — DECISIÓN PROVISIONAL (nocturno):** se **bloquea**. Es la
+opción conservadora: cobrar de más o de menos en silencio es peor que no calcular. El motor
+responde 422 y **su mensaje distingue las dos causas** —la clave equivocada y el periodo
+parcial— porque tienen arreglos opuestos: si sólo dijera "no cuadra", el operador iría a
+cambiar la periodicidad del patrón, que es el dato bueno, y lo dejaría mal configurado para
+siempre.
+
+**Es una regresión funcional declarada**, no un descuido: la app calculaba esos periodos ayer
+y hoy los rechaza. Se prefiere así porque lo que calculaba era, precisamente, lo que el punto
+1 describe.
+
+**Qué desbloquea esto.** La respuesta de la contadora, o una decisión de producto de Ricardo.
+Cuando llegue, el cambio es acotado: `duracion_periodo.py` deja de levantar para el caso
+parcial y el motor aplica la regla elegida.
+
+**Relación con lo ya decidido.** §D10 explica por qué catorcenal y decenal no tienen tarifa;
+§D18 por qué la vigencia se lee de la fecha de pago. Ninguna de las dos cubre este caso.
+`PLAN_NOMINA.md` §5 lo roza al listar las preguntas para la contadora, sin llegar a él.

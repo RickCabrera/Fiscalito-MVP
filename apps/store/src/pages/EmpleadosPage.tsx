@@ -86,6 +86,10 @@ export default function EmpleadosPage() {
           soloLectura={cartera.soloLectura}
           onGuardar={(e) => cartera.guardarEmpleado(clienteId as string, e)}
           onBorrar={(no) => cartera.borrarEmpleado(clienteId as string, no)}
+          /* O-03: las prestaciones del patrón son el default del alta y su
+             escala de vacaciones viaja al SBC. Sin esto, capturarlas en
+             Configuración de empresa sería un formulario decorativo. */
+          parametros={cartera.empresa.parametros}
         />
       </div>
     </div>

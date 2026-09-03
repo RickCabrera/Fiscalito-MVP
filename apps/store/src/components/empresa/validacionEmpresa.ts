@@ -19,6 +19,8 @@
  * acotar a [0.005, 0.150] (Arts. 72 y 73 LSS).
  */
 
+import type { ParametrosSalariales } from '../../services/carteraApi';
+
 /** Rango de la prima de RT en PORCENTAJE, el mismo que el motor acota en fracción. */
 const PRIMA_MINIMA_PCT = 0.5;
 const PRIMA_MAXIMA_PCT = 15;
@@ -72,4 +74,95 @@ export function validar(razonSocial: string, rfc: string, rp: string, primaPct: 
       'Se captura en porcentaje: 0.54355, no 0.0054355.';
   }
   return e;
+}
+
+// ── O-03 · Parámetros salariales ──────────────────────────────────────────
+
+/**
+ * Las periodicidades que la app puede calcular.
+ *
+ * Son las cuatro claves de `c_PeriodicidadPago` con tarifa publicada en el
+ * Anexo 8. **Catorcenal (03) y decenal (10) no están, y no es un olvido**: el
+ * Anexo 8 no publica la de 14 días y la de 10 no se pudo verificar contra
+ * fuente al construir `tablas_isr_periodicas.py` (§D10). El motor las rechaza
+ * con su propio motivo; ofrecerlas aquí sería prometer un cálculo que después
+ * no se puede hacer.
+ *
+ * La diaria (01) tampoco se ofrece: el enunciado de O-03 pide
+ * semanal/quincenal/mensual, y una nómina diaria no es un caso de esta empresa.
+ */
+export const PERIODICIDADES = [
+  { clave: '02', nombre: 'Semanal' },
+  { clave: '04', nombre: 'Quincenal' },
+  { clave: '05', nombre: 'Mensual' },
+];
+
+/**
+ * Días de vacaciones que marca el Art. 76 LFT — **sólo para ETIQUETAR el
+ * formulario**, nunca para calcular.
+ *
+ * Es una copia de `dias_vacaciones_de_ley` de `nomina_engine/integracion.py`, y
+ * eso normalmente sería una segunda verdad. Se acepta acotada a este uso por
+ * una razón concreta: el campo dice "Días (ley: 16)" mientras el operador
+ * teclea, y pedirle ese número al backend con cada pulsación sería un request
+ * por tecla para pintar una etiqueta.
+ *
+ * **Lo que sí calcula el backend, siempre**: los días que de verdad se aplican
+ * (`dias_vacaciones_aplicados` de `POST /nomina/sbc`) y el rechazo de una tabla
+ * bajo el mínimo. Si esta copia divergiera, la etiqueta se vería mal — pero
+ * ningún SBC saldría distinto, que es la línea que importa no cruzar.
+ */
+export function diasDeLey(aniosCumplidos: number): number {
+  if (aniosCumplidos < 0) return 0;
+  if (aniosCumplidos <= 1) return 12;
+  if (aniosCumplidos <= 5) return 12 + 2 * (aniosCumplidos - 1);
+  const quinquenios = Math.ceil((aniosCumplidos - 5) / 5);
+  return 20 + 2 * quinquenios;
+}
+
+/**
+ * Qué está mal en los parámetros, con el motivo y el fundamento.
+ *
+ * Se valida en pantalla **además** de en el motor, y no es redundancia: un
+ * aguinaldo de 10 días capturado en el formulario debe rebotar ahí, no tres
+ * pantallas después cuando el operador ya se fue a calcular la nómina. El
+ * motor sigue siendo la autoridad y vuelve a rechazarlo.
+ */
+export function erroresDeParametros(p: ParametrosSalariales): string[] {
+  const errores: string[] = [];
+
+  if (!Number.isFinite(p.dias_aguinaldo) || p.dias_aguinaldo < 15) {
+    errores.push(
+      'El aguinaldo mínimo de ley son 15 días (Art. 87 LFT). Menos subintegraría el ' +
+        'SBC y con él todas las cuotas.',
+    );
+  }
+  const prima = Number(p.prima_vacacional);
+  if (!Number.isFinite(prima) || prima < 0.25) {
+    errores.push('La prima vacacional mínima de ley es 25 % (Art. 80 LFT).');
+  } else if (prima > 1) {
+    errores.push('La prima vacacional no puede pasar del 100 %.');
+  }
+
+  for (const [anios, dias] of p.tabla_vacaciones) {
+    const minimo = diasDeLey(anios);
+    if (dias < minimo) {
+      errores.push(
+        `La tabla da ${dias} días al año ${anios} y el mínimo de ley son ${minimo} ` +
+          '(Art. 76 LFT). Se pueden dar más, nunca menos.',
+      );
+    }
+  }
+
+  if (p.horario.dias_laborables.length === 0) {
+    errores.push(
+      'Tiene que haber al menos un día laborable: sin ninguno, el cierre no marcaría ' +
+        'una sola falta y la nómina saldría completa siempre.',
+    );
+  }
+  if (p.horario.hora_salida <= p.horario.hora_entrada) {
+    errores.push('La hora de salida tiene que ser posterior a la de entrada.');
+  }
+
+  return errores;
 }

@@ -185,6 +185,26 @@ function stubApi() {
         empleados_desconocidos: [],
       };
     } else if (url.includes('calcular-periodo')) {
+      /**
+       * O-03: la guarda de periodicidad vive en el MOTOR, así que el error de
+       * "no cuadra" llega como un 422 del backend y no de una comprobación del
+       * navegador. El stub lo reproduce cuando la clave del cliente no es
+       * quincenal, que es el caso que el test de abajo mide.
+       */
+      if (EN_CARTERA.periodicidad !== '04') {
+        return Promise.resolve({
+          ok: false,
+          status: 422,
+          json: () =>
+            Promise.resolve({
+              exito: false,
+              error:
+                'El periodo mide 16 días naturales y la periodicidad registrada es ' +
+                'mensual (05), que son 28 a 31 días. Calcularlo aplicaría la tarifa de ' +
+                'ISR de mensual sobre una base que no le corresponde.',
+            }),
+        });
+      }
       cuerpo = NOMINA_VACIA;
     } else {
       throw new Error(`ruta no stubbeada: ${url}`);
@@ -484,13 +504,20 @@ describe('las dos rebabas de la derivación del error', () => {
 
 describe('una periodicidad que no cuadra con el periodo no se calcula', () => {
   /**
-   * Nadie más lo valida: `periodo.py` sólo comprueba que las incidencias midan
-   * lo mismo entre sí. Un cliente Mensual con una base de 15-16 días recibiría
-   * la tarifa mensual del Art. 96 — **ISR subestimado, con recibo creíble**.
-   * El alta ya sólo ofrece quincenal, pero un cliente guardado antes con otra
-   * clave sigue vivo y nada lo detectaba.
+   * O-03: **LA GUARDA SE MOVIÓ AL MOTOR, Y ESTE TEST CAMBIÓ CON ELLA.**
+   *
+   * Antes vivía en `useNominaCliente` con sus propios umbrales, y este caso
+   * medía que el request **no saliera**. Ahora la tiene
+   * `nomina_engine/duracion_periodo.py`, que corre dentro de
+   * `calcular_periodo` y por lo tanto no se puede saltar desde el navegador.
+   *
+   * Así que lo que se mide cambió, y es lo correcto: el request **sí sale**, el
+   * motor responde 422, y lo que importa es que **su mensaje llegue a la
+   * pantalla**. La copia del front se borró a propósito: sus umbrales y los del
+   * motor discrepaban en los bordes —una quincena son 13 a 16 días, no 14 a
+   * 17— así que en el borde uno callaba y el otro rechazaba.
    */
-  it('un cliente Mensual con una quincena no calcula, y dice por qué', async () => {
+  it('un cliente Mensual con una quincena recibe el 422 del motor, y lo dice', async () => {
     EN_CARTERA.periodicidad = '05';
     const llamadas = stubApi();
     montar();
@@ -499,9 +526,12 @@ describe('una periodicidad que no cuadra con el periodo no se calcula', () => {
     await screen.findByText('PERSONA E-07');
     fireEvent.click(screen.getByRole('button', { name: /Calcular nómina/ }));
 
-    expect(await screen.findByText(/aplicaría la tarifa de ISR de otra periodicidad/)).toBeTruthy();
-    await new Promise((r) => setTimeout(r, 50));
-    expect(llamadas.some((l) => l.url.includes('calcular-periodo'))).toBe(false);
+    // El mensaje del MOTOR, con sus dos números, llega tal cual a la pantalla.
+    expect(
+      await screen.findByText(/la periodicidad registrada es mensual \(05\)/),
+    ).toBeTruthy();
+    // Y ahora el request SÍ sale: la validación es del backend.
+    expect(llamadas.some((l) => l.url.includes('calcular-periodo'))).toBe(true);
   });
 
   it('un cliente quincenal calcula normal', async () => {

@@ -20,9 +20,65 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.constants import ZonaSalarioMinimo
+from app.nomina_engine.integracion import (
+    DIAS_AGUINALDO_DE_LEY,
+    PRIMA_VACACIONAL_DE_LEY,
+)
 from app.nomina_engine.tablas_imss import PRIMA_RT_MAXIMA, PRIMA_RT_MINIMA
 from app.schemas.empleado import EmpleadoCarteraSchema
 from app.schemas.nomina import PeriodoNomina
+
+
+class HorarioSchema(BaseModel):
+    """
+    El horario contra el que el checador mide retardos y faltas. (O-03)
+
+    Es el mismo `HorarioLaboral` de `schemas/asistencia.py`, con los mismos
+    defaults (08:00-17:00, 15 minutos de tolerancia, lunes a viernes). Vive
+    aparte porque **aquel es de transporte y éste es de almacenamiento**: el del
+    cierre viaja en un request y se descarta; éste se guarda con la empresa y
+    tiene que sobrevivir a un reinicio.
+
+    `dias_laborables` usa la convención de `datetime.weekday()`: 0 = lunes.
+    """
+
+    hora_entrada: str = Field(default="08:00", pattern=r"^\d{2}:\d{2}$")
+    hora_salida: str = Field(default="17:00", pattern=r"^\d{2}:\d{2}$")
+    tolerancia_minutos: int = Field(default=15, ge=0, le=120)
+    dias_laborables: tuple[int, ...] = Field(default=(0, 1, 2, 3, 4))
+
+
+class ParametrosSalarialesSchema(BaseModel):
+    """
+    Las prestaciones del patrón, que alimentan el factor de integración. (O-03)
+
+    **Los mínimos son de ley y se leen del motor, no se copian**: si
+    `integracion.py` cambia su fundamento, esto cambia con él. Se validan aquí
+    además de en el motor porque un aguinaldo de 10 días capturado en el
+    formulario debe rebotar ahí, no tres pantallas después.
+
+    Lo que NO está aquí, y es a propósito: las tablas de ISR, las cuotas del
+    IMSS, la UMA y el salario mínimo. Son de ley, viven en el motor con su
+    fuente publicada y se actualizan con el DOF, no con un formulario.
+    """
+
+    dias_aguinaldo: int = Field(
+        default=DIAS_AGUINALDO_DE_LEY,
+        ge=DIAS_AGUINALDO_DE_LEY,
+        description=f"Mínimo de ley: {DIAS_AGUINALDO_DE_LEY} días (Art. 87 LFT).",
+    )
+    prima_vacacional: Decimal = Field(
+        default=PRIMA_VACACIONAL_DE_LEY,
+        ge=PRIMA_VACACIONAL_DE_LEY,
+        le=Decimal("1"),
+        description="Proporción, no porcentaje: 0.25 es el mínimo de ley (Art. 80 LFT).",
+    )
+    tabla_vacaciones: tuple[tuple[int, int], ...] = Field(
+        default=(),
+        description="Escala propia del patrón `[[años, días], ...]`. Vacía = manda la "
+        "ley (Art. 76 LFT). Se rechaza renglón por renglón lo que quede por debajo.",
+    )
+    horario: HorarioSchema = Field(default_factory=HorarioSchema)
 
 
 class ClienteCarteraSchema(BaseModel):
@@ -72,6 +128,12 @@ class ClienteCarteraSchema(BaseModel):
         "subestimado con recibo creíble (backlog, sección G).",
     )
     zona: ZonaSalarioMinimo = ZonaSalarioMinimo.GENERAL
+    parametros: ParametrosSalarialesSchema = Field(
+        default_factory=ParametrosSalarialesSchema,
+        description="Prestaciones y horario del patrón (O-03). Con default completo: una "
+        "cartera escrita antes de O-03 no lo trae y tiene que seguir leyéndose — el "
+        "default es el mínimo de ley, que es lo que la app aplicaba hasta ahora.",
+    )
     periodo_sugerido: PeriodoNomina | None = Field(
         default=None,
         description="Puede faltar: el primer cliente de una cuenta nueva nace sin él y la "

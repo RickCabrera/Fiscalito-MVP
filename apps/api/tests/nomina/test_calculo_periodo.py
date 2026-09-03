@@ -232,7 +232,18 @@ class TestConsolidados:
         prompt del LLM. Una afirmación legal sin fuente dirigida a quien entera
         las cuotas es exactamente lo que este repo no publica.
         """
-        avisos = _correr(incidencias=(_inc(dias=15, faltas=8),)).advertencias
+        # O-03: se le pasa `clave_periodicidad="04"` porque la fixture por
+        # defecto es SEMANAL y 15 días no es una semana. La guarda nueva de
+        # duración lo rechaza antes de llegar al cálculo, y este test mide la
+        # advertencia de ausentismo, no la periodicidad.
+        #
+        # **Cede la fixture, no el rango.** 15 días semanales es lo que estaba
+        # mal: ensanchar (7, 7) para que este caso pasara sería aflojar una
+        # validación para forzar el verde. 15 sí es una quincena válida, así que
+        # el caso sigue midiendo exactamente lo que medía.
+        avisos = _correr(
+            incidencias=(_inc(dias=15, faltas=8),), clave_periodicidad="04"
+        ).advertencias
         aviso = next(a for a in avisos if "revisión manual" in a)
         assert "E-08" in aviso
         assert "cobra de más, nunca de menos" in aviso

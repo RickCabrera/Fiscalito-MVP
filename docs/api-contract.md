@@ -476,6 +476,18 @@ por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más
 En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
 empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
 
+#### `parametros` — las prestaciones del patrón (O-03)
+
+Objeto anidado con `dias_aguinaldo` (mín. 15, Art. 87 LFT), `prima_vacacional` (proporción,
+mín. 0.25, Art. 80 LFT), `tabla_vacaciones` y `horario` (entrada, salida, tolerancia y días
+laborables del checador). **Con default completo**: una cartera escrita antes de O-03 no lo
+trae y tiene que seguir leyéndose — el default es el mínimo de ley, que es lo que la app
+aplicaba hasta ahora.
+
+Alimentan el **factor de integración** y con él el SBC, y el cierre del checador. **Lo que NO
+está aquí**: las tablas de ISR, las cuotas del IMSS, la UMA y el salario mínimo. Son de ley,
+viven en el motor con su fuente publicada y se actualizan con el DOF, no con un formulario.
+
 ### `PUT /api/v1/cartera/clientes/{cliente_id}`
 Alta o edición, idempotente. El `id` del cuerpo **debe** coincidir con el de la
 URL: adivinar cuál vale escribiría el cliente equivocado. El `id` no se guarda
@@ -573,6 +585,46 @@ comprueba que no diverjan.
   si se siembra el 15 y se demuestra el 16, son quincenas distintas y el panel sale
   vacío.
 
+### `GET /api/v1/nomina/periodo-sugerido` (O-03)
+
+El **último periodo terminado** para una periodicidad de pago.
+
+| Parámetro | Tipo | Default | Significado |
+|---|---|---|---|
+| `clave_periodicidad` | str | — | Clave de `c_PeriodicidadPago`: `01` diaria, `02` semanal, `04` quincenal, `05` mensual |
+| `fecha` | date | hoy | Desde qué día se mira |
+
+**Respuesta 200**
+
+```json
+{
+  "exito": true,
+  "clave_periodicidad": "05",
+  "periodo": { "inicio": "2026-08-01", "fin": "2026-08-31", "fecha_pago": "2026-08-31" },
+  "dias_naturales": 31
+}
+```
+
+**Por qué existe.** Antes de O-03 el front proponía **siempre una quincena**: copiaba el
+`periodo_sugerido` del cliente `demo` a todos, sin mirar su clave. Con la periodicidad abierta
+a semanal y mensual, elegir Mensual dejaba al patrón con un periodo que el propio motor
+rechaza — un selector que rompe la app en dos de sus tres opciones.
+
+**La regla vive aquí y no en TypeScript** porque de la `fecha_pago` dependen la UMA, el salario
+mínimo, la tarifa del Anexo 8 y el transitorio de enero del subsidio (§D18): dos
+implementaciones serían dos verdades sobre con qué valores se calcula la nómina.
+
+**Siempre el periodo ya TERMINADO**, nunca el que está en curso: `cerrar_periodo` marca falta
+todo día laborable sin checada, incluidos los que aún no llegan.
+
+**El endpoint valida lo que propone** contra la misma guarda de duración que usa el cálculo, así
+que nunca devuelve un periodo que después se vaya a rechazar. Hay un test que recorre el año
+completo, día por día, para las cuatro claves.
+
+**422** para una clave sin tarifa publicada (catorcenal, decenal, bimestral, unidad de obra,
+comisión, precio alzado — §D10): proponer un periodo para ellas sería ofrecer un cálculo que
+después no se puede hacer.
+
 ### `POST /api/v1/nomina/calcular-periodo`
 
 Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo.
@@ -635,6 +687,32 @@ porcion_bimestral, advertencias[], explicacion?}`.
 construyó con el timbrado. Coinciden en los 9 empleados de la demo y divergen en un
 trabajador al piso del Art. 28.
 
+#### La duración del periodo tiene que casar con la periodicidad (O-03)
+
+`POST /nomina/calcular-periodo` **rechaza con 422** un periodo cuya duración no corresponde a
+su `clave_periodicidad`:
+
+| Clave | Duración esperada (días naturales) | De dónde sale |
+|---|---|---|
+| `01` diaria | 1 | — |
+| `02` semanal | 7 | — |
+| `04` quincenal | **13 a 16** | mín.: 16→28 de febrero; máx.: 16→31 de un mes de 31 |
+| `05` mensual | 28 a 31 | febrero común, bisiesto, y los meses de 30 y 31 |
+
+Hasta O-03 **nadie lo comprobaba**: `periodo.py` sólo verificaba que todas las incidencias
+midieran lo mismo entre sí. `backlog.md` §G puntos 3 y 6 describen las dos direcciones — un
+patrón Mensual con base de quincena recibiendo la tarifa mensual del Art. 96 (**ISR
+subestimado, con recibo creíble**) y el simétrico. La única defensa vivía en el navegador, con
+sus propios umbrales.
+
+**El rango quincenal es 13 a 16, y el borde importa.** 17 días no es nunca una quincena, y la
+tarifa quincenal se deriva a exactamente 15 (`_derivar_tarifa(TARIFA_MENSUAL_2026, 15)`).
+
+**Bloquea también el periodo PARCIAL de un alta o una baja**, que es una regresión funcional
+declarada y conservadora: ver `docs/decisiones-nomina.md` §D26. Por eso el mensaje del 422
+distingue las dos causas — tienen arreglos opuestos, y confundirlas lleva a cambiar la
+periodicidad del patrón, que es el dato bueno.
+
 ### `POST /api/v1/nomina/sbc` (G-01)
 
 Integra un salario **fijo** (Art. 30 fr. I LSS) con el factor del Art. 27 y lo acota entre 1
@@ -658,6 +736,18 @@ una segunda verdad sobre el Art. 27 sin ningún test que la cuide.
   "prima_vacacional": "0.25"
 }
 ```
+
+`tabla_vacaciones` (O-03) es la escala propia del patrón, `[[años, días], ...]`. Vacía o
+ausente, manda el Art. 76 LFT. **Se manda entera con `anios_servicio_cumplidos`, y el front
+NUNCA resuelve los días**: `vacaciones_efectivas` ya define `0 = los de ley` y con una tabla
+ese centinela sería ambiguo, además de que buscar el renglón en TypeScript sería una segunda
+implementación de la misma búsqueda. Los días que se aplicaron vuelven en
+`dias_vacaciones_aplicados`.
+
+Un renglón por **debajo** del mínimo de ley devuelve 422 nombrando cuál y qué exige la ley. Por
+**encima** del último renglón capturado se devuelve `max(renglón, ley)`: una tabla corta no
+puede bajarle los días a quien gana antigüedad — el Art. 27 LSS integra lo que el patrón
+otorga, no el mínimo.
 
 `fecha` es **obligatoria y sin default**: `clamp_sbc` mueve el piso el 1-ene (salario mínimo) y el
 tope el 1-feb (UMA), así que un `date.today()` implícito haría que el número del modal cambiara

@@ -49,8 +49,12 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { obtenerClientes, obtenerCliente, type ClienteResumen } from './despachoApi';
-import { CLIENTE_DEMO } from './nominaDemoApi';
+import {
+  obtenerClientes,
+  obtenerCliente,
+  obtenerPeriodoSugerido,
+  type ClienteResumen,
+} from './despachoApi';
 import {
   obtenerEmpleadosSemilla,
   type EmpleadoCartera,
@@ -194,46 +198,76 @@ export async function cargarCartera(uid: string | null): Promise<CarteraCargada>
 }
 
 /**
- * Refresca el periodo sugerido de la cartera contra el backend.
+ * Refresca el periodo sugerido de cada cliente **según SU periodicidad**. (O-03)
  *
- * **El periodo sugerido es DERIVADO, no dato del cliente.** Es
- * `quincena(hoy)` —la última quincena ya terminada— y el backend lo reevalúa en
- * cada request. Lo que quedó escrito en Firestore es un snapshot del momento de
- * sembrar: dos semanas después, cada cliente nacería con una quincena vencida,
- * el panel saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una
- * razón que nadie entendería.
+ * EL PERIODO SUGERIDO ES DERIVADO, NO DATO DEL CLIENTE
+ * ----------------------------------------------------
+ * Es el último periodo ya terminado, y el backend lo reevalúa en cada request.
+ * Lo que quedó escrito en Firestore es un snapshot del momento de sembrar: dos
+ * semanas después, cada cliente nacería con un periodo vencido, el panel
+ * saldría vacío y `sinChecadasEnElPeriodo` pediría confirmación por una razón
+ * que nadie entendería.
  *
- * OJO CON LO QUE ESTO REALMENTE HACE, porque no es lo que el nombre sugiere:
- * copia la quincena del cliente `demo` a **todos** los clientes de la cartera,
- * sin mirar su `clave_periodicidad`. Hoy es inofensivo porque `ModalCliente`
- * ofrece sólo quincenal —deshabilitado, con la razón en pantalla— y porque
- * `periodicidadNoCuadra` frena el cálculo. El día que se abran las otras claves
- * (está en el backlog, sección G) ésta es la puerta que queda abierta, y la que
- * produciría la tarifa mensual del Art. 96 sobre base de 15-16 días.
+ * LO QUE ESTO HACÍA ANTES, Y POR QUÉ O-03 TENÍA QUE ARREGLARLO
+ * ------------------------------------------------------------
+ * Copiaba la quincena del cliente `demo` a **todos**, sin mirar su
+ * `clave_periodicidad`. Este mismo docstring lo advertía: *"el día que se abran
+ * las otras claves ésta es la puerta que queda abierta"*.
  *
- * Y significa que **el periodo de todo cliente real sale hoy de
- * `GET /despacho/clientes/demo`**: es la quinta costura con el catálogo de
- * demostración, y R-06 no la corta. Cuando F2 borre el catálogo hay que decidir
- * de dónde sale `quincena(hoy)`.
+ * O-03 abre esas claves y sube al motor la guarda de duración. Con la versión
+ * vieja, elegir **Mensual** dejaba a la empresa con una quincena propuesta y el
+ * motor rechazando el cálculo: **un selector que rompe la app en dos de sus
+ * tres opciones**, con la culpa aparentando ser del motor.
  *
- * Se refresca al leer y **nunca se rompe por esto**: si el backend no responde
- * —o se cuelga, de ahí el `conTimeout`— se queda el snapshot, que es peor que
- * estar al día pero mejor que no tener cartera. Sin la cota, una API colgada
- * dejaba `cargarCartera` sin resolver nunca: spinner eterno en la lista y, peor,
- * `deLaCartera` en `null` para siempre, que rompe la auto-sanación del error de
- * carga. Es el mismo agujero que se acababa de cerrar en `sembrarDemo`.
+ * De paso corta la quinta costura con el catálogo de demostración: el periodo
+ * ya no sale de `GET /despacho/clientes/demo`.
+ *
+ * SE PIDE UNO POR CLAVE, NO UNO POR CLIENTE
+ * -----------------------------------------
+ * Los clientes que comparten periodicidad comparten periodo. En modo empresa
+ * única es una sola llamada; en despacho, tres a lo sumo.
+ *
+ * **Nunca se rompe por esto**: si el backend no responde —o se cuelga, de ahí
+ * el `conTimeout`— se queda el snapshot, que es peor que estar al día pero
+ * mejor que no tener cartera. Sin la cota, una API colgada dejaba
+ * `cargarCartera` sin resolver nunca: spinner eterno y `deLaCartera` en `null`
+ * para siempre, que rompe la auto-sanación del error de carga.
  */
 export async function conPeriodoAlDia(clientes: ClienteCartera[]): Promise<ClienteCartera[]> {
   if (clientes.length === 0) return clientes;
-  try {
-    const { periodo_sugerido } = await conTimeout(
-      obtenerCliente(CLIENTE_DEMO),
-      'El periodo sugerido',
-    );
-    return clientes.map((c) => ({ ...c, periodo_sugerido }));
-  } catch {
-    return clientes;
-  }
+
+  /**
+   * Un documento guardado **antes** de que existiera el campo no trae clave, y
+   * dejarlo sin refrescar sería una regresión silenciosa: hasta O-03 esos
+   * clientes sí recibían periodo (el de la quincena demo). Cae a `'04'`, que es
+   * el mismo default que declaran `ClienteCarteraSchema` y `EMPRESA_POR_DEFECTO`
+   * — la app nunca ha llevado otra cosa que quincenal.
+   */
+  const claveDe = (c: ClienteCartera) => c.clave_periodicidad || '04';
+  const claves = [...new Set(clientes.map(claveDe))];
+  const porClave = new Map<string, ClienteCartera['periodo_sugerido']>();
+
+  await Promise.all(
+    claves.map(async (clave) => {
+      try {
+        const { periodo } = await conTimeout(
+          obtenerPeriodoSugerido(clave),
+          `El periodo sugerido (${clave})`,
+        );
+        porClave.set(clave, periodo);
+      } catch {
+        // Una clave sin tarifa publicada (§D10) responde 422, y una API caída
+        // no responde. En los dos casos ese cliente **se queda con su
+        // snapshot**: cambiarle el periodo por el de otra periodicidad sería
+        // exactamente el bug que esto viene a cerrar.
+      }
+    }),
+  );
+
+  return clientes.map((c) => {
+    const alDia = porClave.get(claveDe(c));
+    return alDia ? { ...c, periodo_sugerido: alDia } : c;
+  });
 }
 
 // ── Siembra ──

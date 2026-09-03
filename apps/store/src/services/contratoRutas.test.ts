@@ -147,6 +147,9 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     // propio caso al final del archivo, porque este barrido mide cobertura de
     // exports —una entrada por función— y no valores de parámetros.
     obtenerCalendarioPatronal: () => despachoApi.obtenerCalendarioPatronal(2026, true),
+    // O-03: el periodo que la app propone sale del backend, por periodicidad.
+    // Antes se copiaba la quincena del cliente `demo` a todos.
+    obtenerPeriodoSugerido: () => despachoApi.obtenerPeriodoSugerido('05'),
   },
   'nominaDemoApi.ts': {
     obtenerPlantillaDemo: () => nominaDemoApi.obtenerPlantillaDemo('demo'),

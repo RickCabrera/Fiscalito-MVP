@@ -162,3 +162,35 @@ export function primaComoPorcentaje(prima: string): string {
   if (!Number.isFinite(n)) return prima;
   return `${(n * 100).toFixed(5)} %`;
 }
+
+// ── Periodo sugerido por periodicidad (O-03) ──
+
+export interface PeriodoSugerido {
+  clave_periodicidad: string;
+  periodo: { inicio: string; fin: string; fecha_pago: string | null };
+  dias_naturales: number;
+}
+
+/**
+ * El último periodo terminado, **según la periodicidad del patrón**.
+ *
+ * POR QUÉ NO SE CALCULA AQUÍ
+ * --------------------------
+ * De la `fecha_pago` que sale de aquí dependen la UMA, el salario mínimo, la
+ * tarifa del Anexo 8 y el transitorio de enero del subsidio (§D18). Replicar la
+ * regla en TypeScript sería una segunda verdad sobre con qué valores se calcula
+ * la nómina — es la misma razón por la que `CarteraContext` ya se niega a
+ * reimplementar `quincena(hoy)`.
+ *
+ * Y hay una razón nueva de O-03: el backend **valida lo que propone** contra
+ * `duracion_periodo`, así que nunca devuelve un periodo que su propio motor
+ * vaya a rechazar. Un cálculo hecho aquí no tendría esa garantía.
+ */
+export async function obtenerPeriodoSugerido(
+  clavePeriodicidad: string,
+): Promise<PeriodoSugerido> {
+  const res = await fetch(
+    `${V1}/nomina/periodo-sugerido?clave_periodicidad=${encodeURIComponent(clavePeriodicidad)}`,
+  );
+  return leer<PeriodoSugerido>(res, 'No se pudo obtener el periodo sugerido');
+}

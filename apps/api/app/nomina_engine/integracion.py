@@ -73,6 +73,79 @@ def dias_vacaciones_de_ley(anios_servicio_cumplidos: int) -> int:
     return 20 + 2 * quinquenios
 
 
+TablaVacaciones = tuple[tuple[int, int], ...]
+"""
+Escala de vacaciones propia del patron: `((anios_cumplidos, dias), ...)`.
+
+Es una PRESTACION, no una tabla fiscal: el Art. 76 fija el **minimo** y el
+patron puede otorgar mas. Por eso se captura y se valida contra la ley, en vez
+de vivir codificada.
+"""
+
+
+def validar_tabla_vacaciones(tabla: TablaVacaciones) -> None:
+    """
+    Rechaza una escala de vacaciones por DEBAJO del minimo del Art. 76 LFT.
+
+    Se valida renglon por renglon y no en promedio: una escala que diera de mas
+    en el año 1 y de menos en el 5 subintegraria el SBC de quien lleva cinco
+    años, y el promedio la taparia.
+
+    Superiores se aceptan, que es el punto entero de que la tabla exista: §D5
+    fija el minimo de ley solo como default y muchas empresas dan mas.
+
+    Raises:
+        FiscalValidationError: con el renglon infractor y lo que exige la ley.
+            No dice "la tabla es invalida": dice cual y por que, porque el que
+            la captura tiene que poder arreglarla sin adivinar.
+    """
+    for anios, dias in tabla:
+        if anios < 0:
+            raise FiscalValidationError(
+                f"Los años de servicio no pueden ser negativos: {anios}."
+            )
+        minimo = dias_vacaciones_de_ley(anios)
+        if dias < minimo:
+            raise FiscalValidationError(
+                f"La tabla de vacaciones da {dias} días al año {anios} de servicio y el "
+                f"mínimo de ley son {minimo} (Art. 76 LFT, reforma DOF 27-12-2022). "
+                f"Otorgar menos subintegraría el SBC y con él todas las cuotas."
+            )
+
+
+def dias_vacaciones_efectivos(
+    anios_servicio_cumplidos: int, tabla: TablaVacaciones | None = None
+) -> int:
+    """
+    Dias de vacaciones que le tocan, con la escala del patron si la hay.
+
+    SIN TABLA es la ley, igual que siempre.
+
+    CON TABLA se toma el renglon de mayor antiguedad que no pase de la suya
+    —una escala se lee "a partir de N años"— y se devuelve
+    **`max(ese renglon, la ley)`**.
+
+    EL `max` NO ES PARANOIA, Y AQUI ESTA EL CASO
+    --------------------------------------------
+    Una tabla capturada hasta el año 10 con 30 dias, y un trabajador con 11
+    años. Sin `max`, "por encima del ultimo renglon se cae a la ley" le daria
+    **24 dias** (Art. 76 para 11 años) y su SBC **bajaria al ganar antigüedad**.
+    El Art. 27 LSS integra lo que el patron **otorga**, no el minimo: nadie
+    pierde una prestacion por cumplir un año mas. Y subintegrar es la direccion
+    que este repo trata siempre como la mala.
+
+    La tabla no necesita estar ordenada: se busca el maximo, no el ultimo.
+    """
+    de_ley = dias_vacaciones_de_ley(anios_servicio_cumplidos)
+    if not tabla:
+        return de_ley
+    aplicables = [dias for anios, dias in tabla if anios <= anios_servicio_cumplidos]
+    if not aplicables:
+        # Su antigüedad es menor que el primer renglon capturado: manda la ley.
+        return de_ley
+    return max(max(aplicables), de_ley)
+
+
 def factor_integracion(
     dias_aguinaldo: int, dias_vacaciones: int, prima_vacacional: Decimal
 ) -> Decimal:
