@@ -28,5 +28,18 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  /**
+   * O-01: las variables de entorno también se limpian entre tests.
+   *
+   * `modoEmpresaUnica()` se lee de `import.meta.env` en cada llamada, y desde el
+   * pivote hay ~15 archivos que stubbean el modo. Un archivo que stubbee y no
+   * limpie dejaría a los siguientes midiendo un modo que no eligieron —y como
+   * muchas aserciones son verdaderas en los dos modos, pasarían **por la razón
+   * equivocada**, que es peor que fallar.
+   *
+   * Es red de seguridad, no el mecanismo: `modoDespacho()` trae su propio
+   * `afterEach`. Los dos son idempotentes.
+   */
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });

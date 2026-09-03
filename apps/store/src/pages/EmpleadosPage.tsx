@@ -21,6 +21,8 @@ import { useCartera } from '../context/carteraStore';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import SinClienteActivo from '../components/common/SinClienteActivo';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { empresaConfigurada } from '../services/empresa';
 
 export default function EmpleadosPage() {
   const { clienteId, cliente, loading } = useClienteActivo();
@@ -31,11 +33,33 @@ export default function EmpleadosPage() {
     [cartera, clienteId],
   );
 
+  /**
+   * O-01: sin empresa configurada no hay plantilla que llevar.
+   *
+   * Va antes que la tabla y no como un aviso encima: dar de alta a alguien aquí
+   * lo guardaría bajo una ficha que no existe y **desaparecería en la siguiente
+   * lectura** (en Firestore un documento con sólo subcolecciones no aparece al
+   * listar). El servicio también lo bloquea; esto es para que el operador vea
+   * el camino en vez de un error al guardar.
+   */
+  if (modoEmpresaUnica() && !loading && !empresaConfigurada(cartera.empresa)) {
+    return (
+      <SinClienteActivo
+        titulo="Empleados"
+        explicacion="La plantilla que entra al cálculo de la nómina."
+      />
+    );
+  }
+
   if (!loading && !clienteId) {
     return (
       <SinClienteActivo
         titulo="Empleados"
-        explicacion="La plantilla es de un cliente: el despacho lleva la de cada uno por separado."
+        explicacion={
+          modoEmpresaUnica()
+            ? 'La plantilla que entra al cálculo de la nómina.'
+            : 'La plantilla es de un cliente: el despacho lleva la de cada uno por separado.'
+        }
       />
     );
   }
@@ -45,8 +69,14 @@ export default function EmpleadosPage() {
       <div className="page-header animate-in">
         <h1>Empleados</h1>
         <p>
-          La plantilla de <strong>{cliente?.nombre ?? clienteId}</strong>, que es la que entra
-          al cálculo de su nómina.
+          {modoEmpresaUnica() ? (
+            <>La plantilla que entra al cálculo de la nómina.</>
+          ) : (
+            <>
+              La plantilla de <strong>{cliente?.nombre ?? clienteId}</strong>, que es la que
+              entra al cálculo de su nómina.
+            </>
+          )}
         </p>
       </div>
 

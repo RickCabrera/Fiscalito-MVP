@@ -14,6 +14,22 @@
 import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import type { EmpleadoCartera } from '../../services/carteraApi';
 import { cruzarEnrolamiento, type DispositivoChecador } from '../../services/dispositivosApi';
+import { modoEmpresaUnica } from '../../services/modoEmpresa';
+
+/**
+ * Dónde tendría que estar el número enrolado y no está. (O-01)
+ *
+ * En modo despacho la respuesta es "la cartera"; con una sola empresa esa
+ * palabra no nombra nada — el aviso diría que un número no está en algo que el
+ * operador nunca ha visto.
+ *
+ * Es función y no constante de módulo: `modoEmpresaUnica()` en el cuerpo del
+ * módulo se evalúa una sola vez al importar y quedaría congelada, así que
+ * ningún test podría medir el otro modo.
+ */
+function donde(): string {
+  return modoEmpresaUnica() ? 'la plantilla' : 'la cartera';
+}
 
 export default function TarjetaDispositivo({
   dispositivo: d,
@@ -113,8 +129,8 @@ export default function TarjetaDispositivo({
               <AlertTriangle size={14} color="var(--warning)" style={{ verticalAlign: 'middle' }} />{' '}
               <strong>
                 {fantasmas.length === 1
-                  ? 'Un número enrolado en este aparato no está en la cartera'
-                  : `${fantasmas.length} números enrolados en este aparato no están en la cartera`}
+                  ? `Un número enrolado en este aparato no está en ${donde()}`
+                  : `${fantasmas.length} números enrolados en este aparato no están en ${donde()}`}
                 :
               </strong>{' '}
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>

@@ -13,6 +13,21 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { ClienteResumen } from '../services/despachoApi';
+import { modoDespacho } from '../test/modoDespacho';
+import { MARCA_CORTA } from '../services/marca';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
+ * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
+ * por default de la app es **empresa única**, así que el modo en el que corre
+ * se declara aquí en vez de heredarse del ambiente.
+ *
+ * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
+ * exactamente lo que el flag hace en producción.
+ */
+modoDespacho();
 
 const perfilBase: UserProfile = {
   contributorType: null,
@@ -225,12 +240,12 @@ describe('sidebar de AppLayout', () => {
     }
   });
 
-  it('el contador no ve Dashboard, Fiscalito ni Historial', () => {
+  it('el contador no ve Dashboard, el servicio fiscal ni Historial', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     montar();
 
     expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Fiscalito' })).toBeNull();
+    expect(screen.queryByRole('link', { name: MARCA_CORTA })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Historial' })).toBeNull();
   });
 
@@ -239,7 +254,7 @@ describe('sidebar de AppLayout', () => {
     const { container } = montar();
 
     expect(enlacesDelSidebar(container)).toEqual([
-      'Dashboard', 'Fiscalito', 'Historial', 'Nómina (demo)', 'Perfil',
+      'Dashboard', MARCA_CORTA, 'Historial', 'Nómina (demo)', 'Perfil',
     ]);
     expect(screen.queryByRole('link', { name: 'Clientes' })).toBeNull();
   });

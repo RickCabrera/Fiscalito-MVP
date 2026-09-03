@@ -69,13 +69,17 @@ export const TOOLS_OPENAI = [
             type: 'string',
             enum: RUTAS_VALIDAS,
             description:
-              'Ruta exacta a la que navegar. Para tabs internos de Fiscalito ' +
+              // O-02: la descripción viaja al LLM, así que aquí tampoco puede
+              // quedar la marca vieja: el modelo la repetiría en el chat. Las
+              // RUTAS sí se quedan literales (`/app/store/fiscalito/use`): son
+              // nombres internos y cambiarlas rompería enlaces guardados.
+              'Ruta exacta a la que navegar. Para los tabs del servicio fiscal ' +
               'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
-              'lleva al tab de pre-declaración. Las tres del despacho, solo para ' +
-              'cuentas de contador: "/app/clientes" es la cartera, "/app/nomina" la ' +
-              'nómina del cliente activo, y "/app/calendario" las obligaciones ' +
-              'patronales (IMSS, ISR retenido, avisos) de sus clientes. Un despacho ' +
-              'NO usa los tabs de Fiscalito: son de contribuyente.',
+              'lleva al tab de pre-declaración. Las tres de nómina: "/app/clientes" ' +
+              'es la cartera (solo en modo despacho), "/app/nomina" la nómina, y ' +
+              '"/app/calendario" las obligaciones patronales (IMSS, ISR retenido, ' +
+              'avisos). Quien lleva nómina NO usa los tabs del servicio fiscal: ' +
+              'son de contribuyente.',
           },
         },
         required: ['ruta'],

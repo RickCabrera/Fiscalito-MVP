@@ -17,6 +17,7 @@
 
 import { vi } from 'vitest';
 import type { CarteraContextType } from '../context/carteraStore';
+import { EMPRESA_POR_DEFECTO } from '../services/empresa';
 
 export function carteraDePrueba(
   override: Partial<CarteraContextType> = {},
@@ -37,6 +38,11 @@ export function carteraDePrueba(
     borrarEmpleado: vi.fn().mockResolvedValue(undefined),
     sembrar: vi.fn().mockResolvedValue(undefined),
     recargar: vi.fn(),
+    // O-01: el doble arranca con la empresa SIN configurar, que es lo que ve
+    // una cuenta nueva. Un test que necesite una empresa configurada la pasa en
+    // el `override` — igual que con los clientes.
+    empresa: EMPRESA_POR_DEFECTO,
+    guardarEmpresa: vi.fn().mockResolvedValue(undefined),
     ...override,
   };
 }

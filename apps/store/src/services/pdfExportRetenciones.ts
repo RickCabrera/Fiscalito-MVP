@@ -7,6 +7,7 @@ import {
   PDF_COLORS, fmtMoney, addFooter,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
 } from './pdfUtils';
+import { MARCA_CORTA, PREFIJO_ARCHIVO } from './marca';
 
 export function exportarRetencionesPDF(data: RetencionesResponse, contribuyente: { nombre: string; rfc: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
@@ -17,7 +18,7 @@ export function exportarRetencionesPDF(data: RetencionesResponse, contribuyente:
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...PDF_COLORS.dark);
-  doc.text('Fiscalito — Retenciones a terceros', mL, y);
+  doc.text(`${MARCA_CORTA} — Retenciones a terceros`, mL, y);
   y += 8;
 
   doc.setFont('helvetica', 'normal');
@@ -53,5 +54,5 @@ export function exportarRetencionesPDF(data: RetencionesResponse, contribuyente:
   });
 
   addFooter(doc);
-  doc.save(`Fiscalito_Retenciones_${data.periodo.replace(/\s/g, '_')}.pdf`);
+  doc.save(`${PREFIJO_ARCHIVO}_Retenciones_${data.periodo.replace(/\s/g, '_')}.pdf`);
 }

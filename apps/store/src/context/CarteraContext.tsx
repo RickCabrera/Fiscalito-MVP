@@ -43,6 +43,11 @@ import {
   type OrigenCartera,
 } from '../services/cartera';
 import { esClienteDemo, esCuentaDeDesarrollo } from '../services/entorno';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { deClienteCartera } from '../services/empresa';
+// O-01: todo lo que sólo existe con una empresa implícita vive aparte, para no
+// pasar el tope de 300 líneas de `apps/store/CLAUDE.md`.
+import { useEmpresaEnLaCartera } from './empresaEnLaCartera';
 import { CarteraContext } from './carteraStore';
 
 /**
@@ -163,17 +168,31 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
     [estado.clientes, cuentaDeDesarrollo],
   );
 
+
+  const empresaUnica = modoEmpresaUnica();
+  const { guardadoDeLaEmpresa, clientesDelModo, asegurarEmpresa, guardarEmpresa } =
+    useEmpresaEnLaCartera({
+      empresaUnica,
+      uid,
+      guardados: estado.clientes,
+      visibles,
+      escribir,
+    });
+
   const valor = useMemo(
     () => ({
-      clientes: alDia ? visibles : [],
+      clientes: alDia ? clientesDelModo : [],
       loading: cargando,
       origen: estado.origen,
       soloLectura,
       error: alDia ? estado.error : null,
-      // Por `visibles`, no por `estado.clientes`: si la ficha resolviera un
-      // cliente que la lista oculta, se podría entrar a su nómina por URL y el
-      // filtro sería decorativo.
-      clientePorId: (id: string) => (alDia ? visibles.find((c) => c.id === id) : null) ?? null,
+      // Por `clientesDelModo`, no por `estado.clientes`: si la ficha resolviera
+      // un cliente que la lista oculta, se podría entrar a su nómina por URL y
+      // el filtro sería decorativo. En modo empresa única eso es lo que impide
+      // que `/app/clientes/demo/nomina` —o cualquier id tecleado— resuelva algo:
+      // el único id que existe es el de la empresa.
+      clientePorId: (id: string) =>
+        (alDia ? clientesDelModo.find((c) => c.id === id) : null) ?? null,
       guardarCliente: (c: Omit<ClienteCartera, 'empleados'>) =>
         escribir(() =>
           guardarClienteFs(uid as string, {
@@ -203,20 +222,55 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
             // 2 con el motivo y pide capturar las fechas, que sus dos inputs son
             // libres. Eso hubo que construirlo — este comentario afirmaba que
             // ya avisaba y no era cierto.
+            // `clientesDelModo`, que en modo despacho ES `visibles`: son la
+            // misma lista y así la lista de dependencias del `useMemo` dice la
+            // verdad. En modo empresa única este camino no se alcanza — no hay
+            // alta de clientes— y si algún día se alcanzara, copiaría el
+            // periodo de la propia empresa, que es lo correcto.
             periodo_sugerido: c.periodo_sugerido.inicio
               ? c.periodo_sugerido
-              : visibles[0]?.periodo_sugerido ?? c.periodo_sugerido,
+              : clientesDelModo[0]?.periodo_sugerido ?? c.periodo_sugerido,
           }),
         ),
       borrarCliente: (id: string) => escribir(() => borrarClienteFs(uid as string, id)),
       guardarEmpleado: (clienteId: string, e: EmpleadoCartera) =>
-        escribir(() => guardarEmpleadoFs(uid as string, clienteId, e)),
+        escribir(async () => {
+          /**
+           * O-01: sin empresa configurada no se dan de alta empleados.
+           *
+           * No es una regla de producto inventada aquí: es lo que hace SEGURO
+           * que `asegurarEmpresa` no escriba cuando no hay ficha. Si el alta
+           * pudiera correr antes, el empleado quedaría bajo un documento que
+           * no existe y **desaparecería de la cartera en la siguiente
+           * lectura** — en Firestore un documento que sólo tiene
+           * subcolecciones no aparece al listar la colección.
+           *
+           * La pantalla ya lo impide y lo explica; esto es la guarda del
+           * servicio, para que la afirmación no dependa de que una pantalla se
+           * acuerde.
+           */
+          if (empresaUnica && !guardadoDeLaEmpresa) {
+            throw new Error(
+              'Configura primero los datos de la empresa (Perfil → Configuración de ' +
+                'empresa). Sin ellos, el empleado se guardaría bajo una ficha que no ' +
+                'existe y no aparecería en la plantilla.',
+            );
+          }
+          await asegurarEmpresa();
+          await guardarEmpleadoFs(uid as string, clienteId, e);
+        }),
       borrarEmpleado: (clienteId: string, empleadoNo: string) =>
         escribir(() => borrarEmpleadoFs(uid as string, clienteId, empleadoNo)),
       sembrar,
       recargar,
+      empresa: deClienteCartera(guardadoDeLaEmpresa),
+      guardarEmpresa,
     }),
-    [estado, visibles, alDia, cargando, soloLectura, uid, escribir, sembrar, recargar],
+    [
+      estado, clientesDelModo, alDia, cargando, soloLectura, uid, escribir,
+      sembrar, recargar, asegurarEmpresa, guardadoDeLaEmpresa, guardarEmpresa,
+      empresaUnica,
+    ],
   );
 
   return <CarteraContext.Provider value={valor}>{children}</CarteraContext.Provider>;

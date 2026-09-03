@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Cpu, Layers } from 'lucide-react';
 import { SERVICES } from '../services/storeServices';
+import { MARCA, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
 
 export default function LandingPage() {
   return (
@@ -13,8 +14,8 @@ export default function LandingPage() {
         {/* Nav */}
         <nav style={{ padding: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-            <span className="gradient-text">Fiscalito</span>{' '}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Store</span>
+            <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{MARCA_LOGO_2}</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <Link to="/login"><button className="btn-secondary">Iniciar sesion</button></Link>
@@ -95,7 +96,7 @@ export default function LandingPage() {
         {/* Footer */}
         <footer style={{ padding: '32px 0', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            Fiscalito Store &copy; 2026 — Servicios inteligentes para PYMEs mexicanas
+            {MARCA} &copy; 2026 — Nómina, IMSS y cumplimiento laboral
           </p>
         </footer>
       </div>

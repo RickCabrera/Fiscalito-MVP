@@ -25,6 +25,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteCartera } from '../services/carteraApi';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide los avisos del paso 2 **con la redacción del despacho**:
+ * "no está en la cartera de tu cuenta", "el primer cliente de una cuenta". En
+ * modo empresa única esos textos nombran cosas que no existen y `motivoDelPaso2`
+ * escribe otros. Los dos juegos son producto, y cada uno se mide en su modo.
+ */
+modoDespacho();
 
 const PERIODO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' };
 

@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getServiceById } from '../services/storeServices';
 import { ArrowLeft, ExternalLink, Check, Code, Zap } from 'lucide-react';
+import { MARCA_CORTA } from '../services/marca';
 
 export default function ServiceDetailPage() {
   const { serviceId } = useParams();
@@ -121,7 +122,7 @@ export default function ServiceDetailPage() {
             {service.id === 'fiscalito' && (
               <button className="btn-primary" onClick={() => navigate('/app/store/fiscalito/use')}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Zap size={16} /> Usar Fiscalito
+                <Zap size={16} /> Usar {MARCA_CORTA}
               </button>
             )}
             {service.status === 'active' && service.apiEndpoint && (
@@ -142,7 +143,7 @@ export default function ServiceDetailPage() {
         </div>
       </div>
 
-      {/* API Demo section for Fiscalito */}
+      {/* API Demo section del servicio fiscal */}
       {service.id === 'fiscalito' && (
         <div className="card animate-in" style={{ animationDelay: '0.3s', marginTop: 24, overflow: 'hidden', padding: 0 }}>
           <div style={{

@@ -11,6 +11,7 @@ import {
   detectSilence, type ChatMessage,
 } from '../../services/voiceChatService';
 import { runAgentLoop } from '../../agent/agentLoop';
+import { ASISTENTE } from '../../services/marca';
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -103,7 +104,7 @@ export function useVoiceChat() {
       const resumen = user?.uid ? await buildHistorialResumen(user.uid) : '';
       setHistorialResumen(resumen);
       const nombre = profile.nombre || 'contribuyente';
-      const welcome = `Hola ${nombre}! Soy Fiscalito, tu asesor fiscal. Puedes escribirme o hablar conmigo. En que te ayudo hoy?`;
+      const welcome = `Hola ${nombre}! Soy ${ASISTENTE}, tu asistente de nomina. Puedes escribirme o hablar conmigo. En que te ayudo hoy?`;
       setMessages([{ role: 'assistant', content: welcome }]);
       const hist: ChatMessage[] = [{ role: 'assistant', content: welcome }];
       setChatHistory(hist);

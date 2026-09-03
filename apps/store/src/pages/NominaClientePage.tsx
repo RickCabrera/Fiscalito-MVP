@@ -1,6 +1,6 @@
 /**
- * Nómina de un cliente del despacho (E-03; era la pantalla de D-07).
- * DEMO: se borra en F2.
+ * Nómina: del cliente en modo despacho (E-03), de la empresa en modo empresa
+ * única (O-01). Era la pantalla de D-07.
  *
  * CUATRO PASOS NUMERADOS (E-06)
  * -----------------------------
@@ -29,6 +29,8 @@ import { useNominaCliente } from '../components/nomina/useNominaCliente';
 import { exportarNominaPDF } from '../services/pdfExportNomina';
 import { etiquetaOrigen } from '../services/despachoApi';
 import { useParams } from 'react-router-dom';
+import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { labelStyle } from '../utils/styles';
 
 /** Botón de acción: el icono y el texto en una línea, sin saltos. */
@@ -41,8 +43,24 @@ const FILA_ACCION: React.CSSProperties = {
   flexWrap: 'wrap',
 };
 
-export default function NominaClientePage() {
-  const { id: clienteId = '' } = useParams();
+interface Props {
+  /**
+   * De quién es esta nómina. Se pasa explícito en **modo empresa única**, donde
+   * la pantalla se monta en `/app/nomina` y no hay `:id` en la ruta.
+   *
+   * Sin prop, manda `useParams` — que es lo que E-03 dejó escrito: *"la ruta es
+   * la fuente de verdad del cliente"*, para que entrar por
+   * `/app/clientes/demo/nomina` con otro cliente guardado en `localStorage` no
+   * deje el header diciendo uno y la pantalla calculando otro. Ese invariante
+   * sigue intacto en modo despacho; en empresa única no hay dos candidatos que
+   * puedan discrepar.
+   */
+  clienteId?: string;
+}
+
+export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
+  const { id: deLaRuta = '' } = useParams();
+  const clienteId = fijo ?? deLaRuta;
   const n = useNominaCliente(clienteId);
   const { cliente, cierre, nomina } = n;
 
@@ -54,38 +72,29 @@ export default function NominaClientePage() {
     exportarNominaPDF(nomina, cliente, n.sinVincular);
   };
 
-  // Los estados se derivan en cascada: un paso está bloqueado mientras no
-  // exista lo que produce el anterior.
   /**
-   * El paso 2 espera también a la CARTERA, no sólo a la ficha.
+   * Los estados se derivan en cascada: un paso está bloqueado mientras no
+   * exista lo que produce el anterior.
    *
-   * La ficha llega del backend (round-trip local) antes que Firestore (hasta
-   * 2500 ms). En esa ventana `deLaCartera` es `null`, así que el cierre usaría
-   * las llaves del catálogo en vez de las del aparato: para un empleado con
-   * número propio, cero checadas encontradas. Y cuando la cartera llega, la
-   * plantilla vuelve a cuadrar por `empleado_no` y nada levanta — sale un recibo
-   * con faltas de más, en silencio. Es el mismo bug de G-02 entrando por la
-   * puerta del tiempo.
+   * El paso 2 espera también a la CARTERA, no sólo a la ficha: la ficha llega
+   * del backend antes que Firestore (hasta 2500 ms), y en esa ventana el cierre
+   * usaría las llaves del catálogo en vez de las del aparato — cero checadas
+   * para quien tenga número propio, y luego la plantilla vuelve a cuadrar por
+   * `empleado_no` sin que nada levante. Recibo con faltas de más, en silencio:
+   * el bug de G-02 entrando por la puerta del tiempo.
    */
   /**
-   * R-06: dos motivos NUEVOS por los que el paso 2 puede estar bloqueado, y los
-   * dos se veían igual —botón muerto, sin una palabra— porque `estadoPaso2`
-   * valía `'disponible'` y `PasoNomina` sólo pinta `motivoBloqueo` cuando está
-   * bloqueado.
-   *
-   * 1. **El cliente no es de esta cuenta.** Peor que mudo: el botón quedaba
-   *    ENCENDIDO, en color, y el clic no hacía nada. Es exactamente lo que este
-   *    archivo critica de la corrida G ("el botón quedó vivo, en gris, sin
-   *    impedir nada"), y estaba aquí mismo.
-   * 2. **El cliente no tiene periodo sugerido.** Le pasa al primer cliente de
-   *    una cuenta nueva cuando el backend no respondió al leer la cartera: dos
-   *    campos de fecha vacíos, botón apagado y ningún motivo. `CarteraContext`
-   *    afirmaba en un comentario que "la pantalla de nómina avisa"; no avisaba.
+   * Los motivos por los que el paso 2 puede estar bloqueado —cinco desde
+   * O-01— y su redacción por modo viven en `motivoDelPaso2`. Aquí sólo se
+   * decide SI está bloqueado; el porqué se dice allá.
    */
   const sinPeriodo = Boolean(cliente) && (!n.inicio || !n.fin);
+  // O-01: la empresa sin configurar es un quinto motivo de bloqueo, en vez de
+  // dejar que llegue un 422 de pydantic sobre un campo que nadie ha visto.
+  const faltaEmpresa = n.faltaDeLaEmpresa.length > 0;
   const estadoPaso2: EstadoPaso = cierre
     ? 'listo'
-    : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo
+    : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo && !faltaEmpresa
       ? 'disponible'
       : 'bloqueado';
   const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
@@ -121,7 +130,7 @@ export default function NominaClientePage() {
           </strong>{' '}
           Sin <code>employeeNo</code> no hay forma de atribuirle sus checadas, así que{' '}
           {n.sinVincular === 1 ? 'no entra' : 'no entran'} en este cálculo. Captura su número
-          del aparato en la ficha del cliente, pestaña Empleados.
+          del aparato en {modoEmpresaUnica() ? 'Empleados' : 'la ficha del cliente, pestaña Empleados'}.
         </AvisoNomina>
       )}
 
@@ -140,19 +149,7 @@ export default function NominaClientePage() {
         titulo="Cerrar quincena"
         descripcion="Convierte las checadas en días trabajados, faltas y retardos."
         estado={estadoPaso2}
-        motivoBloqueo={
-          n.ajenoALaCartera
-            ? 'Este cliente no está en la cartera de tu cuenta, así que su nómina no se ' +
-              'puede calcular aquí: la plantilla saldría del catálogo de demostración y no ' +
-              'de tus empleados. Ábrelo desde tu lista de clientes.'
-            : sinPeriodo
-              ? 'Este cliente todavía no tiene un periodo sugerido — captura las fechas de ' +
-                'inicio y fin arriba y el paso se habilita. (Pasa con el primer cliente de ' +
-                'una cuenta cuando el servicio no respondió al cargar la cartera.)'
-              : n.carteraCargando
-                ? 'Cargando tu cartera… El cierre espera a saber con qué números del checador buscar.'
-                : 'Espera a que cargue la plantilla del cliente.'
-        }
+        motivoBloqueo={motivoDelPaso2(n, { faltaEmpresa, sinPeriodo })}
       >
         <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
           <label style={{ flex: '0 1 190px' }}>
@@ -196,7 +193,7 @@ export default function NominaClientePage() {
             // líneas de distancia. El handler ya lo bloquea; esto es que se vea.
             disabled={
               n.ocupado || !cliente || !n.inicio || !n.fin ||
-              n.carteraCargando || n.ajenoALaCartera
+              n.carteraCargando || n.ajenoALaCartera || faltaEmpresa
             }
             style={ACCION}
           >

@@ -1,6 +1,7 @@
 /** Servicio de chat de voz para Fiscalito — STT, Chat, TTS, grabación y VAD */
 
 import type { UserProfile } from '../context/ProfileContext';
+import { ASISTENTE, MARCA } from './marca';
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
 
@@ -72,7 +73,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 // ── 2. CHAT ──
 
 function buildSystemPrompt(userProfile: UserProfile, historialResumen: string): string {
-  return `Eres Fiscalito, un asistente fiscal mexicano amigable con voz propia. Hablas de forma conversacional, clara y concisa (respuestas cortas de máximo 3 oraciones para voz).
+  return `Eres ${ASISTENTE}, un asistente de nómina y fiscal mexicano amigable con voz propia. Hablas de forma conversacional, clara y concisa (respuestas cortas de máximo 3 oraciones para voz).
 Datos del usuario actual:
 - Nombre: ${userProfile.nombre || 'No proporcionado'}
 - RFC: ${userProfile.rfc || 'No proporcionado'}
@@ -80,7 +81,7 @@ Datos del usuario actual:
 - Régimen: ${userProfile.regimen || 'No definido'}
 - Actividad: ${userProfile.actividad || 'No proporcionada'}
 Historial reciente: ${historialResumen || 'Sin historial aún.'}
-Cuando expliques el proyecto Fiscalito preséntalo con entusiasmo como el ecosistema fiscal más innovador de México.`;
+Cuando expliques ${MARCA} preséntalo con entusiasmo.`;
 }
 
 export async function sendMessage(

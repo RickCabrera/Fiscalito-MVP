@@ -3,6 +3,7 @@
 import jsPDF from 'jspdf';
 import type { EstadoCuentaResponse } from './fiscalAgentApi';
 import { PDF_COLORS, fmtMoney, addFooter } from './pdfUtils';
+import { MARCA_CORTA, PREFIJO_ARCHIVO } from './marca';
 
 export function exportarEstadoCuentaPDF(data: EstadoCuentaResponse, contribuyente: { nombre: string; rfc: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
@@ -16,7 +17,7 @@ export function exportarEstadoCuentaPDF(data: EstadoCuentaResponse, contribuyent
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...dark);
-  doc.text('Fiscalito — Estado de cuenta fiscal', mL, y);
+  doc.text(`${MARCA_CORTA} — Estado de cuenta fiscal`, mL, y);
   y += 8;
 
   doc.setFont('helvetica', 'normal');
@@ -102,5 +103,5 @@ export function exportarEstadoCuentaPDF(data: EstadoCuentaResponse, contribuyent
   }
 
   addFooter(doc);
-  doc.save(`Fiscalito_EstadoCuenta_${data.year}.pdf`);
+  doc.save(`${PREFIJO_ARCHIVO}_EstadoCuenta_${data.year}.pdf`);
 }

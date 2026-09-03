@@ -38,6 +38,23 @@ class ClienteCarteraSchema(BaseModel):
         "desarrollo (R-06).",
     )
 
+    rfc: str = Field(
+        default="",
+        max_length=13,
+        description="RFC del patrón. **Vacío cuando no se conoce y nunca inventado**, misma "
+        "política que el NSS del empleado. Lo captura la Configuración de empresa (O-01).",
+    )
+    registro_patronal: str = Field(
+        default="",
+        max_length=11,
+        description="Registro patronal del IMSS: **11 caracteres**, los 10 del registro más "
+        "su dígito verificador (posiciones 01-10 y 11 del layout de movimientos "
+        "afiliatorios del IMSS). Se guarda junto y se parte al exportar. El verificador "
+        "**no se calcula**: no hay algoritmo publicado, y un dígito inventado junto a un "
+        "registro real es peor que un campo vacío. Vacío = no se pueden emitir "
+        "movimientos afiliatorios, y el exportador lo dice en vez de emitirlos mal.",
+    )
+
     prima_riesgo: Decimal = Field(
         ge=PRIMA_RT_MINIMA,
         le=PRIMA_RT_MAXIMA,

@@ -340,6 +340,28 @@ fundamentos y los tests que los contrastan contra la tabla publicada de
 | Parámetro | Tipo | Default | Significado |
 |---|---|---|---|
 | `anio_de_las_cuotas` | int (2000-2100) | año en curso | Año **del periodo que se reporta**, no del vencimiento |
+| `empresa_unica` | bool | `false` | `true` = **un solo patrón**, sin fan-out sobre la cartera (O-01) |
+
+#### `empresa_unica` — el pivote de O-01
+
+Con `true`, el endpoint devuelve **un** juego de obligaciones en vez de repetirlo por cada
+cliente del catálogo. No es un segundo calendario: es la **misma** llamada a
+`calendario_patronal()`, sin el fan-out. Crear un generador aparte es lo que
+`knowledge_base/nomina/25_calendario_laboral_2026.md` §4 llama "un bug esperando", y F1-06 lo
+dejó advertido.
+
+Los dos campos de cliente **siguen presentes y obligatorios en el schema**: cambia su valor,
+no su forma, así que ningún consumidor existente se rompe.
+
+- `cliente_id` vale `"empresa"` — el id real del cliente implícito en
+  `users/{uid}/clientes/empresa`. Sirve de llave y no afirma ningún nombre.
+- `cliente_nombre` viene **vacío**. El backend no sabe cómo se llama la empresa —no viaja en
+  el query string, y no tiene por qué— así que no lo inventa. El front descarta el vacío al
+  agrupar y no pinta la columna de cliente.
+
+`advertencias` también cambia: la que decía *"son las mismas para toda la cartera"* no
+significa nada con un solo patrón. Lo que **no** cubre se sigue diciendo igual (el ISN sigue
+fuera, §D24).
 
 **`anio_de_las_cuotas` no es "el año del calendario".** Las cuotas de diciembre de 2026 vencen
 en enero de 2027 y **sí** vienen; las de diciembre de 2025, que vencen en enero de 2026, **no**.
@@ -436,6 +458,23 @@ Los documentos van tal como están guardados: no se tipan estrictamente al leer,
 porque una cartera escrita por una versión anterior puede traer campos que el
 modelo actual no conoce, y rechazarla dejaría al contador sin sus clientes por un
 campo de más.
+
+#### Dos campos nuevos del cliente (O-01)
+
+`rfc` (≤13) y `registro_patronal` (≤11) se agregaron a `ClienteCarteraSchema`. Los dos son
+**opcionales y vacíos por default**: los tres clientes de demostración no los traen y una
+cartera escrita antes de O-01 tampoco, así que exigirlos dejaría al contador sin sus clientes
+por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más abajo.
+
+- `registro_patronal` son **11 caracteres**: los 10 del registro más su dígito verificador
+  (posiciones 01-10 y 11 del layout de movimientos afiliatorios del IMSS). Se guarda junto y se
+  parte al exportar. **El verificador no se calcula**: no hay algoritmo publicado, y un dígito
+  inventado junto a un registro real es peor que un campo vacío.
+- Vacío significa que **no se pueden emitir movimientos afiliatorios**, y el exportador lo dice
+  en vez de emitirlos mal.
+
+En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
+empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
 
 ### `PUT /api/v1/cartera/clientes/{cliente_id}`
 Alta o edición, idempotente. El `id` del cuerpo **debe** coincidir con el de la

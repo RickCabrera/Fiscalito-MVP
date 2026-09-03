@@ -7,6 +7,7 @@ import {
   PDF_COLORS, fmtMoney, addFooter,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
 } from './pdfUtils';
+import { MARCA_CORTA, PREFIJO_ARCHIVO } from './marca';
 
 export function exportarMultiPeriodoPDF(data: MultiPeriodoResponse, contribuyente: { nombre: string; rfc: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
@@ -17,7 +18,7 @@ export function exportarMultiPeriodoPDF(data: MultiPeriodoResponse, contribuyent
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...PDF_COLORS.dark);
-  doc.text('Fiscalito — Resumen multi-periodo', mL, y);
+  doc.text(`${MARCA_CORTA} — Resumen multi-periodo`, mL, y);
   y += 8;
 
   doc.setFont('helvetica', 'normal');
@@ -58,5 +59,5 @@ export function exportarMultiPeriodoPDF(data: MultiPeriodoResponse, contribuyent
   });
 
   addFooter(doc);
-  doc.save(`Fiscalito_MultiPeriodo_${data.year}.pdf`);
+  doc.save(`${PREFIJO_ARCHIVO}_MultiPeriodo_${data.year}.pdf`);
 }

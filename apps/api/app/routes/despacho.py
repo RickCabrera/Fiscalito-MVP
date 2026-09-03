@@ -180,6 +180,43 @@ ADVERTENCIAS_CALENDARIO = (
     "Cambiarán cuando el alta de clientes (F1-09) registre RFC, entidad y personalidad.",
 )
 
+ADVERTENCIAS_CALENDARIO_EMPRESA = (
+    ADVERTENCIAS_CALENDARIO[0],
+    "Las obligaciones marcadas como condicionales dependen de datos que la empresa no "
+    "registra (tipo de salario, personalidad jurídica). Verifícalas antes de confiar en ellas.",
+    "Ninguna de estas fechas depende todavía de los datos de la empresa: son las de "
+    "cualquier patrón. El ajuste por sexto dígito del RFC no está implementado.",
+)
+
+
+def _obligacion_de_la_empresa(o: ObligacionPatronal) -> ObligacionPatronalSchema:
+    """
+    La misma obligación, sin dueño que etiquetar (O-01).
+
+    `cliente_nombre` va **vacío a propósito**, no con un nombre inventado ni con
+    el de un cliente del catálogo: en modo empresa única hay un solo patrón, el
+    backend no sabe cómo se llama —ni tiene por qué, no viaja en el query
+    string— y repetir la misma etiqueta en cada renglón es ruido. El front
+    descarta el vacío al agrupar (`calendarioPatronal.ts`).
+
+    `cliente_id` sí lleva `empresa`, que es el id real del cliente implícito en
+    `users/{uid}/clientes/empresa`: sirve de llave y no afirma ningún nombre.
+    """
+    return ObligacionPatronalSchema(
+        cliente_id="empresa",
+        cliente_nombre="",
+        clave=o.clave,
+        nombre=o.nombre,
+        descripcion=o.descripcion,
+        fecha_limite=o.fecha_limite,
+        periodicidad=o.periodicidad,
+        periodo_cubierto=o.periodo_cubierto,
+        fundamento=o.fundamento,
+        regimen_de_plazo=o.regimen_de_plazo,
+        condicional=o.condicional,
+        nota=o.nota,
+    )
+
 
 def _obligacion(cliente: ClienteDespacho, o: ObligacionPatronal) -> ObligacionPatronalSchema:
     return ObligacionPatronalSchema(
@@ -217,6 +254,15 @@ async def calendario_de_la_cartera(
         default_factory=lambda: date.today().year,
         description="Año del periodo que se reporta. Por defecto, el año en curso.",
     ),
+    empresa_unica: bool = Query(
+        default=False,
+        description="`true` = hay **un solo patrón**, no una cartera: devuelve UN juego de "
+        "obligaciones en vez de repetirlo por cada cliente del catálogo. `cliente_id` vale "
+        "`empresa` y `cliente_nombre` viene **vacío**, porque etiquetar cada renglón con el "
+        "mismo nombre es ruido y el nombre del patrón no tiene por qué viajar en un query "
+        "string. Los dos campos siguen siendo obligatorios en el schema: cambia su valor, no "
+        "su presencia (O-01).",
+    ),
 ) -> CalendarioPatronalResponse:
     # El rango lo valida el motor (levanta `FiscalValidationError`), pero se
     # comprueba aquí para no construir tres calendarios antes de rechazar.
@@ -226,15 +272,27 @@ async def calendario_de_la_cartera(
             f"Debe estar entre {ANIO_MINIMO} y {ANIO_MAXIMO}."
         )
 
-    obligaciones = [
-        _obligacion(cliente, o)
-        for cliente in CLIENTES
-        # `tiene_salario_variable` y `personalidad` van en `None` —o sea "no
-        # consta"— porque `ClienteDespacho` no registra ninguno de los dos. El
-        # motor devuelve entonces esas obligaciones marcadas `condicional`, que
-        # es distinto de omitirlas y distinto de afirmarlas.
-        for o in calendario_patronal(anio_de_las_cuotas)
-    ]
+    # `tiene_salario_variable` y `personalidad` van en `None` —o sea "no
+    # consta"— porque `ClienteDespacho` no registra ninguno de los dos. El
+    # motor devuelve entonces esas obligaciones marcadas `condicional`, que
+    # es distinto de omitirlas y distinto de afirmarlas.
+    #
+    # O-01: con `empresa_unica` **no se hace el fan-out**. Es la MISMA llamada a
+    # `calendario_patronal()`, sin repetirla por cliente: no hay un segundo
+    # generador de calendario, que es lo que `knowledge_base/nomina/
+    # 25_calendario_laboral_2026.md` §4 llama "un bug esperando". Ninguna fecha
+    # depende del cliente —lo dicen las propias advertencias de abajo—, así que
+    # quitar el fan-out no quita información: quita triplicado.
+    if empresa_unica:
+        obligaciones = [
+            _obligacion_de_la_empresa(o) for o in calendario_patronal(anio_de_las_cuotas)
+        ]
+    else:
+        obligaciones = [
+            _obligacion(cliente, o)
+            for cliente in CLIENTES
+            for o in calendario_patronal(anio_de_las_cuotas)
+        ]
     # Orden global: por fecha, y dentro del día por obligación y cliente, para
     # que la pantalla pueda agrupar sin reordenar.
     obligaciones.sort(key=lambda o: (o.fecha_limite, o.clave, o.cliente_nombre))
@@ -248,7 +306,9 @@ async def calendario_de_la_cartera(
         cubre_hasta=obligaciones[-1].fecha_limite if obligaciones else None,
         total_obligaciones=len(obligaciones),
         obligaciones=tuple(obligaciones),
-        advertencias=ADVERTENCIAS_CALENDARIO,
+        advertencias=(
+            ADVERTENCIAS_CALENDARIO_EMPRESA if empresa_unica else ADVERTENCIAS_CALENDARIO
+        ),
     )
 
 

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { SERVICES } from '../services/storeServices';
 import { limpiarDuplicados, borrarTodasDeclaraciones } from '../services/declaracionesHistory';
 import { Settings, Users, Activity, Package, Database, RefreshCw, Trash2, Loader } from 'lucide-react';
+import { MARCA, MARCA_CORTA } from '../services/marca';
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ export default function AdminPage() {
     <div className="page-container">
       <div className="page-header animate-in">
         <h1>Panel de administracion</h1>
-        <p>Gestion interna de Fiscalito Store.</p>
+        <p>Gestion interna de {MARCA}.</p>
       </div>
 
       {/* Stats */}
@@ -136,7 +137,7 @@ export default function AdminPage() {
           Mantenimiento de datos
         </h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 20 }}>
-          Herramientas para gestionar los datos de Fiscalito almacenados en tu cuenta.
+          Herramientas para gestionar los datos de {MARCA_CORTA} almacenados en tu cuenta.
         </p>
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -179,7 +180,7 @@ export default function AdminPage() {
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
             >
               {borrando ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
-              Borrar todos los datos de Fiscalito
+              Borrar todos los datos de {MARCA_CORTA}
             </button>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: 320 }}>
               Elimina TODAS las declaraciones, DIOT, retenciones, multi-periodo, estado de cuenta y deducciones guardadas

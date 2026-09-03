@@ -39,6 +39,7 @@ import {
 import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
+import { modoEmpresaUnica } from '../../services/modoEmpresa';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
   { valor: 'indeterminado', etiqueta: 'Indeterminado' },
@@ -275,9 +276,9 @@ export default function ModalEmpleado({
 
         {llaveRepetida && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
-            Ya hay un empleado con el número <strong>{datos.empleado_no}</strong> en este
-            cliente. El número es la llave del cálculo: repetirlo haría que uno se comiera
-            las incidencias del otro.
+            Ya hay un empleado con el número <strong>{datos.empleado_no}</strong>
+            {modoEmpresaUnica() ? '' : ' en este cliente'}. El número es la llave del
+            cálculo: repetirlo haría que uno se comiera las incidencias del otro.
           </p>
         )}
 

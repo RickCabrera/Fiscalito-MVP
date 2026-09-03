@@ -1,4 +1,14 @@
-# FISCALITO STORE — Contexto para Claude Code
+# ORCA ORDORICA — NÓMINA · Contexto para Claude Code
+
+> **Pivote (corrida O, 2026-09-03).** El producto dejó de ser un marketplace
+> multi-cliente y es la **nómina interna de Orca Ordorica Cristal Templado**. El
+> modo despacho no se borra: se apaga con `VITE_MODO_EMPRESA_UNICA=0` y sigue
+> entero y probado. La marca visible vive en `src/services/marca.ts` — un solo
+> archivo, para que el próximo rebrand sea un cambio y no cuarenta cadenas. Los
+> **nombres internos no se tocan**: rutas (`/app/store/fiscalito/use`), ids de
+> servicio, tipos (`TabFiscalito`), nombres de archivo y llaves de
+> `localStorage` (`fiscalito_*`) siguen igual, porque renombrarlos rompe enlaces
+> y sesiones a cambio de nada. Lo vigila `src/services/marca.test.ts`.
 
 ## INFORMACION CRITICA
 
@@ -9,7 +19,7 @@
 
 ## PROPOSITO
 
-Fiscalito Store es un **marketplace web de servicios inteligentes para PYMEs y personas fisicas mexicanas**. Cada servicio del marketplace resuelve una obligacion legal o financiera (fiscal, laboral, contable).
+**Antes del pivote** (y lo que sigue vivo tras el flag): un **marketplace web de servicios inteligentes para PYMEs y personas fisicas mexicanas**. Cada servicio del marketplace resuelve una obligacion legal o financiera (fiscal, laboral, contable).
 
 El primer servicio es **Fiscalito**: un asistente fiscal cuyo backend es el **Fiscal Agent API** (FastAPI/Python, proyecto separado, funcional con 12 tests en su propio repo). Calcula pre-declaraciones ISR/IVA, clasifica CFDIs, detecta saldos a favor, y explica cada calculo con LLM. Incluye un **chat de voz con IA** (Whisper STT + GPT-4o-mini + TTS) integrado como boton flotante en toda la app.
 

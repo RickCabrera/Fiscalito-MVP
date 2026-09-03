@@ -33,6 +33,7 @@ import { Navigate } from 'react-router-dom';
 import { AlertTriangle, CalendarDays, Info, Loader } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { esContador } from '../services/navigation';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { obtenerCalendarioPatronal, type CalendarioPatronal } from '../services/despachoApi';
 import {
   agrupar,
@@ -92,9 +93,15 @@ function FilaObligacion({ renglon }: { renglon: Renglon }) {
           </div>
         )}
       </div>
-      <div style={{ flex: '0 1 220px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-        {clientes.join(' · ')}
-      </div>
+      {/* O-01: sin clientes que nombrar —modo empresa única— la columna no se
+          renderiza, en vez de renderizarse vacía. Un `<div>` de 220 px en
+          blanco al lado de cada obligación deja un hueco que parece un dato que
+          no cargó. */}
+      {clientes.length > 0 && (
+        <div style={{ flex: '0 1 220px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+          {clientes.join(' · ')}
+        </div>
+      )}
     </div>
   );
 }
@@ -105,13 +112,15 @@ export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Dat
   const [error, setError] = useState<string | null>(null);
   const anio = hoy.getFullYear();
 
+  const empresaUnica = modoEmpresaUnica();
+
   useEffect(() => {
     let cancelado = false;
-    obtenerCalendarioPatronal(anio)
+    obtenerCalendarioPatronal(anio, empresaUnica)
       .then((d) => { if (!cancelado) setDatos(d); })
       .catch((e: Error) => { if (!cancelado) setError(e.message); });
     return () => { cancelado = true; };
-  }, [anio]);
+  }, [anio, empresaUnica]);
 
   // Un contribuyente no tiene cartera: lo suyo es el calendario de sus propias
   // declaraciones. Va DESPUÉS de los hooks para no romper su orden entre
@@ -125,7 +134,9 @@ export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Dat
       <div className="page-header animate-in">
         <h1>Calendario patronal</h1>
         <p>
-          Lo que hay que enterar, presentar o pagar por los clientes del despacho.{' '}
+          {empresaUnica
+            ? 'Lo que hay que enterar, presentar o pagar como patrón.'
+            : 'Lo que hay que enterar, presentar o pagar por los clientes del despacho.'}{' '}
           {datos && datos.cubre_desde && datos.cubre_hasta && (
             <>Vencimientos del <strong>{datos.cubre_desde}</strong> al{' '}
             <strong>{datos.cubre_hasta}</strong> — son las obligaciones de las cuotas de{' '}
@@ -141,8 +152,18 @@ export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Dat
       }}>
         <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
         <span>
-          Este calendario es el de <strong>tus clientes</strong>. La app no calcula las
-          obligaciones fiscales propias del despacho.
+          {empresaUnica ? (
+            <>
+              Estas son las obligaciones <strong>patronales</strong> de la empresa ante el
+              IMSS, el Infonavit y el SAT. La app no calcula las declaraciones de ISR e IVA
+              de la empresa.
+            </>
+          ) : (
+            <>
+              Este calendario es el de <strong>tus clientes</strong>. La app no calcula las
+              obligaciones fiscales propias del despacho.
+            </>
+          )}
         </span>
       </p>
 

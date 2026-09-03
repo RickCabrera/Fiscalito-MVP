@@ -37,6 +37,7 @@ import ModalDispositivo from '../components/dispositivos/ModalDispositivo';
 import TarjetaDispositivo from '../components/dispositivos/TarjetaDispositivo';
 import ErrorAlert from '../components/common/ErrorAlert';
 import SinClienteActivo from '../components/common/SinClienteActivo';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 
 /** Aviso con el mismo aspecto que los de `EmpleadosTab`. */
 function Aviso({ children }: { children: React.ReactNode }) {
@@ -157,7 +158,11 @@ export default function DispositivosPage() {
     return (
       <SinClienteActivo
         titulo="Dispositivos"
-        explicacion="Los dispositivos son de un cliente: cada despacho lleva los aparatos de cada uno por separado."
+        explicacion={
+          modoEmpresaUnica()
+            ? 'Los checadores de la empresa y quién está enrolado en cada uno.'
+            : 'Los dispositivos son de un cliente: cada despacho lleva los aparatos de cada uno por separado.'
+        }
       />
     );
   }
@@ -197,8 +202,14 @@ export default function DispositivosPage() {
       <div className="page-header animate-in">
         <h1>Dispositivos</h1>
         <p>
-          Los checadores de <strong>{cliente?.nombre ?? clienteId}</strong> y quién está
-          enrolado en cada uno.
+          {modoEmpresaUnica() ? (
+            <>Los checadores de la empresa y quién está enrolado en cada uno.</>
+          ) : (
+            <>
+              Los checadores de <strong>{cliente?.nombre ?? clienteId}</strong> y quién está
+              enrolado en cada uno.
+            </>
+          )}
         </p>
       </div>
 
@@ -257,7 +268,9 @@ export default function DispositivosPage() {
         <div className="card" style={{ padding: 'var(--space-2xl) var(--space-lg)', textAlign: 'center' }}>
           <Fingerprint size={24} color="var(--text-muted)" />
           <div style={{ fontSize: '1.05rem', fontWeight: 600, margin: '12px 0 8px' }}>
-            Este cliente no tiene dispositivos registrados
+            {modoEmpresaUnica()
+              ? 'Todavía no hay dispositivos registrados'
+              : 'Este cliente no tiene dispositivos registrados'}
           </div>
           <p style={{ fontSize: '0.87rem', color: 'var(--text-secondary)' }}>
             Da de alta el checador para llevar el control de quién está enrolado en él.
@@ -285,7 +298,8 @@ export default function DispositivosPage() {
           <strong>Lo que esta pantalla no puede decir:</strong> cuántas checadas mandó cada
           aparato. Las checadas que llegan no traen la identidad del dispositivo que las
           produjo, así que "sin checadas" significa que esa persona no ha checado{' '}
-          <em>en ningún aparato</em> de este cliente, no que este equipo esté apagado.
+          <em>en ningún aparato</em>{modoEmpresaUnica() ? '' : ' de este cliente'}, no que
+          este equipo esté apagado.
         </p>
       )}
 
@@ -293,7 +307,7 @@ export default function DispositivosPage() {
         <div style={{ marginTop: 'var(--space-md)' }}>
           <Aviso>
             ¿Dar de baja <strong>{porBorrar.nombre}</strong>? Se pierde el registro de quién
-            estaba enrolado en él. No borra a nadie de la cartera ni del aparato físico.{' '}
+            estaba enrolado en él. No borra a nadie de la plantilla ni del aparato físico.{' '}
             <button className="btn-secondary" onClick={() => setPorBorrar(null)}>Cancelar</button>{' '}
             <button
               className="btn-primary"

@@ -6,6 +6,7 @@ import {
   PDF_COLORS, fmtMoney, fmtTasa, fmtFecha,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
 } from './pdfUtils';
+import { MARCA_CORTA, PREFIJO_ARCHIVO } from './marca';
 
 interface DesgloseData {
   total_ingresos_facturados: number;
@@ -56,11 +57,11 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(...dark);
-  doc.text('Fiscalito', marginL, y);
+  doc.text(MARCA_CORTA, marginL, y);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(18);
   doc.setTextColor(...lightGray);
-  doc.text(' — Pre-declaración fiscal', marginL + doc.getTextWidth('Fiscalito'), y);
+  doc.text(' — Pre-declaración fiscal', marginL + doc.getTextWidth(MARCA_CORTA), y);
   y += 10;
 
   doc.setFontSize(11);
@@ -262,7 +263,7 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
     doc.setFontSize(7);
     doc.setTextColor(...lightGray);
     doc.text(
-      'Este documento es una estimación generada por Fiscalito. No sustituye la asesoría de un contador público certificado.',
+      `Este documento es una estimación generada por ${MARCA_CORTA}. No sustituye la asesoría de un contador público certificado.`,
       marginL, pageH - 14,
     );
     doc.text(
@@ -274,6 +275,6 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
 
   // ── Descargar ──
   const fechaStr = fechaCalculo.toISOString().substring(0, 10);
-  const filename = `Fiscalito_PreDeclaracion_${sanitizeFilename(periodo)}_${fechaStr}.pdf`;
+  const filename = `${PREFIJO_ARCHIVO}_PreDeclaracion_${sanitizeFilename(periodo)}_${fechaStr}.pdf`;
   doc.save(filename);
 }
