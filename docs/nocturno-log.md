@@ -2465,3 +2465,98 @@ errores / 8 warnings** — la base exacta de S-02, sin subir en toda la corrida.
 
 Nada de esto se ha visto en un navegador. Cero variables CSS nuevas, que es la
 condición necesaria y verificable de la regla de los tres temas.
+
+---
+
+## Corrida F (exprés, 30 minutos) — 2026-09-03
+
+Sesión acotada por reloj, en modo autónomo, con un solo pase de revisor al final
+sobre el diff completo y sólo los tests que tocan lo modificado. Entraron **F-01
+y F-02**, las dos protegidas contra recorte. **F-03, F-04 y F-05 no se tocaron.**
+
+PR [#36](https://github.com/RickCabrera/Fiscalito-MVP/pull/36) — CI verde
+(Backend 32s, Frontend 2m26s), mergeado con squash.
+
+### F-01 no era el bug que decía el reporte
+
+El síntoma era real: `POST /nomina/sbc` respondía `422 extra_forbidden` por
+`tabla_vacaciones` y **ningún empleado se podía dar de alta**, porque el modal
+deshabilita "Dar de alta" mientras el SBC no cuadre. La causa **no**: el payload
+verbatim del front responde **200** contra `app.main` de esta rama. El campo
+entró al `SBCRequest` en O-03 (`ab0ce73`) y lleva mergeado desde entonces.
+
+El 422 lo produce una **API corriendo anterior a O-03** contra la que el front
+nuevo ya manda el campo. Es exactamente el modo de falla que `errorApi.ts` ya
+documenta en su encabezado para el 404 del calendario patronal del 2026-09-02 —
+un backend levantado antes del merge que sirve los endpoints viejos con 200 y el
+nuevo con error— sólo que esta vez la dirección es la contraria: no falta la
+ruta, sobra un campo. Es la cara fea de `extra="forbid"`, que se eligió a
+propósito en O-03 para que un front que mande de más no subintegre en silencio,
+y que a cambio convierte cualquier desfase de versión en un 422 total.
+
+Se verificó que `SBCRequest` es el **único** `extra="forbid"` de toda la API
+(`grep` sobre `apps/api/app`): ni `cartera.py`, ni `empleado.py`, ni ningún otro
+schema del camino del alta rechaza campos extra. No hay una segunda puerta.
+
+**Consecuencia que hay que decir sin adornos: el entregable de F-01 no cambia una
+sola línea de runtime, así que no cierra la tarea.** Lo que destraba la pantalla
+es servir una API construida contra `main`. Lo que se entregó es la red que
+impide la reincidencia: `TestContratoConElFront` con el payload LITERAL de
+`ModalEmpleado.tsx`, que afirma el 200 **y los números** —un 200 con el factor de
+otra antigüedad dejaría el alta viva con un SBC equivocado, que es peor que el
+422— más una guarda estructural que compara las llaves del front contra
+`SBCRequest.model_fields`. El revisor mutó el schema borrando el campo: los tres
+tests mueren. No son tautológicos.
+
+**F-01 queda ABIERTA** hasta que Ricardo vea un empleado dado de alta en la UI
+contra la API redesplegada. Marcarla `[x]` con este merge sería marcar en falso.
+
+### F-02: el modo de falla real era el mensaje mudo
+
+La hipótesis de entrada —"el 422 se traga sin pintar nada"— resultó ser media
+verdad. El error **sí** se pintaba (`n.error`, `NominaClientePage.tsx:111`). Lo
+que no se podía leer era el mensaje: `detalleDelError` mostraba `detail[0].msg` a
+secas, y para el 422 de F-01 eso es `"Extra inputs are not permitted"` — una
+frase en inglés sin el nombre del campo, que vive en `loc` y se estaba tirando.
+El operador lo vive como "no me dice nada", que es indistinguible de "no pintó
+nada".
+
+Ahora nombra el campo, conserva el índice del renglón (`incidencias.12.faltas`,
+que en una plantilla de 40 empleados es la mitad del arreglo) y muestra todos los
+errores en vez de mandar a arreglar-reintentar-descubrir de uno en uno.
+
+### Decisiones tomadas sin Ricardo
+
+- **Tope de 3 errores** en `validacionesLegibles`, con `(y N más)`. Es una
+  decisión de producto: cuántos errores ve el operador de una plantilla grande
+  antes de que el aviso deje de ser legible otra vez. Sin cubrir en
+  `decisiones-nomina.md`; se tomó la opción que no vuelve a crear el problema que
+  arregla.
+- **`clienteId` en vez de `cliente.id`** para la llave de las operaciones en
+  `useNominaCliente`. Se propuso como arreglo de F-02 y **no lo es**: el revisor
+  comprobó que los dos valores son el mismo string por las dos únicas vías que
+  producen `cliente` (`cliente_por_id` es un lookup exacto de diccionario;
+  `clientePorId` compara con igualdad estricta). Se dejó en el diff como
+  endurecimiento —ese `id` además viaja al backend— con el comentario reescrito
+  para que diga que NO arregla un error invisible. El comentario original lo
+  afirmaba en indicativo y el revisor lo bloqueó por eso: en este repo un
+  comentario falso manda al siguiente lector a construir sobre una premisa mala.
+
+### Lo que NO se alcanzó
+
+- **F-03** — el paso 2 se pinta verde sin confirmación del backend. **ABIERTO.**
+- **F-04** — falta el campo de fecha de pago con default a fin del periodo, y hay
+  que quitar el `"con fecha de pago ."` que se pinta con el valor vacío.
+  **ABIERTO.**
+- **F-05** — Marca duplica texto; las fechas no aceptan tecleo; la etiqueta dice
+  `EMPLOYEENO`; Escape no cierra los modales; y no se explica por qué "Dar de
+  alta" está bloqueado cuando el SBC falla. **ABIERTO.** El último punto es
+  hermano directo de F-01: es la razón por la que un 422 en el SBC se siente como
+  un botón muerto en vez de como un error.
+
+### Deuda que dejó esta corrida
+
+`ruff format` reformateó ~8 bloques preexistentes de `test_ruta_sbc.py` sin
+relación con F-01, inflando el diff de 100 a 142 líneas. Mecánico y benigno, pero
+es "de pasada" y no debería repetirse: correr `ruff format` sobre el archivo
+entero en vez de sobre lo agregado.
