@@ -40,6 +40,7 @@ import {
 } from '../../services/carteraApi';
 import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
+import IdentidadEmpleado from './IdentidadEmpleado';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 import { modoEmpresaUnica } from '../../services/modoEmpresa';
 
@@ -294,27 +295,7 @@ export default function ModalEmpleado({
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <Campo label="Número de empleado *">
-            <input
-              style={campo}
-              value={datos.empleado_no}
-              disabled={!esAlta}
-              onChange={(e) => set('empleado_no', e.target.value)}
-              placeholder="E-10"
-            />
-          </Campo>
-          <Campo label="Nombre *" ancho="2 1 320px">
-            <input
-              style={campo}
-              value={datos.nombre}
-              onChange={(e) => set('nombre', e.target.value)}
-            />
-          </Campo>
-          <Campo label="Puesto">
-            <input style={campo} value={datos.puesto} onChange={(e) => set('puesto', e.target.value)} />
-          </Campo>
-        </div>
+        <IdentidadEmpleado datos={datos} esAlta={esAlta} set={set} />
 
         {numeroDeAparatoRepetido && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>

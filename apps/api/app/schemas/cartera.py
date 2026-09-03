@@ -159,6 +159,15 @@ class ClienteCarteraSchema(BaseModel):
         description="RFC del patrón. **Vacío cuando no se conoce y nunca inventado**, misma "
         "política que el NSS del empleado. Lo captura la Configuración de empresa (O-01).",
     )
+    guia_subdelegacion: str = Field(
+        default="",
+        max_length=5,
+        pattern=r"^\d{0,5}$",
+        description="Número de guía que la subdelegación del IMSS asigna al patrón (O-04). "
+        "Va en las posiciones 134-138 de cada movimiento afiliatorio y en el registro de "
+        "cifras de control. **No se calcula ni se deduce**: lo asigna la subdelegación. "
+        "Vacío = no se puede emitir el archivo, y el exportador lo dice.",
+    )
     registro_patronal: str = Field(
         default="",
         max_length=11,

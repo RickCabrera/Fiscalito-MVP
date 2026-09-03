@@ -35,7 +35,21 @@ export interface Prestaciones {
 export interface EmpleadoCartera {
   /** Llave del CÁLCULO. Nunca vacía, única dentro del cliente. */
   empleado_no: string;
+  /** El nombre completo, que es lo que se pinta en todas las pantallas. */
   nombre: string;
+  /**
+   * Los tres campos del layout del IMSS (O-04): apellidos y nombre de pila por
+   * separado, 27 posiciones cada uno.
+   *
+   * **Se capturan; no se parten.** Partir "MARIA DE LOS ANGELES SANTA CRUZ
+   * RIVERA" a la adivina produce un movimiento afiliatorio con el apellido
+   * equivocado, y en español el apellido compuesto es la norma. Opcionales para
+   * no romper una cartera escrita antes de O-04; quien los tenga vacíos no se
+   * exporta, y el exportador lo dice con su razón.
+   */
+  apellido_paterno?: string;
+  apellido_materno?: string;
+  nombres?: string;
   puesto: string;
   salario_diario: string;
   salario_diario_integrado: string;
@@ -110,6 +124,12 @@ export interface ClienteCartera {
    * movimientos afiliatorios: son las posiciones 01-11 del layout.
    */
   registro_patronal?: string;
+  /**
+   * Número de guía de la subdelegación del IMSS (O-04). Va en las posiciones
+   * 134-138 de cada movimiento afiliatorio. Lo asigna la subdelegación: no se
+   * calcula ni se deduce.
+   */
+  guia_subdelegacion?: string;
   prima_riesgo: string;
   clase_riesgo: number | null;
   clave_periodicidad: string;

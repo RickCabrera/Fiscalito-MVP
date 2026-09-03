@@ -476,6 +476,25 @@ por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más
 En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
 empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
 
+#### `guia_subdelegacion` — el número que asigna el IMSS (O-04)
+
+Cinco dígitos. Va en las posiciones 134-138 de **cada** movimiento afiliatorio y en el registro
+de cifras de control. **No se calcula ni se deduce**: lo asigna la subdelegación. Vacío
+significa que el archivo del IMSS no se puede emitir, y el exportador lo dice con el nombre del
+campo — un archivo con ese campo en blanco lo rechaza el IMSS sin decir cuál faltaba.
+
+#### `apellido_paterno`, `apellido_materno` y `nombres` del empleado (O-04)
+
+Tres campos de 27 caracteres, opcionales y vacíos por default. El layout de movimientos
+afiliatorios del IMSS los pide **por separado** (posiciones 23-49, 50-76, 77-103) y la app sólo
+guardaba el nombre completo.
+
+**Se capturan; no se parten.** En español el apellido compuesto es la norma ("SANTA CRUZ", "DE
+LA TORRE", "MARIA DE LOS ANGELES"), así que cualquier heurística falla en una parte grande de la
+plantilla — y un movimiento afiliatorio con el apellido mal partido va sobre **otra persona**.
+Misma política del NSS y de `fecha_alta`: vacío cuando no se conoce, nunca inventado. Quien los
+tenga vacíos no se exporta, y el exportador lo dice.
+
 #### `parametros` — las prestaciones del patrón (O-03)
 
 `tabla_vacaciones` y `horario` **se validan AL GUARDAR**, con el mismo validador que usa
@@ -693,6 +712,17 @@ porcion_bimestral, advertencias[], explicacion?}`.
 (§D11, provisional) calculado con el SBC **acotado**, mientras la evidencia de §D11 se
 construyó con el timbrado. Coinciden en los 9 empleados de la demo y divergen en un
 trabajador al piso del Art. 28.
+
+#### Los tres totales del periodo (O-04)
+
+`total_percepciones`, `total_neto` y `total_isr` viajan en la respuesta y salen del **motor**:
+`ResultadoPeriodo` ya los calculaba y no se serializaban, así que el front los recomponía
+sumando los recibos.
+
+**Son el ancla del cuadre de los exportadores.** Comparar el PDF contra los TXT cuando los dos
+derivan del mismo módulo del front es tautológico: sólo cazaría un campo escrito en la posición
+equivocada, y un error en la suma pasaría verde en los dos lados. Las cuotas obrera y patronal
+ya eran derivables de `porcion_mensual` / `porcion_bimestral`, así que no se duplican.
 
 #### La duración del periodo tiene que casar con la periodicidad (O-03)
 

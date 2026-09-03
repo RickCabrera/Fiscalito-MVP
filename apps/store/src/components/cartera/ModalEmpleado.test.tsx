@@ -78,7 +78,9 @@ function capturar(campo: RegExp, valor: string) {
 /** Llena lo mínimo para que el botón dependa sólo de lo que se está probando. */
 async function llenarBasico() {
   capturar(/Número de empleado/, 'N-01');
-  capturar(/^Nombre/, 'PERSONA NUEVA');
+  // O-04: hay dos campos que empiezan con "Nombre" —el completo y el de pila
+  // del layout del IMSS— así que el matcher tiene que ser exacto.
+  capturar(/^Nombre \*$/, 'PERSONA NUEVA');
   capturar(/Salario diario/, '500.00');
   // Se espera a que el MOTOR haya respondido, no a que aparezca un texto: el
   // panel del SBC tiene debounce de 400 ms y "SBC" también es una etiqueta.
@@ -134,7 +136,9 @@ describe('ModalEmpleado · el SBC lo calcula el motor', () => {
     integrarSBC.mockReset();
     integrarSBC.mockRejectedValue(new Error('API caída'));
     capturar(/Número de empleado/, 'N-01');
-    capturar(/^Nombre/, 'PERSONA NUEVA');
+    // O-04: hay dos campos que empiezan con "Nombre" —el completo y el de pila
+  // del layout del IMSS— así que el matcher tiene que ser exacto.
+  capturar(/^Nombre \*$/, 'PERSONA NUEVA');
     capturar(/Salario diario/, '500.00');
 
     await waitFor(() =>

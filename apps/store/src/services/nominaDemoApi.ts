@@ -135,6 +135,17 @@ export interface NominaPeriodo {
   recibos: ReciboNomina[];
   porcion_mensual: PorcionConsolidada;
   porcion_bimestral: PorcionConsolidada;
+  /**
+   * Los tres totales del periodo, **calculados por el MOTOR** (O-04).
+   *
+   * No se recomponen sumando `recibos` en el cliente. Son el ancla del cuadre
+   * de los exportadores: comparar el PDF contra los TXT cuando los dos derivan
+   * del mismo módulo del front sería tautológico — sólo cazaría un campo mal
+   * posicionado, no una suma mal hecha.
+   */
+  total_percepciones: string;
+  total_neto: string;
+  total_isr: string;
   advertencias: string[];
 }
 

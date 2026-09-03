@@ -173,6 +173,10 @@ const NOMINA = {
   ],
   porcion_mensual: { periodicidad: 'mensual', por_ramo: { invalidez_vida: '100.00' }, total_patron: '600.00', total_obrero: '125.99', total: '725.99', empleados: 1 },
   porcion_bimestral: { periodicidad: 'bimestral', por_ramo: { retiro: '50.00' }, total_patron: '300.00', total_obrero: '0.00', total: '300.00', empleados: 1 },
+  // O-04: los totales del MOTOR viajan en la respuesta.
+  total_percepciones: '0.00',
+  total_neto: '0.00',
+  total_isr: '0.00',
   advertencias: ['Las cuotas son la porción devengada en este periodo de 16 días naturales, NO el entero mensual ni el bimestral del Art. 39 LSS.'],
 };
 
@@ -409,7 +413,7 @@ describe('NominaClientePage', () => {
       montar();
       expect(await screen.findByText(/convierte las checadas en días trabajados/i)).toBeTruthy();
       expect(screen.getByText(/percepciones, ISR retenido, cuotas del IMSS/i)).toBeTruthy();
-      expect(screen.getByText(/PDF con los recibos y las cuotas patronales/i)).toBeTruthy();
+      expect(screen.getByText(/El PDF con los recibos y las cuotas, y los archivos TXT/i)).toBeTruthy();
       expect(screen.getByText(/el panel se refresca solo/i)).toBeTruthy();
     });
 
