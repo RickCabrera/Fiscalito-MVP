@@ -63,7 +63,13 @@ export function agrupar(obligaciones: ObligacionPatronal[]): [string, Renglon[]]
     const dia = porFecha.get(o.fecha_limite) ?? new Map<string, Renglon>();
     const clave = `${o.clave}|${o.periodo_cubierto}|${o.condicional}|${o.nota}`;
     const renglon = dia.get(clave) ?? { obligacion: o, clientes: [] };
-    renglon.clientes.push(o.cliente_nombre);
+    // O-01: en modo empresa única el backend manda `cliente_nombre` VACÍO —hay
+    // un solo patrón y etiquetar cada renglón con el mismo nombre es ruido—, y
+    // aquí se descarta en vez de meter una cadena vacía a la lista. Sin esto,
+    // `clientes.join(' · ')` pintaba un separador suelto o una fila con un chip
+    // en blanco: el campo sigue siendo obligatorio en el contrato y lo que
+    // cambia es su valor, no su presencia.
+    if (o.cliente_nombre !== '') renglon.clientes.push(o.cliente_nombre);
     dia.set(clave, renglon);
     porFecha.set(o.fecha_limite, dia);
   }

@@ -22,6 +22,20 @@ import {
   type TabFiscalito,
 } from './navigation';
 import type { ContributorType } from './contributorProfiles';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
+ * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
+ * por default de la app es **empresa única**, así que el modo en el que corre
+ * se declara aquí en vez de heredarse del ambiente.
+ *
+ * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
+ * exactamente lo que el flag hace en producción.
+ */
+modoDespacho();
 
 const CONTRIBUYENTES: (ContributorType | null)[] = [
   'asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme', null,

@@ -171,6 +171,44 @@ está declarado *stateless* y no tiene `firebase-admin`: la única persistencia 
 otro almacén en RAM, que haría literalmente falso el criterio de G-01 después de cualquier
 reinicio — o sea, a media demo.
 
+## O — Pivote a nómina interna de Orca Ordorica (2026-09-03, MODO AUTÓNOMO + RÁPIDO)
+
+**El porqué.** El producto deja de ser la herramienta de un DESPACHO que lleva la nómina de
+varios clientes y pasa a ser la nómina interna de **una** empresa: *Orca Ordorica Cristal
+Templado*. Mismo repo. **El modo despacho no se borra: se apaga tras un flag**
+(`VITE_MODO_EMPRESA_UNICA=0`) y se retomará en otro repo. Régimen de la corrida: sin paradas
+de autorización, revisor 1× al plan, 1× a mitad y 1× al cierre, más revisor de motor aparte en
+O-03 y en el cuadre de O-04. Tests por área durante la corrida, suite completa una vez al
+final. **Prohibido borrar o desactivar tests, y prohibido recortar alcance**: lo que no salga
+como está escrito se deja ABIERTO y anotado en `docs/nocturno-log.md`.
+
+- [ ] **O-01 · Modo empresa única** — flag `MODO_EMPRESA_UNICA`: Clientes fuera del menú y sus
+  rutas redirigen; UN cliente implícito configurable una vez en "Configuración de empresa"
+  (razón social, RFC, registro patronal, prima RT, clase de riesgo), dentro de Perfil;
+  Empleados, Dispositivos, Nómina y Calendario operan directo, sin selector de cliente activo.
+  Flag apagado = modo despacho intacto. *Listo cuando:* flag encendido → alta de empleado →
+  nómina → exportar, sin que exista el concepto de cartera.
+- [ ] **O-02 · Rebrand** — todo texto visible pasa de "Fiscalito Store" a "Orca Ordorica —
+  Nómina", centralizado en una constante para re-rebrandear en un solo cambio. Los nombres
+  internos del repo no se tocan. *Listo cuando:* ninguna pantalla dice Fiscalito.
+- [ ] **O-03 · Parámetros salariales editables** (REVISOR DE MOTOR: toca SBC) — en
+  Configuración de empresa: días de aguinaldo (mín. 15, Art. 87 LFT), prima vacacional (mín.
+  25%, Art. 80 LFT), vacaciones por antigüedad (mínimos de la tabla LFT vigente, superiores
+  permitidos), horario laboral y tolerancia del checador (08:00-17:00, 15 min, L-V, editable)
+  y periodicidad de pago (semanal/quincenal/mensual). Alimentan factor de integración y SBC.
+  **Las tablas de ISR, cuotas IMSS y UMA/SM NO son editables** — son de ley y siguen en el
+  motor con su fuente. *Listo cuando:* cambiar aguinaldo 15→30 cambia el factor y el SBC con
+  test que lo demuestra, y los mínimos de ley rechazan valores por debajo.
+- [ ] **O-04 · Exportador TXT multi-formato** (REVISOR DE MOTOR en el cuadre) — módulo con
+  formatos intercambiables y selector en el paso 4, junto al PDF (el PDF se queda):
+  movimientos afiliatorios del IMSS según el layout oficial, dispersión bancaria (BBVA,
+  Banamex, Banorte — marcadas "por validar contra el manual vigente del banco") y un genérico
+  pipe-delimited con todos los conceptos del recibo. Punto de extensión documentado.
+  **Cuadre obligatorio:** los importes de cada TXT cuadran al centavo con el PDF del mismo
+  periodo, con test que exporta ambos del mismo cálculo. *Listo cuando:* un mismo periodo
+  exporta PDF + los TXT con totales idénticos, y cada formato declara su fuente o su estado
+  "por validar".
+
 ## R — Reparaciones para que la app sea usable (2026-09-02, MODO RÁPIDO)
 
 Pedidas por Ricardo el 2026-09-02, **no venían del backlog**, en orden estricto de lo más

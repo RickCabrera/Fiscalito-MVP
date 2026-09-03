@@ -33,6 +33,7 @@
 import { createContext, useContext } from 'react';
 import type { EmpleadoCartera } from '../services/carteraApi';
 import type { ClienteCartera } from '../services/carteraApi';
+import type { ConfigEmpresa } from '../services/empresa';
 import type { OrigenCartera } from '../services/carteraFirestore';
 
 export interface CarteraContextType {
@@ -56,6 +57,18 @@ export interface CarteraContextType {
    */
   sembrar: () => Promise<void>;
   recargar: () => void;
+
+  /**
+   * La configuración de la empresa única (O-01), leída del **mismo documento**
+   * que el resto de la cartera: `users/{uid}/clientes/empresa`.
+   *
+   * En modo despacho vale los defaults y nadie la lee. No se hace opcional para
+   * no obligar a cada consumidor a decidir qué hacer con `undefined`: la
+   * pantalla de configuración sólo se monta en modo empresa única.
+   */
+  empresa: ConfigEmpresa;
+  /** Guarda la Configuración de empresa. Escribe la ficha del cliente implícito. */
+  guardarEmpresa: (config: ConfigEmpresa) => Promise<void>;
 }
 
 export const CarteraContext = createContext<CarteraContextType | null>(null);

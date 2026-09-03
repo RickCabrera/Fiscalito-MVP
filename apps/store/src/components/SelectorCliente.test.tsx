@@ -11,6 +11,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ClienteResumen } from '../services/despachoApi';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
+ * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
+ * por default de la app es **empresa única**, así que el modo en el que corre
+ * se declara aquí en vez de heredarse del ambiente.
+ *
+ * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
+ * exactamente lo que el flag hace en producción.
+ */
+modoDespacho();
 
 const CARTERA: ClienteResumen[] = [
   { id: 'demo', nombre: 'Servicios Administrativos Integrales', giro: 'Servicios', origen: 'fixtures-s04', num_empleados: 9, prima_riesgo: '0.0054355', clase_riesgo: null, clave_periodicidad: '04', zona: 'general' },

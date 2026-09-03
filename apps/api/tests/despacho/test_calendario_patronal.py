@@ -136,3 +136,100 @@ class TestValidacion:
         respuesta = cliente_http.get(RUTA)
         assert respuesta.status_code == 200
         assert respuesta.json()["anio_de_las_cuotas"] == date.today().year
+
+
+class TestEmpresaUnica:
+    """
+    `empresa_unica=true`: un solo patrón, no una cartera. (O-01)
+
+    El pivote convirtió el producto en la nómina interna de UNA empresa. El
+    endpoint no cambia de motor —sigue siendo `calendario_patronal()`, y crear
+    un segundo generador es lo que el doc 25 §4 llama "un bug esperando"—: lo
+    que se quita es el fan-out sobre los tres clientes del catálogo demo.
+
+    Sin este parámetro, la empresa vería su calendario **triplicado**, con el
+    nombre de tres clientes que no son suyos, en su pantalla de Calendario.
+    """
+
+    def pedir_empresa(self, cliente_http: TestClient, anio: int = 2026) -> dict:
+        respuesta = cliente_http.get(
+            RUTA, params={"anio_de_las_cuotas": anio, "empresa_unica": True}
+        )
+        assert respuesta.status_code == 200, respuesta.text
+        return respuesta.json()
+
+    def test_devuelve_un_juego_de_obligaciones_no_tres(self, cliente_http):
+        cuerpo = self.pedir_empresa(cliente_http)
+        assert cuerpo["total_obligaciones"] == len(calendario_patronal(2026))
+
+    def test_es_exactamente_la_cartera_dividida_entre_el_numero_de_clientes(
+        self, cliente_http
+    ):
+        """
+        No es "menos obligaciones": es **las mismas, sin repetir**.
+
+        Se compara contra el modo cartera para que un cambio en el catálogo
+        —agregar o quitar un cliente demo— no pueda hacer pasar este test por
+        casualidad.
+        """
+        cartera = pedir(cliente_http)
+        empresa = self.pedir_empresa(cliente_http)
+        assert (
+            empresa["total_obligaciones"] * len(CLIENTES)
+            == cartera["total_obligaciones"]
+        )
+
+    def test_las_fechas_son_las_MISMAS_que_en_modo_cartera(self, cliente_http):
+        """
+        El fan-out se quita; el motor no se toca.
+
+        Si esto fallara, `empresa_unica` habría dejado de ser un filtro de
+        presentación para convertirse en un segundo calendario — que es
+        exactamente lo que F1-06 dejó advertido que no se hiciera.
+        """
+        empresa = self.pedir_empresa(cliente_http)
+        cartera = pedir(cliente_http)
+        del_motor = [(o.clave, str(o.fecha_limite)) for o in calendario_patronal(2026)]
+        de_la_empresa = [(o["clave"], o["fecha_limite"]) for o in empresa["obligaciones"]]
+        assert sorted(de_la_empresa) == sorted(del_motor)
+        # Y siguen siendo un subconjunto exacto de lo que ve la cartera.
+        de_la_cartera = {(o["clave"], o["fecha_limite"]) for o in cartera["obligaciones"]}
+        assert set(de_la_empresa) == de_la_cartera
+
+    def test_el_nombre_del_cliente_viene_VACIO_no_inventado(self, cliente_http):
+        """
+        El backend no sabe cómo se llama la empresa —no viaja en el query
+        string, y no tiene por qué— así que no lo afirma.
+
+        Un nombre por default ("Mi empresa", o peor: el de un cliente del
+        catálogo) sería un dato inventado impreso al lado de cada obligación.
+        El campo sigue siendo obligatorio en el schema: cambia su valor, no su
+        presencia, así que ningún consumidor se rompe.
+        """
+        cuerpo = self.pedir_empresa(cliente_http)
+        assert {o["cliente_nombre"] for o in cuerpo["obligaciones"]} == {""}
+        assert {o["cliente_id"] for o in cuerpo["obligaciones"]} == {"empresa"}
+        # Y ninguno trae el nombre de un cliente del catálogo de demostración.
+        nombres_demo = {c.nombre for c in CLIENTES}
+        assert not nombres_demo & {o["cliente_nombre"] for o in cuerpo["obligaciones"]}
+
+    def test_las_advertencias_hablan_de_la_empresa_no_de_la_cartera(self, cliente_http):
+        """
+        Las advertencias viajan en el cuerpo y la pantalla las imprime tal cual
+        (E-07). En modo empresa única decían "son las mismas para toda la
+        cartera", que ahí no significa nada.
+        """
+        cuerpo = self.pedir_empresa(cliente_http)
+        texto = " ".join(cuerpo["advertencias"])
+        assert "cartera" not in texto.lower()
+        # Lo que NO cubre se sigue diciendo: el ISN sigue fuera (§D24).
+        assert "ISN" in texto
+
+    def test_el_default_es_el_modo_cartera(self, cliente_http):
+        """
+        Omitir el parámetro no puede cambiar el comportamiento de nadie: el modo
+        despacho sigue siendo lo que responde el endpoint sin pedir nada.
+        """
+        assert pedir(cliente_http)["total_obligaciones"] == len(
+            calendario_patronal(2026)
+        ) * len(CLIENTES)

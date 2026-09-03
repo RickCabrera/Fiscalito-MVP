@@ -16,6 +16,20 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import type { DispositivoChecador } from '../services/dispositivosApi';
 import type { EmpleadoCartera } from '../services/carteraApi';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
+ * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
+ * por default de la app es **empresa única**, así que el modo en el que corre
+ * se declara aquí en vez de heredarse del ambiente.
+ *
+ * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
+ * exactamente lo que el flag hace en producción.
+ */
+modoDespacho();
 
 const clienteActivo = {
   actual: { clienteId: 'demo' as string | null, cliente: { nombre: 'Cliente Demo' } as { nombre: string } | null },

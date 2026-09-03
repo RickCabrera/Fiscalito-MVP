@@ -37,6 +37,7 @@ import ModalDispositivo from '../components/dispositivos/ModalDispositivo';
 import TarjetaDispositivo from '../components/dispositivos/TarjetaDispositivo';
 import ErrorAlert from '../components/common/ErrorAlert';
 import SinClienteActivo from '../components/common/SinClienteActivo';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 
 /** Aviso con el mismo aspecto que los de `EmpleadosTab`. */
 function Aviso({ children }: { children: React.ReactNode }) {
@@ -157,7 +158,11 @@ export default function DispositivosPage() {
     return (
       <SinClienteActivo
         titulo="Dispositivos"
-        explicacion="Los dispositivos son de un cliente: cada despacho lleva los aparatos de cada uno por separado."
+        explicacion={
+          modoEmpresaUnica()
+            ? 'Los checadores de la empresa y quién está enrolado en cada uno.'
+            : 'Los dispositivos son de un cliente: cada despacho lleva los aparatos de cada uno por separado.'
+        }
       />
     );
   }

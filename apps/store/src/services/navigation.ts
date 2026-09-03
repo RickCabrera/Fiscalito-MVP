@@ -11,6 +11,7 @@
  */
 
 import type { ContributorType } from './contributorProfiles';
+import { modoEmpresaUnica } from './modoEmpresa';
 
 // ────────────────────────────────────────────────────────────
 // Sidebar
@@ -59,8 +60,46 @@ const LINKS_CONTADOR: SidebarLink[] = [
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
+/**
+ * Navegación de la EMPRESA ÚNICA (O-01).
+ *
+ * Es la del despacho **menos Clientes**: no hay cartera que listar, hay una
+ * empresa implícita. Empleados, Dispositivos, Nómina y Calendario apuntan a las
+ * mismas rutas y a las mismas pantallas — lo que cambia es que resuelven la
+ * empresa en vez de un cliente activo elegido en una barra superior.
+ *
+ * `nomina` apunta a `/app/nomina`, que en este modo **es** la pantalla de
+ * nómina, no la redirección de E-03. Ver `AppRoutes.tsx`.
+ */
+const LINKS_EMPRESA: SidebarLink[] = [
+  { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
+  { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
+  { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
+  { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
+  { id: 'perfil', to: '/app/profile', label: 'Perfil' },
+];
+
+/**
+ * Si este perfil es el que OPERA la nómina.
+ *
+ * El nombre se queda —`contributorType: 'contador'` es la llave guardada en
+ * Firestore de todas las cuentas que ya existen, y renombrarla sería una
+ * migración de datos a cambio de nada— pero lo que significa depende del modo:
+ * en modo despacho es el contador que lleva varios clientes; en modo empresa
+ * única es quien lleva la nómina de la empresa. Ver `etiquetaDelPerfilOperador`.
+ */
 export function esContador(tipo: ContributorType | null): boolean {
   return tipo === 'contador';
+}
+
+/**
+ * Cómo se le llama en pantalla al perfil que opera la nómina.
+ *
+ * En modo empresa única, "Despacho / Contador" es falso: no hay despacho ni
+ * cartera. La etiqueta cambia; el id guardado, no.
+ */
+export function etiquetaDelPerfilOperador(): string {
+  return modoEmpresaUnica() ? 'Empresa' : 'Despacho / Contador';
 }
 
 // ────────────────────────────────────────────────────────────
@@ -119,14 +158,29 @@ export function navActivo(link: SidebarLink, pathname: string): boolean {
   return link.end ? pathname === destino : bajoLaRuta(pathname, destino);
 }
 
-/** Links del sidebar para el perfil dado. `null` (perfil sin tipo) ve el de contribuyente. */
+/**
+ * Links del sidebar para el perfil dado. `null` (perfil sin tipo) ve el de
+ * contribuyente.
+ *
+ * O-01: en modo empresa única el perfil operador ve la navegación de la
+ * empresa. **Los perfiles de contribuyente no cambian en ningún modo**: el
+ * pivote es sobre la nómina, no sobre la app fiscal, y sus pantallas siguen
+ * enteras.
+ */
 export function getSidebarLinks(tipo: ContributorType | null): SidebarLink[] {
-  return esContador(tipo) ? LINKS_CONTADOR : LINKS_CONTRIBUYENTE;
+  if (!esContador(tipo)) return LINKS_CONTRIBUYENTE;
+  return modoEmpresaUnica() ? LINKS_EMPRESA : LINKS_CONTADOR;
 }
 
-/** Ruta a la que entra cada perfil al terminar el onboarding o al pedir `/app`. */
+/**
+ * Ruta a la que entra cada perfil al terminar el onboarding o al pedir `/app`.
+ *
+ * En modo empresa única no hay `/app/clientes` a dónde llegar: la entrada es la
+ * nómina, que es para lo que se abre la app.
+ */
 export function rutaInicial(tipo: ContributorType | null): string {
-  return esContador(tipo) ? '/app/clientes' : '/app';
+  if (!esContador(tipo)) return '/app';
+  return modoEmpresaUnica() ? '/app/nomina' : '/app/clientes';
 }
 
 // ────────────────────────────────────────────────────────────
@@ -164,6 +218,11 @@ const RUTAS_CON_CLIENTE = ['/app/clientes', '/app/empleados', '/app/dispositivos
  * datos, no la que habla de clientes.
  */
 export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
+  // O-01: sin cartera no hay cliente que elegir. Se corta aquí, en la función
+  // que ya decide dónde se pinta el selector, y no en `AppLayout`: así el
+  // selector desaparece de TODAS las rutas de una vez y no queda una pantalla
+  // olvidada mostrando una barra que afirma un alcance que no existe.
+  if (modoEmpresaUnica()) return false;
   return RUTAS_CON_CLIENTE.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 

@@ -11,6 +11,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { UserProfile } from '../context/ProfileContext';
+import { CarteraContext } from '../context/carteraStore';
+import { carteraDePrueba } from '../test/carteraDePrueba';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
+ * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
+ * por default de la app es **empresa única**, así que el modo en el que corre
+ * se declara aquí en vez de heredarse del ambiente.
+ *
+ * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
+ * exactamente lo que el flag hace en producción.
+ */
+modoDespacho();
 
 const perfilContador: UserProfile = {
   contributorType: 'contador',
@@ -39,6 +55,23 @@ vi.mock('../context/ProfileContext', () => ({
 
 const { default: ProfilePage } = await import('./ProfilePage');
 
+/**
+ * O-01: `ProfilePage` lee la cartera para la Configuración de empresa.
+ *
+ * El hook es incondicional —no se pueden llamar hooks dentro de un `if`— así
+ * que el proveedor hace falta en los dos modos, aunque la sección sólo se pinte
+ * en empresa única. Se usa el mismo doble que el resto de las pantallas en vez
+ * de montar el proveedor real, que hablaría con Firestore: la red está cerrada
+ * por default en estos tests.
+ */
+function pintar() {
+  return render(
+    <CarteraContext.Provider value={carteraDePrueba()}>
+      <ProfilePage />
+    </CarteraContext.Provider>,
+  );
+}
+
 afterEach(() => {
   perfilMock.actual = perfilContador;
   setProfile.mockClear();
@@ -47,7 +80,7 @@ afterEach(() => {
 
 describe('ProfilePage — perfil de despacho', () => {
   it('muestra el nombre del despacho y no los campos de PYME', () => {
-    render(<ProfilePage />);
+    pintar();
 
     const input = screen.getByPlaceholderText('Despacho Contable Ejemplo') as HTMLInputElement;
     expect(input.value).toBe('Despacho Demo');
@@ -55,7 +88,7 @@ describe('ProfilePage — perfil de despacho', () => {
   });
 
   it('guarda el nombre del despacho editado', async () => {
-    render(<ProfilePage />);
+    pintar();
 
     fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), {
       target: { value: 'Despacho Demo y Asociados' },
@@ -71,14 +104,14 @@ describe('ProfilePage — perfil de despacho', () => {
 
   it('un contribuyente no ve el campo del despacho', () => {
     perfilMock.actual = { ...perfilContador, contributorType: 'independiente', regimen: '626' };
-    render(<ProfilePage />);
+    pintar();
 
     expect(screen.queryByPlaceholderText('Despacho Contable Ejemplo')).toBeNull();
   });
 
   /** E-05: no mostrar el selector de los otros cinco tipos. */
   it('no ofrece cambiarse a otro tipo de cuenta', () => {
-    render(<ProfilePage />);
+    pintar();
 
     for (const otro of ['Asalariado', 'Independiente / Freelancer', 'Arrendamiento',
       'Plataformas digitales', 'Negocio / PYME']) {
@@ -89,7 +122,7 @@ describe('ProfilePage — perfil de despacho', () => {
   });
 
   it('no le pide RFC, régimen, actividad ni código postal', () => {
-    render(<ProfilePage />);
+    pintar();
 
     expect(screen.queryByPlaceholderText('XAXX010101000')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
@@ -105,7 +138,7 @@ describe('ProfilePage — perfil de despacho', () => {
      * silenciosa con mensaje de éxito que cazó la mutación de E-01. Se asserta
      * que viajan.
      */
-    render(<ProfilePage />);
+    pintar();
     fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
 
     await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
@@ -124,7 +157,7 @@ describe('ProfilePage — perfil de despacho', () => {
    */
   it('un contribuyente que clickea "Despacho / Contador" NO pierde el selector', () => {
     perfilMock.actual = { ...perfilContador, contributorType: 'independiente', regimen: '626' };
-    render(<ProfilePage />);
+    pintar();
 
     fireEvent.click(screen.getByText('Despacho / Contador'));
 
@@ -134,7 +167,7 @@ describe('ProfilePage — perfil de despacho', () => {
 
   it('el contribuyente sigue guardando sus campos de siempre', async () => {
     perfilMock.actual = { ...perfilContador, contributorType: 'pyme', nombreNegocio: 'Negocio Demo' };
-    render(<ProfilePage />);
+    pintar();
 
     fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
 

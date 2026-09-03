@@ -1,0 +1,210 @@
+/**
+ * Configuración de empresa (O-01).
+ *
+ * Los datos patronales de la empresa única: razón social, RFC, registro
+ * patronal, prima de riesgos de trabajo y clase de riesgo. Se capturan **una
+ * vez** y alimentan el cálculo de cuotas, el PDF y los archivos de O-04.
+ *
+ * VIVE EN SU PROPIO ARCHIVO, NO DENTRO DE `ProfilePage`
+ * -----------------------------------------------------
+ * `ProfilePage.tsx` ya estaba en 298 líneas contra el tope de 300 de
+ * `apps/store/CLAUDE.md`. Meterle esto dentro lo hubiera pasado de largo, y la
+ * deuda de archivos sobre el tope ya lleva dos corridas anotada en el backlog
+ * (§G punto 4). Se extrae **antes** de crecerlo, no después.
+ *
+ * LA PRIMA SE CAPTURA EN PORCENTAJE Y SE GUARDA EN FRACCIÓN
+ * ---------------------------------------------------------
+ * El modelo la guarda como fracción (0.0054355), que es lo que espera el motor,
+ * pero el patrón la recibe del IMSS en porcentaje (0.54355 %). Capturar en
+ * fracción es cómo alguien teclea `5.4355` creyendo que pone el 5.4 % y
+ * multiplica el ramo de Riesgos de Trabajo **por mil** sin que ninguna tabla lo
+ * detecte. La conversión se hace aquí, en un solo lugar, y el backend vuelve a
+ * acotar a [0.005, 0.150] (Arts. 72 y 73 LSS).
+ */
+
+import { useState } from 'react';
+import { Building2, Check, Save } from 'lucide-react';
+import Campo from '../cartera/Campo';
+import { campoInput } from '../cartera/estilosCampo';
+import { faltantesDeLaEmpresa, type ConfigEmpresa } from '../../services/empresa';
+import { aFraccion, aPorcentaje, validar } from './validacionEmpresa';
+
+export default function ConfiguracionEmpresa({
+  empresa,
+  soloLectura,
+  onGuardar,
+}: {
+  empresa: ConfigEmpresa;
+  soloLectura: boolean;
+  onGuardar: (config: ConfigEmpresa) => Promise<void>;
+}) {
+  const [razonSocial, setRazonSocial] = useState(empresa.razonSocial);
+  const [rfc, setRfc] = useState(empresa.rfc);
+  const [registroPatronal, setRegistroPatronal] = useState(empresa.registroPatronal);
+  const [primaPct, setPrimaPct] = useState(aPorcentaje(empresa.primaRiesgo));
+  const [claseRiesgo, setClaseRiesgo] = useState(
+    empresa.claseRiesgo === null ? '' : String(empresa.claseRiesgo),
+  );
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const errores = validar(razonSocial, rfc, registroPatronal, primaPct);
+  const puedeGuardar = Object.keys(errores).length === 0 && !soloLectura;
+
+  const guardar = async () => {
+    if (!puedeGuardar) return;
+    setGuardando(true);
+    setError(null);
+    try {
+      await onGuardar({
+        ...empresa,
+        razonSocial: razonSocial.trim(),
+        rfc: rfc.trim().toUpperCase(),
+        registroPatronal: registroPatronal.trim().toUpperCase(),
+        primaRiesgo: aFraccion(primaPct),
+        claseRiesgo: claseRiesgo === '' ? null : Number(claseRiesgo),
+      });
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar la empresa.');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const faltan = faltantesDeLaEmpresa(empresa.razonSocial, empresa.primaRiesgo);
+
+  return (
+    <div className="card" style={{ padding: 'var(--space-lg)' }}>
+      <h2
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: '1.05rem', fontWeight: 700, marginTop: 0, marginBottom: 4,
+        }}
+      >
+        <Building2 size={18} color="var(--teal-light)" /> Configuración de empresa
+      </h2>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 0 }}>
+        Se captura una vez. De aquí salen las cuotas patronales, el encabezado de los recibos
+        y los archivos que se le entregan al IMSS.
+      </p>
+
+      {faltan.length > 0 && (
+        <p
+          role="status"
+          style={{
+            fontSize: '0.82rem', color: 'var(--warning)',
+            background: 'var(--bg-input)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm)',
+          }}
+        >
+          Falta {faltan.join(' y ')}. Hasta que se capture, la nómina no se puede calcular.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+        <Campo label="Razón social" ancho="1 1 320px">
+          <input
+            className="input-field"
+            style={campoInput}
+            value={razonSocial}
+            onChange={(e) => setRazonSocial(e.target.value)}
+            placeholder="Orca Ordorica Cristal Templado S.A. de C.V."
+          />
+        </Campo>
+        <Campo label="RFC del patrón">
+          <input
+            className="input-field"
+            style={campoInput}
+            value={rfc}
+            onChange={(e) => setRfc(e.target.value)}
+            placeholder="AAA010101AAA"
+          />
+        </Campo>
+        <Campo label="Registro patronal (11)">
+          <input
+            className="input-field"
+            style={campoInput}
+            value={registroPatronal}
+            onChange={(e) => setRegistroPatronal(e.target.value)}
+            placeholder="A1234567890"
+          />
+        </Campo>
+        <Campo label="Prima de riesgo (%)">
+          <input
+            className="input-field"
+            style={campoInput}
+            inputMode="decimal"
+            value={primaPct}
+            onChange={(e) => setPrimaPct(e.target.value)}
+            placeholder="0.54355"
+          />
+        </Campo>
+        <Campo label="Clase de riesgo">
+          <select
+            className="input-field"
+            style={campoInput}
+            value={claseRiesgo}
+            onChange={(e) => setClaseRiesgo(e.target.value)}
+          >
+            <option value="">Sin especificar</option>
+            {[1, 2, 3, 4, 5].map((c) => (
+              <option key={c} value={c}>{`Clase ${c}`}</option>
+            ))}
+          </select>
+        </Campo>
+      </div>
+
+      {/* Los motivos, uno por uno. Un "hay errores" genérico obliga a adivinar
+          cuál de los cinco campos es. */}
+      {Object.values(errores).length > 0 && (
+        <ul style={{ margin: 'var(--space-md) 0 0', paddingLeft: 18 }}>
+          {Object.values(errores).map((motivo) => (
+            <li key={motivo} style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
+              {motivo}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && (
+        <p style={{ fontSize: '0.82rem', color: 'var(--danger)' }}>{error}</p>
+      )}
+
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+          marginTop: 'var(--space-lg)',
+        }}
+      >
+        <button
+          className="btn-primary"
+          onClick={guardar}
+          disabled={!puedeGuardar || guardando}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+        >
+          <Save size={16} /> {guardando ? 'Guardando…' : 'Guardar empresa'}
+        </button>
+        {guardado && (
+          <span
+            role="status"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: '0.85rem', color: 'var(--success)',
+            }}
+          >
+            <Check size={15} /> Guardado
+          </span>
+        )}
+      </div>
+
+      <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 0 }}>
+        Las tablas de ISR, las cuotas del IMSS, la UMA y el salario mínimo <strong>no se
+        configuran aquí</strong>: son de ley, viven en el motor con su fuente publicada y se
+        actualizan con el DOF, no con un formulario.
+      </p>
+    </div>
+  );
+}

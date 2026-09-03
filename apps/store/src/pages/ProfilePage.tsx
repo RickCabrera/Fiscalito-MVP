@@ -18,10 +18,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { CONTRIBUTOR_TYPES, getProfileByType } from '../services/contributorProfiles';
+import { getProfileByType } from '../services/contributorProfiles';
 import type { ContributorType } from '../services/contributorProfiles';
 import { esContador } from '../services/navigation';
-import { Save, User, Check } from 'lucide-react';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { useCartera } from '../context/carteraStore';
+import ConfiguracionEmpresa from '../components/empresa/ConfiguracionEmpresa';
+import TipoDeCuenta from '../components/perfil/TipoDeCuenta';
+import { Save, User } from 'lucide-react';
 
 const NUM_EMPLEADOS_OPTIONS = ['Solo yo', '2-5', '6-20', '21+'];
 
@@ -46,6 +50,11 @@ export default function ProfilePage() {
   const selectedProfile = tipo ? getProfileByType(tipo) : null;
   // Del perfil GUARDADO, no del estado local. Ver el encabezado del archivo.
   const esDespacho = esContador(profile.contributorType);
+  const empresaUnica = modoEmpresaUnica();
+  // O-01: la Configuración de empresa lee y escribe el MISMO documento que la
+  // cartera (`users/{uid}/clientes/empresa`), así que sale de aquí y no de un
+  // estado local: dos copias del mismo dato fiscal es lo que R-07 vino a cerrar.
+  const cartera = useCartera();
 
   // Reset regimen when tipo changes if current regimen is not in allowed list
   useEffect(() => {
@@ -90,58 +99,35 @@ export default function ProfilePage() {
   return (
     <div className="page-container">
       <div className="page-header animate-in">
-        <h1>{esDespacho ? 'Perfil del despacho' : 'Perfil del contribuyente'}</h1>
+        <h1>
+          {esDespacho
+            ? empresaUnica
+              ? 'Perfil y empresa'
+              : 'Perfil del despacho'
+            : 'Perfil del contribuyente'}
+        </h1>
         <p>
           {esDespacho
-            ? 'Los datos de tu despacho. Los de cada cliente se llevan por separado.'
+            ? empresaUnica
+              ? 'Tus datos y los de la empresa cuya nómina llevas.'
+              : 'Los datos de tu despacho. Los de cada cliente se llevan por separado.'
             : 'Estos datos se usan para calcular tus declaraciones correctamente.'}
         </p>
       </div>
 
-      {/* Tipo de cuenta. Un despacho no lo elige aquí: lo ve. */}
-      <div className="card animate-in" style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 16 }}>Tipo de cuenta</h3>
-        {esDespacho ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.2rem' }}>{getProfileByType('contador').icon}</span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-              {getProfileByType('contador').label}
-            </span>
-          </div>
-        ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-          {CONTRIBUTOR_TYPES.map((ct) => {
-            const selected = tipo === ct.id;
-            return (
-              <button
-                key={ct.id}
-                onClick={() => setTipo(ct.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 14px',
-                  background: selected ? 'var(--nav-active-bg)' : 'var(--bg-input)',
-                  border: `1.5px solid ${selected ? 'var(--teal-light)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  position: 'relative',
-                }}
-              >
-                <span style={{ fontSize: '1.2rem' }}>{ct.icon}</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: selected ? 600 : 400 }}>{ct.label}</span>
-                {selected && (
-                  <Check size={14} style={{ marginLeft: 'auto', color: 'var(--teal-light)' }} />
-                )}
-              </button>
-            );
-          })}
+      <TipoDeCuenta esOperadorDeNomina={esDespacho} tipo={tipo} setTipo={setTipo} />
+
+      {/* O-01: los datos patronales de la empresa única. Sólo para quien opera
+          la nómina: un contribuyente no tiene empresa que configurar. */}
+      {empresaUnica && esDespacho && (
+        <div className="animate-in" style={{ marginBottom: 24 }}>
+          <ConfiguracionEmpresa
+            empresa={cartera.empresa}
+            soloLectura={cartera.soloLectura}
+            onGuardar={cartera.guardarEmpresa}
+          />
         </div>
-        )}
-      </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
         {/* Personal info */}
@@ -194,20 +180,27 @@ export default function ProfilePage() {
         {/* Datos fiscales — o del despacho, que no son lo mismo */}
         <div className="card animate-in" style={{ animationDelay: '0.2s' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 24 }}>
-            {esDespacho ? 'Datos del despacho' : 'Datos fiscales'}
+            {esDespacho ? (empresaUnica ? 'Datos fiscales' : 'Datos del despacho') : 'Datos fiscales'}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {esDespacho ? (
               <>
-                <div>
-                  <label style={labelStyle}>Nombre del despacho</label>
-                  <input className="input-field" placeholder="Despacho Contable Ejemplo"
-                    value={form.nombreDespacho}
-                    onChange={(e) => handleChange('nombreDespacho', e.target.value)} />
-                </div>
+                {/* O-01: en modo empresa única el nombre del patrón es la RAZÓN
+                    SOCIAL y vive arriba, en Configuración de empresa, junto al
+                    RFC y al registro patronal. Pintarlo también aquí crearía
+                    dos nombres para el mismo patrón. */}
+                {!empresaUnica && (
+                  <div>
+                    <label style={labelStyle}>Nombre del despacho</label>
+                    <input className="input-field" placeholder="Despacho Contable Ejemplo"
+                      value={form.nombreDespacho}
+                      onChange={(e) => handleChange('nombreDespacho', e.target.value)} />
+                  </div>
+                )}
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                  El RFC y el régimen que importan son los de cada cliente, no los del
-                  despacho: la app no calcula tus declaraciones propias.
+                  {empresaUnica
+                    ? 'Los datos fiscales de la empresa se capturan arriba, en Configuración de empresa. La app no calcula las declaraciones de ISR e IVA de la empresa.'
+                    : 'El RFC y el régimen que importan son los de cada cliente, no los del despacho: la app no calcula tus declaraciones propias.'}
                 </p>
               </>
             ) : (

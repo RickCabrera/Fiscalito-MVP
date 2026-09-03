@@ -59,6 +59,18 @@ export interface ClienteCartera {
   nombre: string;
   giro: string;
   origen: string;
+  /**
+   * RFC del patrón. **Opcional**: los tres clientes de demostración no lo
+   * traen, y una cartera escrita antes de O-01 tampoco. Lo captura la
+   * Configuración de empresa (O-01) y lo consume el exportador de O-04.
+   */
+  rfc?: string;
+  /**
+   * Registro patronal del IMSS, **11 caracteres** (10 + dígito verificador).
+   * Opcional por la misma razón que `rfc`. Sin él no se pueden emitir
+   * movimientos afiliatorios: son las posiciones 01-11 del layout.
+   */
+  registro_patronal?: string;
   prima_riesgo: string;
   clase_riesgo: number | null;
   clave_periodicidad: string;

@@ -21,6 +21,7 @@ import { useCartera } from '../context/carteraStore';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import SinClienteActivo from '../components/common/SinClienteActivo';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 
 export default function EmpleadosPage() {
   const { clienteId, cliente, loading } = useClienteActivo();
@@ -35,7 +36,11 @@ export default function EmpleadosPage() {
     return (
       <SinClienteActivo
         titulo="Empleados"
-        explicacion="La plantilla es de un cliente: el despacho lleva la de cada uno por separado."
+        explicacion={
+          modoEmpresaUnica()
+            ? 'La plantilla que entra al cálculo de la nómina.'
+            : 'La plantilla es de un cliente: el despacho lleva la de cada uno por separado.'
+        }
       />
     );
   }
@@ -45,8 +50,14 @@ export default function EmpleadosPage() {
       <div className="page-header animate-in">
         <h1>Empleados</h1>
         <p>
-          La plantilla de <strong>{cliente?.nombre ?? clienteId}</strong>, que es la que entra
-          al cálculo de su nómina.
+          {modoEmpresaUnica() ? (
+            <>La plantilla que entra al cálculo de la nómina.</>
+          ) : (
+            <>
+              La plantilla de <strong>{cliente?.nombre ?? clienteId}</strong>, que es la que
+              entra al cálculo de su nómina.
+            </>
+          )}
         </p>
       </div>
 

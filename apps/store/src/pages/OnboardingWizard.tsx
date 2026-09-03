@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { getProfileByType } from '../services/contributorProfiles';
 import { rutaInicial, esContador } from '../services/navigation';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import type { ContributorType } from '../services/contributorProfiles';
 import { ArrowLeft, ArrowRight, Check, Loader } from 'lucide-react';
 
@@ -86,7 +87,15 @@ export default function OnboardingWizard() {
         return rfcValid && regimen !== '' && pymeValid;
       }
       case 'despacho':
-        return nombre.trim() !== '' && nombreDespacho.trim() !== '';
+        // O-01: en modo empresa única el paso no pinta "nombre del despacho"
+        // —la razón social es dato fiscal y se captura en Configuración de
+        // empresa—, así que exigirlo aquí dejaría "Siguiente" apagado para
+        // siempre sobre un campo que no existe en la pantalla. Es el mismo
+        // defecto de E-05 (`step < 3` cableado) por la puerta de al lado: la
+        // condición tiene que seguir a lo que de verdad se renderiza.
+        return (
+          nombre.trim() !== '' && (modoEmpresaUnica() || nombreDespacho.trim() !== '')
+        );
       case 'personales':
         return nombre.trim() !== '';
       default:
