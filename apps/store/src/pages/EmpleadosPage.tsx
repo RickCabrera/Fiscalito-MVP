@@ -88,8 +88,15 @@ export default function EmpleadosPage() {
           onBorrar={(no) => cartera.borrarEmpleado(clienteId as string, no)}
           /* O-03: las prestaciones del patrón son el default del alta y su
              escala de vacaciones viaja al SBC. Sin esto, capturarlas en
-             Configuración de empresa sería un formulario decorativo. */
-          parametros={cartera.empresa.parametros}
+             Configuración de empresa sería un formulario decorativo.
+
+             O-cierre: **sólo en modo empresa única.** `cartera.empresa` se
+             proyecta del documento con id `empresa`, y como el flag viene
+             encendido por default, toda cuenta que lo apague YA tendrá ese
+             documento: los parámetros de una empresa se volvían el default del
+             alta de todos los clientes del despacho. En despacho manda la ley
+             hasta que cada cliente tenga los suyos. */
+          parametros={modoEmpresaUnica() ? cartera.empresa.parametros : undefined}
         />
       </div>
     </div>

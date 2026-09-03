@@ -128,6 +128,14 @@ export function diasDeLey(aniosCumplidos: number): number {
  * pantallas después cuando el operador ya se fue a calcular la nómina. El
  * motor sigue siendo la autoridad y vuelve a rechazarlo.
  */
+/**
+ * Techo de días de vacaciones, espejo de `MAXIMO_DIAS_VACACIONES` del motor
+ * (`apps/api/app/nomina_engine/vacaciones.py`). No es una regla de ley —la LFT
+ * sólo pone pisos— sino una guarda contra el dedazo, y por eso el mensaje lo
+ * dice así.
+ */
+export const MAXIMO_DIAS_VACACIONES = 60;
+
 export function erroresDeParametros(p: ParametrosSalariales): string[] {
   const errores: string[] = [];
 
@@ -150,6 +158,17 @@ export function erroresDeParametros(p: ParametrosSalariales): string[] {
       errores.push(
         `La tabla da ${dias} días al año ${anios} y el mínimo de ley son ${minimo} ` +
           '(Art. 76 LFT). Se pueden dar más, nunca menos.',
+      );
+    }
+    // O-cierre: el motor acota arriba en 60 (`MAXIMO_DIAS_VACACIONES`) y esta
+    // pantalla no lo hacía: se guardaba una tabla con 200 días y el 422 llegaba
+    // después, al integrar el SBC, sobre un campo que el operador ya había dado
+    // por bueno. O-03 puso las dos validaciones en espejo a propósito; este
+    // borde se había quedado fuera del espejo.
+    if (dias > MAXIMO_DIAS_VACACIONES) {
+      errores.push(
+        `La tabla da ${dias} días al año ${anios}, y el máximo que acepta el motor son ` +
+          `${MAXIMO_DIAS_VACACIONES}. Más que eso suele ser un dedazo, no una prestación.`,
       );
     }
   }

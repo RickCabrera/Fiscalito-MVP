@@ -2192,3 +2192,177 @@ corrida "al cerrar O-03", pero el revisor del plan bloqueó mergear O-01 sin
 revisión citando `CLAUDE.md`, así que esa pasada se movió al entregable de O-01.
 Los apartes de cálculo fiscal (O-03 y el cuadre de O-04) se corrieron completos
 como se pidió.
+
+---
+
+## O-cierre · Los tres bloqueos del revisor de cierre
+
+El revisor de cierre de la corrida O **bloqueó**, y los tres hallazgos eran reales.
+Uno rompía el modo despacho que Ricardo pidió conservar entero, otro rompía el
+pivote en la superficie más visible de la app, y el tercero dejaba en decorativo
+—para la plantilla ya dada de alta— el formulario que O-03 acababa de construir.
+
+Confirmó antes que nada que los checks reproducían exactos y que nadie había
+aflojado nada: cero `skip`, `only` o `todo` en el árbol, y los 9 `deselected` del
+backend son los marcadores `not emulador` de R-07, preexistentes.
+
+### B-1 · El asistente de voz seguía siendo el del despacho
+
+`FiscalitoVoiceChat` se monta en `AppLayout`, así que **flota sobre todas las
+pantallas**: Empleados, Dispositivos, Nómina, Calendario y Perfil. Y todo
+`src/agent/` tenía **cero** referencias al modo: su prompt de sistema le decía al
+operador de Orca que su cuenta era un *DESPACHO CONTABLE* y hablaba de *sus
+CLIENTES*, sobre su propia nómina.
+
+La rama colgaba de `contributorType === 'contador'`, que en modo empresa única es
+**siempre** el perfil del operador —`StepTipo` sólo ofrece esa opción—, así que no
+era un caso raro: era el único caso.
+
+Lo feo era la última línea: *"Nunca le pidas su RFC ni su régimen"*. Correcta
+cuando no había dónde capturarlos; **falsa** en empresa única, donde el RFC sí se
+captura en Configuración de empresa y es dato obligatorio para el IMSS. El
+asistente tenía prohibido mencionar justo el campo que al operador le falta
+llenar.
+
+También `/app/clientes` seguía en el enum de rutas de la tool `navegar`: el LLM la
+elegía, el operador aterrizaba en Nómina por la redirección, y el log de tools
+decía "Navegando a /app/clientes".
+
+El guardián de O-02 no podía cazarlo: `marca.test.ts` busca la palabra
+"Fiscalito", y el rebrand **sí** había llegado al nombre del asistente. Llegó al
+nombre y no al modelo de negocio que el prompt describe.
+
+Arreglado con un bloque de prompt propio para empresa única, el enum de rutas
+calculado por modo (`TOOLS_OPENAI` pasó de constante a función, porque congelarlo
+al importar es justo lo que `modoEmpresa.ts` evita) y el mensaje de la tool de
+pre-declaración redactado por modo. 17 tests nuevos.
+
+**Y salió un hueco de método:** los tests viejos del asistente medían semántica de
+despacho sin declarar modo, así que desde el pivote estaban midiendo otra app.
+Se les puso `modoDespacho()`. Era el síntoma del dato que el revisor dio: **sólo
+22 de 57 archivos de prueba declaraban modo**.
+
+### B-2 · El exportador de O-04, en despacho, mandaba a una pantalla que ahí no existe
+
+La cadena completa, que es lo que la hacía fea:
+
+1. `NominaClientePage` monta `SelectorExportacion` **sin guarda de modo**.
+2. `useNominaCliente` lo alimentaba con `cartera.empresa.registroPatronal` y
+   `.guiaSubdelegacion`.
+3. En despacho eso se proyecta del documento con id `'empresa'`, que en una
+   cuenta de despacho **no existe** → los dos campos vacíos, siempre.
+4. El generador levanta —correctamente— diciendo *"captúralo en Perfil →
+   Configuración de empresa"*.
+5. `ProfilePage` condiciona esa tarjeta a `empresaUnica && esDespacho`: **con el
+   flag apagado no se renderiza**.
+
+Un callejón sin salida, **nuevo de esta corrida**, en el modo que Ricardo pidió
+conservar entero. Y el dato correcto estaba a mano y se ignoraba:
+`registro_patronal` y `guia_subdelegacion` ya existían en el tipo del cliente —
+lo que faltaba era capturarlos y leerlos de ahí.
+
+**El arreglo es de dónde se lee, no una guarda.** Apagar el exportador en
+despacho habría sido recortar. El registro patronal es **de cada patrón**: en
+despacho sale de la ficha del cliente activo y se captura en `ModalCliente`;
+usar el de otro presentaría los movimientos afiliatorios bajo el patrón
+equivocado.
+
+Se agregó `despachoExportaAlImss.test.tsx`, el gemelo de despacho que el revisor
+pidió: recorre cierre → cálculo → exportar con el flag apagado y **lee los bytes
+emitidos**, comprobando que las posiciones 01-11 y 134-138 traen los datos del
+cliente. Revertir el arreglo mata los 4.
+
+### B-3 · Cambiar las prestaciones no reintegraba a quien ya estaba de alta
+
+`ModalEmpleado` era el **único** llamador de `integrarSBC` en producción y el
+único escritor de `salario_diario_integrado`; `plantillaDeNomina` manda al motor
+el SDI guardado, y el motor no lo recalcula por decisión bien fundada (§D9: el
+SDI es dato de entrada). No había ruta de recálculo, ni efecto, ni migración, ni
+aviso.
+
+Resultado: el patrón sube el aguinaldo de 15 a 30, guarda, corre la nómina, y las
+cuotas salen sobre el SBC viejo — **subintegradas, en silencio**, con recibo
+creíble. Es la dirección que este repo trata como la mala en todos lados.
+
+El criterio de O-03 en el backlog estaba cumplido **al pie de la letra** —el
+motor sí cambia el factor y las altas nuevas sí lo usan— y el producto no lo
+entregaba. Ninguno de los cuatro tests de parámetros montaba un empleado
+existente: todos eran alta.
+
+Arreglado con `services/reintegrarPlantilla.ts` y una tarjeta en Perfil:
+un aviso **siempre visible** de que las prestaciones no tocan al que ya está, y
+un botón que recalcula, enseña quién cambia y de cuánto a cuánto, y guarda sólo a
+esos. 22 tests.
+
+**No se dispara solo, y es a propósito:** subir el SBC de un trabajador es un
+**movimiento 07 (modificación de salario) ante el IMSS** por cada uno. Esconder
+un trámite detrás de un `onSubmit` sería la misma falla que O-04 evitó al no
+emitir altas que nadie pidió. El factor se le pregunta al motor **empleado por
+empleado**, porque la antigüedad cumplida mueve los días de vacaciones.
+
+**DECISIÓN ABIERTA que la corrida no había sacado a la luz:** O-04 declaró que no
+emite el movimiento 07 por falta de dato, y nadie conectó esa carencia con el
+formulario que O-03 abrió para cambiar justo lo que dispara ese movimiento. La
+app ahora **dice** que el aviso hace falta, pero no lo puede generar. Es pregunta
+para la contadora.
+
+### Observaciones del revisor, atendidas
+
+- **Los parámetros de la empresa eran el default del alta de TODOS los clientes.**
+  `EmpleadosPage` pasaba `cartera.empresa.parametros` sin guarda de modo, y como
+  el flag viene encendido por default, toda cuenta que lo apague ya tendrá ese
+  documento. En despacho ahora manda la ley hasta que cada cliente tenga los
+  suyos.
+- **El techo de vacaciones no estaba en espejo.** El motor acota en 60 días y la
+  pantalla no: se guardaba una tabla con 200 y el 422 llegaba después, al
+  integrar. O-03 puso las validaciones en espejo a propósito y este borde se
+  había quedado fuera.
+- **Bloque de comentario duplicado** en `integracion.py`: dos redacciones del
+  mismo párrafo pegadas. Resto de una edición a medias — el mismo modo de falla
+  que el log documentó en F0-01.
+- **El flag ignoraba en silencio lo que le escribían.** Sólo el literal `'0'`
+  apagaba, así que `VITE_MODO_EMPRESA_UNICA=false` dejaba el modo **encendido**.
+
+  **Aquí se cambió una decisión, y hay que decirlo:** el test viejo defendía a
+  propósito que sólo `'0'` apagara, con el argumento de que un `.env` a medio
+  escribir no puede devolver la app del despacho por accidente. Ese argumento
+  sigue en pie **para el valor vacío**, y por eso `''` sigue encendiendo. Lo que
+  no se sostiene es que `false` se ignore sin decir nada: quien lo escribió cree
+  que trabaja en modo despacho. La regla nueva apaga con los valores que no
+  pueden significar otra cosa (`0`, `false`, `off`, `no`) y deja encendido lo
+  ambiguo. **El test no se aflojó: se reescribió con la regla nueva y su razón.**
+
+### Lo que el revisor marcó y NO se arregló
+
+- **La banda "DATOS DE DEMOSTRACIÓN" del PDF sigue incondicional con el flag
+  apagado**, y el comentario que la justifica ya no es cierto: dice "hasta que
+  exista el alta real de clientes (F1-09)", pero `ModalCliente` crea con
+  `origen: 'propio'` desde R-06. No es regresión de esta corrida —ya era
+  incondicional— pero O-01 arregló media cosa y dejó la otra media con una razón
+  falsa escrita al lado. **ABIERTO.**
+- **La landing pública y el marketplace no se rebrandearon del todo.**
+  `LandingPage` sigue vendiendo "Marketplace de microservicios";
+  `MarketplacePage`, `AdminPage` y `ServiceDetailPage` siguen alcanzables por
+  URL. O-02 declaró honestamente que su guardián mide la forma y no los píxeles,
+  pero el enunciado decía "todo texto visible". **ABIERTO.**
+- **El PDF no imprime renglón de totales**, así que el contador que lee el papel
+  nunca ve el total del motor (observación del revisor del cuadre). **ABIERTO.**
+- **El RFC real `CADG620317EE0` sigue vivo** en `apps/api/CLAUDE.md`, en tres
+  archivos de tests y en `.claude/prompts/` desde el commit inicial. No es de
+  esta corrida y ya tiene tarea (S-07), pero es una violación viva de la regla
+  de la casa y merece subir de prioridad.
+- **La deuda de tamaño estaba subdeclarada.** El log decía tres archivos sobre el
+  tope de 300 que esta corrida engordó; son **ocho**. Sin declarar:
+  `routes/nomina.py` (317→387), `schemas/nomina.py` (304→368),
+  `carteraFirestore.ts` (308→342), `DispositivosPage.tsx` (329→343) y
+  `NominaClientePage.tsx` (302→319). Ninguno cruzó el tope por culpa de esta
+  corrida, pero el número que el log afirmaba no era el real.
+
+### Cierre
+
+Frontend **711 verdes** (61 archivos, +47 sobre el cierre de O-04), backend
+**1308**, `ruff` limpio, `tsc` y `npm run build` limpios, `eslint` en **20
+errores / 8 warnings** — la base exacta de S-02, sin subir en toda la corrida.
+
+Nada de esto se ha visto en un navegador. Cero variables CSS nuevas, que es la
+condición necesaria y verificable de la regla de los tres temas.

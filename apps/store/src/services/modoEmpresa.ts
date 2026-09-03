@@ -35,9 +35,21 @@
  * consulta en render.
  */
 
+/**
+ * Las formas de APAGAR el modo, en un solo lugar.
+ *
+ * Antes sólo el literal `'0'` apagaba, así que `VITE_MODO_EMPRESA_UNICA=false`
+ * —la forma que cualquiera escribiría— dejaba el modo **encendido** y sin decir
+ * nada. Un flag que ignora en silencio lo que le escribieron es peor que no
+ * tenerlo: quien lo apagó cree que trabaja en modo despacho. Lo señaló el
+ * revisor de cierre de la corrida O.
+ */
+const APAGADO = new Set(['0', 'false', 'off', 'no']);
+
 /** `true` si la app es la nómina de una sola empresa. Default: **sí**. */
 export function modoEmpresaUnica(): boolean {
-  return import.meta.env.VITE_MODO_EMPRESA_UNICA !== '0';
+  const v = import.meta.env.VITE_MODO_EMPRESA_UNICA;
+  return !APAGADO.has(String(v ?? '').trim().toLowerCase());
 }
 
 /**

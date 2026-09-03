@@ -31,6 +31,11 @@ function vacio(): Datos {
     origen: 'propio',
     prima_riesgo: '',
     clase_riesgo: 1,
+    // O-cierre: los dos datos que el IMSS asigna y que el exportador de
+    // movimientos afiliatorios necesita en CADA renglón. Vacíos por default y
+    // nunca deducidos.
+    registro_patronal: '',
+    guia_subdelegacion: '',
     clave_periodicidad: '04',
     zona: 'general',
     periodo_sugerido: { inicio: '', fin: '', fecha_pago: null },
@@ -193,6 +198,29 @@ export default function ModalCliente({
               inputMode="decimal"
               value={datos.prima_riesgo}
               onChange={(e) => setDatos({ ...datos, prima_riesgo: e.target.value })}
+            />
+          </Campo>
+          {/* O-cierre: sin estos dos, el TXT de movimientos afiliatorios de
+              O-04 no se puede emitir para este cliente — van en cada renglón y
+              los asigna el IMSS. Se capturaban SÓLO en Configuración de
+              empresa, que con el flag apagado ni siquiera se renderiza: el
+              contador pulsaba Exportar, leía "captúralo en Perfil" y esa
+              pantalla no existía. Son opcionales: el resto de la nómina y el
+              PDF funcionan sin ellos. */}
+          <Campo label="Registro patronal (IMSS)" ancho="1 1 180px">
+            <input
+              style={campo}
+              value={datos.registro_patronal ?? ''}
+              placeholder="11 caracteres"
+              onChange={(e) => setDatos({ ...datos, registro_patronal: e.target.value })}
+            />
+          </Campo>
+          <Campo label="Guía de subdelegación" ancho="1 1 180px">
+            <input
+              style={campo}
+              value={datos.guia_subdelegacion ?? ''}
+              placeholder="La asigna el IMSS"
+              onChange={(e) => setDatos({ ...datos, guia_subdelegacion: e.target.value })}
             />
           </Campo>
           {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app

@@ -550,14 +550,31 @@ export function useNominaCliente(clienteId: string) {
      */
     empleadosDeLaCartera: empleadosCartera ?? [],
     /**
-     * Registro patronal y guía de la subdelegación, del documento de la empresa.
+     * Registro patronal y guía de la subdelegación.
      *
      * Vacíos cuando no se han capturado, y **el exportador levanta en vez de
      * emitir un archivo con el registro patronal en blanco** — que el IMSS
      * rechazaría sin decir cuál de los dos faltaba.
+     *
+     * SALEN DE DISTINTO LADO SEGÚN EL MODO, Y TIENE QUE SER ASÍ (O-cierre)
+     * --------------------------------------------------------------------
+     * En empresa única hay una sola empresa y sus datos viven en Configuración
+     * de empresa. En despacho son **de cada cliente**: cada patrón tiene su
+     * propio registro patronal ante el IMSS, y usar el de otro presentaría los
+     * movimientos afiliatorios bajo el patrón equivocado.
+     *
+     * Leer `cartera.empresa` en los dos modos —como estaba— daba en despacho el
+     * documento con id `'empresa'`, que en una cuenta de despacho **no existe**:
+     * los dos campos salían vacíos siempre y el exportador mandaba a "Perfil →
+     * Configuración de empresa", una pantalla que con el flag apagado ni
+     * siquiera se renderiza. Un callejón sin salida, y nuevo de esta corrida.
      */
-    registroPatronal: cartera.empresa.registroPatronal,
-    guiaSubdelegacion: cartera.empresa.guiaSubdelegacion,
+    registroPatronal: empresaUnica
+      ? cartera.empresa.registroPatronal
+      : (deLaCartera?.registro_patronal ?? ''),
+    guiaSubdelegacion: empresaUnica
+      ? cartera.empresa.guiaSubdelegacion
+      : (deLaCartera?.guia_subdelegacion ?? ''),
     /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
     carteraCargando: cartera.loading,
     /**

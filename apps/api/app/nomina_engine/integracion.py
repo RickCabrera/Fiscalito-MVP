@@ -39,10 +39,6 @@ from app.constants import ZonaSalarioMinimo, salario_minimo_vigente, uma_vigente
 from app.exceptions import FiscalValidationError
 
 # Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
-# espera encontrar aqui la escala de vacaciones. La implementacion se mudo a su
-# propio modulo en O-03 porque este archivo paso de 244 a 317 lineas, sobre el
-# limite de 300 de `apps/api/CLAUDE.md`.
-# Re-exportados: `integracion` es la puerta de entrada del SBC y quien la usa
 # espera encontrar aqui la escala de vacaciones. La implementacion se mudo a
 # `vacaciones.py` en O-03, porque este archivo paso de 244 a 317 lineas y el
 # limite de `apps/api/CLAUDE.md` son 300. `dias_vacaciones_de_ley` se fue con

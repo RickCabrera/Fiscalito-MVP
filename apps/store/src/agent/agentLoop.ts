@@ -14,7 +14,8 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import { sendMessageWithTools, type ChatMessage } from '../services/voiceChatService';
 import { getAgentActions } from './AgentContext';
-import { isRegisteredTool, TOOL_EXECUTORS, TOOLS_OPENAI, type ToolDeps } from './tools';
+import { isRegisteredTool, TOOL_EXECUTORS, toolsOpenAI, type ToolDeps } from './tools';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import type { ToolCallLogEntry, ToolResult } from './types';
 import { ASISTENTE, MARCA } from '../services/marca';
 
@@ -43,8 +44,31 @@ export interface AgentLoopResult {
  * el bloque de contribuyente, el prompt decía "RFC: No proporcionado" y el LLM
  * le pedía al contador que completara su perfil — un callejón, porque ya no hay
  * dónde capturarlo.
+ *
+ * EL MODO EMPRESA ÚNICA TIENE SU PROPIO BLOQUE (O-cierre)
+ * -------------------------------------------------------
+ * Y no es cosmético. El perfil sigue siendo `contador` —`StepTipo` sólo ofrece
+ * esa opción en este modo— así que el asistente, que flota sobre TODAS las
+ * pantallas, le hablaba al operador de Orca de "tu despacho" y de "tus
+ * clientes", sobre su propia nómina.
+ *
+ * Peor: la última línea del bloque de despacho es una **instrucción falsa** en
+ * este modo. Dice "nunca le pidas su RFC ni su régimen" porque no hay dónde
+ * capturarlo — pero en empresa única el RFC **sí** se captura, en Configuración
+ * de empresa, y es dato obligatorio para el IMSS. El asistente tenía prohibido
+ * mencionar justo el campo que al operador le falta llenar. Lo cazó el revisor
+ * de cierre de la corrida O.
  */
 function describirUsuario(profile: UserProfile): string {
+  if (profile.contributorType === 'contador' && modoEmpresaUnica()) {
+    return `Datos de la cuenta actual: lleva la NÓMINA DE UNA SOLA EMPRESA. No es un
+despacho y no tiene cartera de clientes — no existe ese concepto en esta app.
+- Responsable: ${profile.nombre || 'No proporcionado'}
+La app NO calcula las declaraciones propias de la empresa (ISR, IVA): calcula su NÓMINA y
+sus obligaciones patronales. Los datos fiscales de la empresa —razón social, RFC, registro
+patronal, prima de riesgo— se capturan en Perfil → Configuración de empresa, así que si
+falta alguno, ahí se llena. Nunca hables de "clientes" ni de "cartera".`;
+  }
   if (profile.contributorType === 'contador') {
     return `Datos de la cuenta actual: es un DESPACHO CONTABLE, no un contribuyente.
 - Contador: ${profile.nombre || 'No proporcionado'}
@@ -106,7 +130,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopRes
   const executedTools: ToolCallLogEntry[] = [];
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
-    const response = await sendMessageWithTools(llmMessages, TOOLS_OPENAI);
+    const response = await sendMessageWithTools(llmMessages, toolsOpenAI());
 
     if (response.type === 'text') {
       const newHistory: ChatMessage[] = [

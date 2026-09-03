@@ -13,6 +13,7 @@
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import { esContador } from '../services/navigation';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { parseMultipleCFDI } from '../services/cfdiParser';
 import {
   calcularPreDeclaracion,
@@ -26,11 +27,24 @@ import type { ToolName, ToolResult } from './types';
 // Schema OpenAI
 // ────────────────────────────────────────────────────────────
 
-/** Rutas válidas que la tool `navegar` puede recibir. Se enumeran para que
- *  el LLM no invente rutas inexistentes. */
-const RUTAS_VALIDAS = [
+/**
+ * Rutas válidas que la tool `navegar` puede recibir. Se enumeran para que el
+ * LLM no invente rutas inexistentes.
+ *
+ * **Se calculan por modo, no son una constante.** En modo empresa única
+ * `/app/clientes` **no existe**: la ruta redirige. Dejarla en el enum hacía que
+ * el LLM la eligiera, el operador aterrizara en Nómina por la redirección, y el
+ * resumen de la tool dijera "Navegando a /app/clientes" — una pantalla que en
+ * ese modo no existe. Lo cazó el revisor de cierre de la corrida O.
+ */
+function rutasValidas(): string[] {
+  return RUTAS_BASE.filter((r) => r !== '/app/clientes' || !modoEmpresaUnica());
+}
+
+const RUTAS_BASE = [
   '/app',
-  // E-01: pantalla de clientes del despacho.
+  // E-01: pantalla de clientes del despacho. Sale del enum en modo empresa
+  // única (O-cierre): ahí no hay cartera que visitar.
   '/app/clientes',
   // E-07: el calendario PATRONAL de los clientes del despacho. Sin esto,
   // "llévame al calendario" mandaba a un contador al tab de contribuyente, que
@@ -54,79 +68,92 @@ const RUTAS_VALIDAS = [
   '/app/store/fiscalito/use?tab=deducciones',
 ] as const;
 
-export const TOOLS_OPENAI = [
-  {
-    type: 'function' as const,
-    function: {
-      name: 'navegar',
-      description:
-        'Navega a una sección específica de la aplicación cambiando la ruta del navegador. ' +
-        'Úsala cuando el usuario pida ver, ir, entrar, mostrar o acceder a cualquier sección o tab.',
-      parameters: {
-        type: 'object',
-        properties: {
-          ruta: {
-            type: 'string',
-            enum: RUTAS_VALIDAS,
-            description:
-              // O-02: la descripción viaja al LLM, así que aquí tampoco puede
-              // quedar la marca vieja: el modelo la repetiría en el chat. Las
-              // RUTAS sí se quedan literales (`/app/store/fiscalito/use`): son
-              // nombres internos y cambiarlas rompería enlaces guardados.
-              'Ruta exacta a la que navegar. Para los tabs del servicio fiscal ' +
-              'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
-              'lleva al tab de pre-declaración. Las tres de nómina: "/app/clientes" ' +
-              'es la cartera (solo en modo despacho), "/app/nomina" la nómina, y ' +
-              '"/app/calendario" las obligaciones patronales (IMSS, ISR retenido, ' +
-              'avisos). Quien lleva nómina NO usa los tabs del servicio fiscal: ' +
-              'son de contribuyente.',
+/**
+ * El catálogo de tools que viaja al LLM.
+ *
+ * **Es una función y no una constante** porque el enum de rutas depende del
+ * modo (`rutasValidas()`), y `modoEmpresaUnica()` se lee en cada llamada — no
+ * al importar el módulo. Congelarlo aquí dejaría el catálogo fijado por el
+ * primer import, que es justo lo que O-01 evitó en `modoEmpresa.ts`.
+ */
+export function toolsOpenAI() {
+  return [
+    {
+      type: 'function' as const,
+      function: {
+        name: 'navegar',
+        description:
+          'Navega a una sección específica de la aplicación cambiando la ruta del navegador. ' +
+          'Úsala cuando el usuario pida ver, ir, entrar, mostrar o acceder a cualquier sección o tab.',
+        parameters: {
+          type: 'object',
+          properties: {
+            ruta: {
+              type: 'string',
+              enum: rutasValidas(),
+              description:
+                // O-02: la descripción viaja al LLM, así que aquí tampoco puede
+                // quedar la marca vieja: el modelo la repetiría en el chat. Las
+                // RUTAS sí se quedan literales (`/app/store/fiscalito/use`): son
+                // nombres internos y cambiarlas rompería enlaces guardados.
+                'Ruta exacta a la que navegar. Para los tabs del servicio fiscal ' +
+                'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
+                'lleva al tab de pre-declaración. Las de nómina: "/app/nomina" es la ' +
+                'nómina y "/app/calendario" las obligaciones patronales (IMSS, ISR ' +
+                'retenido, avisos)' +
+                (modoEmpresaUnica()
+                  ? '. Esta cuenta lleva UNA sola empresa: no hay cartera de clientes.'
+                  : '; "/app/clientes" es la cartera del despacho.') +
+                ' Quien lleva nómina NO usa los tabs del servicio fiscal: son de ' +
+                'contribuyente.',
+            },
           },
+          required: ['ruta'],
         },
-        required: ['ruta'],
       },
     },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'cargar_xmls_demo',
-      description:
-        'Carga un conjunto de facturas CFDI de demostración para un periodo dado. ' +
-        'Lee archivos XML de /demo-xmls/{año}/{mes}/ y los parsea como CFDIs listos para calcular. ' +
-        'Úsala cuando el usuario pida calcular una pre-declaración pero no tenga facturas cargadas, ' +
-        'o cuando esté demostrando el sistema. Las facturas cargadas quedan disponibles para ' +
-        'la tool calcular_predeclaracion.',
-      parameters: {
-        type: 'object',
-        properties: {
-          año: { type: 'integer', description: 'Año del periodo (ej: 2026)', minimum: 2020, maximum: 2030 },
-          mes: { type: 'integer', description: 'Mes del periodo (1-12)', minimum: 1, maximum: 12 },
+    {
+      type: 'function' as const,
+      function: {
+        name: 'cargar_xmls_demo',
+        description:
+          'Carga un conjunto de facturas CFDI de demostración para un periodo dado. ' +
+          'Lee archivos XML de /demo-xmls/{año}/{mes}/ y los parsea como CFDIs listos para calcular. ' +
+          'Úsala cuando el usuario pida calcular una pre-declaración pero no tenga facturas cargadas, ' +
+          'o cuando esté demostrando el sistema. Las facturas cargadas quedan disponibles para ' +
+          'la tool calcular_predeclaracion.',
+        parameters: {
+          type: 'object',
+          properties: {
+            año: { type: 'integer', description: 'Año del periodo (ej: 2026)', minimum: 2020, maximum: 2030 },
+            mes: { type: 'integer', description: 'Mes del periodo (1-12)', minimum: 1, maximum: 12 },
+          },
+          required: ['año', 'mes'],
         },
-        required: ['año', 'mes'],
       },
     },
-  },
-  {
-    type: 'function' as const,
-    function: {
-      name: 'calcular_predeclaracion',
-      description:
-        'Calcula una pre-declaración mensual de ISR e IVA llamando al Fiscal Agent API. ' +
-        'Usa el perfil del contribuyente actual y las facturas que ya están cargadas en el agente ' +
-        '(ya sea por el usuario manualmente o por la tool cargar_xmls_demo). ' +
-        'Devuelve el desglose con montos a pagar y la explicación generada por IA. ' +
-        'IMPORTANTE: si no hay facturas cargadas, esta tool fallará — primero llama a cargar_xmls_demo.',
-      parameters: {
-        type: 'object',
-        properties: {
-          año: { type: 'integer', description: 'Año del periodo a declarar', minimum: 2020, maximum: 2030 },
-          mes: { type: 'integer', description: 'Mes del periodo a declarar (1-12)', minimum: 1, maximum: 12 },
+    {
+      type: 'function' as const,
+      function: {
+        name: 'calcular_predeclaracion',
+        description:
+          'Calcula una pre-declaración mensual de ISR e IVA llamando al Fiscal Agent API. ' +
+          'Usa el perfil del contribuyente actual y las facturas que ya están cargadas en el agente ' +
+          '(ya sea por el usuario manualmente o por la tool cargar_xmls_demo). ' +
+          'Devuelve el desglose con montos a pagar y la explicación generada por IA. ' +
+          'IMPORTANTE: si no hay facturas cargadas, esta tool fallará — primero llama a cargar_xmls_demo.',
+        parameters: {
+          type: 'object',
+          properties: {
+            año: { type: 'integer', description: 'Año del periodo a declarar', minimum: 2020, maximum: 2030 },
+            mes: { type: 'integer', description: 'Mes del periodo a declarar (1-12)', minimum: 1, maximum: 12 },
+          },
+          required: ['año', 'mes'],
         },
-        required: ['año', 'mes'],
       },
     },
-  },
-] as const;
+  ] as const;
+}
 
 // ────────────────────────────────────────────────────────────
 // Dependencias inyectadas a los ejecutores
@@ -146,7 +173,10 @@ async function ejecutarNavegar(
   args: { ruta: string },
   deps: ToolDeps,
 ): Promise<ToolResult> {
-  if (!RUTAS_VALIDAS.includes(args.ruta as typeof RUTAS_VALIDAS[number])) {
+  // Se vuelve a consultar aquí y no se confía en el enum del schema: el LLM
+  // puede mandar cualquier cadena, y en modo empresa única `/app/clientes` es
+  // una ruta que redirige.
+  if (!rutasValidas().includes(args.ruta)) {
     return {
       ok: false,
       summary: `Ruta inválida: ${args.ruta}`,
@@ -269,13 +299,27 @@ async function ejecutarCalcularPredeclaracion(
   // E-01: un despacho no declara por sus clientes desde aqui. Sin esta guarda
   // se calcularia la pre-declaracion del RFC del despacho creyendo que es la
   // del cliente del que se esta hablando.
+  //
+  // O-cierre: en modo empresa única el mismo perfil `contador` es el operador
+  // de UNA empresa, así que el motivo se redacta distinto. El texto viaja al
+  // LLM y se pinta en el log de tools: mandar a "la nómina de un cliente" a
+  // quien no tiene clientes es la misma confusión que el revisor encontró en el
+  // prompt del sistema.
   if (esContador(profile.contributorType)) {
     return {
       ok: false,
-      summary: 'La pre-declaración no aplica a una cuenta de despacho',
-      error: 'Este perfil es de contador: la pre-declaración se calcula sobre el RFC de un ' +
-        'contribuyente, no del despacho. Explícale que para la nómina de un cliente use la ' +
-        'pantalla de nómina.',
+      // El resumen también cambia de modo: se pinta en el log de tools que el
+      // operador lee, y "cuenta de despacho" ahí es tan falso como en el prompt.
+      summary: modoEmpresaUnica()
+        ? 'La pre-declaración no aplica a esta cuenta'
+        : 'La pre-declaración no aplica a una cuenta de despacho',
+      error: modoEmpresaUnica()
+        ? 'Esta cuenta lleva la NÓMINA de una empresa, no sus declaraciones propias. La ' +
+          'pre-declaración se calcula sobre el RFC de un contribuyente y esta app no la ' +
+          'cubre. Explícale que use la pantalla de Nómina.'
+        : 'Este perfil es de contador: la pre-declaración se calcula sobre el RFC de un ' +
+          'contribuyente, no del despacho. Explícale que para la nómina de un cliente use la ' +
+          'pantalla de nómina.',
     };
   }
 
