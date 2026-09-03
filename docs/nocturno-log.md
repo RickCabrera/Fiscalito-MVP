@@ -2417,6 +2417,46 @@ app no puede ofrecer un campo que después pisa.
   las dos pantallas que la capturan.** Mismo caso que el techo de vacaciones que
   se acababa de cerrar. Ya lo tiene.
 
+### El revisor APROBÓ, y se retractó de su propia recomendación
+
+Verificó el piso contra el código —`Math.max` sólo en aguinaldo y prima, el
+centinela de vacaciones intacto, `mayorPrima` devolviendo la cadena original— y
+escribió que **su opción (1) estaba mal**: `ModalEmpleado` siembra la ficha con
+los parámetros del patrón al dar de alta, así que *toda* ficha tiene valor y un
+`?? parametros` nunca caería al fallback. "Manda la ficha" habría reintroducido
+el defecto original de B-3 para la plantilla entera, no para un caso raro.
+
+Y agregó el argumento fiscal que cierra el razonamiento: **el Art. 27 LSS integra
+lo que el patrón *otorga***, no la política general. Para el trabajador con 45
+días negociados, integrar a 45 no es una concesión: es el SBC correcto. El piso
+da el número bueno en los dos casos, no un promedio prudente entre dos malos.
+
+### Dos observaciones suyas, cerradas antes del merge
+
+- **§D28 preguntaba como si las tres prestaciones se comportaran igual, y no lo
+  hacen.** Los **días de vacaciones** por empleado son **inertes** cuando el
+  patrón tiene tabla —y en la ruta normal siempre la tiene—: `routes/nomina.py`
+  los resuelve con `dias_vacaciones_efectivos(antigüedad, tabla)` e ignora el
+  `dias_vacaciones` del request. Alguien con 25 días negociados en una empresa
+  cuya tabla da 12 integra con 12: **subintegrado respecto de lo que el patrón
+  otorga**. Es hueco de O-03, no de esta corrida, y vale igual en `ModalEmpleado`
+  que al reintegrar — pero §D28 es el documento que va a leer la contadora, así
+  que lo dice.
+- **El espejo de la guía cubría una sola pantalla.** `ModalCliente` —la del
+  despacho, donde B-2 acaba de crear el campo— no validaba nada: aceptaba letras
+  contra el `^\d{0,5}$` del backend. Hoy no revienta porque el interruptor de
+  R-07 está apagado; con `VITE_CARTERA_BACKEND=1` es un 422 al guardar. Ya tiene
+  su espejo, y el registro patronal también.
+
+### Lo que queda abierto de esta ronda
+
+**`ReintegrarPlantilla` guarda en serie, con `await` dentro del `for`.** Con la
+plantilla de Orca da igual; con cien empleados son cien escrituras secuenciales a
+Firestore, y un fallo a la mitad deja unos guardados y otros no, sin transacción
+ni reporte de hasta dónde llegó. La política de "no dejar la plantilla a medio
+reintegrar" que el servicio aplica bien en el **cálculo** no llega al
+**guardado**. Tarea propia si la plantilla crece. **ABIERTO.**
+
 ### Cierre
 
 Frontend **722 verdes** (61 archivos, +58 sobre el cierre de O-04), backend

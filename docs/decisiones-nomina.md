@@ -838,6 +838,16 @@ general; el contrato individual puede mejorarla y no empeorarla (Arts. 33 y 56 L
 adquiridos). Bajar una prestación ya otorgada no es algo que una pantalla deba hacer sola, y
 mucho menos en lote.
 
+**Ojo: de las tres prestaciones, una no se puede honrar hoy.** Los **días de vacaciones** por
+empleado son **inertes** cuando el patrón tiene tabla —y en la ruta normal siempre la tiene—:
+`routes/nomina.py` resuelve los días con `dias_vacaciones_efectivos(antigüedad, tabla)` e ignora
+el `dias_vacaciones` del request. Así que alguien con 25 días negociados, en una empresa cuya
+tabla da 12 al año 1, integra con 12: **subintegrado respecto de lo que el patrón otorga**
+(Art. 27 LSS). No lo introdujo O-cierre —es un hueco de O-03, y vale igual en `ModalEmpleado`
+que al reintegrar— pero se dice aquí porque este documento formula la pregunta como si las tres
+prestaciones se comportaran igual, y no lo hacen. El modal sí pinta
+`dias_vacaciones_aplicados`, así que al menos se ve.
+
 **La pregunta para la contadora.** ¿Hay en Orca gente con prestaciones negociadas **por encima**
 de la política de la empresa? Si la respuesta es **no**, la opción 1 es más simple y los tres
 inputs por empleado de `ModalEmpleado` sobran — habría que quitarlos o volverlos de sólo

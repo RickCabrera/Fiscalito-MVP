@@ -85,6 +85,26 @@ export default function ModalCliente({
       prima > Number(primas.maxima));
 
   const idRepetido = esAlta && idsExistentes.includes(datos.id.trim());
+
+  /**
+   * Los dos datos del IMSS, contra lo que el backend acepta (O-cierre).
+   *
+   * `schemas/cartera.py` los declara `^\d{0,5}$` (guía) y 11 caracteres
+   * (registro patronal). Esta pantalla los creó y no los validaba: hoy no
+   * revienta porque el interruptor de R-07 está apagado, pero con
+   * `VITE_CARTERA_BACKEND=1` es un 422 al guardar, sobre un campo que el
+   * operador ya dio por bueno. Es la misma asimetría que el techo de vacaciones
+   * de `validacionEmpresa.ts`, que esta corrida acaba de cerrar del otro lado.
+   *
+   * Los dos son OPCIONALES: vacío es válido —el resto de la nómina y el PDF
+   * funcionan sin ellos— y lo que se rechaza es un valor mal formado.
+   */
+  const rpMalFormado =
+    (datos.registro_patronal ?? '').trim() !== '' &&
+    (datos.registro_patronal ?? '').trim().length !== 11;
+  const guiaMalFormada =
+    (datos.guia_subdelegacion ?? '').trim() !== '' &&
+    !/^\d{1,5}$/.test((datos.guia_subdelegacion ?? '').trim());
   const puedeGuardar =
     datos.id.trim() !== '' &&
     datos.nombre.trim() !== '' &&
@@ -93,6 +113,8 @@ export default function ModalCliente({
     primas !== null &&
     !primaFueraDeRango &&
     !idRepetido &&
+    !rpMalFormado &&
+    !guiaMalFormada &&
     !guardando;
 
   async function guardar() {
@@ -223,6 +245,19 @@ export default function ModalCliente({
               onChange={(e) => setDatos({ ...datos, guia_subdelegacion: e.target.value })}
             />
           </Campo>
+          {/* Fuera de `Campo`, que sólo admite un hijo. Los motivos van uno por
+              uno: un "hay errores" genérico obliga a adivinar cuál de los dos. */}
+          {rpMalFormado && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', margin: 0, flex: '1 1 100%' }}>
+              El registro patronal son 11 caracteres: los 10 del registro más su dígito
+              verificador.
+            </p>
+          )}
+          {guiaMalFormada && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', margin: 0, flex: '1 1 100%' }}>
+              La guía de la subdelegación son hasta 5 dígitos, sin letras ni guiones.
+            </p>
+          )}
           {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app
                 calcula es siempre `quincena(hoy)`, y el selector sigue
                 cerrado, pero **la razón ya no es la misma**. Era que nadie
