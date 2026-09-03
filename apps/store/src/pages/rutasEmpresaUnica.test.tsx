@@ -64,6 +64,25 @@ const perfil: UserProfile = {
   onboardingComplete: true,
 };
 
+/**
+ * `services/firebase.ts` llama a `getAuth()` **al importarse**, y eso lanza sin
+ * las llaves de Firebase: en local hay `.env` y no se nota; **en CI no hay
+ * secretos**. Este archivo monta `AppRoutes` entero, así que arrastra
+ * `DashboardPage` → `declaracionesHistory` → `services/firebase`.
+ *
+ * Es la misma lección que el `nocturno-log` de R-07 dejó escrita dos veces:
+ * *"cambiar quién importa a quién invalida dobles que estaban puestos en el
+ * sitio correcto el día que se escribieron"*. Aquí no cambió el doble: cambió
+ * que ahora hay un test que monta el árbol completo. Lo reproduje en local con
+ * un `.env.test.local` de llaves vacías, que es exactamente el error de CI
+ * (`auth/invalid-api-key`), en vez de adivinar cuál era el archivo.
+ */
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: null },
+  db: {},
+  default: {},
+}));
+
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ user: { uid: 'uid-1', email: 'operadora@ejemplo.mx' }, loading: false }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,

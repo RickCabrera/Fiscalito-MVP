@@ -48,4 +48,22 @@ describe('services/firebase se inicializa al importarse', () => {
 
     await expect(import('./carteraBackend')).rejects.toThrow();
   });
+
+  it('y el árbol de rutas también: monta las pantallas que leen Firestore', async () => {
+    /**
+     * O-01/O-02: lo mismo por una puerta nueva. `rutasEmpresaUnica.test.tsx`
+     * monta `AppRoutes` **entero** para comprobar que las rutas existen, y eso
+     * arrastra `DashboardPage` → `declaracionesHistory` → `./firebase`. Local
+     * verde, CI rojo con un `auth/invalid-api-key` que no menciona ninguno de
+     * los tres archivos.
+     *
+     * Se agrega aquí, en el archivo que ya existe para esto, en vez de dejarlo
+     * sólo arreglado allá: el próximo test que monte el árbol se va a topar con
+     * el mismo muro, y esta línea es donde va a leer por qué.
+     */
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '');
+    vi.resetModules();
+
+    await expect(import('../AppRoutes')).rejects.toThrow();
+  });
 });
