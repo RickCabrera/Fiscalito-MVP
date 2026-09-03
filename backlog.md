@@ -182,15 +182,26 @@ O-03 y en el cuadre de O-04. Tests por área durante la corrida, suite completa 
 final. **Prohibido borrar o desactivar tests, y prohibido recortar alcance**: lo que no salga
 como está escrito se deja ABIERTO y anotado en `docs/nocturno-log.md`.
 
-- [ ] **O-01 · Modo empresa única** — flag `MODO_EMPRESA_UNICA`: Clientes fuera del menú y sus
+- [x] **O-01 · Modo empresa única** — **PR #32.** — flag `MODO_EMPRESA_UNICA`: Clientes fuera del menú y sus
   rutas redirigen; UN cliente implícito configurable una vez en "Configuración de empresa"
   (razón social, RFC, registro patronal, prima RT, clase de riesgo), dentro de Perfil;
   Empleados, Dispositivos, Nómina y Calendario operan directo, sin selector de cliente activo.
   Flag apagado = modo despacho intacto. *Listo cuando:* flag encendido → alta de empleado →
-  nómina → exportar, sin que exista el concepto de cartera.
-- [ ] **O-02 · Rebrand** — todo texto visible pasa de "Fiscalito Store" a "Orca Ordorica —
+  nómina → exportar, sin que exista el concepto de cartera — **verificado con un test de
+  integración que recorre la secuencia**, no por partes. El flag viene **encendido por
+  default**: con el default apagado el pivote colgaría de un `.env` gitignoreado. La cartera
+  desaparece de la **interfaz**, no del almacén: los empleados siguen en
+  `users/{uid}/clientes/empresa/empleados/{id}`, que es lo que permite encender R-07 sin
+  migrar un documento. **Tres decisiones abiertas para Ricardo** (zona salarial y periodicidad
+  de Orca — preguntas para la contadora — y que el periodo todavía sale del catálogo de
+  demostración, que cierra O-03): ver `docs/nocturno-log.md`.
+- [x] **O-02 · Rebrand** — **PR #32.** — todo texto visible pasa de "Fiscalito Store" a "Orca Ordorica —
   Nómina", centralizado en una constante para re-rebrandear en un solo cambio. Los nombres
-  internos del repo no se tocan. *Listo cuando:* ninguna pantalla dice Fiscalito.
+  internos del repo no se tocan. *Listo cuando:* ninguna pantalla dice Fiscalito — lo vigila
+  `marca.test.ts`, que **se equivocó dos veces antes de servir** (pasaba en vacío por una ruta
+  mal resuelta en Windows, y su lista de permitidos perdonaba la línea entera, lo que dejó
+  pasar la etiqueta del sidebar del contribuyente). Declara su propio límite: mide la forma,
+  no los píxeles.
 - [ ] **O-03 · Parámetros salariales editables** (REVISOR DE MOTOR: toca SBC) — en
   Configuración de empresa: días de aguinaldo (mín. 15, Art. 87 LFT), prima vacacional (mín.
   25%, Art. 80 LFT), vacaciones por antigüedad (mínimos de la tabla LFT vigente, superiores
