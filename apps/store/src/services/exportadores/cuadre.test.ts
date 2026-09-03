@@ -144,13 +144,26 @@ const NOMINA: NominaPeriodo = {
   fecha_pago_efectiva: '2026-08-31',
   origen_plantilla: 'request',
   recibos: RECIBOS,
+  /**
+   * Las cuotas van PARTIDAS en dos porciones, y la bimestral NO es cero.
+   *
+   * Se entera en fechas distintas —EyM, RT y guardería son mensuales; Retiro,
+   * CEAV e Infonavit, bimestrales— y por eso la respuesta las manda separadas.
+   * Pero `recibo.cuota_obrera` trae **la suma de las dos**, y el motor define el
+   * total igual.
+   *
+   * Con la bimestral en ceros, un exportador que sumara sólo la mensual daba el
+   * mismo número y el error era invisible: es justo el defecto que el revisor
+   * del cuadre encontró en el renglón TOTAL del genérico. La fixture lo hace
+   * imposible.
+   */
   porcion_mensual: {
     periodicidad: 'mensual', por_ramo: {},
-    total_patron: '1767.65', total_obrero: '365.03', total: '2132.68', empleados: 3,
+    total_patron: '1267.65', total_obrero: '265.03', total: '1532.68', empleados: 3,
   },
   porcion_bimestral: {
     periodicidad: 'bimestral', por_ramo: {},
-    total_patron: '0.00', total_obrero: '0.00', total: '0.00', empleados: 3,
+    total_patron: '500.00', total_obrero: '100.00', total: '600.00', empleados: 3,
   },
   total_percepciones: TOTAL_PERCEPCIONES,
   total_neto: TOTAL_NETO,
@@ -204,6 +217,24 @@ const DATOS: DatosExportacion = {
   ],
   registroPatronal: 'A1234567890',
   guia: '00001',
+};
+
+/**
+ * La misma plantilla, con cuenta bancaria inventada.
+ *
+ * `cuenta_bancaria` **no existe en `EmpleadoCartera`** —ni en el backend, ni en
+ * ninguna pantalla— y por eso hace falta el cast. **Eso es el hallazgo, no un
+ * detalle del test:** en un periodo real ningún empleado la tiene, así que la
+ * dispersión no exporta a nadie. Lo que se mide aquí es que **los importes**
+ * cuadren el día que el dato exista; que hoy no exista se prueba aparte, y el
+ * generador levanta en vez de emitir un archivo vacío.
+ */
+const CON_CUENTA: DatosExportacion = {
+  ...DATOS,
+  empleados: DATOS.empleados.map((e) => ({
+    ...e,
+    cuenta_bancaria: `0123456789${e.empleado_no.slice(-1)}`,
+  })) as EmpleadoCartera[],
 };
 
 function texto(bytes: Uint8Array): string {
@@ -285,19 +316,11 @@ describe('la dispersión bancaria cuadra al centavo con el motor', () => {
    * banco rechaza el archivo. Si el importe estuviera mal, pagaría de más o de
    * menos — y de eso sí hay garantía.
    */
-  const conCuenta: DatosExportacion = {
-    ...DATOS,
-    empleados: DATOS.empleados.map((e) => ({
-      ...e,
-      cuenta_bancaria: `0123456789${e.empleado_no.slice(-1)}`,
-    })) as EmpleadoCartera[],
-  };
-
   it.each(['dispersion-bbva', 'dispersion-banamex', 'dispersion-banorte'])(
     '%s: la suma de los netos dispersados es la del motor',
     (id) => {
       const formato = FORMATOS.find((f) => f.id === id)!;
-      const archivo = formato.generar(conCuenta);
+      const archivo = formato.generar(CON_CUENTA);
       const lineas = texto(archivo.bytes).trim().split('\r\n');
       expect(lineas).toHaveLength(3);
 
@@ -437,7 +460,7 @@ describe('todo formato declara su fuente o su estado "por validar"', () => {
     // Quien lo encuentre en Descargas dentro de tres meses tiene que saberlo
     // sin abrir la app.
     const bbva = FORMATOS.find((f) => f.id === 'dispersion-bbva')!;
-    expect(bbva.generar(DATOS).nombre).toMatch(/PORVALIDAR/);
+    expect(bbva.generar(CON_CUENTA).nombre).toMatch(/PORVALIDAR/);
   });
 });
 
@@ -489,5 +512,153 @@ describe('truncar está prohibido', () => {
       ),
     };
     expect(() => formato.generar(datos)).toThrow(/no cabe en el campo/);
+  });
+});
+
+describe('las cuotas del renglón TOTAL son las DOS porciones, no sólo la mensual', () => {
+  /**
+   * El defecto que esto mata: el renglón TOTAL tomaba
+   * `porcion_mensual.total_obrero` y ya. Las cuotas se enteran en dos fechas
+   * —EyM, RT y guardería mensuales; Retiro, CEAV e Infonavit bimestrales— pero
+   * el motor define el total como la suma de las dos, y la columna por empleado
+   * ya las trae juntas.
+   *
+   * El resultado era un formato llamado "todos los conceptos" cuyo TOTAL no
+   * cuadraba con su propia columna, corto justo por Infonavit (5% del SBC) y
+   * Retiro (2%). Lo encontró el revisor del cuadre; aquí queda medido.
+   */
+  const generico = FORMATOS.find((f) => f.id === 'generico')!;
+
+  function renglones(): string[][] {
+    return texto(generico.generar(DATOS).bytes).trim().split('\r\n').map((l) => l.split('|'));
+  }
+
+  it('la fixture tiene porción bimestral: sin eso esta prueba no mediría nada', () => {
+    // Con la bimestral en ceros las dos ramas dan el mismo número y el test
+    // pasaría por la razón equivocada.
+    expect(aCentavos(NOMINA.porcion_bimestral.total_obrero)).toBeGreaterThan(0);
+    expect(aCentavos(NOMINA.porcion_bimestral.total_patron)).toBeGreaterThan(0);
+  });
+
+  it('la cuota obrera del TOTAL es mensual + bimestral', () => {
+    const filas = renglones();
+    const total = filas[filas.length - 1];
+    expect(aCentavos(total[8])).toBe(
+      sumaCentavos([NOMINA.porcion_mensual.total_obrero, NOMINA.porcion_bimestral.total_obrero]),
+    );
+    // Y explícitamente NO la mensual sola, que es como estaba.
+    expect(aCentavos(total[8])).not.toBe(aCentavos(NOMINA.porcion_mensual.total_obrero));
+  });
+
+  it('la cuota patronal del TOTAL es mensual + bimestral', () => {
+    const filas = renglones();
+    const total = filas[filas.length - 1];
+    expect(aCentavos(total[9])).toBe(
+      sumaCentavos([NOMINA.porcion_mensual.total_patron, NOMINA.porcion_bimestral.total_patron]),
+    );
+    expect(aCentavos(total[9])).not.toBe(aCentavos(NOMINA.porcion_mensual.total_patron));
+  });
+
+  it('y el TOTAL cuadra con la suma de sus propias columnas de cuotas', () => {
+    // La prueba que el operador haría en Excel: seleccionar la columna y sumar.
+    const filas = renglones();
+    const cuerpo = filas.slice(1, -1);
+    const total = filas[filas.length - 1];
+    expect(cuerpo.reduce((a, c) => a + aCentavos(c[8]), 0)).toBe(aCentavos(total[8]));
+    expect(cuerpo.reduce((a, c) => a + aCentavos(c[9]), 0)).toBe(aCentavos(total[9]));
+  });
+});
+
+describe('el TOTAL sale del motor aunque difiera de la suma de los recibos', () => {
+  /**
+   * Sin esto, el punto 3 del cuadre era prosa.
+   *
+   * En la fixture normal los totales del motor **son** exactamente la suma de
+   * los recibos —como debe ser—, así que leer `nomina.total_percepciones` y
+   * sumar los recibos en el front dan el mismo string: las dos
+   * implementaciones son indistinguibles y el test que dice "es el del motor,
+   * no una suma del front" no medía la diferencia. Lo cazó el revisor del
+   * cuadre.
+   *
+   * Aquí los totales se separan **un centavo** a propósito. No es un periodo
+   * realista: es una sonda, y es la única forma de distinguir las dos ramas.
+   * Si alguien vuelve a recomponer los totales en el front, esto muere.
+   */
+  const DESVIADA: NominaPeriodo = {
+    ...NOMINA,
+    total_percepciones: '13106.12',
+    total_isr: '162.76',
+    total_neto: '12578.34',
+  };
+  const DATOS_DESVIADOS: DatosExportacion = { ...DATOS, nomina: DESVIADA };
+  const generico = FORMATOS.find((f) => f.id === 'generico')!;
+
+  it('la sonda de verdad difiere de la suma de los recibos', () => {
+    expect(aCentavos(DESVIADA.total_percepciones)).not.toBe(
+      sumaCentavos(RECIBOS.map((r) => r.total_percepciones)),
+    );
+  });
+
+  it('el renglón TOTAL imprime el número del motor, no el recompuesto', () => {
+    const filas = texto(generico.generar(DATOS_DESVIADOS).bytes).trim().split('\r\n');
+    const total = filas[filas.length - 1].split('|');
+    expect(total[5]).toBe('13106.12');
+    expect(total[7]).toBe('162.76');
+    expect(total[10]).toBe('12578.34');
+  });
+});
+
+describe('la dispersión no emite un archivo vacío cuando no hay a quién pagar', () => {
+  /**
+   * Y hoy ese es el caso NORMAL: `cuenta_bancaria` no existe en el modelo, así
+   * que en un periodo real todos los empleados caen en `noExportables` y esto
+   * producía un `.txt` de **0 bytes** que el navegador descargaba sin decir
+   * nada. Un archivo vacío parece un archivo: se manda al banco y el rechazo
+   * llega días después.
+   */
+  it.each(['dispersion-bbva', 'dispersion-banamex', 'dispersion-banorte'])(
+    '%s: sin cuentas capturadas LEVANTA en vez de emitir 0 bytes',
+    (id) => {
+      const formato = FORMATOS.find((f) => f.id === id)!;
+      // DATOS es la plantilla REAL: ningún empleado tiene cuenta, porque el
+      // campo no existe todavía en la ficha.
+      expect(() => formato.generar(DATOS)).toThrow(/no se puede emitir todavía/);
+    },
+  );
+
+  it('el mensaje dice cuántos y por qué, no "error al exportar"', () => {
+    const bbva = FORMATOS.find((f) => f.id === 'dispersion-bbva')!;
+    expect(() => bbva.generar(DATOS)).toThrow(/3 empleados sin cuenta bancaria/);
+  });
+});
+
+describe('un NSS incompleto no se recorta: queda fuera y se dice', () => {
+  /**
+   * El NSS se parte en 10 posiciones más su dígito verificador, y se partía con
+   * `slice` — que recorta en silencio. Con 10 dígitos, el `slice(10,11)` da
+   * vacío y el movimiento sale sobre **otra persona**, en un archivo que mide
+   * 168 posiciones y que el IMSS acepta.
+   *
+   * El backend ya valida el formato, pero era el único punto del módulo donde
+   * un dato se acortaba sin que `escribirRegistro` levantara.
+   */
+  const imss = FORMATOS.find((f) => f.id === 'imss')!;
+
+  it.each([['0101010101'], ['010101010111'], ['0101010101X']])(
+    'NSS "%s" no se exporta',
+    (nss) => {
+      const datos: DatosExportacion = {
+        ...DATOS,
+        empleados: DATOS.empleados.map((e, i) => (i === 0 ? { ...e, nss } : e)),
+      };
+      const archivo = imss.generar(datos);
+      const fuera = archivo.noExportables.find((n) => n.empleadoNo === 'E-01');
+      expect(fuera?.motivo).toMatch(/11 dígitos/);
+    },
+  );
+
+  it('con los 11 dígitos sí sale', () => {
+    const archivo = imss.generar(DATOS);
+    expect(archivo.noExportables.find((n) => n.empleadoNo === 'E-01')).toBeUndefined();
   });
 });

@@ -83,7 +83,12 @@ function faltantes(e: {
   fecha_alta: string | null;
 }): string[] {
   const falta: string[] = [];
-  if (!e.nss) falta.push('el NSS');
+  // 11 dígitos exactos, no "algo en el campo". El backend ya lo valida
+  // (`empleado.py::_nss_bien_formado`), pero abajo el NSS se parte en 10 + su
+  // dígito verificador con `slice`, y `slice` recorta en silencio: es el único
+  // punto del módulo donde un dato se acortaría sin que `rellenar` levantara.
+  // Un NSS de 10 dígitos declara el movimiento sobre **otra persona**.
+  if (!/^\d{11}$/.test(e.nss)) falta.push('el NSS completo (11 dígitos)');
   if (!e.apellido_paterno?.trim()) falta.push('el apellido paterno');
   if (!e.nombres?.trim()) falta.push('el nombre de pila');
   if (!e.fecha_alta) falta.push('la fecha de alta');

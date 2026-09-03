@@ -137,8 +137,8 @@ describe('ModalEmpleado · el SBC lo calcula el motor', () => {
     integrarSBC.mockRejectedValue(new Error('API caída'));
     capturar(/Número de empleado/, 'N-01');
     // O-04: hay dos campos que empiezan con "Nombre" —el completo y el de pila
-  // del layout del IMSS— así que el matcher tiene que ser exacto.
-  capturar(/^Nombre \*$/, 'PERSONA NUEVA');
+    // del layout del IMSS— así que el matcher tiene que ser exacto.
+    capturar(/^Nombre \*$/, 'PERSONA NUEVA');
     capturar(/Salario diario/, '500.00');
 
     await waitFor(() =>

@@ -22,6 +22,7 @@
  */
 
 import { bytesAscii, aAscii } from './ascii';
+import { deCentavos, sumaCentavos } from './dinero';
 import type { ArchivoGenerado, DatosExportacion } from './tipos';
 
 const CRLF = '\r\n';
@@ -85,7 +86,25 @@ export function generarGenerico(datos: DatosExportacion): ArchivoGenerado {
    * **Los importes son los del MOTOR** (`total_percepciones`, `total_neto`,
    * `total_isr` de la respuesta), no una suma hecha aquí. Es lo que permite que
    * el cuadre compare contra el backend en vez de contra sí mismo.
+   *
+   * LAS CUOTAS SON LA EXCEPCIÓN, Y VAN SUMADAS DE LAS DOS PORCIONES
+   * ---------------------------------------------------------------
+   * `total_obrero` y `total_patron` no viajan sueltos en la respuesta: viajan
+   * partidos en `porcion_mensual` (EyM, RT, guardería) y `porcion_bimestral`
+   * (Retiro, CEAV, Infonavit), porque se enteran en fechas distintas. El motor
+   * define el total como **la suma de las dos** (`periodo_tipos.py`), y la
+   * columna por empleado —`recibo.cuota_obrera`— ya trae las dos.
+   *
+   * Tomar sólo la mensual dejaba el renglón TOTAL por debajo de la suma de su
+   * propia columna: en un periodo con Infonavit (5% del SBC), Retiro (2%) y
+   * CEAV, el faltante es grande y silencioso. Lo cazó el revisor del cuadre.
    */
+  const cuotaObrera = deCentavos(
+    sumaCentavos([nomina.porcion_mensual.total_obrero, nomina.porcion_bimestral.total_obrero]),
+  );
+  const cuotaPatronal = deCentavos(
+    sumaCentavos([nomina.porcion_mensual.total_patron, nomina.porcion_bimestral.total_patron]),
+  );
   filas.push(
     [
       'TOTAL',
@@ -96,8 +115,8 @@ export function generarGenerico(datos: DatosExportacion): ArchivoGenerado {
       nomina.total_percepciones,
       '',
       nomina.total_isr,
-      nomina.porcion_mensual.total_obrero,
-      nomina.porcion_mensual.total_patron,
+      cuotaObrera,
+      cuotaPatronal,
       nomina.total_neto,
     ].join(SEP),
   );

@@ -151,7 +151,31 @@ export function generarDispersion(
     );
   }
 
-  const texto = lineas.length > 0 ? lineas.join(CRLF) + CRLF : '';
+  /**
+   * Cero renglones NO se descarga como archivo vacío.
+   *
+   * Hoy este es el caso NORMAL, no el raro: `cuenta_bancaria` **todavía no
+   * existe en el modelo** —no está en la ficha del empleado, ni en el backend,
+   * ni en ninguna pantalla— así que en un periodo real *todos* los recibos caen
+   * en `noExportables` y esto emitía un `.txt` de **0 bytes** que el navegador
+   * descargaba sin decir nada. Un archivo vacío parece un archivo: se manda al
+   * banco y el rechazo llega días después.
+   *
+   * Levantar es lo honesto mientras el dato no exista. Queda ABIERTO en
+   * `docs/nocturno-log.md`: capturar la CLABE es lo que falta para que este
+   * formato sirva, y no es algo que el exportador pueda deducir.
+   */
+  if (lineas.length === 0) {
+    throw new Error(
+      `No hay ni un pago que dispersar: ${noExportables.length} ` +
+        `${noExportables.length === 1 ? 'empleado' : 'empleados'} sin cuenta bancaria. ` +
+        'La cuenta todavía no se captura en la ficha del empleado — es una tarea ' +
+        'abierta, no un dato que se pueda deducir — así que este formato no se ' +
+        'puede emitir todavía. El PDF y el TXT del IMSS sí.',
+    );
+  }
+
+  const texto = lineas.join(CRLF) + CRLF;
   return {
     // "PORVALIDAR" en el nombre del archivo, a propósito: quien lo encuentre en
     // Descargas dentro de tres meses tiene que saberlo sin abrir la app.
