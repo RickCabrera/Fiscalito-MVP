@@ -86,13 +86,55 @@ function mensajeDeRutaDesconocida(res: Response): string {
  * `detail`. Invertirlo haría que un 404 de dominio que algún día traiga los dos
  * campos se reporte como ruta inexistente, que es lo contrario de la verdad.
  */
+/**
+ * Un `422` de FastAPI, escrito para que se pueda ARREGLAR. (F-02)
+ *
+ * FastAPI responde `{"detail": [{loc, msg, type}, ...]}`. Se pintaba
+ * `detail[0].msg` a secas, y eso produce mensajes que no se pueden accionar:
+ *
+ * - `"Extra inputs are not permitted"` — ¿cuál campo? El `msg` no lo dice; el
+ *   nombre vive en `loc`. Es justo el 422 que tumbó el alta de empleado en
+ *   F-01 (`tabla_vacaciones` contra una API anterior a O-03), y el operador
+ *   veía una frase en inglés sin una sola pista de qué tocar.
+ * - Con varios campos inválidos, los demás se perdían: se arregla uno, se
+ *   reintenta, aparece el siguiente. Se muestran todos.
+ *
+ * `loc` viene como `["body", "tabla_vacaciones"]` o `["body", "incidencias",
+ * 0, "faltas"]`. Se tira el primer segmento —siempre es de dónde venía, no
+ * qué campo es— y el resto se une con puntos, que es como lo nombra quien lo
+ * mandó. Los índices se conservan: en una plantilla de 40 empleados, saber que
+ * es el renglón 12 es la mitad del arreglo.
+ */
+function validacionesLegibles(detail: unknown[]): string | null {
+  const partes = detail
+    .map((d) => {
+      const e = d as { loc?: unknown; msg?: unknown };
+      if (typeof e?.msg !== 'string') return null;
+      const campo = Array.isArray(e.loc)
+        ? e.loc
+            .slice(1)
+            .filter((s) => typeof s === 'string' || typeof s === 'number')
+            .join('.')
+        : '';
+      return campo ? `${campo}: ${e.msg}` : e.msg;
+    })
+    .filter((p): p is string => Boolean(p));
+
+  // Tope: un 422 sobre una plantilla grande puede traer un renglón por
+  // empleado, y volcarlos todos en un aviso lo vuelve ilegible otra vez.
+  if (partes.length === 0) return null;
+  if (partes.length <= 3) return partes.join(' · ');
+  return `${partes.slice(0, 3).join(' · ')} (y ${partes.length - 3} más)`;
+}
+
 export function detalleDelError(res: Response, cuerpo: unknown): string {
   const c = (cuerpo ?? null) as CuerpoError | null;
 
   if (typeof c?.error === 'string') return c.error;
   if (esRutaDesconocida(res, c)) return mensajeDeRutaDesconocida(res);
-  if (Array.isArray(c?.detail) && typeof c.detail[0]?.msg === 'string') {
-    return c.detail[0].msg as string;
+  if (Array.isArray(c?.detail)) {
+    const legible = validacionesLegibles(c.detail);
+    if (legible) return legible;
   }
   if (typeof c?.detail === 'string') return c.detail;
   return `El servidor respondió ${res.status}`;

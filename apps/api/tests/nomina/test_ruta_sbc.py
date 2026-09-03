@@ -31,6 +31,7 @@ from app.nomina_engine.integracion import (
     factor_integracion,
     sbc_fijo,
 )
+from app.schemas.nomina import SBCRequest
 
 RUTA = "/api/v1/nomina/sbc"
 FECHA = "2026-09-01"
@@ -78,9 +79,7 @@ class TestTraductorNoMotor:
 
 
 class TestElClampNoEsSilencioso:
-    def test_un_salario_por_debajo_del_minimo_reporta_que_se_aplico_el_piso(
-        self, cliente_http
-    ):
+    def test_un_salario_por_debajo_del_minimo_reporta_que_se_aplico_el_piso(self, cliente_http):
         """
         `piso_aplicado` es el ÚNICO camino por el que un SBC llega a ser
         exactamente 1 salario mínimo, que es el supuesto del Art. 36 LSS (el
@@ -106,9 +105,7 @@ class TestElClampNoEsSilencioso:
 
 
 class TestNoSeTragaLasValidaciones:
-    def test_una_prima_como_porcentaje_responde_422_y_no_un_sbc_inflado(
-        self, cliente_http
-    ):
+    def test_una_prima_como_porcentaje_responde_422_y_no_un_sbc_inflado(self, cliente_http):
         """
         25 en vez de 0.25 produce un factor de 1.86 y un SBC inflado 77% que
         ninguna tabla de referencia detecta. Un "mejor esfuerzo" que lo dejara
@@ -228,9 +225,7 @@ class TestLaZonaSeUsa:
             salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.ZLFN)
         )
 
-    def test_un_salario_entre_los_dos_pisos_solo_se_acota_en_la_frontera(
-        self, cliente_http
-    ):
+    def test_un_salario_entre_los_dos_pisos_solo_se_acota_en_la_frontera(self, cliente_http):
         """
         El caso que delataría un `zona` hardcodeado: el mismo salario, dos
         respuestas distintas. Si la ruta ignorara la zona, serían iguales.
@@ -239,12 +234,8 @@ class TestLaZonaSeUsa:
         piso_frontera = salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.ZLFN)
         salario = str(((piso_general + piso_frontera) / 2).quantize(Decimal("0.01")))
 
-        assert pedir(cliente_http, salario_diario=salario, zona="general")[
-            "piso_aplicado"
-        ] is False
-        assert pedir(cliente_http, salario_diario=salario, zona="zlfn")[
-            "piso_aplicado"
-        ] is True
+        assert pedir(cliente_http, salario_diario=salario, zona="general")["piso_aplicado"] is False
+        assert pedir(cliente_http, salario_diario=salario, zona="zlfn")["piso_aplicado"] is True
 
 
 class TestElClampEnLaIgualdad:
@@ -254,9 +245,7 @@ class TestElClampEnLaIgualdad:
     acotados SBC que la ley deja pasar tal cual.
     """
 
-    def test_un_sbc_exactamente_en_el_piso_no_se_reporta_como_acotado(
-        self, cliente_http
-    ):
+    def test_un_sbc_exactamente_en_el_piso_no_se_reporta_como_acotado(self, cliente_http):
         piso = salario_minimo_vigente(date(2026, 9, 1), ZonaSalarioMinimo.GENERAL)
         factor = factor_integracion(15, dias_vacaciones_de_ley(0), Decimal("0.25"))
         salario = (piso / factor).quantize(Decimal("0.01"))
@@ -281,7 +270,9 @@ class TestFilaDorada:
 
     def test_los_numeros_del_modal_son_estos(self, cliente_http):
         cuerpo = pedir(
-            cliente_http, salario_diario="500.00", fecha="2026-09-01",
+            cliente_http,
+            salario_diario="500.00",
+            fecha="2026-09-01",
             anios_servicio_cumplidos=3,
         )
         assert cuerpo["factor"] == "1.0521"
@@ -312,9 +303,7 @@ class TestTablaDeVacacionesDelPatron:
 
     def test_la_tabla_cambia_el_factor_y_el_SBC(self, cliente_http):
         sin_tabla = pedir(cliente_http, anios_servicio_cumplidos=3)
-        con_tabla = pedir(
-            cliente_http, anios_servicio_cumplidos=3, tabla_vacaciones=self.TABLA
-        )
+        con_tabla = pedir(cliente_http, anios_servicio_cumplidos=3, tabla_vacaciones=self.TABLA)
 
         # De ley son 16 días al tercer año; la tabla da 20.
         assert sin_tabla["dias_vacaciones_aplicados"] == 16
@@ -330,9 +319,7 @@ class TestTablaDeVacacionesDelPatron:
         este campo, la pantalla tendría que buscar el renglón para poder
         explicar el número, y ahí nacería la segunda implementación.
         """
-        cuerpo = pedir(
-            cliente_http, anios_servicio_cumplidos=7, tabla_vacaciones=self.TABLA
-        )
+        cuerpo = pedir(cliente_http, anios_servicio_cumplidos=7, tabla_vacaciones=self.TABLA)
         assert cuerpo["dias_vacaciones_aplicados"] == 25
 
     def test_por_encima_del_ultimo_renglon_NO_le_bajan_los_dias(self, cliente_http):
@@ -340,16 +327,12 @@ class TestTablaDeVacacionesDelPatron:
         Tabla hasta el año 10 con 30 días, trabajador con 11. La ley da 24: si
         el endpoint cayera a la ley, su SBC **bajaría al cumplir un año más**.
         """
-        cuerpo = pedir(
-            cliente_http, anios_servicio_cumplidos=11, tabla_vacaciones=self.TABLA
-        )
+        cuerpo = pedir(cliente_http, anios_servicio_cumplidos=11, tabla_vacaciones=self.TABLA)
         assert cuerpo["dias_vacaciones_aplicados"] == 30
 
     def test_pero_la_LEY_gana_cuando_supera_a_la_tabla(self, cliente_http):
         """Con 40 años la ley da 34, más que los 30 del último renglón."""
-        cuerpo = pedir(
-            cliente_http, anios_servicio_cumplidos=40, tabla_vacaciones=self.TABLA
-        )
+        cuerpo = pedir(cliente_http, anios_servicio_cumplidos=40, tabla_vacaciones=self.TABLA)
         assert cuerpo["dias_vacaciones_aplicados"] == 34
 
     def test_una_tabla_bajo_el_minimo_de_ley_devuelve_422(self, cliente_http):
@@ -377,3 +360,100 @@ class TestTablaDeVacacionesDelPatron:
         cuerpo = pedir(cliente_http, anios_servicio_cumplidos=3)
         assert cuerpo["factor"] == "1.0521"
         assert cuerpo["dias_vacaciones_aplicados"] == 16
+
+
+class TestContratoConElFront:
+    """
+    El payload **verbatim** que manda el modal de alta, contra el schema real.
+
+    POR QUÉ EXISTE ESTA CLASE
+    -------------------------
+    F-01. En la UI, `POST /nomina/sbc` devolvía `422 extra_forbidden` por
+    `tabla_vacaciones` y **ningún empleado se podía dar de alta**: el modal
+    deshabilita "Dar de alta" mientras el SBC no cuadre, así que un campo de más
+    en el request tumba el alta entera.
+
+    La causa no era el schema de esta rama —`tabla_vacaciones` entró al
+    `SBCRequest` en O-03 (ab0ce73)— sino una API **anterior a O-03** contra la
+    que el front nuevo ya mandaba el campo. Es la cara fea de `extra="forbid"`:
+    protege contra el front que manda de más (subintegrar en silencio), y a
+    cambio convierte cualquier desfase de versión en un 422 total.
+
+    Por eso el contrato se fija aquí, del lado que puede romperlo: mientras este
+    archivo sea el payload literal de `ModalEmpleado.tsx`, quitar o renombrar un
+    campo del `SBCRequest` pone rojo el CI en vez de la pantalla de alta.
+    """
+
+    # Copiado LITERAL de `apps/store/src/components/cartera/ModalEmpleado.tsx`
+    # (el `integrarSBC({...})` del efecto con debounce). Si el modal cambia lo
+    # que manda, este diccionario cambia con él **en el mismo entregable**.
+    PAYLOAD_DEL_FRONT = {
+        "salario_diario": "420",
+        "fecha": "2026-09-03",
+        "zona": "general",
+        "anios_servicio_cumplidos": 2,
+        "dias_aguinaldo": 15,
+        "dias_vacaciones": 0,
+        "prima_vacacional": "0.25",
+        "tabla_vacaciones": [],
+    }
+
+    def test_el_payload_del_modal_de_alta_pasa(self, cliente_http):
+        """
+        El caso que estaba tumbando el alta: tabla VACÍA, que es "manda la ley".
+
+        Se afirma el 200 **y** el número, porque un 200 con el factor de otra
+        antigüedad dejaría el alta funcionando con un SBC equivocado, que es
+        peor que el 422.
+        """
+        r = cliente_http.post(RUTA, json=self.PAYLOAD_DEL_FRONT)
+        assert r.status_code == 200, r.text
+        cuerpo = r.json()
+
+        # Tabla vacía + 2 años cumplidos = los 14 días del Art. 76 LFT.
+        assert cuerpo["dias_vacaciones_aplicados"] == dias_vacaciones_de_ley(2) == 14
+        assert cuerpo["factor"] == str(
+            factor_integracion(15, dias_vacaciones_de_ley(2), Decimal("0.25"))
+        )
+        assert cuerpo["sbc"] == str(
+            clamp_sbc(
+                sbc_fijo(Decimal("420"), factor_integracion(15, 14, Decimal("0.25"))),
+                date(2026, 9, 3),
+                ZonaSalarioMinimo.GENERAL,
+            ).valor
+        )
+
+    def test_ningun_campo_del_front_es_extra_para_el_schema(self):
+        """
+        La guarda estructural contra el modo de falla de F-01.
+
+        El test de arriba prueba ESTE payload; éste prueba la **regla**: con
+        `extra="forbid"`, cualquier llave que el front mande y el schema no
+        declare es un 422 que apaga la pantalla entera. Se compara contra los
+        campos declarados, no contra una lista escrita a mano, para que agregar
+        un campo al schema no exija tocar este test.
+        """
+        del_schema = set(SBCRequest.model_fields)
+        del_front = set(self.PAYLOAD_DEL_FRONT)
+        assert del_front <= del_schema, (
+            f"El modal manda campos que el SBCRequest no declara: "
+            f"{sorted(del_front - del_schema)}. Con extra='forbid' eso es un 422 "
+            f"y el alta de empleado deja de funcionar (F-01)."
+        )
+
+    def test_con_renglones_la_tabla_del_patron_manda_sobre_la_ley(self, cliente_http):
+        """
+        El otro medio contrato: la tabla no es decoración, integra.
+
+        Mismo payload del modal, con la escala del patrón que el proveedor de
+        parámetros inyecta cuando la empresa tiene una. 16 días al año 2 están
+        sobre los 14 de ley, así que el SBC sube.
+        """
+        r = cliente_http.post(
+            RUTA,
+            json={**self.PAYLOAD_DEL_FRONT, "tabla_vacaciones": [[1, 14], [2, 16]]},
+        )
+        assert r.status_code == 200, r.text
+        cuerpo = r.json()
+        assert cuerpo["dias_vacaciones_aplicados"] == 16
+        assert cuerpo["factor"] == str(factor_integracion(15, 16, Decimal("0.25")))
