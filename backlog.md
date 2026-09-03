@@ -231,6 +231,26 @@ como está escrito se deja ABIERTO y anotado en `docs/nocturno-log.md`.
   periodo, con test que exporta ambos del mismo cálculo. *Listo cuando:* un mismo periodo
   exporta PDF + los TXT con totales idénticos, y cada formato declara su fuente o su estado
   "por validar".
+  > **PR #34, mergeada — y la tarea SIGUE ABIERTA a propósito.** Entregado y medido: el
+  > módulo con su punto de extensión, el selector del paso 4, el TXT de movimientos
+  > afiliatorios del IMSS (layout oficial de 168 posiciones), el genérico con todos los
+  > conceptos, y el cuadre al centavo de tres puntos —bytes del TXT, renglones del PDF y los
+  > totales del **motor**, que ahora viajan en la respuesta— con las mutaciones que lo
+  > prueban. Cada formato declara su fuente.
+  >
+  > **Lo que NO cumple el criterio, y por eso no va `[x]`:** la **dispersión bancaria no
+  > exporta a nadie en un periodo real**, porque `cuenta_bancaria` (CLABE) no existe en el
+  > modelo —ni en la ficha, ni en el backend, ni en ninguna pantalla—. Hoy el generador
+  > **levanta** diciendo por qué, en vez de descargar el archivo de cero bytes que emitía
+  > antes de que lo cazara el revisor del cuadre. Su cuadre está medido sobre datos
+  > fabricados: vale el día que el dato exista.
+  >
+  > También quedan fuera las **bajas (02) y las modificaciones de salario (07)**: los tres
+  > layouts están transcritos y probados, pero el modelo no guarda fecha de baja, causa ni
+  > historial de SBC. Falta el dato, no el código.
+  >
+  > Las dos cosas se cierran capturando datos en la ficha del empleado — es tarea de modelo,
+  > no de exportador. Detalle en `docs/nocturno-log.md`.
 
 ## R — Reparaciones para que la app sea usable (2026-09-02, MODO RÁPIDO)
 
