@@ -3,6 +3,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { CFDI } from '../services/fiscalAgentApi';
 import ingreso001 from '../../public/demo-xmls/2026/01/ingreso-001.xml?raw';
+import { modoDespacho } from '../test/modoDespacho';
 
 // firebase.ts corre initializeApp() en el import y tools.ts lo arrastra via
 // declaracionesHistory. Sin este mock los tests explotan al importar.
@@ -35,6 +36,16 @@ vi.mock('./AgentContext', () => ({
     periodoMonth: 1,
   }),
 }));
+
+/**
+ * O-cierre: este archivo mide la semántica del MODO DESPACHO —el prompt que
+ * habla de clientes, la ruta de la cartera, la pre-declaración que no aplica—.
+ * Desde el pivote el modo por default es empresa única, así que sin declararlo
+ * estos casos medían otra app. Es el hueco que el revisor de cierre encontró:
+ * sólo 22 de 57 archivos de prueba declaraban modo.
+ */
+modoDespacho();
+
 
 const { TOOL_EXECUTORS } = await import('./tools');
 

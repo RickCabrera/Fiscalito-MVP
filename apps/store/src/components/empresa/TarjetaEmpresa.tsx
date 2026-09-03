@@ -1,5 +1,6 @@
 import type { CarteraContextType } from '../../context/carteraStore';
 import ConfiguracionEmpresa from './ConfiguracionEmpresa';
+import ReintegrarPlantilla from './ReintegrarPlantilla';
 
 /**
  * La Configuración de empresa, o su esqueleto mientras carga.
@@ -42,11 +43,19 @@ export default function TarjetaEmpresa({ cartera }: { cartera: CarteraContextTyp
   ].join('|');
 
   return (
-    <ConfiguracionEmpresa
-      key={llave}
-      empresa={cartera.empresa}
-      soloLectura={cartera.soloLectura}
-      onGuardar={cartera.guardarEmpresa}
-    />
+    <>
+      <ConfiguracionEmpresa
+        key={llave}
+        empresa={cartera.empresa}
+        soloLectura={cartera.soloLectura}
+        onGuardar={cartera.guardarEmpresa}
+      />
+      {/* O-cierre: va FUERA de `ConfiguracionEmpresa` y no dentro. Ese archivo
+          ronda el tope de 300 líneas de `apps/store/CLAUDE.md` y esto no es
+          parte de capturar la ficha: es lo que hay que hacer DESPUÉS de
+          cambiarla. Sin `key`: su estado es el reporte de la última corrida, y
+          remontarlo al guardar la ficha lo borraría justo cuando sirve. */}
+      <ReintegrarPlantilla cartera={cartera} />
+    </>
   );
 }

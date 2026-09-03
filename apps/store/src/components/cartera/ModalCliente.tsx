@@ -31,6 +31,11 @@ function vacio(): Datos {
     origen: 'propio',
     prima_riesgo: '',
     clase_riesgo: 1,
+    // O-cierre: los dos datos que el IMSS asigna y que el exportador de
+    // movimientos afiliatorios necesita en CADA renglón. Vacíos por default y
+    // nunca deducidos.
+    registro_patronal: '',
+    guia_subdelegacion: '',
     clave_periodicidad: '04',
     zona: 'general',
     periodo_sugerido: { inicio: '', fin: '', fecha_pago: null },
@@ -80,6 +85,26 @@ export default function ModalCliente({
       prima > Number(primas.maxima));
 
   const idRepetido = esAlta && idsExistentes.includes(datos.id.trim());
+
+  /**
+   * Los dos datos del IMSS, contra lo que el backend acepta (O-cierre).
+   *
+   * `schemas/cartera.py` los declara `^\d{0,5}$` (guía) y 11 caracteres
+   * (registro patronal). Esta pantalla los creó y no los validaba: hoy no
+   * revienta porque el interruptor de R-07 está apagado, pero con
+   * `VITE_CARTERA_BACKEND=1` es un 422 al guardar, sobre un campo que el
+   * operador ya dio por bueno. Es la misma asimetría que el techo de vacaciones
+   * de `validacionEmpresa.ts`, que esta corrida acaba de cerrar del otro lado.
+   *
+   * Los dos son OPCIONALES: vacío es válido —el resto de la nómina y el PDF
+   * funcionan sin ellos— y lo que se rechaza es un valor mal formado.
+   */
+  const rpMalFormado =
+    (datos.registro_patronal ?? '').trim() !== '' &&
+    (datos.registro_patronal ?? '').trim().length !== 11;
+  const guiaMalFormada =
+    (datos.guia_subdelegacion ?? '').trim() !== '' &&
+    !/^\d{1,5}$/.test((datos.guia_subdelegacion ?? '').trim());
   const puedeGuardar =
     datos.id.trim() !== '' &&
     datos.nombre.trim() !== '' &&
@@ -88,6 +113,8 @@ export default function ModalCliente({
     primas !== null &&
     !primaFueraDeRango &&
     !idRepetido &&
+    !rpMalFormado &&
+    !guiaMalFormada &&
     !guardando;
 
   async function guardar() {
@@ -195,15 +222,58 @@ export default function ModalCliente({
               onChange={(e) => setDatos({ ...datos, prima_riesgo: e.target.value })}
             />
           </Campo>
+          {/* O-cierre: sin estos dos, el TXT de movimientos afiliatorios de
+              O-04 no se puede emitir para este cliente — van en cada renglón y
+              los asigna el IMSS. Se capturaban SÓLO en Configuración de
+              empresa, que con el flag apagado ni siquiera se renderiza: el
+              contador pulsaba Exportar, leía "captúralo en Perfil" y esa
+              pantalla no existía. Son opcionales: el resto de la nómina y el
+              PDF funcionan sin ellos. */}
+          <Campo label="Registro patronal (IMSS)" ancho="1 1 180px">
+            <input
+              style={campo}
+              value={datos.registro_patronal ?? ''}
+              placeholder="11 caracteres"
+              onChange={(e) => setDatos({ ...datos, registro_patronal: e.target.value })}
+            />
+          </Campo>
+          <Campo label="Guía de subdelegación" ancho="1 1 180px">
+            <input
+              style={campo}
+              value={datos.guia_subdelegacion ?? ''}
+              placeholder="La asigna el IMSS"
+              onChange={(e) => setDatos({ ...datos, guia_subdelegacion: e.target.value })}
+            />
+          </Campo>
+          {/* Fuera de `Campo`, que sólo admite un hijo. Los motivos van uno por
+              uno: un "hay errores" genérico obliga a adivinar cuál de los dos. */}
+          {rpMalFormado && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', margin: 0, flex: '1 1 100%' }}>
+              El registro patronal son 11 caracteres: los 10 del registro más su dígito
+              verificador.
+            </p>
+          )}
+          {guiaMalFormada && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--danger)', margin: 0, flex: '1 1 100%' }}>
+              La guía de la subdelegación son hasta 5 dígitos, sin letras ni guiones.
+            </p>
+          )}
           {/* **Sólo quincenal, a propósito.** El periodo sugerido que la app
-                calcula es siempre `quincena(hoy)`, y nadie valida que la
-                duración del periodo case con esta clave: un cliente marcado
-                Mensual recibiría la tarifa mensual del Art. 96 sobre una base
-                de 15-16 días —**ISR subestimado en silencio**, con recibo
-                creíble— y uno Semanal, la semanal sobre 16 días. Catorcenal ni
-                siquiera puede calcular: no hay tarifa publicada (§D10).
-                Abrir las otras tres exige que el motor rechace un periodo cuya
-                duración no case con la clave. Queda anotado en el backlog. */}
+                calcula es siempre `quincena(hoy)`, y el selector sigue
+                cerrado, pero **la razón ya no es la misma**. Era que nadie
+                validaba que la duración del periodo casara con esta clave: un
+                cliente marcado Mensual recibía la tarifa mensual del Art. 96
+                sobre una base de 15-16 días —ISR subestimado en silencio, con
+                recibo creíble—. **O-03 construyó esa validación**
+                (`duracion_periodo.py`, cableada en el orquestador y en el
+                endpoint), así que ese hueco está cerrado.
+
+                Lo que falta para abrir las otras tres es que la app SUGIERA el
+                periodo correcto para cada clave —hoy `periodo_sugerido` ya lo
+                hace para 01, 02, 04 y 05— y que esta pantalla deje elegirlo sin
+                que el operador tenga que adivinar las fechas. Catorcenal se
+                queda fuera igual: no hay tarifa publicada (§D10). Tarea propia,
+                no un "de pasada". */}
           <Campo label="Periodicidad de pago" ancho="1 1 180px">
             <select
               style={campo}

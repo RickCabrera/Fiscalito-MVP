@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
+import { modoDespacho } from '../test/modoDespacho';
 
 vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion: vi.fn() }));
@@ -27,6 +28,16 @@ vi.mock('./AgentContext', () => ({
 }));
 
 const { runAgentLoop } = await import('./agentLoop');
+
+/**
+ * O-cierre: este archivo mide la semántica del MODO DESPACHO —el prompt que
+ * habla de clientes, la ruta de la cartera, la pre-declaración que no aplica—.
+ * Desde el pivote el modo por default es empresa única, así que sin declararlo
+ * estos casos medían otra app. Es el hueco que el revisor de cierre encontró:
+ * sólo 22 de 57 archivos de prueba declaraban modo.
+ */
+modoDespacho();
+
 
 const PERFIL = {
   rfc: 'AAA010101AAA',

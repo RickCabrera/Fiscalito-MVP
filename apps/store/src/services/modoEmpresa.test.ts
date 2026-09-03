@@ -21,19 +21,32 @@ describe('modoEmpresaUnica', () => {
     expect(modoEmpresaUnica()).toBe(true);
   });
 
-  it('se apaga sólo con el "0" explícito', () => {
-    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '0');
+  /**
+   * LA REGLA CAMBIÓ EN O-cierre, Y NO ES UN TEST AFLOJADO.
+   *
+   * Antes apagaba **sólo** el literal `'0'`, con este argumento: apagar el
+   * pivote tiene que ser deliberado, y un `.env` a medio escribir no puede
+   * devolver la app del despacho por accidente. El argumento sigue en pie para
+   * el valor VACÍO, y por eso `''` sigue encendiendo.
+   *
+   * Lo que no se sostiene es que `VITE_MODO_EMPRESA_UNICA=false` —la forma que
+   * cualquiera escribiría— dejara el modo encendido **sin decir nada**. Eso no
+   * protege de un dedazo: es un flag que ignora en silencio lo que le
+   * escribieron, y quien lo puso cree que trabaja en modo despacho. Lo señaló
+   * el revisor de cierre.
+   *
+   * La regla nueva: apagan los valores que **no pueden significar otra cosa**;
+   * lo ambiguo o vacío deja el pivote encendido.
+   */
+  it.each(['0', 'false', 'off', 'no', 'FALSE', ' 0 '])('%s apaga el modo', (valor) => {
+    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
     expect(modoEmpresaUnica()).toBe(false);
   });
 
-  it('cualquier otro valor lo deja encendido', () => {
-    // Que `'false'`, `''` o `'no'` NO apaguen es a propósito: apagar el pivote
-    // tiene que ser deliberado. Un `.env` con la variable a medio escribir no
-    // puede devolver la app del despacho por accidente.
-    for (const valor of ['1', 'true', 'false', '', 'no']) {
-      vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
-      expect(modoEmpresaUnica(), `valor ${JSON.stringify(valor)}`).toBe(valor !== '0');
-    }
+  it.each(['1', 'true', '', 'si', 'yes', 'x'])('%s lo deja encendido', (valor) => {
+    // El vacío incluido: un `.env` a medio escribir no cambia de app.
+    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
+    expect(modoEmpresaUnica()).toBe(true);
   });
 
   it('se re-evalúa en cada llamada, no se congela al importar', () => {
