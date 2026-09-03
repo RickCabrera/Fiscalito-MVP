@@ -10,6 +10,7 @@ import {
   PDF_COLORS, fmtMoney, addFooter,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
 } from './pdfUtils';
+import { MARCA_CORTA, PREFIJO_ARCHIVO } from './marca';
 
 function isr(recibo: ReciboNomina): number {
   return recibo.deducciones
@@ -46,7 +47,7 @@ export function exportarNominaPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...PDF_COLORS.dark);
-  doc.text('Fiscalito — Nómina del periodo', mL, y);
+  doc.text(`${MARCA_CORTA} — Nómina del periodo`, mL, y);
   y += 8;
 
   // La banda cuelga del CLIENTE, no de `origen_plantilla` (E-03).
@@ -198,5 +199,5 @@ export function exportarNominaPDF(
   // el mismo nombre para la misma quincena y caen en Descargas como
   // `…(1)`, `…(2)`, sin que ninguno diga de quién es hasta abrirlo.
   const idArchivo = cliente.id.replace(/[^A-Za-z0-9_-]/g, '_');
-  doc.save(`Fiscalito_Nomina_${idArchivo}_${data.periodo.inicio}_${data.periodo.fin}.pdf`);
+  doc.save(`${PREFIJO_ARCHIVO}_Nomina_${idArchivo}_${data.periodo.inicio}_${data.periodo.fin}.pdf`);
 }

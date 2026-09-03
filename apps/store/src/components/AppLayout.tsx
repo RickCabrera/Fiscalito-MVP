@@ -8,6 +8,7 @@ import { useClienteActivo } from '../context/clienteActivoStore';
 import SelectorCliente from './SelectorCliente';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
+import { MARCA_INICIAL, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
 
 /** Icono de cada entrada del sidebar. La lista de entradas y su orden viven en
  *  `services/navigation.ts` (modulo puro); aqui solo se les pone cara. */
@@ -78,8 +79,8 @@ export default function AppLayout() {
       <aside className="sidebar-full" style={{ ...sidebarBase, width: 240, padding: '24px 0' }}>
         <div style={{ padding: '0 20px', marginBottom: 40 }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 700, letterSpacing: -0.5 }}>
-            <span className="gradient-text">Fiscalito</span>{' '}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Store</span>
+            <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{MARCA_LOGO_2}</span>
           </div>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -142,7 +143,9 @@ export default function AppLayout() {
       {/* Sidebar — mini (mobile) */}
       <aside className="sidebar-mini" style={{ ...sidebarBase, width: 64, padding: '20px 0', display: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <span className="gradient-text" style={{ fontSize: '1.1rem', fontWeight: 800 }}>F</span>
+          <span className="gradient-text" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+            {MARCA_INICIAL}
+          </span>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
           {links.map((link) => {

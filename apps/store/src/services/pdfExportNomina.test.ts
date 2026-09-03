@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClienteDetalle } from './despachoApi';
 import type { NominaPeriodo } from './nominaDemoApi';
 import { modoDespacho } from '../test/modoDespacho';
+import { PREFIJO_ARCHIVO } from './marca';
 
 /**
  * MODO DESPACHO (O-01).
@@ -149,8 +150,8 @@ describe('nombre del archivo', () => {
     exportarNominaPDF(nomina('request'), cliente('cafeteria', 'Cafeteria', 'sintetico'));
 
     expect(guardados).toEqual([
-      'Fiscalito_Nomina_taller_2026-08-16_2026-08-31.pdf',
-      'Fiscalito_Nomina_cafeteria_2026-08-16_2026-08-31.pdf',
+      `${PREFIJO_ARCHIVO}_Nomina_taller_2026-08-16_2026-08-31.pdf`,
+      `${PREFIJO_ARCHIVO}_Nomina_cafeteria_2026-08-16_2026-08-31.pdf`,
     ]);
   });
 });

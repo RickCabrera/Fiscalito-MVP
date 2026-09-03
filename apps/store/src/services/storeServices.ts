@@ -1,4 +1,5 @@
 import type { ContributorType } from './contributorProfiles';
+import { MARCA_CORTA } from './marca';
 
 export interface StoreService {
   id: string;
@@ -16,8 +17,10 @@ export interface StoreService {
 
 export const SERVICES: StoreService[] = [
   {
+    // El `id` es interno —vive en la ruta `/app/store/fiscalito/use` y en
+    // enlaces guardados— y por eso no se toca (O-02). El `name` sí se ve.
     id: 'fiscalito',
-    name: 'Fiscalito',
+    name: MARCA_CORTA,
     tagline: 'Tu asistente fiscal con IA',
     description:
       'Calcula tus declaraciones ISR/IVA automaticamente, clasifica facturas CFDI, detecta saldos a favor y te explica cada calculo en lenguaje natural. Compatible con RESICO, Actividad Empresarial, Honorarios y mas.',
@@ -35,7 +38,7 @@ export const SERVICES: StoreService[] = [
       'Recomendaciones de regimen fiscal',
       'Advertencias de riesgo (tope RESICO, facturas faltantes)',
     ],
-    externalUrl: undefined, // Se llenara cuando Fiscalito app este integrada
+    externalUrl: undefined, // Se llenara cuando la app del servicio este integrada
     apiEndpoint: import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000',
   },
   {

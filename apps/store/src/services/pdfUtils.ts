@@ -1,6 +1,7 @@
-/** Utilidades compartidas para exportacion de PDFs de Fiscalito */
+/** Utilidades compartidas para exportacion de PDFs. */
 
 import jsPDF from 'jspdf';
+import { MARCA_CORTA } from './marca';
 
 // ── Color tuples ──
 type RGBTuple = [number, number, number];
@@ -73,7 +74,7 @@ export function addFooter(doc: jsPDF): void {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...PDF_COLORS.lightGray);
-    doc.text('Estimación generada por Fiscalito. No sustituye asesoría profesional.', 20, h - 10);
+    doc.text(`Estimación generada por ${MARCA_CORTA}. No sustituye asesoría profesional.`, 20, h - 10);
     doc.text(`Página ${i}/${total}`, pageW - 20, h - 10, { align: 'right' });
   }
 }

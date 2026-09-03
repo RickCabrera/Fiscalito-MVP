@@ -12,6 +12,7 @@
 
 import type { ContributorType } from './contributorProfiles';
 import { modoEmpresaUnica } from './modoEmpresa';
+import { MARCA_CORTA } from './marca';
 
 // ────────────────────────────────────────────────────────────
 // Sidebar
@@ -33,7 +34,12 @@ export interface SidebarLink {
 /** Navegación del contribuyente — la de siempre, intacta. */
 const LINKS_CONTRIBUYENTE: SidebarLink[] = [
   { id: 'dashboard', to: '/app', label: 'Dashboard', end: true },
-  { id: 'fiscalito', to: '/app/store/fiscalito/use', label: 'Fiscalito' },
+  // O-02: la RUTA se queda literal —es interna y vive en enlaces guardados— y
+  // la ETIQUETA sale de la marca, porque es lo que el contribuyente lee en el
+  // sidebar. Que las dos vivan en la misma línea fue lo que dejó pasar esta
+  // etiqueta la primera vez: el guardián de marca perdonaba la línea entera por
+  // la ruta, y ahora tacha los nombres internos en vez de perdonarla.
+  { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
   { id: 'historial', to: '/app/historial', label: 'Historial' },
   // DEMO D-07: se borra en F2. Va en el sidebar y no sólo por URL porque el
   // criterio de la tarea es recorrer el flujo sin tocar consola, y teclear

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Mic, MicOff, Send, X, Volume2, Loader } from 'lucide-react';
 import type { VoiceState, BubbleMsg } from './useVoiceChat';
+import { ASISTENTE } from '../../services/marca';
 
 interface VoiceChatUIProps {
   messages: BubbleMsg[];
@@ -32,7 +33,7 @@ export default function VoiceChatUI({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
             <div style={avatarStyle}>F</div>
             <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>Fiscalito IA</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{ASISTENTE} IA</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
                 En linea

@@ -23,6 +23,7 @@ import {
 } from './navigation';
 import type { ContributorType } from './contributorProfiles';
 import { modoDespacho } from '../test/modoDespacho';
+import { MARCA_CORTA } from './marca';
 
 /**
  * MODO DESPACHO (O-01).
@@ -75,7 +76,8 @@ describe('getSidebarLinks', () => {
   it.each(CONTRIBUYENTES)('el perfil %s conserva el sidebar de siempre', (tipo) => {
     expect(getSidebarLinks(tipo)).toEqual([
       { id: 'dashboard', to: '/app', label: 'Dashboard', end: true },
-      { id: 'fiscalito', to: '/app/store/fiscalito/use', label: 'Fiscalito' },
+      // O-02: la ruta es interna y no cambia; la etiqueta sale de la marca.
+      { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
       { id: 'historial', to: '/app/historial', label: 'Historial' },
       { id: 'nomina', to: '/app/nomina-demo', label: 'Nómina (demo)' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },

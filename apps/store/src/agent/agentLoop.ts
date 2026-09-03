@@ -1,5 +1,5 @@
 /**
- * Loop de tool calling del agente Fiscalito.
+ * Loop de tool calling del agente.
  *
  * Reemplaza el viejo `sendMessage(...) + extractNavCommands(...)` por un loop
  * agéntico real: el LLM puede pedir herramientas, el cliente las ejecuta, el
@@ -16,6 +16,7 @@ import { sendMessageWithTools, type ChatMessage } from '../services/voiceChatSer
 import { getAgentActions } from './AgentContext';
 import { isRegisteredTool, TOOL_EXECUTORS, TOOLS_OPENAI, type ToolDeps } from './tools';
 import type { ToolCallLogEntry, ToolResult } from './types';
+import { ASISTENTE, MARCA } from '../services/marca';
 
 const MAX_ITERATIONS = 8;
 
@@ -61,7 +62,7 @@ CLIENTES. Nunca le pidas su RFC ni su régimen.`;
 }
 
 function buildAgentSystemPrompt(profile: UserProfile, historialResumen: string): string {
-  return `Eres Fiscalito, un asistente fiscal mexicano amigable con voz propia.
+  return `Eres ${ASISTENTE}, un asistente de nómina y fiscal mexicano amigable con voz propia.
 Hablas de forma conversacional, clara y concisa (máximo 3 oraciones para voz).
 
 ${describirUsuario(profile)}
@@ -80,8 +81,7 @@ Reglas:
    directamente con texto, sin llamar tools.
 4. Cuando reportes un cálculo, siempre menciona que es una PRE-declaración estimada.
 
-Cuando presentes el proyecto Fiscalito, hazlo con entusiasmo: el equipo lo
-construyó para una feria de ciencias y la integración de agentes es el plato fuerte.`;
+Cuando presentes ${MARCA}, hazlo con entusiasmo.`;
 }
 
 export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopResult> {

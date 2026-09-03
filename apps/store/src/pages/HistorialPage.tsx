@@ -10,6 +10,7 @@ import { History, Loader, FileText, ArrowRight } from 'lucide-react';
 import HistorialFilters from '../components/historial/HistorialFilters';
 import HistorialCard from '../components/historial/HistorialCard';
 import { fmtMoney } from '../utils/format';
+import { MARCA_CORTA } from '../services/marca';
 
 function getResumen(d: DeclaracionRecord): string {
   switch (d.categoria) {
@@ -84,7 +85,7 @@ export default function HistorialPage() {
           {declaraciones.length === 0 && (
             <Link to="/app/store/fiscalito/use">
               <button className="btn-primary" style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                Ir a Fiscalito <ArrowRight size={16} />
+                Ir a {MARCA_CORTA} <ArrowRight size={16} />
               </button>
             </Link>
           )}

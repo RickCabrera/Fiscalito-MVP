@@ -13,6 +13,7 @@ import RetencionesTab from '../components/fiscalito/RetencionesTab';
 import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
 import { ArrowLeft, FileText, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import { MARCA_CORTA } from '../services/marca';
 
 type Tab = TabFiscalito;
 
@@ -107,7 +108,7 @@ export default function FiscalitoServicePage() {
           ⚖
         </div>
         <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: -0.5 }}>Fiscalito</h1>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: -0.5 }}>{MARCA_CORTA}</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {esContadorActual
               ? 'Las obligaciones fiscales de tu despacho'
