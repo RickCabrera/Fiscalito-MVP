@@ -111,10 +111,14 @@ export default function EncabezadoNomina({
             aria-hidden="true"
             style={{ display: 'inline-block', width: 260, height: 14, verticalAlign: 'middle' }}
           />
-          <span style={SOLO_LECTORES}>Cargando el cliente...</span>
+          <span style={SOLO_LECTORES}>
+            {empresaUnica ? 'Cargando la empresa...' : 'Cargando el cliente...'}
+          </span>
         </p>
       ) : (
-        <p style={{ color: 'var(--danger)' }}>No se pudo cargar el cliente</p>
+        <p style={{ color: 'var(--danger)' }}>
+          {empresaUnica ? 'No se pudo cargar la empresa' : 'No se pudo cargar el cliente'}
+        </p>
       )}
     </header>
   );

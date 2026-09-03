@@ -43,14 +43,11 @@ import {
   type OrigenCartera,
 } from '../services/cartera';
 import { esClienteDemo, esCuentaDeDesarrollo } from '../services/entorno';
-import { ID_EMPRESA, modoEmpresaUnica } from '../services/modoEmpresa';
-import {
-  EMPRESA_POR_DEFECTO,
-  SIN_PERIODO,
-  aClienteCartera,
-  deClienteCartera,
-  type ConfigEmpresa,
-} from '../services/empresa';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { deClienteCartera } from '../services/empresa';
+// O-01: todo lo que sólo existe con una empresa implícita vive aparte, para no
+// pasar el tope de 300 líneas de `apps/store/CLAUDE.md`.
+import { useEmpresaEnLaCartera } from './empresaEnLaCartera';
 import { CarteraContext } from './carteraStore';
 
 /**
@@ -74,26 +71,6 @@ const INICIAL: Estado = {
   origen: 'backend',
   error: null,
 };
-
-/**
- * La ficha de la empresa, sin sus empleados.
- *
- * `guardarCliente` escribe el DOCUMENTO del cliente; los empleados son su
- * subcolección y se escriben aparte. Mandarlos aquí los duplicaría dentro del
- * documento padre, y la siguiente lectura los traería por dos caminos.
- */
-function fichaSinEmpleados(
-  config: ConfigEmpresa,
-  guardado: ClienteCartera | null,
-): Omit<ClienteCartera, 'empleados'> {
-  const { empleados, ...ficha } = aClienteCartera(
-    config,
-    [],
-    guardado?.periodo_sugerido ?? SIN_PERIODO,
-  );
-  void empleados;
-  return ficha;
-}
 
 export function CarteraProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -191,83 +168,16 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
     [estado.clientes, cuentaDeDesarrollo],
   );
 
-  /**
-   * O-01 · LA CARTERA SE COLAPSA A UNA SOLA EMPRESA.
-   *
-   * Se proyecta aquí, en el proveedor, y no en cada pantalla, por la misma
-   * razón por la que R-06 puso aquí el filtro de clientes de demostración: la
-   * cartera alimenta cuatro cosas —empleados, dispositivos, nómina y el
-   * encabezado— y hacerlo en una sola dejaba a las otras tres viendo otra cosa.
-   *
-   * **Un solo origen: el documento `users/{uid}/clientes/empresa`.** La ficha,
-   * los empleados y el periodo salen de ahí; si no existe todavía —cuenta
-   * recién creada— se proyectan los defaults, que es una empresa sin configurar
-   * y no un error. Es a propósito que no haya una segunda copia en el perfil:
-   * la prima de riesgo entra directo al ramo de Riesgos de Trabajo de
-   * `cuotas.py`, y dos copias de ese número es cobrar mal el día que divergen.
-   *
-   * El filtro de R-06 no se aplica en este modo y no hace falta: la empresa
-   * nace con `origen: 'propio'` y los clientes de demostración que pudiera
-   * tener la cuenta —de la siembra de G-03— simplemente no se proyectan.
-   * Quedan invisibles por construcción, no por filtro.
-   */
+
   const empresaUnica = modoEmpresaUnica();
-  const guardadoDeLaEmpresa = useMemo(
-    () => estado.clientes.find((c) => c.id === ID_EMPRESA) ?? null,
-    [estado.clientes],
-  );
-
-  const clientesDelModo = useMemo(() => {
-    if (!empresaUnica) return visibles;
-    return [
-      aClienteCartera(
-        deClienteCartera(guardadoDeLaEmpresa),
-        guardadoDeLaEmpresa?.empleados ?? [],
-        guardadoDeLaEmpresa?.periodo_sugerido ?? SIN_PERIODO,
-      ),
-    ];
-  }, [empresaUnica, visibles, guardadoDeLaEmpresa]);
-
-  /**
-   * Se asegura de que el documento de la empresa exista antes de escribirle un
-   * empleado.
-   *
-   * Hace falta de verdad: `leerDeFirestore` lista los DOCUMENTOS de
-   * `users/{uid}/clientes`, y en Firestore un documento que sólo tiene
-   * subcolecciones **no aparece** en esa lista. Sin esto, el primer empleado se
-   * guardaría bien y la cartera volvería vacía en la siguiente lectura — el
-   * empleado existiría, invisible, y el operador lo daría de alta otra vez.
-   *
-   * Es `setDoc` idempotente sobre el mismo id, así que llamarlo de más no
-   * duplica nada; y va antes de cada alta, no una sola vez al arrancar, porque
-   * el documento puede haberse borrado desde otra pestaña.
-   *
-   * **No pisa lo capturado**: si el documento ya existe, se reescribe con lo
-   * que ya tenía. Sólo cuando no existe nace con los defaults.
-   */
-  const asegurarEmpresa = useCallback(async () => {
-    if (!empresaUnica || !uid) return;
-    const config = guardadoDeLaEmpresa
-      ? deClienteCartera(guardadoDeLaEmpresa)
-      : EMPRESA_POR_DEFECTO;
-    await guardarClienteFs(uid, fichaSinEmpleados(config, guardadoDeLaEmpresa));
-  }, [empresaUnica, uid, guardadoDeLaEmpresa]);
-
-  /**
-   * Guarda la Configuración de empresa (O-01).
-   *
-   * Escribe **el mismo documento** que todo lo demás lee, y por el mismo
-   * despachador (`services/cartera.ts`), así que el día que se encienda el
-   * interruptor de R-07 esto pasa por el backend sin tocar una línea.
-   */
-  const guardarEmpresa = useCallback(
-    async (config: Parameters<typeof aClienteCartera>[0]) => {
-      if (!uid) throw new Error('Hace falta una sesión para guardar la empresa.');
-      await guardarClienteFs(uid, fichaSinEmpleados(config, guardadoDeLaEmpresa));
-      setIntento((n) => n + 1);
-    },
-    [uid, guardadoDeLaEmpresa],
-  );
+  const { guardadoDeLaEmpresa, clientesDelModo, asegurarEmpresa, guardarEmpresa } =
+    useEmpresaEnLaCartera({
+      empresaUnica,
+      uid,
+      guardados: estado.clientes,
+      visibles,
+      escribir,
+    });
 
   const valor = useMemo(
     () => ({
@@ -325,6 +235,27 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
       borrarCliente: (id: string) => escribir(() => borrarClienteFs(uid as string, id)),
       guardarEmpleado: (clienteId: string, e: EmpleadoCartera) =>
         escribir(async () => {
+          /**
+           * O-01: sin empresa configurada no se dan de alta empleados.
+           *
+           * No es una regla de producto inventada aquí: es lo que hace SEGURO
+           * que `asegurarEmpresa` no escriba cuando no hay ficha. Si el alta
+           * pudiera correr antes, el empleado quedaría bajo un documento que
+           * no existe y **desaparecería de la cartera en la siguiente
+           * lectura** — en Firestore un documento que sólo tiene
+           * subcolecciones no aparece al listar la colección.
+           *
+           * La pantalla ya lo impide y lo explica; esto es la guarda del
+           * servicio, para que la afirmación no dependa de que una pantalla se
+           * acuerde.
+           */
+          if (empresaUnica && !guardadoDeLaEmpresa) {
+            throw new Error(
+              'Configura primero los datos de la empresa (Perfil → Configuración de ' +
+                'empresa). Sin ellos, el empleado se guardaría bajo una ficha que no ' +
+                'existe y no aparecería en la plantilla.',
+            );
+          }
           await asegurarEmpresa();
           await guardarEmpleadoFs(uid as string, clienteId, e);
         }),
@@ -338,6 +269,7 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
     [
       estado, clientesDelModo, alDia, cargando, soloLectura, uid, escribir,
       sembrar, recargar, asegurarEmpresa, guardadoDeLaEmpresa, guardarEmpresa,
+      empresaUnica,
     ],
   );
 

@@ -4,6 +4,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { NominaPeriodo, ReciboNomina } from './nominaDemoApi';
 import { etiquetaOrigen, type ClienteDetalle } from './despachoApi';
+import { modoEmpresaUnica } from './modoEmpresa';
+import { esClienteDemo } from './entorno';
 import {
   PDF_COLORS, fmtMoney, addFooter,
   DEFAULT_HEAD_STYLES, DEFAULT_BODY_STYLES, DEFAULT_TABLE_STYLES, DEFAULT_ALT_ROW_STYLES,
@@ -56,11 +58,21 @@ export function exportarNominaPDF(
   // sala sin la única marca que dice que no es la nómina de un cliente de
   // verdad.
   //
-  // Toda la cartera de E-02 es de demostración hasta que exista el alta real de
-  // clientes (F1-09), así que la banda es incondicional.
-  // Incondicional hoy — ver el docstring. `cliente` viaja para que el día que
-  // deje de serlo, la condición se escriba aquí y no se olvide.
-  const esDeDemostracion = true;
+  // **O-01 ES ESE DÍA.** Este comentario decía "el día que deje de serlo, la
+  // condición se escriba aquí y no se olvide", y el pivote lo volvió cierto: en
+  // modo empresa única la nómina es la de Orca, con nombres y sueldos REALES.
+  //
+  // Sellarla "identidades sintéticas" es peor en papel que en pantalla. La
+  // banda es un control de PRIVACIDAD: existe para que un PDF con nueve
+  // nombres y nueve sueldos no salga de la sala pareciendo la nómina de un
+  // cliente de verdad. Afirmando lo contrario sobre datos reales, deja de ser
+  // un control y pasa a ser una etiqueta falsa que invita a compartirlo.
+  //
+  // Es la MISMA expresión que `EncabezadoNomina.tsx`, y a propósito: la
+  // pantalla y el papel no pueden discrepar sobre si esto es una demostración.
+  // En modo despacho sigue siendo incondicional — toda la cartera de E-02 es de
+  // demostración hasta que exista el alta real de clientes (F1-09).
+  const esDeDemostracion = modoEmpresaUnica() ? esClienteDemo(cliente.origen) : true;
   if (esDeDemostracion) {
     doc.setFillColor(...PDF_COLORS.demo);
     doc.rect(mL, y - 4, pageW - mL - 20, 7, 'F');
@@ -75,13 +87,24 @@ export function exportarNominaPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...PDF_COLORS.dark);
-  doc.text(`Cliente: ${cliente.nombre}`, mL, y);
+  const empresaUnica = modoEmpresaUnica();
+  doc.text(`${empresaUnica ? 'Empresa' : 'Cliente'}: ${cliente.nombre}`, mL, y);
   y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...PDF_COLORS.gray);
-  doc.text(`${cliente.giro} · ${etiquetaOrigen(cliente.origen)}`, mL, y);
-  y += 7;
+  // `etiquetaOrigen('propio')` devuelve el slug crudo, así que en modo empresa
+  // única el papel decía "· propio". El origen sólo distingue clientes de
+  // demostración de reales, y con un solo patrón no hay nada que distinguir.
+  const subtitulo = [cliente.giro, empresaUnica ? '' : etiquetaOrigen(cliente.origen)]
+    .filter(Boolean)
+    .join(' · ');
+  if (subtitulo) {
+    doc.text(subtitulo, mL, y);
+    y += 7;
+  } else {
+    y += 2;
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);

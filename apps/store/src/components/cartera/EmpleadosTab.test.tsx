@@ -17,6 +17,18 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import EmpleadosTab from './EmpleadosTab';
 import type { EmpleadoCartera } from '../../services/carteraApi';
+import { modoDespacho } from '../../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * Este archivo mide la tabla de empleados **con la redacción del despacho**:
+ * "Este cliente no tiene empleados", "Estás viendo el catálogo de
+ * demostración". En modo empresa única esos textos nombran cosas que no
+ * existen y el componente escribe otros. Los dos juegos son producto, y cada
+ * uno se mide en su modo.
+ */
+modoDespacho();
 
 afterEach(cleanup);
 

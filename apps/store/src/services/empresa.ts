@@ -15,7 +15,14 @@
  * Es además el problema que R-07 acaba de cerrar: un solo dueño por dato. Se
  * escribe por `guardarCliente` de `services/cartera.ts`, que es el despachador
  * del interruptor de R-07, así que el día que el backend se encienda esto pasa
- * por él sin tocar una línea.
+ * por él **por el mismo camino**.
+ *
+ * Que además **valide** contra `ClienteCarteraSchema` costó dos arreglos, y se
+ * midió en vez de afirmarse: escribir el periodo vacío daba 422
+ * (`periodo_sugerido.inicio` no es una fecha) y escribir los defaults daba otro
+ * (`nombre` vacío, `prima_riesgo` no decimal). Los dos están cerrados —el
+ * periodo se omite del documento y los defaults ya no se escriben— y el mismo
+ * payload se valida hoy sin errores. Ver `context/empresaEnLaCartera.ts`.
  *
  * LA CARTERA NO DESAPARECE DEL ALMACÉN, Y HAY QUE DECIRLO
  * -------------------------------------------------------
@@ -71,9 +78,14 @@ export interface ConfigEmpresa {
    *
    * **No la pide el enunciado de O-01, y el motor la necesita**: el piso del
    * SBC es 1 salario mínimo del área (Art. 28 LSS) y la Zona Libre de la
-   * Frontera Norte tiene el suyo. Va con default `general` —Veracruz, donde
-   * está la empresa, no es ZLFN— y no se pinta en esta tarea. Anotado en
-   * `docs/nocturno-log.md`.
+   * Frontera Norte tiene el suyo.
+   *
+   * DECISIÓN PROVISIONAL (nocturno): se fija `general` porque Veracruz no está
+   * en la ZLFN, que es la franja de municipios de la frontera norte. No se pinta
+   * en esta tarea y **nadie la ha confirmado**: no está en
+   * `docs/decisiones-nomina.md` ni en `PLAN_NOMINA.md` §5, que sólo pregunta por
+   * Veracruz para el ISN. Si la empresa tuviera centro de trabajo en la ZLFN, el
+   * piso del SBC saldría bajo. Abierta en `docs/nocturno-log.md`.
    */
   zona: string;
   /**
@@ -81,9 +93,14 @@ export interface ConfigEmpresa {
    *
    * **`'04'` (quincenal) es el default declarado de O-01**, y no es una
    * elección estética: si viajara vacío, `tarifa_por_periodicidad` levantaría
-   * con "clave desconocida" y la nómina no calcularía. O-03 abre el selector a
-   * semanal y mensual, y sube al motor la guarda que hoy sólo vive en el
-   * navegador.
+   * con "clave desconocida" y la nómina no calcularía.
+   *
+   * DECISIÓN PROVISIONAL (nocturno): que la nómina de Orca **sea** quincenal no
+   * lo ha confirmado nadie. Es la única periodicidad que la app ofrecía antes
+   * del pivote y la que usa todo el material de la demo, así que es el default
+   * menos sorprendente — pero de la clave depende la tarifa del Art. 96 que se
+   * aplica. O-03 abre el selector a semanal y mensual, y sube al motor la guarda
+   * que hoy sólo vive en el navegador. Abierta en `docs/nocturno-log.md`.
    */
   clavePeriodicidad: string;
 }

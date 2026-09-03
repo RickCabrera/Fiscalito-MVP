@@ -10,6 +10,7 @@
 import { Radio } from 'lucide-react';
 import type { EventoChecada } from '../../services/nominaDemoApi';
 import { envoltura, fila, tabla, td, th, thNum } from './estilosTabla';
+import { modoEmpresaUnica } from '../../services/modoEmpresa';
 
 /**
  * Contador de checadas, para el encabezado del paso.
@@ -96,7 +97,9 @@ export default function PanelChecador({
           <Radio size={22} color="var(--text-muted)" />
           <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Sin checadas todavía</div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, maxWidth: 420 }}>
-            Corre el simulador del checador para este cliente, o conecta el dispositivo.
+            {modoEmpresaUnica()
+              ? 'Corre el simulador del checador, o conecta el dispositivo.'
+              : 'Corre el simulador del checador para este cliente, o conecta el dispositivo.'}
           </p>
         </div>
       )}

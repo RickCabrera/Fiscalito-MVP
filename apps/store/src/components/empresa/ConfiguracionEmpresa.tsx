@@ -29,6 +29,25 @@ import { campoInput } from '../cartera/estilosCampo';
 import { faltantesDeLaEmpresa, type ConfigEmpresa } from '../../services/empresa';
 import { aFraccion, aPorcentaje, validar } from './validacionEmpresa';
 
+/**
+ * LOS CAMPOS SE SIEMBRAN DEL PROP UNA SOLA VEZ, Y ESO BASTA **POR EL `key`**.
+ *
+ * `useState(empresa.x)` sólo lee el prop en el primer render. Montar esta
+ * tarjeta antes de que la cartera resuelva —siempre pasa: es una lectura de
+ * Firestore de hasta 2500 ms— dejaba los cinco campos en blanco sobre una
+ * empresa ya capturada, con su banner de "falta la razón social" y sus errores
+ * en rojo. Y lo caro venía después: el operador retecleaba lo que veía faltando
+ * y al guardar se perdían el RFC y el registro patronal, que seguían vacíos en
+ * el estado local y viajaban así.
+ *
+ * `TarjetaEmpresa` lo resuelve por fuera con dos cosas: no monta esto mientras
+ * la cartera carga, y le pasa un `key` derivado de la empresa **guardada**, así
+ * que un cambio del documento remonta el componente y vuelve a sembrar. Se
+ * prefirió eso a un `useEffect` de resincronización porque el efecto llamaba
+ * `setState` en cascada (`react-hooks/set-state-in-effect`) y porque el `key`
+ * no puede pisar lo que el operador está tecleando: sólo cambia cuando cambia
+ * lo guardado.
+ */
 export default function ConfiguracionEmpresa({
   empresa,
   soloLectura,
@@ -48,6 +67,7 @@ export default function ConfiguracionEmpresa({
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const errores = validar(razonSocial, rfc, registroPatronal, primaPct);
   const puedeGuardar = Object.keys(errores).length === 0 && !soloLectura;

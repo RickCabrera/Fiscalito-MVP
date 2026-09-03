@@ -30,6 +30,7 @@ import { exportarNominaPDF } from '../services/pdfExportNomina';
 import { etiquetaOrigen } from '../services/despachoApi';
 import { useParams } from 'react-router-dom';
 import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
+import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { labelStyle } from '../utils/styles';
 
 /** Botón de acción: el icono y el texto en una línea, sin saltos. */
@@ -71,18 +72,16 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
     exportarNominaPDF(nomina, cliente, n.sinVincular);
   };
 
-  // Los estados se derivan en cascada: un paso está bloqueado mientras no
-  // exista lo que produce el anterior.
   /**
-   * El paso 2 espera también a la CARTERA, no sólo a la ficha.
+   * Los estados se derivan en cascada: un paso está bloqueado mientras no
+   * exista lo que produce el anterior.
    *
-   * La ficha llega del backend (round-trip local) antes que Firestore (hasta
-   * 2500 ms). En esa ventana `deLaCartera` es `null`, así que el cierre usaría
-   * las llaves del catálogo en vez de las del aparato: para un empleado con
-   * número propio, cero checadas encontradas. Y cuando la cartera llega, la
-   * plantilla vuelve a cuadrar por `empleado_no` y nada levanta — sale un recibo
-   * con faltas de más, en silencio. Es el mismo bug de G-02 entrando por la
-   * puerta del tiempo.
+   * El paso 2 espera también a la CARTERA, no sólo a la ficha: la ficha llega
+   * del backend antes que Firestore (hasta 2500 ms), y en esa ventana el cierre
+   * usaría las llaves del catálogo en vez de las del aparato — cero checadas
+   * para quien tenga número propio, y luego la plantilla vuelve a cuadrar por
+   * `empleado_no` sin que nada levante. Recibo con faltas de más, en silencio:
+   * el bug de G-02 entrando por la puerta del tiempo.
    */
   /**
    * Los motivos por los que el paso 2 puede estar bloqueado —cinco desde
@@ -90,9 +89,8 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
    * decide SI está bloqueado; el porqué se dice allá.
    */
   const sinPeriodo = Boolean(cliente) && (!n.inicio || !n.fin);
-  // O-01: la empresa sin configurar es un quinto motivo de bloqueo, y va con
-  // los otros cuatro en vez de dejar que el 422 de pydantic llegue del backend
-  // hablando de un campo que el operador no sabe que existe.
+  // O-01: la empresa sin configurar es un quinto motivo de bloqueo, en vez de
+  // dejar que llegue un 422 de pydantic sobre un campo que nadie ha visto.
   const faltaEmpresa = n.faltaDeLaEmpresa.length > 0;
   const estadoPaso2: EstadoPaso = cierre
     ? 'listo'
@@ -132,7 +130,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
           </strong>{' '}
           Sin <code>employeeNo</code> no hay forma de atribuirle sus checadas, así que{' '}
           {n.sinVincular === 1 ? 'no entra' : 'no entran'} en este cálculo. Captura su número
-          del aparato en la ficha del cliente, pestaña Empleados.
+          del aparato en {modoEmpresaUnica() ? 'Empleados' : 'la ficha del cliente, pestaña Empleados'}.
         </AvisoNomina>
       )}
 

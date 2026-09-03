@@ -352,14 +352,24 @@ export function useNominaCliente(clienteId: string) {
    * 1. **No depende de `cartera`.** El valor del contexto cambia de identidad
    *    en cada render, así que el efecto volvería a correr y revertiría las
    *    fechas que el operador acaba de mover — es el bug que cazó el test de la
-   *    fecha de pago. Depende de `cartera.loading`, que es un booleano y sólo
-   *    cambia una vez.
+   *    fecha de pago. Depende de la FECHA misma, que es una cadena: cambia
+   *    cuando de verdad hay un periodo nuevo y no en cada render.
+   *
+   *    Dependía de `cartera.loading`, y eso tenía un hueco: después de la
+   *    primera carga ese booleano ya no vuelve a cambiar —`alDia` se queda en
+   *    `true` durante las relecturas— así que un periodo que llegara **después**
+   *    dejaba los dos inputs vacíos hasta remontar la pantalla. Pasa al guardar
+   *    la empresa por primera vez, que es justo cuando el periodo aparece.
    * 2. **No pisa lo que ya hay.** El `setPeriodoDe` funcional sólo siembra si
    *    todavía no hay periodo de ESTE cliente. Sembrar incondicionalmente sería
    *    el mismo bug por la otra puerta.
    */
+  const inicioSugerido = empresaUnica
+    ? cartera.clientePorId(clienteId)?.periodo_sugerido.inicio ?? ''
+    : '';
+
   useEffect(() => {
-    if (!empresaUnica || !clienteId) return;
+    if (!empresaUnica || !clienteId || !inicioSugerido) return;
     const c = carteraRef.current.clientePorId(clienteId);
     if (!c?.periodo_sugerido.inicio) return;
     setPeriodoDe((actual) =>
@@ -370,7 +380,7 @@ export function useNominaCliente(clienteId: string) {
             valor: { inicio: c.periodo_sugerido.inicio, fin: c.periodo_sugerido.fin },
           },
     );
-  }, [empresaUnica, clienteId, cartera.loading]);
+  }, [empresaUnica, clienteId, inicioSugerido]);
 
   /**
    * El cierre vuelve con la llave del checador; los recibos se indexan por la
@@ -489,10 +499,14 @@ export function useNominaCliente(clienteId: string) {
     if (ajenoALaCartera) {
       setErrorDe({
         id: cliente.id,
-        valor:
-          'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
-          'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
-          'Ábrelo desde tu lista de clientes.',
+        // El mismo texto que `motivoDelPaso2` pinta en el badge, por modo. Era
+        // la copia que se quedó sin traducir: mandaba a "tu lista de clientes",
+        // que en modo empresa única es una ruta que redirige.
+        valor: empresaUnica
+          ? 'Esta nómina no es de tu empresa, así que no se puede calcular aquí.'
+          : 'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
+            'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
+            'Ábrelo desde tu lista de clientes.',
       });
       return;
     }
@@ -509,12 +523,13 @@ export function useNominaCliente(clienteId: string) {
       setErrorDe({
         id: cliente.id,
         valor:
-          `Este cliente está registrado con periodicidad "${cliente.clave_periodicidad}" y el ` +
-          `periodo mide ${dias} días, que es una quincena. Calcularlo aplicaría la tarifa de ` +
-          'ISR de otra periodicidad y el resultado sería incorrecto sin avisar. ' +
-          'Corrige la periodicidad del cliente, o el periodo, antes de calcular. ' +
-          'Si lo que quieres es un periodo PARCIAL de un cliente mensual (un alta o una baja ' +
-          'a mitad de mes), eso todavía no se puede calcular aquí.',
+          `${empresaUnica ? 'La empresa está registrada' : 'Este cliente está registrado'} ` +
+          `con periodicidad "${cliente.clave_periodicidad}" y el periodo mide ${dias} días, ` +
+          'que es una quincena. Calcularlo aplicaría la tarifa de ISR de otra periodicidad y ' +
+          'el resultado sería incorrecto sin avisar. Corrige la periodicidad ' +
+          `${empresaUnica ? 'en Perfil → Configuración de empresa' : 'del cliente'}, o el ` +
+          'periodo, antes de calcular. Si lo que quieres es un periodo PARCIAL (un alta o una ' +
+          'baja a mitad de mes), eso todavía no se puede calcular aquí.',
       });
       return;
     }
@@ -590,6 +605,20 @@ export function useNominaCliente(clienteId: string) {
       // La guarda va en la ACCIÓN, no en el badge del paso. En la corrida G se
       // puso en el letrero y el botón quedó vivo, en gris, sin impedir nada.
       if (!cliente || cartera.loading || ajenoALaCartera) return;
+      /**
+       * O-01: **la guarda de la empresa va TAMBIÉN aquí, y no era redundante.**
+       *
+       * Estaba sólo en `cerrar`, y un test de mutación lo destapó: sin checadas
+       * en el periodo, `pedirCierre` no llama a `cerrar` — abre el diálogo de
+       * confirmación. Así que con la empresa sin configurar el operador veía
+       * *"¿cerrar de todos modos?"*, decía que sí, y **hasta entonces** algo lo
+       * frenaba, sin explicar qué.
+       *
+       * Son dos puertas distintas, como las de R-06: `pedirCierre` es el botón
+       * y `cerrar` es el "Cerrar de todos modos" del diálogo, que se exporta y
+       * se llama directo. Cerrar una sola deja la otra abierta.
+       */
+      if (faltaDeLaEmpresa.length > 0) return;
       if (sinChecadasEnElPeriodo) setConfirmarPara(cliente.id);
       else void cerrar();
     },

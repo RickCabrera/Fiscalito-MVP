@@ -19,7 +19,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { getProfileByType } from '../services/contributorProfiles';
-import { rutaInicial, esContador } from '../services/navigation';
+import { rutaInicial, esContador, etiquetaDelPerfilOperador } from '../services/navigation';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import type { ContributorType } from '../services/contributorProfiles';
 import { ArrowLeft, ArrowRight, Check, Loader } from 'lucide-react';
@@ -34,13 +34,27 @@ import StepConfirmar from '../components/onboarding/StepConfirmar';
 /** Un paso del wizard. El id es lo que manda; el índice sólo ordena. */
 type PasoId = 'tipo' | 'fiscales' | 'despacho' | 'personales' | 'confirmar';
 
-const ETIQUETA: Record<PasoId, string> = {
-  tipo: 'Tipo',
-  fiscales: 'Datos fiscales',
-  despacho: 'Datos del despacho',
-  personales: 'Datos personales',
-  confirmar: 'Confirmar',
-};
+/**
+ * Los rótulos de la barra de progreso.
+ *
+ * Es una FUNCIÓN y no una constante de módulo porque uno de los rótulos depende
+ * del modo (O-01), y `modoEmpresaUnica()` en el cuerpo de un módulo se evalúa
+ * una sola vez al importar: quedaría congelado y ningún test podría medir el
+ * otro modo. Es la misma razón por la que el flag se lee en cada llamada.
+ *
+ * El rótulo del paso decía "Datos del despacho" mientras el H2 de adentro ya
+ * decía "¿Quién lleva la nómina?": la barra contradecía a la pantalla que
+ * etiqueta.
+ */
+function etiquetas(): Record<PasoId, string> {
+  return {
+    tipo: 'Tipo',
+    fiscales: 'Datos fiscales',
+    despacho: modoEmpresaUnica() ? 'Tus datos' : 'Datos del despacho',
+    personales: 'Datos personales',
+    confirmar: 'Confirmar',
+  };
+}
 
 const PASOS_CONTADOR: PasoId[] = ['tipo', 'despacho', 'confirmar'];
 const PASOS_CONTRIBUYENTE: PasoId[] = ['tipo', 'fiscales', 'personales', 'confirmar'];
@@ -152,11 +166,15 @@ export default function OnboardingWizard() {
           <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Store</span>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          {esDespacho ? 'Configuremos el perfil de tu despacho' : 'Configuremos tu perfil de contribuyente'}
+          {esDespacho
+            ? modoEmpresaUnica()
+              ? 'Configuremos tu cuenta para llevar la nómina'
+              : 'Configuremos el perfil de tu despacho'
+            : 'Configuremos tu perfil de contribuyente'}
         </p>
       </div>
 
-      <WizardProgress pasos={pasos.map((p) => ETIQUETA[p])} currentStep={step} />
+      <WizardProgress pasos={pasos.map((p) => etiquetas()[p])} currentStep={step} />
 
       {/* Step content */}
       <div style={{ flex: 1, width: '100%', maxWidth: 720, padding: '40px 24px' }}>
@@ -189,7 +207,12 @@ export default function OnboardingWizard() {
           )}
           {pasoActual === 'confirmar' && selectedProfile && (
             <StepConfirmar
-              tipoLabel={selectedProfile.label}
+              // O-01: el resumen decía "Despacho / Contador" después de que
+              // `StepTipo` le mostró "Empresa". El id guardado no cambia; la
+              // etiqueta sí, y las dos pantallas tienen que coincidir.
+              tipoLabel={
+                esDespacho ? etiquetaDelPerfilOperador() : selectedProfile.label
+              }
               tipoIcon={selectedProfile.icon}
               allowedRegimens={selectedProfile.allowedRegimens}
               esContador={esDespacho}

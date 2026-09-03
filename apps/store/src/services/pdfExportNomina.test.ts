@@ -13,9 +13,22 @@
  * La banda es privacidad, no estética. Estos tests son su candado.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClienteDetalle } from './despachoApi';
 import type { NominaPeriodo } from './nominaDemoApi';
+import { modoDespacho } from '../test/modoDespacho';
+
+/**
+ * MODO DESPACHO (O-01).
+ *
+ * **Este archivo pasaba por la razón equivocada.** Assertaba la banda "DATOS DE
+ * DEMOSTRACIÓN" sin declarar su modo, y la banda era incondicional: medía una
+ * constante, no una decisión. Con el pivote la banda cuelga del origen del
+ * cliente, así que el modo tiene que ser explícito — y el caso del modo empresa
+ * única, donde la banda NO debe salir sobre la nómina real, se mide abajo en su
+ * propio bloque.
+ */
+modoDespacho();
 
 /** Texto que jsPDF fue recibiendo, para poder asertar sobre el documento. */
 const textos: string[] = [];
@@ -150,5 +163,53 @@ describe('las advertencias del motor llegan al papel', () => {
      */
     exportarNominaPDF(nomina('request'), cliente('taller', 'Taller Nogal', 'sintetico'));
     expect(textos.some((t) => t.includes('Aviso del motor que tiene que llegar al papel'))).toBe(true);
+  });
+});
+
+describe('MODO EMPRESA ÚNICA · el papel no puede llamar sintética a la nómina real', () => {
+  /**
+   * EL CASO QUE VALE ESTE BLOQUE.
+   *
+   * La banda "DATOS DE DEMOSTRACIÓN — identidades sintéticas" es un control de
+   * PRIVACIDAD: existe para que un PDF con nombres y sueldos no salga de la
+   * sala pareciendo la nómina de un cliente de verdad.
+   *
+   * Con el pivote, la nómina **es** la de Orca, con nombres y sueldos reales.
+   * Sellarla "sintética" invierte el control: convierte una etiqueta que
+   * protegía en una que invita a compartir el documento. Y es peor en papel que
+   * en pantalla, porque el papel circula.
+   *
+   * El modo se declara dentro de un `beforeEach` y no a nivel de módulo: el
+   * `afterEach` global de `test/setup.ts` hace `vi.unstubAllEnvs()`, así que un
+   * stub de módulo sólo sobrevive al primer test del archivo.
+   */
+  beforeEach(() => {
+    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
+  });
+
+  it('NO pinta la banda sobre la empresa, que es un cliente propio', () => {
+    exportarNominaPDF(nomina('request'), cliente('empresa', 'Orca Ordorica', 'propio'));
+    expect(textos.some((t) => t.includes('DATOS DE DEMOSTRACIÓN'))).toBe(false);
+  });
+
+  it('dice "Empresa:", no "Cliente:"', () => {
+    exportarNominaPDF(nomina('request'), cliente('empresa', 'Orca Ordorica', 'propio'));
+    expect(textos.some((t) => t === 'Empresa: Orca Ordorica')).toBe(true);
+    expect(textos.some((t) => t.startsWith('Cliente:'))).toBe(false);
+  });
+
+  it('no imprime el slug del origen: el papel decía "· propio"', () => {
+    exportarNominaPDF(nomina('request'), cliente('empresa', 'Orca Ordorica', 'propio'));
+    expect(textos.some((t) => t.includes('propio'))).toBe(false);
+    // El giro sí se conserva cuando lo hay.
+    expect(textos.some((t) => t.includes('Giro de prueba'))).toBe(true);
+  });
+
+  it('y SÍ la pinta si el cliente resultara ser de demostración', () => {
+    // La condición cuelga del `origen`, no del modo: si una cuenta de
+    // desarrollo abriera la nómina de un cliente de demostración, la marca
+    // tiene que volver.
+    exportarNominaPDF(nomina('request'), cliente('demo', 'Cliente Demo', 'fixtures-s04'));
+    expect(textos.some((t) => t.includes('DATOS DE DEMOSTRACIÓN'))).toBe(true);
   });
 });

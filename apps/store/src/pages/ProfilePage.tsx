@@ -23,7 +23,7 @@ import type { ContributorType } from '../services/contributorProfiles';
 import { esContador } from '../services/navigation';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { useCartera } from '../context/carteraStore';
-import ConfiguracionEmpresa from '../components/empresa/ConfiguracionEmpresa';
+import TarjetaEmpresa from '../components/empresa/TarjetaEmpresa';
 import TipoDeCuenta from '../components/perfil/TipoDeCuenta';
 import { Save, User } from 'lucide-react';
 
@@ -121,11 +121,7 @@ export default function ProfilePage() {
           la nómina: un contribuyente no tiene empresa que configurar. */}
       {empresaUnica && esDespacho && (
         <div className="animate-in" style={{ marginBottom: 24 }}>
-          <ConfiguracionEmpresa
-            empresa={cartera.empresa}
-            soloLectura={cartera.soloLectura}
-            onGuardar={cartera.guardarEmpresa}
-          />
+          <TarjetaEmpresa cartera={cartera} />
         </div>
       )}
 

@@ -1793,3 +1793,169 @@ automático. **No lo decide una sesión nocturna.**
 - Las fixtures anonimizadas traen **7 de 9 NSS que fallan el verificador**. Son sintéticos
   (`010101010XX` sin Luhn), lo cual es **buena** señal de privacidad, pero cuando R-07 se
   encienda y comparta el vector, esas fixtures empezarán a advertir. Anotado en §D25.
+
+## O-01 · Modo empresa única (2026-09-03, MODO AUTÓNOMO + MODO RÁPIDO)
+
+Primera tarea del pivote: el producto deja de ser la herramienta de un DESPACHO
+multi-cliente y pasa a ser la nómina interna de **Orca Ordorica Cristal
+Templado**. El modo despacho **no se borra**: se apaga tras
+`VITE_MODO_EMPRESA_UNICA` y sus pantallas, contextos y rutas siguen enteros y
+probados en el árbol. Decisión de Ricardo: el despacho se retoma en otro repo.
+
+**Régimen de la corrida O**, pedido por Ricardo: sin paradas de autorización,
+revisor 1× al plan, 1× a mitad y 1× al cierre, más revisor de motor aparte en
+O-03 y en el cuadre de O-04. Prohibido borrar o desactivar tests y prohibido
+recortar alcance.
+
+### Desviación de cadencia, tomada sin Ricardo
+
+El revisor del plan **bloqueó** que O-01 se mergeara sin revisión de entregable,
+citando `CLAUDE.md` §Modo autónomo: *"El revisor SIGUE siendo obligatorio en
+ambos puntos (plan y entregable)"*. O-01 es la tarea con más superficie de
+regresión de la corrida —cartera, rutas, onboarding, contexto de cliente activo
+y un endpoint— y con la cadencia pedida se habría mergeado sin que nadie la
+midiera.
+
+**Se movió la pasada "de mitad de corrida" de después de O-03 a aquí.** Sigue
+siendo 1 de las 3 autorizadas; cambia dónde se gasta. La final cubrirá O-02,
+O-03 y O-04, más los dos revisores de motor ya pactados.
+
+### Lo que el revisor del PLAN corrigió antes de escribir una línea
+
+1. **El rango de la quincena estaba mal: (13,16), no (14,17).** `quincena()`
+   devuelve del 16-feb al 28-feb = **13 días**, así que el motor habría rechazado
+   el periodo que la propia app propone entre el 1 y el 15 de marzo. Y 17 días no
+   es nunca una quincena. Defecto **latente**: hoy, 3 de septiembre, el periodo
+   mide 16 días y pasa — no se habría visto en esta corrida. Es de O-03.
+2. **El cuadre de O-04 que había diseñado era tautológico**: el PDF y los TXT
+   derivando del mismo módulo del front, comparados entre sí. El ancla pasa a ser
+   el **motor**.
+3. **(a) SUA emitiendo un tipo 08 por empleado activo fabrica movimientos
+   afiliatorios falsos** — declararía que toda la plantilla ingresó ese día.
+4. **La Configuración de empresa no puede vivir en el perfil.** Eran dos casas
+   para el mismo dato, y la prima de riesgo entra directo al ramo de Riesgos de
+   Trabajo de `cuotas.py`.
+
+### Lo que el revisor del ENTREGABLE encontró, y yo no
+
+Los cinco bloqueantes cambiaban comportamiento. Ninguno se veía leyendo el diff.
+
+1. **La Configuración de empresa nunca mostraba la empresa guardada, y al
+   corregirla borraba el RFC y el registro patronal.** `useState(empresa.x)` sólo
+   lee el prop en el primer render y la cartera resuelve siempre después. Con
+   Orca ya capturada: cinco campos en blanco, banner de "falta la razón social" y
+   errores en rojo. El operador retecleaba lo que veía faltando, guardaba, y los
+   dos campos que nunca tocó viajaban vacíos. Arreglado con `key` sobre la
+   empresa guardada (no con un `useEffect`, que agregaba un error de lint nuevo)
+   y no montando la tarjeta mientras la cartera carga.
+2. **El PDF de Orca salía sellado "DATOS DE DEMOSTRACIÓN — identidades
+   sintéticas".** `pdfExportNomina.ts` tenía `const esDeDemostracion = true;` y
+   su propio comentario decía *"el día que deje de serlo, la condición se escriba
+   aquí"*. O-01 era ese día. La banda es un control de **privacidad**: afirmando
+   lo contrario sobre datos reales deja de proteger y pasa a invitar a compartir
+   el documento. Es peor en papel que en pantalla, porque el papel circula. De
+   paso: decía `Cliente:` e imprimía `· propio`, el slug crudo del origen.
+3. **`asegurarEmpresa` podía borrar la prima de riesgo.** Su docstring decía "no
+   pisa lo capturado" y era falso: `aClienteCartera` siempre emite `nombre: ''` y
+   `prima_riesgo: ''`, y `setDoc(merge: true)` **sí sobrescribe** un campo que
+   viaja vacío. Dos caminos reales: dar de alta un empleado antes de que resuelva
+   la relectura, y una segunda pestaña con estado frío. Dejar de cobrar una cuota
+   patronal, en silencio, por dar de alta a alguien. Ahora no escribe cuando no
+   hay ficha, y el alta de empleados está bloqueada hasta configurar la empresa —
+   en la pantalla **y** en el servicio.
+4. **La compatibilidad con el interruptor de R-07 estaba afirmada y era falsa.**
+   Medido contra `ClienteCarteraSchema`: con `VITE_CARTERA_BACKEND=1`, el primer
+   guardado daba **422** porque `periodo_sugerido` viajaba con cadenas vacías, que
+   no son fechas. Es el patrón exacto de R-07: un docstring afirmando una
+   propiedad que el código no tiene. Arreglado —el periodo se omite del
+   documento— y **verificado con el schema real**, no re-afirmado.
+5. **No había nada anotado en este archivo**, mientras `empresa.ts` afirmaba
+   "Anotado en `docs/nocturno-log.md`". Esta entrada lo cierra.
+
+Y una que me hizo escribir un test que no medía nada: **la guarda de "falta
+configurar la empresa" sobrevivía a su propia prueba.** Sin checadas en el
+periodo, `pedirCierre` no llama a `cerrar` —abre el diálogo de confirmación— así
+que el test verde no tocaba la guarda. Al medirlo con una mutación apareció el
+defecto de producto: con la empresa a medias, la pantalla preguntaba *"¿cerrar de
+todos modos?"*, el operador decía que sí, y **hasta entonces** algo lo frenaba sin
+explicar qué. La guarda faltaba en `pedirCierre`. Hoy cada una muere con su
+propia mutación, medido.
+
+### Decisiones tomadas sin Ricardo
+
+1. **El flag viene ENCENDIDO por default.** Un build sin la variable tiene que
+   dar la app de la empresa: con el default apagado, el pivote colgaría de un
+   `.env` gitignoreado y un clon nuevo arrancaría en el modo viejo sin que nada
+   lo delatara. A cambio, **18 archivos de prueba declaran su modo** con
+   `modoDespacho()`. No cambia una sola aserción: cambia el mundo en el que se
+   evalúan. Dos de ellos —`pdfExportNomina.test.ts` y `EmpleadosTab.test.tsx`—
+   estaban pasando **por la razón equivocada**, y se descubrió al declararlo.
+2. **La cartera desaparece de la INTERFAZ, no del almacén.** Los empleados siguen
+   en `users/{uid}/clientes/empresa/empleados/{id}`. Mantener la ruta es lo que
+   permite encender R-07 sin migrar un documento, y lo que deja al checador
+   casando sus llaves. Reescribirla sería una migración destructiva a cambio de
+   estética.
+3. **El id guardado sigue siendo `contributorType: 'contador'`.** Es la llave que
+   ya tienen todas las cuentas en Firestore; renombrarla sería una migración de
+   datos a cambio de nada. Lo que cambia es cómo se llama en pantalla
+   ("Empresa"), vía `etiquetaDelPerfilOperador`.
+4. **El onboarding pide DOS campos, no tres**: se cae "nombre del despacho"
+   porque la razón social es dato fiscal y vive con el RFC y el registro patronal
+   en el documento del cliente. Pedirla también ahí habría creado dos nombres
+   para el mismo patrón.
+5. **El calendario no crea un segundo generador.** `empresa_unica=true` es la
+   misma llamada a `calendario_patronal()` sin el fan-out. Dos generadores de
+   calendario es lo que el doc 25 §4 llama "un bug esperando", y F1-06 lo dejó
+   advertido.
+6. **`cliente_nombre` viaja VACÍO en ese modo, no inventado.** El backend no sabe
+   cómo se llama la empresa y no tiene por qué: no viaja en el query string.
+
+### Decisiones ABIERTAS para Ricardo
+
+1. **La zona salarial de Orca.** `EMPRESA_POR_DEFECTO.zona = 'general'` porque
+   Veracruz no está en la Zona Libre de la Frontera Norte. **No lo ha confirmado
+   nadie** y no está cubierto en `docs/decisiones-nomina.md` ni en
+   `PLAN_NOMINA.md` §5, que sólo pregunta por Veracruz para el ISN. De la zona
+   depende el piso del SBC (1 salario mínimo del área, Art. 28 LSS). El campo no
+   se pinta en esta tarea. Marcado en el código con `DECISIÓN PROVISIONAL`.
+2. **La periodicidad de pago de Orca.** Se fija quincenal (`04`) por ser la única
+   que la app ofrecía y la de todo el material de la demo. De la clave depende
+   qué tarifa del Art. 96 se aplica. **Pregunta para la contadora.** O-03 abre el
+   selector y sube la guarda al motor.
+3. **El periodo de Orca sale hoy del catálogo de demostración.**
+   `conPeriodoAlDia` (`carteraFirestore.ts:226`) copia el `periodo_sugerido` del
+   cliente `demo` a *todos*, la empresa incluida — lo llaman los dos dueños del
+   dato. El número **no es falso** (es `quincena(hoy)`, correcta para una nómina
+   quincenal) y la pantalla no afirma nada que no sea cierto, así que O-01 lo deja
+   en estado honesto. Pero la costura con el catálogo sigue abierta y **O-03 la
+   tiene que cerrar**: con semanal y mensual abiertas, una empresa mensual
+   recibiría una quincena sugerida y el motor la rechazaría.
+4. **El cálculo sigue sin leer la cartera** (tercer criterio de R-07, ya abierto
+   como R-08): `POST /nomina/calcular-periodo` recibe la plantilla en el cuerpo.
+   O-01 no lo empeora ni lo cierra.
+
+### Deuda de tamaño de archivo
+
+El tope de 300 líneas de `apps/store/CLAUDE.md` (sección NUNCA). Esta tarea llevó
+`CarteraContext.tsx` de 223 a 413, así que **se extrajo** `empresaEnLaCartera.ts`
+y quedó en 277. También se extrajeron `TipoDeCuenta`, `ConfiguracionEmpresa`,
+`validacionEmpresa`, `TarjetaEmpresa` y `motivoDelPaso2` para no cruzarlo.
+
+**Dos que esta tarea empujó y siguen por encima, sin arreglar:**
+`useNominaCliente.ts` (506 → 626) y `apps/api/app/routes/despacho.py` (324 → 384).
+Los dos ya estaban arriba antes del pivote. Extraerlos a las puertas del merge es
+justo lo que el `nocturno-log` de la corrida R documenta como peligroso —el
+archivo a partir es el que contiene las guardas del cierre—, así que se difiere
+**con las guardas ya pinneadas por tests**, no antes. Tarea propia.
+
+### Lo que NO está verificado
+
+**Nada de O-01 se ha visto en un navegador.** La regla de
+`apps/store/CLAUDE.md:87` —probar en los tres temas antes del merge— sigue sin
+cumplirse. Cero variables CSS nuevas, que es la condición necesaria y verificable.
+
+### Cierre
+
+Backend **1215 verdes** (+6) y `ruff` limpio. Frontend **526 verdes** (+52),
+`tsc` y `npm run build` limpios, `npx eslint .` en **20 errores / 8 warnings** —
+la línea base exacta de S-02, con cero nuevos.

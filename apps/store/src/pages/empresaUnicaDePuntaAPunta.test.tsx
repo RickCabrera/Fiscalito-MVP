@@ -29,7 +29,14 @@ import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { ClienteCartera, EmpleadoCartera } from '../services/carteraApi';
 
-vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
+/**
+ * Modo empresa única EXPLÍCITO, dentro de un `beforeEach` — ver la nota de
+ * `rutasEmpresaUnica.test.tsx`: a nivel de módulo lo borra el `afterEach`
+ * global de `test/setup.ts` y sólo aplica al primer test.
+ */
+beforeEach(() => {
+  vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
+});
 
 const perfil: UserProfile = {
   contributorType: 'contador',
@@ -316,42 +323,72 @@ describe('O-01 de punta a punta · alta de empleado → nómina → exportar', (
     conCartera(<NominaClientePage clienteId={ID_EMPRESA} />);
     await waitFor(() => expect(screen.getByText(/Checadas recibidas/)).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/cartera/i);
-    expect(screen.queryByRole('link', { name: /Clientes/ })).toBeNull();
+    // Se quitó de aquí un `queryByRole('link', {name:/Clientes/})`: esta
+    // pantalla se monta SIN `AppLayout` y no tiene un solo `<Link>`, así que la
+    // aserción era vacua — sobrevivía incluso metiendo "Clientes" al sidebar
+    // incondicionalmente. Quien mide el sidebar es `rutasEmpresaUnica.test.tsx`.
+    expect(document.body.textContent).not.toMatch(/lista de clientes/i);
   });
 
-  it('sin el documento de la empresa, el alta lo crea antes de escribir al empleado', async () => {
+  it('sin la empresa configurada, el alta NO se hace: se pide configurarla', async () => {
     /**
+     * **Es la guarda que hace seguro que `asegurarEmpresa` no escriba.**
+     *
      * En Firestore un documento que sólo tiene subcolecciones **no aparece** al
-     * listar la colección. Sin `asegurarEmpresa`, el primer empleado de una
-     * cuenta nueva se guardaría bien y la cartera volvería vacía en la
-     * siguiente lectura: el empleado existiría, invisible, y el operador lo
-     * daría de alta otra vez.
+     * listar la colección, así que un empleado guardado bajo una ficha
+     * inexistente se pierde de vista y el operador lo da de alta otra vez.
+     *
+     * Una versión anterior resolvía esto creando la ficha con los defaults, y
+     * eso era peor: `aClienteCartera` siempre emite `nombre: ''` y
+     * `prima_riesgo: ''`, y `setDoc(merge: true)` **sí sobrescribe** un campo
+     * que viaja vacío. Dar de alta a alguien borraba la prima de riesgo de la
+     * empresa —la que entra al ramo de Riesgos de Trabajo de `cuotas.py`— en
+     * silencio. Ahora el alta se bloquea antes.
      */
     almacen.ficha = null;
     almacen.empleados = [];
 
     conCartera(<EmpleadosPage />);
+
+    // La pantalla manda a configurar la empresa en vez de ofrecer el alta.
+    await waitFor(() =>
+      expect(screen.getByText(/Configura la empresa primero/)).toBeTruthy(),
+    );
+    expect(screen.queryByText('Nuevo empleado')).toBeNull();
+    expect(almacen.ficha).toBeNull();
+    expect(almacen.empleados).toHaveLength(0);
+  });
+
+  it('el alta de un empleado NO pisa la ficha de la empresa ya guardada', async () => {
+    /**
+     * El camino que borraba la prima: guardar la empresa e ir a dar de alta a
+     * alguien **antes** de que resuelva la relectura. En esa ventana el estado
+     * local no tiene la ficha aunque el documento ya exista.
+     *
+     * Se simula releyendo `guardarCliente`: si el alta escribiera la ficha, la
+     * escribiría con los defaults vacíos.
+     */
+    const { guardarCliente } = await import('../services/cartera');
+    vi.mocked(guardarCliente).mockClear();
+
+    conCartera(<EmpleadosPage />);
     await waitFor(() => expect(screen.getByText('Nuevo empleado')).toBeTruthy());
     fireEvent.click(screen.getByText('Nuevo empleado'));
-    fireEvent.change(screen.getByLabelText('Número de empleado *'), { target: { value: 'E-01' } });
-    fireEvent.change(screen.getByLabelText('Nombre *'), { target: { value: 'Primera Alta' } });
+    fireEvent.change(screen.getByLabelText('Número de empleado *'), { target: { value: 'E-07' } });
+    fireEvent.change(screen.getByLabelText('Nombre *'), { target: { value: 'Alguien Más' } });
     fireEvent.change(screen.getByLabelText('Salario diario *'), { target: { value: '400' } });
 
-    // El botón dice "Dar de alta" cuando es un empleado nuevo, no "Guardar".
     const guardar = await screen.findByRole('button', { name: 'Dar de alta' });
     await waitFor(() => expect((guardar as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(guardar);
 
     await waitFor(() => expect(almacen.empleados).toHaveLength(1));
-    // Se lee por función: TypeScript estrechó `almacen.ficha` a `never` por el
-    // `= null` de arriba y no sabe que un efecto de React la volvió a poblar.
-    // Dentro de la función el flujo del test no la estrecha.
-    const ficha = fichaGuardada();
-    expect(ficha).not.toBeNull();
-    expect(ficha?.id).toBe(ID_EMPRESA);
-    // Y nace `propio`, no con un origen de demostración: si naciera `sintetico`
-    // o `fixtures-s04`, el filtro de R-06 lo escondería y la cartera quedaría en
-    // cero — con la nómina bloqueada por "cliente ajeno", que no es lo que pasó.
-    expect(ficha?.origen).toBe('propio');
+    // La prima y la razón social siguen intactas, se haya reescrito la ficha o no.
+    expect(fichaGuardada()?.prima_riesgo).toBe('0.0113065');
+    expect(fichaGuardada()?.nombre).toBe('Orca Ordorica Cristal Templado');
+    for (const llamada of vi.mocked(guardarCliente).mock.calls) {
+      expect((llamada[1] as { prima_riesgo: string }).prima_riesgo).not.toBe('');
+      expect((llamada[1] as { nombre: string }).nombre).not.toBe('');
+    }
   });
 });

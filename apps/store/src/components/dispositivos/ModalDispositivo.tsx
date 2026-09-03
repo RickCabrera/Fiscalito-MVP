@@ -32,6 +32,7 @@ import {
 } from '../../services/dispositivosApi';
 import Campo from '../cartera/Campo';
 import { campoInput as campo, etiquetaCampo as etiqueta } from '../cartera/estilosCampo';
+import { modoEmpresaUnica } from '../../services/modoEmpresa';
 
 function problemaDe(problemas: ProblemaDispositivo[], campoNombre: ProblemaDispositivo['campo']) {
   return problemas.find((p) => p.campo === campoNombre)?.motivo ?? null;
@@ -166,7 +167,7 @@ export default function ModalDispositivo({
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <Campo label="IP en la red del cliente">
+          <Campo label={modoEmpresaUnica() ? 'IP en la red' : 'IP en la red del cliente'}>
             <input
               style={campo}
               value={datos.ip}
@@ -216,7 +217,9 @@ export default function ModalDispositivo({
 
           {empleados.length === 0 && (
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Este cliente todavía no tiene empleados en la cartera.
+              {modoEmpresaUnica()
+                ? 'Todavía no hay empleados dados de alta.'
+                : 'Este cliente todavía no tiene empleados en la cartera.'}
             </p>
           )}
 

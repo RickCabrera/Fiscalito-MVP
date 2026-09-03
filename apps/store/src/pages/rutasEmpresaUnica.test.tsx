@@ -18,7 +18,7 @@
  * una ruta que el árbol real perdió.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
@@ -26,8 +26,19 @@ import { carteraDePrueba } from '../test/carteraDePrueba';
 import { EMPRESA_POR_DEFECTO } from '../services/empresa';
 import type { ClienteCartera } from '../services/carteraApi';
 
-/** Modo empresa única explícito: este archivo no depende del default. */
-vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
+/**
+ * Modo empresa única EXPLÍCITO, dentro de un `beforeEach`.
+ *
+ * A nivel de módulo NO sirve: el `afterEach` global de `test/setup.ts` hace
+ * `vi.unstubAllEnvs()`, así que el stub sólo sobrevivía al primer test del
+ * archivo y del segundo en adelante esto medía el **default**. Pasaba igual
+ * —el default es encendido— y por eso no se notaba, que es justo lo que lo
+ * hacía peligroso: el día que alguien invierta el default, este archivo
+ * empezaría a medir el modo despacho sin fallar.
+ */
+beforeEach(() => {
+  vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
+});
 
 const PERIODO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' };
 

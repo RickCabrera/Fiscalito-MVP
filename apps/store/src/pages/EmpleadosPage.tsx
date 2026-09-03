@@ -22,6 +22,7 @@ import { useClienteActivo } from '../context/clienteActivoStore';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import SinClienteActivo from '../components/common/SinClienteActivo';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { empresaConfigurada } from '../services/empresa';
 
 export default function EmpleadosPage() {
   const { clienteId, cliente, loading } = useClienteActivo();
@@ -31,6 +32,24 @@ export default function EmpleadosPage() {
     () => (clienteId ? cartera.clientePorId(clienteId)?.empleados ?? [] : []),
     [cartera, clienteId],
   );
+
+  /**
+   * O-01: sin empresa configurada no hay plantilla que llevar.
+   *
+   * Va antes que la tabla y no como un aviso encima: dar de alta a alguien aquí
+   * lo guardaría bajo una ficha que no existe y **desaparecería en la siguiente
+   * lectura** (en Firestore un documento con sólo subcolecciones no aparece al
+   * listar). El servicio también lo bloquea; esto es para que el operador vea
+   * el camino en vez de un error al guardar.
+   */
+  if (modoEmpresaUnica() && !loading && !empresaConfigurada(cartera.empresa)) {
+    return (
+      <SinClienteActivo
+        titulo="Empleados"
+        explicacion="La plantilla que entra al cálculo de la nómina."
+      />
+    );
+  }
 
   if (!loading && !clienteId) {
     return (
