@@ -2104,9 +2104,10 @@ entero **sin decir cuál de los dos faltaba**.
   el motor. Lo que está sin confirmar es el **orden y ancho de los campos**.
 - **UMF (clínica de adscripción)** va en ceros: el modelo no la guarda. La CURP
   el propio manual la marca como opcional. **ABIERTO.**
-- **La cuenta bancaria (CLABE) no está en el modelo**, así que la dispersión sale
-  con el campo vacío. Un archivo de dispersión sin CLABE no se puede mandar al
-  banco: **ABIERTO**, y es lo que falta para que ese formato sirva de verdad.
+- **La cuenta bancaria (CLABE) no está en el modelo.** Se escribió aquí primero
+  que "la dispersión sale con el campo vacío", y era **peor que eso**: salía un
+  archivo de cero bytes. Ver el bloqueo 4 del revisor, más abajo, que es la
+  versión correcta. **ABIERTO**, y es lo que falta para que ese formato sirva.
 - Nada de O-04 se ha visto en un navegador. Cero variables CSS nuevas.
 
 ### Deuda de tamaño

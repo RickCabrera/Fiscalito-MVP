@@ -25,11 +25,20 @@ const FUENTE_IMSS =
   '(imss.gob.mx/sites/all/statics/pdf/formatos/GuiaOperacionDISP-MAG_2009.pdf). ' +
   'Registro fijo de 168 posiciones, ASCII, SBC con punto decimal implícito.';
 
+/**
+ * Lo primero que dice es lo que hoy bloquea el formato, no su procedencia.
+ *
+ * Esta cita se pinta **encima del botón de exportar**, y ese botón hoy siempre
+ * levanta: `cuenta_bancaria` no se captura en ningún lado todavía. Decir sólo
+ * "por validar el layout, los importes sí cuadran" es cierto y a la vez inútil
+ * para quien está a punto de hacer clic. Lo señaló el revisor del cuadre.
+ */
 const POR_VALIDAR_BANCO =
-  'Sin fuente publicada: los manuales de dispersión viven detrás del portal de banca ' +
-  'empresarial. La estructura es la habitual del banco y hay que contrastarla contra su ' +
-  'manual vigente antes de usarla. **Los importes sí están verificados**: salen del mismo ' +
-  'cálculo que el PDF y cuadran al centavo contra el motor.';
+  'No se puede emitir todavía: la cuenta bancaria (CLABE) no se captura en la ficha del ' +
+  'empleado, así que no hay a quién dispersar. Y el layout está por validar — los manuales ' +
+  'viven detrás del portal de banca empresarial, así que hay que contrastarlo contra el ' +
+  'manual vigente del banco. **Los importes sí están verificados**: salen del mismo cálculo ' +
+  'que el PDF y cuadran al centavo contra el motor.';
 
 export const FORMATOS: FormatoExportacion[] = [
   {
