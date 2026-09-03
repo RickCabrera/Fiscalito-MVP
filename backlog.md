@@ -252,6 +252,27 @@ como está escrito se deja ABIERTO y anotado en `docs/nocturno-log.md`.
   > Las dos cosas se cierran capturando datos en la ficha del empleado — es tarea de modelo,
   > no de exportador. Detalle en `docs/nocturno-log.md`.
 
+- [x] **O-cierre · Los tres bloqueos del revisor de cierre** — **PR #35.** No venía del backlog:
+  salió de la revisión de cierre de la corrida O, que **bloqueó**. (1) El asistente de voz
+  seguía siendo el del despacho: flota sobre todas las pantallas y su prompt hablaba de "tus
+  clientes" sobre la nómina propia, además de prohibirle pedir el RFC —instrucción falsa en
+  este modo, donde sí se captura—. (2) El exportador de O-04 en modo despacho leía el registro
+  patronal de un documento que ahí no existe, levantaba, y mandaba a una pantalla que con el
+  flag apagado no se renderiza: callejón sin salida. Ahora sale de la ficha del cliente y se
+  captura en `ModalCliente`, porque el registro patronal es **de cada patrón**. (3) Cambiar las
+  prestaciones no reintegraba a quien ya estaba de alta: la nómina salía con el SBC viejo,
+  **subintegrada en silencio**. Se agregó `reintegrarPlantilla` con aviso permanente y dos
+  pasos —calcular no escribe; guardar es un segundo clic—, porque cada cambio de SBC es un
+  movimiento 07 que esta app no puede generar.
+  > **El parámetro del patrón es un PISO, no un reemplazo** (`docs/decisiones-nomina.md` §D28,
+  > **ABIERTA para la contadora**): `max(patrón, ficha)`, y una bajada de SBC no se escribe. La
+  > primera versión ignoraba las prestaciones por empleado y le **bajaba** el SBC al trabajador
+  > con prestaciones negociadas — escribiendo la subintegración que venía a cerrar.
+  >
+  > **Queda abierto:** el guardado es en serie y un fallo a la mitad deja la plantilla a medias
+  > sin decir hasta dónde llegó. Y los días de vacaciones por empleado son **inertes** cuando
+  > el patrón tiene tabla (hueco de O-03, ver §D28).
+
 ## R — Reparaciones para que la app sea usable (2026-09-02, MODO RÁPIDO)
 
 Pedidas por Ricardo el 2026-09-02, **no venían del backlog**, en orden estricto de lo más
