@@ -448,7 +448,26 @@ export function useNominaCliente(clienteId: string) {
     // y no una garantía. Es literalmente el defecto que este archivo critica de
     // la corrida G tres bloques más abajo.
     if (faltaDeLaEmpresa.length > 0) return;
-    const id = cliente.id;
+    /**
+     * La llave es `clienteId`, no `cliente.id`. (F-02)
+     *
+     * **Esto NO arregla un error invisible, y decir lo contrario mandaría al
+     * siguiente lector a construir sobre una premisa falsa.** Hoy los dos
+     * valores son el mismo string por las dos únicas vías que producen
+     * `cliente`: `cliente_por_id` es un lookup exacto de diccionario en el
+     * backend, y `clientePorId` compara con igualdad estricta en la cartera.
+     * El error de operación SÍ se pintaba. El modo de falla real de F-02 era el
+     * mensaje mudo —un 422 que decía "Extra inputs are not permitted" sin
+     * nombrar el campo—, y ése se arregla en `errorApi.ts`.
+     *
+     * Se fija en el parámetro del hook porque este `id` hace dos cosas: es la
+     * llave con la que `suyo()` decide si el dato es de este cliente, **y viaja
+     * al backend** como argumento de `cerrarPeriodo`/`calcularNomina`. Anclar
+     * las dos en el parámetro —y no en un dato derivado que llega por la red—
+     * es la misma disciplina que ya siguen `setPeriodoDe`, `setCargada` y
+     * `setEventosDe` en este archivo.
+     */
+    const id = clienteId;
     setConfirmarPara(null);
     setOcupado(true);
     setErrorDe(null);
@@ -489,7 +508,8 @@ export function useNominaCliente(clienteId: string) {
     // es tuyo". Cerrar una sola de las dos puertas deja la otra abierta.
     if (ajenoALaCartera) {
       setErrorDe({
-        id: cliente.id,
+        // F-02: ver la nota de `clienteId` en `cerrar`.
+        id: clienteId,
         // El mismo texto que `motivoDelPaso2` pinta en el badge, por modo. Era
         // la copia que se quedó sin traducir: mandaba a "tu lista de clientes",
         // que en modo empresa única es una ruta que redirige.
@@ -503,14 +523,16 @@ export function useNominaCliente(clienteId: string) {
     }
     if (faltaDeLaEmpresa.length > 0) {
       setErrorDe({
-        id: cliente.id,
+        // F-02: ver la nota de `clienteId` en `cerrar`.
+        id: clienteId,
         valor:
           `Falta ${faltaDeLaEmpresa.join(' y ')} de la empresa. Sin eso no se pueden ` +
           'calcular las cuotas patronales. Captúralo en Perfil → Configuración de empresa.',
       });
       return;
     }
-    const id = cliente.id;
+    // F-02: `clienteId`, no `cliente.id`. Ver la nota en `cerrar`.
+    const id = clienteId;
     setOcupado(true);
     setErrorDe(null);
     try {

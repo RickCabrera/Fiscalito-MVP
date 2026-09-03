@@ -68,6 +68,60 @@ describe('detalleDelError', () => {
     expect(msg).toBe('Input should be a valid integer');
   });
 
+  it('un 422 de `extra_forbidden` NOMBRA el campo que sobra (F-02)', () => {
+    // El 422 exacto que tumbó el alta de empleado: el `msg` de FastAPI no dice
+    // cuál campo sobra, y sin el nombre el operador no tiene qué tocar.
+    const msg = detalleDelError(conUrl(422, 'http://localhost:8000/api/v1/nomina/sbc'), {
+      detail: [
+        {
+          loc: ['body', 'tabla_vacaciones'],
+          msg: 'Extra inputs are not permitted',
+          type: 'extra_forbidden',
+        },
+      ],
+    });
+    expect(msg).toBe('tabla_vacaciones: Extra inputs are not permitted');
+  });
+
+  it('un 422 con varios campos los muestra todos, no sólo el primero', () => {
+    // Mostrar sólo el primero obliga a arreglar-reintentar-descubrir en ciclo.
+    const msg = detalleDelError(conUrl(422, 'http://localhost:8000/api/v1/x'), {
+      detail: [
+        { loc: ['body', 'salario_diario'], msg: 'Input should be greater than 0' },
+        { loc: ['body', 'dias_aguinaldo'], msg: 'Input should be greater than 14' },
+      ],
+    });
+    expect(msg).toBe(
+      'salario_diario: Input should be greater than 0 · ' +
+        'dias_aguinaldo: Input should be greater than 14',
+    );
+  });
+
+  it('conserva el índice del renglón en una lista', () => {
+    // En una plantilla de 40 empleados, saber que es el renglón 12 es la mitad
+    // del arreglo.
+    const msg = detalleDelError(conUrl(422, 'http://localhost:8000/api/v1/x'), {
+      detail: [{ loc: ['body', 'incidencias', 12, 'faltas'], msg: 'Input should be >= 0' }],
+    });
+    expect(msg).toBe('incidencias.12.faltas: Input should be >= 0');
+  });
+
+  it('con muchos errores corta en tres y dice cuántos faltan', () => {
+    const msg = detalleDelError(conUrl(422, 'http://localhost:8000/api/v1/x'), {
+      detail: [1, 2, 3, 4, 5].map((n) => ({ loc: ['body', `c${n}`], msg: 'mal' })),
+    });
+    expect(msg).toBe('c1: mal · c2: mal · c3: mal (y 2 más)');
+  });
+
+  it('un `detail` array que no trae `msg` no se traga el error', () => {
+    // Antes caía en `El servidor respondió 422`, que es poco pero es algo;
+    // el riesgo real sería devolver cadena vacía y no pintar nada.
+    const msg = detalleDelError(conUrl(422, 'http://localhost:8000/api/v1/x'), {
+      detail: [{ algo: 'raro' }],
+    });
+    expect(msg).toBe('El servidor respondió 422');
+  });
+
   it('`error` gana sobre `detail` cuando vienen los dos', () => {
     // Invertir el orden haría que un 404 de dominio que algún día traiga los
     // dos campos se reporte como ruta inexistente: lo contrario de la verdad.
