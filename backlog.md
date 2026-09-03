@@ -202,14 +202,26 @@ como está escrito se deja ABIERTO y anotado en `docs/nocturno-log.md`.
   mal resuelta en Windows, y su lista de permitidos perdonaba la línea entera, lo que dejó
   pasar la etiqueta del sidebar del contribuyente). Declara su propio límite: mide la forma,
   no los píxeles.
-- [ ] **O-03 · Parámetros salariales editables** (REVISOR DE MOTOR: toca SBC) — en
+- [x] **O-03 · Parámetros salariales editables** — **PR #33.** (REVISOR DE MOTOR: toca SBC) — en
   Configuración de empresa: días de aguinaldo (mín. 15, Art. 87 LFT), prima vacacional (mín.
   25%, Art. 80 LFT), vacaciones por antigüedad (mínimos de la tabla LFT vigente, superiores
   permitidos), horario laboral y tolerancia del checador (08:00-17:00, 15 min, L-V, editable)
   y periodicidad de pago (semanal/quincenal/mensual). Alimentan factor de integración y SBC.
   **Las tablas de ISR, cuotas IMSS y UMA/SM NO son editables** — son de ley y siguen en el
   motor con su fuente. *Listo cuando:* cambiar aguinaldo 15→30 cambia el factor y el SBC con
-  test que lo demuestra, y los mínimos de ley rechazan valores por debajo.
+  test que lo demuestra (delta exacto 15/365 = 0.0411), y los mínimos de ley rechazan valores
+  por debajo — **en el motor y en la pantalla**, que es donde el enunciado los pide y donde no
+  había nada hasta que el revisor de motor lo midió.
+  **Lo que la tarea obligó a construir de más, y no era opcional:** abrir la periodicidad sin
+  una guarda de duración habría dejado vivo el agujero de §G puntos 3 y 6 (tarifa mensual sobre
+  base de quincena = ISR subestimado con recibo creíble). La guarda vive en el motor, no en el
+  navegador. Y `GET /nomina/periodo-sugerido`, sin el cual elegir Mensual dejaba a la empresa
+  con una quincena propuesta y el motor rechazando: el selector habría roto la app en dos de
+  sus tres opciones.
+  **Dos decisiones ABIERTAS para Ricardo, las dos para la contadora:** §D26 (¿cómo se retiene
+  el ISR de un periodo PARCIAL de un alta o una baja? — hoy se bloquea, que es una regresión
+  funcional declarada) y §D27 (del 16 al 28 de febrero se pagan 13 días contra una tarifa
+  derivada a 15; en la práctica la quincena se paga siempre 15).
 - [ ] **O-04 · Exportador TXT multi-formato** (REVISOR DE MOTOR en el cuadre) — módulo con
   formatos intercambiables y selector en el paso 4, junto al PDF (el PDF se queda):
   movimientos afiliatorios del IMSS según el layout oficial, dispersión bancaria (BBVA,
