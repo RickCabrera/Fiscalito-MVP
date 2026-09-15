@@ -162,7 +162,7 @@ while ($tarea -le $MaxTareas) {
     if (Test-Path $centinelaCerrada) { $cerro   = $true }
   }
 
-  if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force 2>$null }
+  if (-not $proc.HasExited) { taskkill /PID $proc.Id /T /F 2>$null | Out-Null }
 
   git checkout main 2>$null
   git pull --quiet 2>$null
