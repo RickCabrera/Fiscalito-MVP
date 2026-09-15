@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
-import { calcularPreDeclaracion, tipoParaApi } from '../../services/fiscalAgentApi';
+import { calcularPreDeclaracion, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, obtenerAcumuladoAnterior, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { useAgent } from '../../agent/AgentContext';
 import { labelStyle } from '../../utils/styles';
@@ -120,7 +120,7 @@ export default function PreDeclaracionTab() {
           regimen: profile.regimen,
           contributor_type: tipoParaApi(profile.contributorType),
         },
-        facturas,
+        facturas: facturasFiscales(facturas),
         periodo_year: year,
         periodo_month: month,
         incluir_explicacion: true,

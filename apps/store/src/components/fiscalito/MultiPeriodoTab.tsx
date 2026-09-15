@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse, tipoParaApi } from '../../services/fiscalAgentApi';
+import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarMultiPeriodo } from '../../services/declaracionesHistory';
 import { exportarMultiPeriodoPDF } from '../../services/pdfExportMulti';
 import { fmtMoney } from '../../utils/format';
@@ -46,7 +46,7 @@ export default function MultiPeriodoTab() {
     try {
       const res = await calcularMultiPeriodo({
         contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
-        facturas, periodo_year: year, periodos: selected, incluir_explicacion: true,
+        facturas: facturasFiscales(facturas), periodo_year: year, periodos: selected, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {

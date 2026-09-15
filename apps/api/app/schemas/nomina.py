@@ -366,3 +366,175 @@ class SBCResponse(BaseModel):
     piso: Decimal
     tope: Decimal
     fundamento: str
+
+
+# ── CFDI de nómina 4.0 + complemento 1.2, SIN TIMBRAR (T4) ──────────────────
+#
+# LO QUE ESTE REQUEST NO HACE, Y ES LO IMPORTANTE
+# -----------------------------------------------
+# **No inventa identidades.** RFC, CURP, NSS, códigos postales y registro
+# patronal son obligatorios y no tienen default: un CFDI con un RFC inventado
+# es un papel con el nombre de una persona real y los datos de nadie. Si el
+# operador no los tiene capturados, la respuesta correcta es un 422 que diga
+# cuáles faltan — no un XML que parezca bueno.
+#
+# Los únicos defaults son claves de catálogo con un valor único para el caso
+# ordinario (`TipoRegimen = 02` sueldos y salarios, `TipoJornada = 01` diurna,
+# `Sindicalizado = No`, `TipoNomina = O`), cada uno citado abajo contra
+# `knowledge_base/nomina/24_cfdi_nomina_12.md` §2 y §3.
+
+
+class ReciboCFDISchema(BaseModel):
+    """
+    Lo que el CFDI necesita de un recibo, y nada más.
+
+    **Es el subconjunto de `ReciboSchema`**: un elemento de `recibos[]` tal como
+    sale de `POST /nomina/calcular-periodo` lo satisface sin remapear, porque
+    Pydantic ignora los campos de más (SBC, cuotas, ramos, banderas del clamp).
+    Se declara aparte en vez de reusar `ReciboSchema` entero para que el
+    contrato diga qué se usa de verdad: el día que el front arme un recibo a
+    mano, `sbc_piso_aplicado` no puede ser la razón de un 422.
+
+    **Los importes no se recalculan aquí.** Llegan del motor y el serializador
+    sólo los suma para los totales del comprobante (`recibo.py` es aritmética
+    pura sobre partidas dadas). Este endpoint no es el motor.
+    """
+
+    empleado_no: str
+    nombre: str = ""
+    dias_pagados: int = Field(ge=0)
+    percepciones: tuple[PartidaSchema, ...]
+    deducciones: tuple[PartidaSchema, ...] = ()
+    otros_pagos: tuple[PartidaSchema, ...] = ()
+
+
+class DatosPatronCFDI(BaseModel):
+    """El emisor. Ver `24_cfdi_nomina_12.md` §2."""
+
+    rfc: str = Field(min_length=12, max_length=13)
+    nombre: str = Field(min_length=1)
+    regimen_fiscal: str = Field(
+        min_length=3, max_length=3, description="Clave de `c_RegimenFiscal` del patrón."
+    )
+    registro_patronal: str = Field(
+        min_length=1,
+        description="Registro patronal del IMSS. Va en `nomina12:Emisor`.",
+    )
+    codigo_postal: str = Field(
+        min_length=5, max_length=5, description="`LugarExpedicion` del comprobante."
+    )
+    clave_entidad: str = Field(
+        min_length=3,
+        max_length=3,
+        description="`ClaveEntFed` del catálogo `c_Estado`. **Sin default**: "
+        "`VER` es la del patrón del caso real (§D8), no la de nadie más.",
+    )
+
+
+class DatosTrabajadorCFDI(BaseModel):
+    """
+    El receptor. Ver `24_cfdi_nomina_12.md` §2.
+
+    `salario_base_cotizacion` y `salario_diario_integrado` se **reciben**, no se
+    recomputan: por §D9 el SDI que viene de un CFDI es dato de entrada y los
+    factores del caso real no son derivables de la antigüedad.
+    """
+
+    rfc: str = Field(min_length=12, max_length=13)
+    nombre: str = Field(min_length=1)
+    curp: str = Field(min_length=18, max_length=18)
+    numero_seguridad_social: str = Field(min_length=1)
+    codigo_postal: str = Field(
+        min_length=5, max_length=5, description="`DomicilioFiscalReceptor`."
+    )
+    fecha_inicio_relacion_laboral: date
+    tipo_contrato: str = Field(
+        min_length=2, max_length=2, description="Clave de `c_TipoContrato`."
+    )
+    numero_empleado: str = Field(min_length=1)
+    puesto: str = Field(min_length=1)
+    riesgo_puesto: str = Field(
+        min_length=1,
+        max_length=2,
+        description="Clave de `c_RiesgoPuesto`: la clase de riesgo del patrón "
+        "(I–V). **Sin default**: el `99` de 'no aplica' es una afirmación sobre "
+        "el puesto, no un relleno.",
+    )
+    periodicidad_pago: str = Field(
+        min_length=2, max_length=2, description="Clave de `c_PeriodicidadPago`."
+    )
+    salario_base_cotizacion: Decimal = Field(ge=0)
+    salario_diario_integrado: Decimal = Field(ge=0)
+    antiguedad: str = Field(
+        default="",
+        description="`Antigüedad` en formato ISO 8601 `P##W` (§2 del doc 24). "
+        "Vacío = se deriva de `fecha_inicio_relacion_laboral` a la fecha final "
+        "del periodo, en semanas completas. Se acepta capturada porque el CFDI "
+        "timbrado del que venga un histórico ya la trae y reescribirla movería "
+        "un dato que no es nuestro.",
+    )
+    departamento: str = ""
+    sindicalizado: str = Field(default="No", pattern="^(Sí|Si|No)$")
+    tipo_jornada: str = Field(
+        default="01", min_length=2, max_length=2, description="`c_TipoJornada`: 01 diurna."
+    )
+    tipo_regimen: str = Field(
+        default="02",
+        min_length=2,
+        max_length=2,
+        description="`c_TipoRegimen`: 02 sueldos y salarios (doc 24 §2).",
+    )
+
+
+class CFDINominaRequest(BaseModel):
+    """
+    Todo lo que hace falta para serializar un pre-recibo. Ver `CFDINominaResponse`.
+
+    `extra="forbid"` por la misma razón que en `SBCRequest`: un campo que este
+    endpoint no conoce —un `total` "de cortesía", un `sello`— se ignoraría en
+    silencio y el emisor creería que viajó.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    recibo: ReciboCFDISchema
+    patron: DatosPatronCFDI
+    trabajador: DatosTrabajadorCFDI
+    periodo: PeriodoNomina = Field(
+        description="`FechaInicialPago`, `FechaFinalPago` y `FechaPago` del "
+        "complemento. La fecha de pago sale de `periodo.fecha_pago` con el "
+        "mismo default que el resto del motor (`fin` si no viene)."
+    )
+    tipo_nomina: str = Field(
+        default="O",
+        pattern="^[OE]$",
+        description="`c_TipoNomina`: O ordinaria, E extraordinaria.",
+    )
+    serie: str = ""
+    folio: str = ""
+
+
+class CFDINominaResponse(BaseModel):
+    """
+    El XML del pre-recibo. **`timbrado` es siempre `False` y no es decorativo.**
+
+    Lo que sale de aquí es estructuralmente válido contra los XSD del SAT y
+    fiscalmente nada: no lleva `tfd:TimbreFiscalDigital` y sus atributos de
+    sello son centinelas explícitos. El timbrado con un PAC está **fuera de
+    alcance** por el `CLAUDE.md` de la raíz, así que este campo no es un `False`
+    que algún día se vuelva `True` solo: mientras exista, la respuesta afirma
+    que el documento no tiene valor fiscal.
+    """
+
+    exito: bool = True
+    xml: str
+    timbrado: bool = Field(
+        default=False,
+        description="Siempre `false`. Este endpoint no timbra y no habla con ningún PAC.",
+    )
+    nombre_archivo: str = Field(
+        description="Nombre sugerido para la descarga. Lleva `sin-timbrar` a "
+        "propósito: un archivo suelto en la carpeta de descargas del contador "
+        "no tiene dónde decir lo que es si no lo dice su nombre."
+    )
+    advertencia: str

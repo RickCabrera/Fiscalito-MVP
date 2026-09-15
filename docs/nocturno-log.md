@@ -3010,3 +3010,80 @@ archivos** —los mismos 741 de T5, ninguno añadido, siete casos adaptados—, 
 errores nuevos en lo tocado (los 4 que quedan en `tools.ts` y `declaracionesHistory.ts` son
 previos y están en líneas que no toqué; verificado con `git stash`). Todos los archivos bajo
 el tope de 300 líneas: el más grande es `DeclaracionAnualTab.tsx` con 267.
+
+---
+
+## T4 · CFDI de nómina 1.2 + parser tipo N (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Tercera de las tareas de cableado de la corrida T. Régimen MODO DEMO: **sin plan y sin
+revisor** (sólo T1, T2 y T8 lo llevaban). Sí lleva tests: la tarea los autorizaba
+explícitamente *"si los tests existentes del XSD se pueden apuntar al endpoint"*, y se pudo.
+
+**Lo que quedó.** `POST /api/v1/nomina/cfdi` expone `nomina_engine/cfdi_nomina_xml.py`, que
+llevaba desde F1-05 validado contra los XSD del SAT **sin que nadie lo importara**. Del lado
+del front, `cfdiParser.ts` reconoce `TipoDeComprobante="N"` y devuelve `tipo: 'NOMINA'`, y el
+paso 4 de la nómina descarga un `.xml` por empleado con badge "Pendiente de timbrado PAC".
+
+### Las trampas, por orden de importancia
+
+- **EL BUG SILENCIOSO ERA PEOR DE LO QUE DICE EL BACKLOG.** `cfdiParser` hacía
+  `['I','E','T','P'].includes(tipo) ? tipo : 'I'`: un recibo de nómina entraba como
+  **ingreso** y los sueldos que el patrón le pagó a su gente se sumaban a sus ingresos
+  gravables. Número creíble y equivocado **hacia arriba**. La exclusión NO se dejó en un
+  `filter` que alguien recuerde escribir: los seis requests que llevan `facturas` ahora piden
+  `CFDIFiscal[]` (`tipo` sin `'NOMINA'`), así que pasar la lista cruda **rompe el build**. El
+  `tsc` encontró los 7 call sites solo; ninguno se buscó a mano.
+- **`'NOMINA'` y no `'N'`, a propósito:** no puede confundirse con una clave del catálogo en
+  ninguna comparación. Y el backend no lo aceptaría de todos modos — `TipoFactura` en
+  `schemas/fiscal.py` sólo conoce I/E/T/P y responde 422.
+- **EL MODELO DE LA CARTERA NO ALCANZA PARA EMITIR UN CFDI, y eso define la tarea.**
+  `EmpleadoCartera` **no tiene RFC ni CURP ni CP**, y los tres clientes de demostración no
+  traen ni el RFC del patrón. Se decidió **no inventar nada**: el endpoint los exige sin
+  default (422 nombrando cuál falta) y la pantalla los **captura en un formulario en memoria**
+  que se pierde al salir. Meterlos en la cartera es cambiar modelo + reglas de Firestore +
+  alta de empleado: **tarea propia**, y la más obvia que deja T4. Sin ella, "Generar todos"
+  exige teclear 4 campos por empleado antes de servir.
+- **`clave_entidad` NO cae a `VER` y `riesgo_puesto` NO cae a `99`.** `VER` es la del patrón
+  del caso real (§D8) y `99` es "no aplica", que es una afirmación sobre el puesto. Los únicos
+  defaults son claves con un valor único para el caso ordinario (`TipoRegimen 02`,
+  `TipoJornada 01`, `Sindicalizado No`, `TipoNomina O`), todas citadas contra el doc 24 §2.
+- **`Antigüedad` se deriva en la RUTA, no en el motor.** Semanas completas de
+  `fecha_inicio_relacion_laboral` a **`periodo.fin`**, no a hoy: un recibo de agosto emitido en
+  septiembre no le agrega semanas a nadie. Es aritmética de calendario, no de dinero, y el
+  módulo del motor no se tocó (`git diff` de `cfdi_nomina_xml.py` vacío, como pedía la tarea).
+  Si el emisor la manda capturada, manda la suya.
+- **DEUDA QUE NO TOQUÉ Y ALGUIEN VA A PISAR: el generador no emite `FormaPago`.** El doc 24 §2
+  la pide con valor `99` para nómina. El XSD la deja pasar porque es opcional, así que los 33
+  tests siguen verdes y el XML valida — **pero un PAC probablemente lo rechace**. Corregirlo es
+  editar `cfdi_nomina_xml.py`, que esta tarea tenía prohibido cambiar. Queda escrito en
+  `api-contract.md` y aquí.
+- **`SalarioBaseCotApor` sale del RECIBO, no de la ficha.** Es el SBC ya acotado por el clamp
+  del Art. 28: si el piso o el tope movieron el número, el recibo y el CFDI tienen que decir el
+  mismo. El SDI sí sale de la ficha (§D9: es dato de entrada).
+- **El contrato de rutas de X-01 hizo su trabajo.** `test_rutas_publicadas.py` falló al agregar
+  la ruta y obligó a regenerar `rutasBackend.json`; `contratoRutas.test.ts` obligó a registrar
+  `cfdiNominaApi.ts` en `MODULOS` el día que nació, en vez de repetir lo de `carteraBackend`.
+- **Un test existente cazó un error de producto, no de código.** `empresaUnicaDePuntaAPunta`
+  exige que la palabra "cartera" no aparezca en esa pantalla, y mi copy la había metido. En
+  modo empresa única la cartera no existe como concepto: se reescribió a "plantilla". El otro
+  test adaptado es la línea del paso 4, que T4 alargó con el XML.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1, T2, T8, T5 y T3. **Ningún XML se
+  descargó y ningún recibo de nómina se arrastró al uploader.** Lo que sí está verificado sin
+  navegador, y es más de lo que tuvieron las anteriores: el endpoint genera un XML que
+  **pasa el XSD del SAT** desde un recibo real de `/nomina/calcular-periodo` (6 tests nuevos en
+  `test_cfdi_nomina_xml.py`), y el `Total` del XML es exactamente el `neto` del motor.
+- **Deuda declarada:** `NominaClientePage.tsx` ya estaba en **319 líneas** sobre el tope de 300
+  antes de T4 y queda en 330. No se partió a las puertas del merge, por la misma razón que G-04
+  documentó. Los tres archivos nuevos están bajo el tope (el mayor, `PanelCFDINomina.tsx`, 268).
+- **Lo que no toqué:** `fiscal_engine`, `calculadora.py`, ningún cálculo de `nomina_engine`, y
+  el `.env`. `docs/api-contract.md` **sí** se actualizó, que es obligatorio al exponer un
+  endpoint.
+
+### Cierre
+
+`npm run build` limpio y `pytest -q` de `tests/nomina/` verde (los dos checks obligatorios del
+régimen, porque T4 toca las dos apps). Además, por gusto y porque el cambio de tipos era
+transversal: **suite completa en verde de los dos lados** — 1317 tests de API (+6) y 743 del
+front (+2), ninguno borrado ni saltado, dos adaptados al comportamiento nuevo. `ruff` limpio y
+`eslint` sin errores nuevos (el único que queda en `fiscalAgentApi.ts` es previo, en
+`apiCall`, línea que no toqué; verificado con `git stash`).

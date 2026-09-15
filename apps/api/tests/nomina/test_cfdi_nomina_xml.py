@@ -23,8 +23,12 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.constants import CLIENTE_DEMO
+from app.main import app
 from app.nomina_engine.cfdi_nomina_xml import (
+    ATRIBUTO_ANTIGUEDAD,
     NO_CERTIFICADO_SIN_TIMBRAR,
     SELLO_SIN_TIMBRAR,
     generar_cfdi_nomina,
@@ -568,3 +572,164 @@ class TestEstructura:
 
         with pytest.raises(FiscalValidationError):
             Recibo(percepciones=())
+
+
+class TestEndpointCFDI:
+    """
+    `POST /api/v1/nomina/cfdi` (T4): el mismo XSD, ahora por HTTP.
+
+    **Es el mismo `errores_de_validacion` de `TestValidacionXSD`, apuntado al
+    endpoint.** Lo que agrega no es la validación —ésa ya estaba— sino el
+    eslabón que faltaba: que el recibo tal como lo devuelve
+    `/nomina/calcular-periodo` entra al generador **sin remapear**. El módulo
+    llevaba desde F1-05 sin que nadie lo importara; si el contrato de los dos
+    endpoints se separa, aquí truena.
+    """
+
+    @staticmethod
+    def _cliente() -> TestClient:
+        return TestClient(app)
+
+    @staticmethod
+    def _recibo_del_motor(cliente: TestClient) -> dict:
+        """El recibo de E-03 tal como sale del motor, sin tocarle un campo."""
+        res = cliente.post(
+            "/api/v1/nomina/calcular-periodo",
+            json={
+                "cliente": CLIENTE_DEMO,
+                "periodo": {"inicio": "2026-08-16", "fin": "2026-08-31"},
+                "parametros": {"prima_riesgo": "0.0054355", "clave_periodicidad": "04"},
+                "incidencias": [
+                    {
+                        "empleado_no": "E-03",
+                        "dias_periodo": 16,
+                        "faltas": 0,
+                        "dias_ausentismo": 0,
+                    }
+                ],
+                "empleados": [
+                    {
+                        "empleado_no": "E-03",
+                        "nombre": TRABAJADOR.nombre,
+                        "salario_diario": "368.05",
+                        "salario_diario_integrado": "399.52",
+                    }
+                ],
+            },
+        )
+        assert res.status_code == 200, res.text
+        return res.json()["recibos"][0]
+
+    @classmethod
+    def _cuerpo(cls, recibo: dict, **extra) -> dict:
+        return {
+            "recibo": recibo,
+            "patron": {
+                "rfc": PATRON.rfc,
+                "nombre": PATRON.nombre,
+                "regimen_fiscal": PATRON.regimen_fiscal,
+                "registro_patronal": PATRON.registro_patronal,
+                "codigo_postal": PATRON.codigo_postal,
+                "clave_entidad": PATRON.clave_entidad,
+            },
+            "trabajador": {
+                "rfc": TRABAJADOR.rfc,
+                "nombre": TRABAJADOR.nombre,
+                "curp": TRABAJADOR.curp,
+                "numero_seguridad_social": TRABAJADOR.numero_seguridad_social,
+                "codigo_postal": TRABAJADOR.codigo_postal,
+                "fecha_inicio_relacion_laboral": "2024-05-26",
+                "tipo_contrato": TRABAJADOR.tipo_contrato,
+                "numero_empleado": TRABAJADOR.numero_empleado,
+                "puesto": TRABAJADOR.puesto,
+                "departamento": TRABAJADOR.departamento,
+                "riesgo_puesto": TRABAJADOR.riesgo_puesto,
+                "periodicidad_pago": "04",
+                "salario_base_cotizacion": "399.52",
+                "salario_diario_integrado": "399.52",
+                **extra.pop("trabajador", {}),
+            },
+            "periodo": {"inicio": "2026-08-16", "fin": "2026-08-31"},
+            **extra,
+        }
+
+    def test_el_xml_del_endpoint_valida_contra_el_xsd(self):
+        cliente = self._cliente()
+        res = cliente.post(
+            "/api/v1/nomina/cfdi", json=self._cuerpo(self._recibo_del_motor(cliente))
+        )
+        assert res.status_code == 200, res.text
+        cuerpo = res.json()
+        assert errores_de_validacion(cuerpo["xml"]) == []
+
+    def test_la_respuesta_dice_que_no_esta_timbrado(self):
+        """
+        `timbrado: false` no es decorativo: es lo que el front pinta como
+        "Pendiente de timbrado PAC". Si alguien lo vuelve `true` sin timbrar de
+        verdad, este test es el que lo caza.
+        """
+        cliente = self._cliente()
+        cuerpo = cliente.post(
+            "/api/v1/nomina/cfdi", json=self._cuerpo(self._recibo_del_motor(cliente))
+        ).json()
+        assert cuerpo["timbrado"] is False
+        assert "sin-timbrar" in cuerpo["nombre_archivo"]
+        assert "TIMBRAR" in cuerpo["advertencia"].upper()
+        raiz = ET.fromstring(cuerpo["xml"])
+        assert raiz.find(".//tfd:TimbreFiscalDigital", NS) is None
+        assert raiz.attrib["Sello"] == SELLO_SIN_TIMBRAR
+        assert raiz.attrib["NoCertificado"] == NO_CERTIFICADO_SIN_TIMBRAR
+
+    def test_la_antiguedad_se_deriva_del_inicio_de_la_relacion_laboral(self):
+        """
+        Semanas completas hasta el FIN DEL PERIODO, no hasta hoy. Del 2024-05-26
+        al 2026-08-31 van 827 días = 118 semanas y 1 día.
+        """
+        cliente = self._cliente()
+        cuerpo = cliente.post(
+            "/api/v1/nomina/cfdi", json=self._cuerpo(self._recibo_del_motor(cliente))
+        ).json()
+        receptor = ET.fromstring(cuerpo["xml"]).find(".//n:Receptor", NS)
+        assert receptor.attrib[ATRIBUTO_ANTIGUEDAD] == "P118W"
+
+    def test_una_antiguedad_capturada_manda_sobre_la_derivada(self):
+        cliente = self._cliente()
+        cuerpo = self._cuerpo(
+            self._recibo_del_motor(cliente), trabajador={"antiguedad": "P97W"}
+        )
+        res = cliente.post("/api/v1/nomina/cfdi", json=cuerpo)
+        receptor = ET.fromstring(res.json()["xml"]).find(".//n:Receptor", NS)
+        assert receptor.attrib[ATRIBUTO_ANTIGUEDAD] == "P97W"
+
+    def test_sin_curp_no_hay_xml(self):
+        """
+        **El 422 es la entrega, no el fallo.** Un CFDI con una CURP de relleno
+        lleva el nombre de una persona real y los datos de nadie; el endpoint
+        prefiere decir qué falta.
+        """
+        cliente = self._cliente()
+        cuerpo = self._cuerpo(self._recibo_del_motor(cliente))
+        del cuerpo["trabajador"]["curp"]
+        res = cliente.post("/api/v1/nomina/cfdi", json=cuerpo)
+        assert res.status_code == 422
+        assert "curp" in res.text.lower()
+
+    def test_el_total_del_comprobante_es_el_neto_del_motor(self):
+        """
+        El serializador **suma**, no recalcula: si el `Total` del XML se separa
+        del `neto` que devolvió `/calcular-periodo`, alguien metió aritmética
+        nueva en el camino.
+        """
+        cliente = self._cliente()
+        recibo = self._recibo_del_motor(cliente)
+        cuerpo = cliente.post("/api/v1/nomina/cfdi", json=self._cuerpo(recibo)).json()
+        raiz = ET.fromstring(cuerpo["xml"])
+        assert Decimal(raiz.attrib["Total"]) == Decimal(recibo["neto"])
+        nomina = raiz.find(".//n:Nomina", NS)
+        assert Decimal(nomina.attrib["TotalPercepciones"]) == Decimal(
+            recibo["total_percepciones"]
+        )
+        assert Decimal(nomina.attrib["TotalDeducciones"]) == Decimal(
+            recibo["total_deducciones"]
+        )
+        assert nomina.attrib["NumDiasPagados"] == f"{recibo['dias_pagados']}.000"

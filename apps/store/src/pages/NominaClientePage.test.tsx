@@ -413,7 +413,8 @@ describe('NominaClientePage', () => {
       montar();
       expect(await screen.findByText(/convierte las checadas en días trabajados/i)).toBeTruthy();
       expect(screen.getByText(/percepciones, ISR retenido, cuotas del IMSS/i)).toBeTruthy();
-      expect(screen.getByText(/El PDF con los recibos y las cuotas, y los archivos TXT/i)).toBeTruthy();
+      // T4 le agregó el XML del CFDI de nómina a la línea del paso 4.
+      expect(screen.getByText(/El PDF con los recibos y las cuotas, los archivos TXT/i)).toBeTruthy();
       expect(screen.getByText(/el panel se refresca solo/i)).toBeTruthy();
     });
 

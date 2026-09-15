@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, tipoParaApi } from '../../services/fiscalAgentApi';
+import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarRetenciones } from '../../services/declaracionesHistory';
 import {
   exportarRetencionesPDF, exportConstanciaRetencion, exportTodasLasConstancias,
@@ -37,7 +37,7 @@ export default function RetencionesTab() {
     try {
       const res = await obtenerRetencionesTerceros({
         contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
-        facturas, periodo_year: year, periodo_month: month, incluir_explicacion: true,
+        facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
