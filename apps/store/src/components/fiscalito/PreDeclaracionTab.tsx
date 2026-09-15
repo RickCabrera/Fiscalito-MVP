@@ -5,7 +5,7 @@ import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
 import { calcularPreDeclaracion, tipoParaApi } from '../../services/fiscalAgentApi';
-import { guardarDeclaracion, obtenerAcumuladoAnterior } from '../../services/declaracionesHistory';
+import { guardarDeclaracion, obtenerAcumuladoAnterior, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { useAgent } from '../../agent/AgentContext';
 import { labelStyle } from '../../utils/styles';
 import ErrorAlert from '../common/ErrorAlert';
@@ -138,21 +138,7 @@ export default function PreDeclaracionTab() {
       if (user?.uid) {
         guardarDeclaracion(user.uid, {
           tipo: 'mensual', periodo: res.periodo, regimen: res.regimen, fecha_calculo: new Date(),
-          desglose: {
-            total_ingresos_facturados: res.desglose.total_ingresos_facturados,
-            total_ingresos_gravados: res.desglose.total_ingresos_gravados,
-            cantidad_facturas_ingreso: res.desglose.cantidad_facturas_ingreso ?? 0,
-            total_egresos: res.desglose.total_egresos ?? 0,
-            total_deducciones_autorizadas: res.desglose.total_deducciones_autorizadas ?? 0,
-            cantidad_facturas_egreso: res.desglose.cantidad_facturas_egreso ?? 0,
-            base_isr: res.desglose.base_isr, tasa_isr: res.desglose.tasa_isr,
-            isr_causado: res.desglose.isr_causado, isr_retenido: res.desglose.isr_retenido ?? 0,
-            isr_a_pagar: res.desglose.isr_a_pagar,
-            iva_trasladado_cobrado: res.desglose.iva_trasladado_cobrado ?? 0,
-            iva_trasladado_pagado: res.desglose.iva_trasladado_pagado ?? 0,
-            iva_retenido: res.desglose.iva_retenido ?? 0,
-            iva_a_pagar: res.desglose.iva_a_pagar, total_a_pagar: res.desglose.total_a_pagar,
-          },
+          desglose: desgloseRecordDesde(res.desglose),
           explicacion: res.explicacion ?? null,
           advertencias: res.advertencias ?? [], recomendaciones: res.recomendaciones ?? [],
           facturas_count: facturas.length,

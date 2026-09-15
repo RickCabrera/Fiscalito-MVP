@@ -7,6 +7,7 @@ const YEARS = [2026, 2025, 2024, 2023];
 const CATEGORIAS: { value: HistorialCategoria | ''; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'predeclaracion', label: 'Pre-declaraciones' },
+  { value: 'anual', label: 'Declaración anual' },
   { value: 'diot', label: 'DIOT' },
   { value: 'retenciones', label: 'Retenciones' },
   { value: 'multiperiodo', label: 'Multi-periodo' },

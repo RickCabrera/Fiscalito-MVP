@@ -1,6 +1,6 @@
 /** Historial card — single declaration row with expandable detail */
 
-import { ChevronDown, ChevronUp, FileText, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, FileCheck, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { type DeclaracionRecord, type HistorialCategoria } from '../../services/declaracionesHistory';
 import ExpandedDetail from './ExpandedDetail';
@@ -15,6 +15,7 @@ interface BadgeConfig {
 function getBadge(cat: HistorialCategoria): BadgeConfig {
   switch (cat) {
     case 'predeclaracion': return { label: 'Pre-declaración', bg: 'var(--purple-bg)', color: 'var(--purple-light)', icon: <FileText size={12} /> };
+    case 'anual': return { label: 'Declaración anual', bg: 'var(--success-bg)', color: 'var(--success)', icon: <FileCheck size={12} /> };
     case 'diot': return { label: 'DIOT', bg: 'var(--teal-bg)', color: 'var(--teal-light)', icon: <FileSpreadsheet size={12} /> };
     case 'retenciones': return { label: 'Retenciones', bg: 'var(--warning-bg)', color: 'var(--warning)', icon: <Users size={12} /> };
     case 'multiperiodo': return { label: 'Multi-periodo', bg: 'var(--teal-bg)', color: 'var(--teal-light)', icon: <TrendingUp size={12} /> };

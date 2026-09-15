@@ -262,7 +262,7 @@ export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
 // ────────────────────────────────────────────────────────────
 
 export type TabFiscalito =
-  | 'declaracion' | 'deducciones' | 'calendario' | 'comparar'
+  | 'declaracion' | 'anual' | 'deducciones' | 'calendario' | 'comparar'
   | 'diot' | 'retenciones' | 'multiperiodo' | 'estado';
 
 /**
@@ -277,7 +277,7 @@ export type TabFiscalito =
  * nueva y la cerró el revisor de T1.
  */
 const TABS_COMPLETOS: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
-  'declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+  'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
 ]);
 
 /** Copia fresca del set completo, para no repartir la misma referencia. */
@@ -333,14 +333,14 @@ export function getTabsForProfile(
   if (contributorType === 'pyme')
     return tabsCompletos();
   if (regimen === '626')
-    return ['declaracion', 'calendario', 'comparar', 'estado'];
+    return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
   if (regimen === '612')
     return tabsCompletos();
   if (contributorType === 'arrendamiento' || regimen === '606')
-    return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
+    return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
   if (contributorType === 'plataformas' || regimen === '625')
-    return ['declaracion', 'calendario', 'estado'];
-  return ['declaracion', 'calendario', 'estado'];
+    return ['declaracion', 'anual', 'calendario', 'estado'];
+  return ['declaracion', 'anual', 'calendario', 'estado'];
 }
 
 /**
@@ -364,9 +364,9 @@ export function getTabsForProfile(
  */
 function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
   if (regimen === '605') return ['deducciones', 'calendario'];
-  if (regimen === '626') return ['declaracion', 'calendario', 'comparar', 'estado'];
-  if (regimen === '606') return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (regimen === '625') return ['declaracion', 'calendario', 'estado'];
+  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
+  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
+  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado'];
   // 612 y cualquier otro: el set completo, que es el de `pyme`.
   return tabsCompletos();
 }

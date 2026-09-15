@@ -203,13 +203,13 @@ describe('getTabsForProfile', () => {
    */
   it('el contador con un cliente 612 ve el set completo', () => {
     expect(getTabsForProfile('contador', '612')).toEqual([
-      'declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+      'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
     ]);
   });
 
   it('el contador con un cliente 626 NO ve DIOT ni Retenciones', () => {
     const tabs = getTabsForProfile('contador', '626');
-    expect(tabs).toEqual(['declaracion', 'calendario', 'comparar', 'estado']);
+    expect(tabs).toEqual(['declaracion', 'anual', 'calendario', 'comparar', 'estado']);
     expect(tabs).not.toContain('diot');
     expect(tabs).not.toContain('retenciones');
   });
@@ -231,17 +231,22 @@ describe('getTabsForProfile', () => {
 
   // Regresión: esta función sirve a FiscalitoServicePage y a DashboardPage a la
   // vez desde E-01. Un cambio aquí mueve las dos pantallas.
+  //
+  // T3 movió estas listas a propósito: 'anual' entra para TODOS menos el
+  // asalariado (605), cuya declaración anual ya es el tab 'deducciones'. El
+  // orden importa porque `allowedTabIds[0]` es el tab por defecto de la
+  // pantalla, y 'declaracion' sigue siendo el primero.
   const CASOS: [string | null, string | null, TabFiscalito[]][] = [
     ['asalariado', '605', ['deducciones', 'calendario']],
-    ['pyme', '612', ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
-    ['independiente', '626', ['declaracion', 'calendario', 'comparar', 'estado']],
-    ['independiente', '612', ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
-    ['arrendamiento', '606', ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado']],
-    ['plataformas', '625', ['declaracion', 'calendario', 'estado']],
-    [null, null, ['declaracion', 'calendario', 'estado']],
+    ['pyme', '612', ['declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
+    ['independiente', '626', ['declaracion', 'anual', 'calendario', 'comparar', 'estado']],
+    ['independiente', '612', ['declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
+    ['arrendamiento', '606', ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado']],
+    ['plataformas', '625', ['declaracion', 'anual', 'calendario', 'estado']],
+    [null, null, ['declaracion', 'anual', 'calendario', 'estado']],
   ];
 
-  it.each(CASOS)('tipo=%s regimen=%s no cambia con E-01', (tipo, regimen, esperado) => {
+  it.each(CASOS)('tipo=%s regimen=%s sale como lo dejaron E-01 y T3', (tipo, regimen, esperado) => {
     expect(getTabsForProfile(tipo, regimen)).toEqual(esperado);
   });
 });

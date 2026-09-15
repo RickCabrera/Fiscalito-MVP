@@ -2930,3 +2930,83 @@ encabezados, con botón en `DIOTTab`. Cero cambios bajo `apps/api/`.
 `npm run build` limpio (único check obligatorio del régimen), **741 tests verdes en 61
 archivos** —ninguno tocado, ninguno añadido—, `eslint` limpio en lo tocado. Todos los
 archivos bajo el tope de 300 líneas: el más grande es `diot.ts` con 249, casi todo docstring.
+
+---
+
+## T3 · Tab Declaración anual PF (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Segunda de las tareas de cableado de la corrida T. Régimen MODO DEMO: **sin plan y sin
+revisor** (sólo T1, T2 y T8 lo llevaban), sin tests nuevos. Corrí la suite completa igual
+porque toqué `navigation.ts`, que sí tiene tests, y adapté los suyos al comportamiento nuevo.
+
+**Lo que quedó.** Tab `anual` ("Declaración anual") en `FiscalitoServicePage`, visible para
+TODOS los perfiles menos el asalariado —cuya anual ya *es* el tab `deducciones`—. Sube XMLs
+del ejercicio, llama `POST /api/v1/pre-declaracion-anual`, captura deducciones personales con
+la misma rejilla del asalariado, guarda en el historial con `categoria: 'anual'` y exporta
+PDF. Cero cambios bajo `apps/api/` (verificado con `git diff --name-only main -- apps/api/`).
+
+### Las trampas, por orden de importancia
+
+- **EL ENDPOINT ANUAL NO FILTRA POR AÑO.** `pre_declaracion_anual` pasa
+  `req.facturas` enteras a `calcular_declaracion(es_anual=True)`: si le mandas dos ejercicios
+  te los suma sin decir nada. El filtro por `fecha.startsWith(ejercicio)` lo hace el front, y
+  la pantalla dice cuántas facturas dejó fuera. **Si alguien quita ese filtro, el número sale
+  mal y nada avisa.**
+- **LOS DOS NÚMEROS NO SE RESTAN, Y ES A PROPÓSITO.** El desglose anual sale de un endpoint y
+  el efecto de las deducciones personales de otro (`/deducciones-personales`), y la pantalla
+  los pinta lado a lado con un banner que dice que el ISR de arriba **todavía no** las
+  descuenta. Restarlos habría dado el número que todo el mundo quiere ver —y que el SAT
+  enseña— pero es una línea de cálculo fiscal que el motor no devolvió, y el `CLAUDE.md` raíz
+  reserva el cálculo al motor. **Ésta es la decisión que alguien va a cuestionar en la demo.**
+  Si se quiere el número combinado, el lugar correcto es el motor: que `/pre-declaracion-anual`
+  reciba las deducciones personales (hoy su docstring dice que las calcula y su request no las
+  tiene) y devuelva un solo desglose. Eso es cambio de API y de motor: fuera del régimen DEMO.
+- **`ingresos_anuales` del request de deducciones = `desglose.base_isr`, no los ingresos
+  brutos.** Es contra la base del ejercicio que el Art. 151 las resta, y es la misma base que
+  usa `calcular_isr_general(es_anual=True)` dentro del endpoint de deducciones, así que las
+  dos tarifas coinciden. Si `base_isr <= 0` no se llama al endpoint (lo rechaza con 400) y no
+  se enseña ahorro.
+- **RESICO (626) no captura deducciones personales en este tab.** `DECISIÓN PROVISIONAL
+  (nocturno)` marcada en `capturaDeduccionesAplica()`. No es una afirmación sobre el 113-E:
+  es que `/deducciones-personales` no recibe el régimen y estima el ahorro con la tarifa
+  general del Art. 152, así que para un 626 el número no sería el suyo. Enseñarlo era peor
+  que no enseñarlo. **Pendiente con la contadora.**
+- **El contador ve el tab, pero el cálculo usa SU perfil, no el del cliente activo.** Es la
+  misma limitación que ya traía `PreDeclaracionTab` desde T1 —T1 filtró los *tabs* por el
+  régimen del cliente, pero el contenido de los tabs sigue leyendo `useProfile()`— y T3 la
+  hereda en vez de arreglarla a medias en una sola pantalla. Un despacho con perfil sin RFC
+  verá "Completa tu RFC y régimen en tu perfil". **Arreglarlo es una tarea propia y toca
+  todos los tabs de contribuyente a la vez.**
+- **Tres extracciones, todas mecánicas, ninguna cambia comportamiento.**
+  `services/deduccionesPersonales.ts` (campos, niveles, clasificación por ClaveProdServ) y
+  `CapturaDeducciones.tsx` (la rejilla) salieron de `DeduccionesPersonalesTab`, que ahora las
+  importa; `desgloseRecordDesde()` salió de `PreDeclaracionTab` a `declaracionesHistory.ts`
+  —era la misma lista de veinte `?? 0` y T3 iba a hacer la tercera copia—. El uploader es
+  `XMLUploader`, que ya existía y nadie usaba en este flujo.
+- **`categoria: 'anual'` es categoría propia, no `'predeclaracion'`.** El id del documento de
+  Firestore sale de `categoria_periodo`: si compartieran categoría, una anual de 2026 podría
+  pisar una mensual. Badge y filtro nuevos en el historial; `ExpandedDetail` la pinta con la
+  rama por defecto (desglose + PDF), que es exactamente lo que se quiere.
+- **`exportarDeclaracionPDF` creció con una sección OPCIONAL de deducciones**, más `titulo` y
+  `prefijoArchivo`. Los llamadores viejos no pasan nada y siguen sacando el mismo PDF; el
+  anual sale como `..._DeclaracionAnual_Ejercicio_fiscal_2026_....pdf`.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1, T2, T8 y T5. Verificado: `tsc` +
+  `npm run build`, la suite y `eslint` limpio en lo tocado. **Ningún XML se subió, ningún PDF
+  se abrió y el endpoint anual no se llamó ni una vez.** El criterio "12 meses de XMLs demo
+  612 → desglose anual" es código que compila, no pantalla vista.
+- **Sin tests nuevos, por régimen.** Lo primero que hay que pinnear cuando se puedan escribir:
+  el filtro por ejercicio (una factura de diciembre del año anterior NO entra) y que
+  `base_isr <= 0` no dispare la llamada a deducciones.
+- **Tests existentes adaptados, no aflojados.** `navigation.test.ts` fijaba las listas de tabs
+  exactas y T3 les agrega `'anual'`: se actualizaron los siete casos al comportamiento nuevo.
+  `'declaracion'` sigue siendo el primero, que es lo que decide el tab por defecto.
+- **Lo que no toqué:** el motor (cero archivos bajo `apps/api/`), `docs/api-contract.md` —T3
+  no expone ni cambia ningún endpoint, y los fiscales ni siquiera están ahí— y el `.env`.
+
+### Cierre
+
+`npm run build` limpio (único check obligatorio del régimen), **741 tests verdes en 61
+archivos** —los mismos 741 de T5, ninguno añadido, siete casos adaptados—, `eslint` sin
+errores nuevos en lo tocado (los 4 que quedan en `tools.ts` y `declaracionesHistory.ts` son
+previos y están en líneas que no toqué; verificado con `git stash`). Todos los archivos bajo
+el tope de 300 líneas: el más grande es `DeclaracionAnualTab.tsx` con 267.

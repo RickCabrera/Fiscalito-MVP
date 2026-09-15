@@ -19,6 +19,7 @@ import { REGIMEN_CLIENTE_POR_DEFECTO } from '../services/carteraApi';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { getTabsForProfile, esContador, type TabFiscalito } from '../services/navigation';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
+import DeclaracionAnualTab from '../components/fiscalito/DeclaracionAnualTab';
 import DeduccionesPersonalesTab from '../components/fiscalito/DeduccionesPersonalesTab';
 import CalendarioTab from '../components/fiscalito/CalendarioTab';
 import CompararRegimenTab from '../components/fiscalito/CompararRegimenTab';
@@ -26,13 +27,14 @@ import DIOTTab from '../components/fiscalito/DIOTTab';
 import RetencionesTab from '../components/fiscalito/RetencionesTab';
 import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
-import { ArrowLeft, Building2, FileText, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
 import { MARCA_CORTA } from '../services/marca';
 
 type Tab = TabFiscalito;
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'declaracion', label: 'Pre-declaración', icon: <FileText size={16} /> },
+  { id: 'anual', label: 'Declaración anual', icon: <FileCheck size={16} /> },
   { id: 'deducciones', label: 'Deducciones personales', icon: <Calculator size={16} /> },
   { id: 'calendario', label: 'Calendario fiscal', icon: <Calendar size={16} /> },
   { id: 'comparar', label: 'Comparar regímenes', icon: <BarChart3 size={16} /> },
@@ -56,6 +58,7 @@ const TITULO_CABECERA: React.CSSProperties = {
 const TAB_PARAM_MAP: Record<string, Tab> = {
   predeclaracion: 'declaracion',
   declaracion: 'declaracion',
+  anual: 'anual',
   deducciones: 'deducciones',
   calendario: 'calendario',
   comparar: 'comparar',
@@ -255,6 +258,7 @@ export default function FiscalitoServicePage() {
       {/* Tab content */}
       <div className="animate-in" style={{ animationDelay: '0.15s' }}>
         {activeTab === 'declaracion' && <PreDeclaracionTab />}
+        {activeTab === 'anual' && <DeclaracionAnualTab />}
         {activeTab === 'deducciones' && <DeduccionesPersonalesTab />}
         {activeTab === 'calendario' && <CalendarioTab />}
         {activeTab === 'comparar' && <CompararRegimenTab />}
