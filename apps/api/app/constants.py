@@ -40,6 +40,9 @@ NOMBRES_REGIMEN: dict[str, str] = {
     "606": "Arrendamiento",
     "625": "Plataformas Tecnologicas",
     "621": "Incorporacion Fiscal (RIF)",
+    # T6: no tiene motor. Esta aqui para que el 400 que lo rechaza pueda
+    # nombrarlo, en vez de devolver el codigo pelado.
+    "601": "General de Ley Personas Morales",
 }
 
 # Tope de ingresos anuales para permanecer en RESICO ($3.5M)

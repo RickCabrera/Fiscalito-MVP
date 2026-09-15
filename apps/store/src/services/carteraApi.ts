@@ -117,14 +117,19 @@ export const PARAMETROS_DE_LEY: ParametrosSalariales = {
  * contribuyente. **Queda pendiente de confirmar con la contadora (§D30)**, y son
  * dos preguntas distintas que no comparten fundamento — el detalle está ahí.
  *
- * Sólo 612 y 626, que son los dos que `contributorProfiles.ts` ya declara para
- * el perfil `contador` y los dos que el motor y el calendario manejan para
- * persona física. 601 (General de Ley PM) queda fuera hasta que algo aguas
- * abajo lo soporte — el mismo corte, y por la misma razón, que se documentó ahí.
+ * 612 y 626 son los dos que el motor y el calendario manejan para persona
+ * física. **601 entró con T6 y es de otra naturaleza: un CASCARÓN.** El motor
+ * de personas morales no existe —`routes/declaraciones.py` rechaza el 601 con
+ * un 400 antes de `calculadora.py`— y lo que el despacho ve al elegirlo es el
+ * tab de pagos provisionales PM, una estimación que se calcula en el navegador
+ * y lo dice en un banner. Se ofrece porque un despacho contable real lleva
+ * morales y verlas ausentes del alta es peor que verlas marcadas como
+ * estimación; no se ofrece como régimen soportado de punta a punta.
  */
 export const REGIMENES_DE_CLIENTE = [
   { code: '612', name: 'Actividad Empresarial y Profesional' },
   { code: '626', name: 'RESICO (Régimen Simplificado de Confianza)' },
+  { code: '601', name: 'General de Ley Personas Morales' },
 ] as const;
 
 /**

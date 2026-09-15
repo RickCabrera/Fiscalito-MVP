@@ -27,12 +27,20 @@ import DIOTTab from '../components/fiscalito/DIOTTab';
 import RetencionesTab from '../components/fiscalito/RetencionesTab';
 import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
+import PagosProvisionalesPMTab from '../components/fiscalito/PagosProvisionalesPMTab';
 import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
 import { MARCA_CORTA } from '../services/marca';
 
 type Tab = TabFiscalito;
 
+/**
+ * Orden de PINTADO de la tira de tabs (el filtro de abajo conserva este orden,
+ * no el de `getTabsForProfile`). `pagospm` va primero porque para el único
+ * perfil que lo ve —una persona moral, T6— es el tab por defecto, y verlo
+ * aparecer en tercer lugar contradiría a la pantalla que ya lo abrió.
+ */
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'pagospm', label: 'Pagos provisionales PM', icon: <Building2 size={16} /> },
   { id: 'declaracion', label: 'Pre-declaración', icon: <FileText size={16} /> },
   { id: 'anual', label: 'Declaración anual', icon: <FileCheck size={16} /> },
   { id: 'deducciones', label: 'Deducciones personales', icon: <Calculator size={16} /> },
@@ -56,6 +64,8 @@ const TITULO_CABECERA: React.CSSProperties = {
 };
 
 const TAB_PARAM_MAP: Record<string, Tab> = {
+  pagospm: 'pagospm',
+  'pagos-pm': 'pagospm',
   predeclaracion: 'declaracion',
   declaracion: 'declaracion',
   anual: 'anual',
@@ -91,6 +101,8 @@ export default function FiscalitoServicePage() {
   const regimenEnUso = esContadorActual
     ? cliente && (cliente.regimen || REGIMEN_CLIENTE_POR_DEFECTO)
     : profile.regimen;
+  /** T6: el régimen que se está trabajando es el de una persona moral (601). */
+  const esPersonaMoral = regimenEnUso === '601';
 
   // Memoize so the array reference is stable across renders — otherwise the
   // sync effect below would fire on every render and clobber manual tab clicks.
@@ -257,7 +269,14 @@ export default function FiscalitoServicePage() {
 
       {/* Tab content */}
       <div className="animate-in" style={{ animationDelay: '0.15s' }}>
-        {activeTab === 'declaracion' && <PreDeclaracionTab />}
+        {/* T6: la pre-declaración de una persona moral se DESHABILITA aquí y no
+            dentro de `PreDeclaracionTab`, porque el tab lee `profile.regimen` y
+            eso es el régimen del DESPACHO —vacío desde E-05— cuando quien mira
+            es un contador. `regimenEnUso` ya resolvió de quién es el régimen
+            (del cliente activo o del contribuyente), así que el corte vive
+            donde está el dato correcto y cubre los dos casos de una vez. */}
+        {activeTab === 'declaracion' && (esPersonaMoral ? <AvisoMotorPM /> : <PreDeclaracionTab />)}
+        {activeTab === 'pagospm' && <PagosProvisionalesPMTab />}
         {activeTab === 'anual' && <DeclaracionAnualTab />}
         {activeTab === 'deducciones' && <DeduccionesPersonalesTab />}
         {activeTab === 'calendario' && <CalendarioTab />}
@@ -267,6 +286,32 @@ export default function FiscalitoServicePage() {
         {activeTab === 'multiperiodo' && <MultiPeriodoTab />}
         {activeTab === 'estado' && <EstadoCuentaTab />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Lo que ve una persona moral donde iría la pre-declaración (T6).
+ *
+ * No es un "próximamente" decorativo: el API **rechaza** el 601 con un 400 en
+ * `routes/declaraciones.py` antes de que llegue a `calculadora.py`, así que
+ * dejar el formulario puesto sería ofrecer un botón que sólo sabe fallar.
+ */
+function AvisoMotorPM() {
+  return (
+    <div className="card" style={{ textAlign: 'center', padding: 'var(--space-lg)' }}>
+      <Building2 size={28} color="var(--warning)" />
+      <h3 style={{ margin: '12px 0 6px', fontSize: '1rem', fontWeight: 600 }}>
+        Motor de personas morales en desarrollo
+      </h3>
+      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        La pre-declaración de ISR/IVA que calcula {MARCA_CORTA} es la de personas físicas.
+        Para el régimen 601 todavía no hay cálculo que presentar.
+      </p>
+      <p style={{ margin: '10px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        Mientras tanto, <strong>Pagos provisionales PM</strong> estima el pago del periodo
+        con tu coeficiente de utilidad.
+      </p>
     </div>
   );
 }

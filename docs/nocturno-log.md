@@ -3087,3 +3087,72 @@ transversal: **suite completa en verde de los dos lados** — 1317 tests de API 
 front (+2), ninguno borrado ni saltado, dos adaptados al comportamiento nuevo. `ruff` limpio y
 `eslint` sin errores nuevos (el único que queda en `fiscalAgentApi.ts` es previo, en
 `apiCall`, línea que no toqué; verificado con `git stash`).
+
+---
+
+## T6 · Régimen 601 Personas Morales, cascarón (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Cuarta de las tareas de cableado de la corrida T. Régimen MODO DEMO: **sin plan, sin revisor y
+sin tests nuevos** (sólo T1, T2 y T8 llevaban revisor). Checks corridos: `npm run build` limpio,
+suite del front en verde (743, uno adaptado) y `pytest -q` completo de la API (1317, ninguno
+tocado). `ruff` limpio y `eslint` sin errores nuevos.
+
+**Lo que quedó.** El 601 se ofrece en el onboarding de `pyme` y en el alta de cliente del
+despacho; `PagosProvisionalesPMTab` estima el pago provisional en el navegador
+(`ingresos × CU × 30 %`, Arts. 9 y 14 LISR) bajo banner amarillo; y `POST /api/v1/pre-declaracion`
+y `/pre-declaracion-anual` devuelven `400 "Motor de personas morales en desarrollo"`.
+
+### Las trampas, por orden de importancia
+
+- **EL GUARD DEL API ES LO ÚNICO QUE SEPARA UN 400 DE UN NÚMERO FALSO.** `calculadora.py` sólo
+  conoce personas físicas, pero su rama por defecto **no falla**: un 601 salía con un ISR de
+  persona física calculado sobre ingresos de una moral, creíble y equivocado. Por eso el corte
+  va antes de `calcular_declaracion` **y antes de la validación de "al menos una factura"**: un
+  601 sin XMLs tiene que enterarse de que no hay motor, no de que le falta un archivo. Vive en
+  `REGIMENES_SIN_MOTOR`, un dict, para que el día que exista el motor PM se borre una línea.
+- **EL 601 VA ANTES QUE `pyme` EN `getTabsForProfile`, y no es cosmético.** Una persona moral se
+  da de alta como `pyme` —es el único tipo que ofrece el régimen—, así que evaluar el tipo
+  primero le habría pintado el set completo de persona física: pre-declaración, DIOT, comparador
+  de regímenes. El orden de esa función ya era carga frágil desde E-01 (la rama de `contador`
+  también depende de ir primera); ahora son dos.
+- **La pre-declaración se deshabilita EN LA PÁGINA, no dentro de `PreDeclaracionTab`.** El tab
+  lee `profile.regimen`, que para un contador es el régimen del DESPACHO y viene **vacío desde
+  E-05**: el corte ahí no se habría disparado nunca para un cliente 601. `FiscalitoServicePage`
+  ya tiene `regimenEnUso` resuelto (cliente activo o contribuyente), así que el corte vive donde
+  está el dato correcto y cubre los dos casos con una sola línea. **Esto es más general que T6:
+  todos los tabs leen `profile.regimen` y ninguno el del cliente activo.** T1 filtró qué tabs se
+  pintan, pero adentro cada tab sigue creyendo que el usuario es el contribuyente. No lo toqué:
+  es tarea propia y grande.
+- **El tab de pre-declaración se queda VISIBLE y deshabilitado, no escondido.** Escondido, el
+  contador no tiene cómo saber si es que una moral no declara o es que el producto todavía no
+  puede. `pagospm` va primero en la lista **porque `allowedTabIds[0]` es el tab por defecto**:
+  abrir a una PM en la única pantalla que no le sirve era el modo de falla obvio.
+- **DEUDA QUE ALGUIEN VA A PISAR: el calendario de una PM sale con fecha de persona física.**
+  La tarea pedía reusar `generar_calendario()` y se reusó tal cual — un 601 cae en la rama
+  `pyme` y recibe mensual + DIOT + anual **al 30 de abril**. Una moral presenta su anual en
+  **marzo** (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, prohibido por la
+  regla 8 del MODO DEMO, así que quedó escrito en `docs/api-contract.md` y aquí en vez de
+  arreglado de paso.
+- **La estimación PM dice en pantalla lo que NO resta.** Pagos provisionales anteriores,
+  retenciones, PTU, pérdidas pendientes de amortizar y ajuste anual por inflación. Un número
+  que sale bajo por olvidar una resta se lee igual de creíble que uno correcto, y esta pantalla
+  **no pasa por el motor determinístico**: se calcula en el navegador y el banner es la única
+  señal que la distingue de las que sí. El coeficiente se rechaza si es `> 1` — casi siempre es
+  alguien tecleando `8.23` por 8.23 %, y un ISR ocho veces los ingresos no se ve como un error
+  de captura.
+- **Un test existente se adaptó, ninguno se borró ni se saltó.** `ModalCliente.test.tsx`
+  comparaba la lista entera de regímenes del `select` (`['612','626']`) y T6 le agregó el 601.
+  Se actualizó el esperado **conservando la comparación entera y en orden**: aflojarlo a un
+  `toContain` habría dejado entrar en silencio el siguiente régimen que alguien agregue.
+- **`RegimenFiscal.GENERAL_LEY_PM` existe aunque nada lo valide.** `PerfilContribuyente.regimen`
+  es `str` pelado, no el enum, así que el valor no se hace cumplir en ningún lado; el enum es
+  documentación ejecutable del catálogo. Lo mismo `NOMBRES_REGIMEN["601"]`, que sirve para que
+  el 400 pueda nombrar el régimen en vez de devolver el código pelado.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1, T2, T8, T5, T3 y T4. El criterio "el
+  onboarding permite 601" está verificado por lectura (`OnboardingWizard` pinta
+  `selectedProfile.allowedRegimens` y acepta RFC de 12 caracteres, que es el de una moral), no
+  por click. El guard del API **sí** se probó de punta a punta con `TestClient`: 400 en los dos
+  endpoints con 601, 200 con 612.
+- **Lo que no toqué:** `fiscal_engine` completo (incluido `calendario.py`), `calculadora.py`,
+  `nomina_engine`, el `.env` y las semillas demo. `docs/api-contract.md` y `apps/store/CLAUDE.md`
+  **sí** se actualizaron.
