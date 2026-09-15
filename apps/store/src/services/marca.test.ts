@@ -1,5 +1,16 @@
 /**
- * "Ninguna pantalla dice Fiscalito" — el criterio de O-02, medido. (O-02)
+ * "Ninguna pantalla dice la marca vieja" — el criterio de O-02, medido, ahora
+ * apuntando al otro lado.
+ *
+ * POR QUÉ ESTE TEST CAMBIÓ DE OBJETIVO Y NO SE BORRÓ
+ * --------------------------------------------------
+ * O-02 lo escribió para cazar "Fiscalito", que entonces era el nombre viejo.
+ * Con el rebrand de vuelta a **Fiscalito**, buscar esa cadena afirmaría lo
+ * contrario de lo que se quiere: el guardián bloquearía la marca actual y
+ * dejaría entrar la anterior. Lo que el test mide —"la marca vieja no se cuela
+ * a mano en una pantalla nueva en vez de importar la constante"— sigue siendo
+ * exactamente lo que hay que vigilar; lo único que cambia es cuál es la cadena
+ * vieja. Hoy es "Orca".
  *
  * QUÉ MIDE Y QUÉ NO: LEE ESTO ANTES DE CONFIAR EN ÉL
  * ---------------------------------------------------
@@ -12,68 +23,73 @@
  * *"un test de grep mide la forma y no la causa"*. Se acepta a sabiendas por dos
  * razones concretas:
  *
- * 1. El criterio de O-02 **es** una afirmación negativa sobre todo el árbol
- *    ("ninguna pantalla"), y montar las 15 pantallas para leer su texto sería
- *    más frágil y mucho más lento que leerlas en el fuente.
- * 2. Lo que de verdad protege es el **rebrand siguiente**: si alguien mete
- *    "Orca" a mano en una pantalla nueva en vez de importar la constante, el
- *    cambio de nombre volverá a ser cuarenta cadenas repartidas.
+ * 1. El criterio **es** una afirmación negativa sobre todo el árbol ("ninguna
+ *    pantalla"), y montar las 15 pantallas para leer su texto sería más frágil y
+ *    mucho más lento que leerlas en el fuente.
+ * 2. Lo que de verdad protege es el **rebrand siguiente**. Ya van tres.
  *
  * LA LISTA DE PERMITIDOS ES EL PUNTO DÉBIL, Y HAY QUE VIGILARLA
  * -------------------------------------------------------------
- * Si crece, este test se vuelve decorativo. Por eso los permitidos son
- * **patrones de identificador**, no rutas de archivo: se permite `TabFiscalito`
- * como nombre de tipo en cualquier lado, no "todo lo que haya en tools.ts". Un
- * archivo entero exento sería exactamente la puerta por donde vuelve la marca.
+ * Si crece, este test se vuelve decorativo. Con la marca anterior los permitidos
+ * eran nombres internos (rutas, tipos, llaves de `localStorage`); "Orca" no
+ * tiene ninguno —nunca se usó como identificador— así que queda **uno solo**, y
+ * no es un nombre interno sino un DATO: la razón social de un cliente real.
+ * Sigue siendo un patrón y no una ruta de archivo: un archivo entero exento
+ * sería exactamente la puerta por donde vuelve la marca.
  */
 
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MARCA, MARCA_CORTA, MARCA_LOGO_1, MARCA_LOGO_2, ASISTENTE, PREFIJO_ARCHIVO } from './marca';
+import { MARCA, MARCA_CORTA, MARCA_LOGO, ASISTENTE, PREFIJO_ARCHIVO } from './marca';
 
 /**
  * `src/`, resuelto con `fileURLToPath` y no con `.pathname`.
  *
- * En Windows `new URL(...).pathname` devuelve `/C:/...` con la barra de más, y
- * `join` acababa buscando en `C:\`. El primer intento de este archivo **pasaba
- * en vacío** por eso: recorría cero archivos y no encontraba nada que reportar.
- * Por eso abajo hay una cota inferior de archivos recorridos.
+ * En Windows `new URL(...).pathname` devuelve la ruta con una barra de más
+ * delante de la letra de unidad, y `join` acababa buscando en la raíz del
+ * disco. El primer intento de este archivo **pasaba en vacío** por eso:
+ * recorría cero archivos y no encontraba nada que reportar. Por eso abajo hay
+ * una cota inferior de archivos recorridos.
  */
 const SRC = dirname(dirname(fileURLToPath(import.meta.url)));
 
+/** La marca anterior al rebrand. Lo que este test persigue. */
+const MARCA_VIEJA = 'Orca';
+
 /**
- * Nombres INTERNOS con la marca vieja, que la tarea prohíbe tocar.
+ * La razón social de un CLIENTE, que no es la marca del producto.
  *
- * Rutas guardadas en enlaces, ids de Firestore, llaves de `localStorage`,
- * nombres de archivo y de tipo. Renombrarlos rompe sesiones y documentos ya
- * escritos a cambio de nada: nadie los ve.
+ * "Orca Ordorica Cristal Templado S.A. de C.V." es una empresa real dada de
+ * alta en Firestore: un REGISTRO. Aparece en pantalla como `placeholder` del
+ * campo de razón social en `ConfiguracionEmpresa`, a modo de ejemplo, y ahí
+ * tiene que seguir — borrarla no sería completar el rebrand, sería perder un
+ * dato.
+ *
+ * Se permite el nombre de la empresa, **no la palabra suelta**: un
+ * `<h1>Orca</h1>` en una pantalla nueva sigue siendo un hallazgo.
  */
-const INTERNOS_PERMITIDOS = [
-  /TabFiscalito/g,
-  /FiscalitoVoiceChat/g,
-  /FiscalitoServicePage/g,
-  /fiscalito\/use/g,
-  /fiscalito_/g, // llaves de localStorage: fiscalito_profile, fiscalito_cliente_activo
-  /id: 'fiscalito'/g,
+const DATOS_PERMITIDOS = [
+  /Orca Ordorica/g,
 ];
 
 /**
- * Lo que queda de la línea después de tachar los nombres internos permitidos.
+ * Lo que queda de la línea después de tachar lo permitido.
  *
- * SE TACHAN, NO SE PERDONA LA LÍNEA ENTERA. La primera versión descartaba
- * cualquier línea que casara con un permitido, y eso dejó pasar el caso que más
- * importaba:
+ * SE TACHAN, NO SE PERDONA LA LÍNEA ENTERA. La versión original de este test
+ * descartaba cualquier línea que casara con un permitido, y eso dejó pasar el
+ * caso que más importaba entonces:
  *
  *     { id: 'fiscalito', to: '/app/store/fiscalito/use', label: 'Fiscalito' },
  *
  * La ruta interna excusaba a la **etiqueta del sidebar**, que es texto que un
- * contribuyente lee en pantalla. El criterio de O-02 es "ninguna pantalla dice
- * Fiscalito", y esa lo decía.
+ * contribuyente lee en pantalla. El mecanismo se conserva tal cual porque la
+ * trampa no era de aquella marca: es de cualquier línea que mezcle un permitido
+ * con texto visible.
  */
-function sinNombresInternos(linea: string): string {
-  return INTERNOS_PERMITIDOS.reduce((acc, patron) => acc.replace(patron, ''), linea);
+function sinPermitidos(linea: string): string {
+  return DATOS_PERMITIDOS.reduce((acc, patron) => acc.replace(patron, ''), linea);
 }
 
 function archivosFuente(dir: string, acc: string[] = []): string[] {
@@ -120,7 +136,7 @@ function sinComentarios(fuente: string): string[] {
 }
 
 describe('la marca vieja no queda en ningún texto visible', () => {
-  it('ni "Fiscalito" ni "Fiscalito Store" fuera de los nombres internos', () => {
+  it('ni "Orca" ni el nombre completo viejo, fuera de la razón social del cliente', () => {
     const hallazgos: string[] = [];
 
     const fuentes = archivosFuente(SRC);
@@ -131,7 +147,7 @@ describe('la marca vieja no queda en ningún texto visible', () => {
 
     for (const ruta of fuentes) {
       sinComentarios(readFileSync(ruta, 'utf8')).forEach((linea, i) => {
-        if (!sinNombresInternos(linea).includes('Fiscalito')) return;
+        if (!sinPermitidos(linea).includes(MARCA_VIEJA)) return;
         hallazgos.push(`${ruta.slice(SRC.length)}:${i + 1}  ${linea.trim()}`);
       });
     }
@@ -144,29 +160,34 @@ describe('la marca vieja no queda en ningún texto visible', () => {
     // título se ancla aquí: es lo que se lee en la pestaña del navegador y en
     // el nombre de un marcador guardado.
     const html = readFileSync(join(SRC, '..', 'index.html'), 'utf8');
-    expect(html).not.toContain('Fiscalito');
+    expect(html).not.toContain(MARCA_VIEJA);
     expect(html).toContain(`<title>${MARCA}</title>`);
   });
 });
 
 describe('la marca vive en un solo lugar', () => {
   it('las constantes son coherentes entre sí', () => {
-    // El logotipo se pinta en dos mitades con estilos distintos; juntas tienen
-    // que ser el nombre corto, o el header diría una cosa y los PDF otra.
-    expect(`${MARCA_LOGO_1} ${MARCA_LOGO_2}`).toBe(MARCA_CORTA);
+    // El logotipo es lo que se pinta con el gradiente en sidebar, landing,
+    // login y onboarding: si se separara del nombre corto, el header diría una
+    // cosa y los PDF otra. Con la marca anterior eran DOS mitades
+    // (`MARCA_LOGO_1` + `MARCA_LOGO_2`) y esta misma aserción las sumaba.
+    expect(MARCA_LOGO).toBe(MARCA_CORTA);
     expect(MARCA.startsWith(MARCA_CORTA)).toBe(true);
   });
 
   it('el prefijo de archivo no lleva espacios, acentos ni guiones largos', () => {
-    // Acaba en el nombre de una descarga. `MARCA` sí los lleva, y por eso son
-    // dos constantes y no un `replace` sobre una.
+    // Acaba en el nombre de una descarga. Con esta marca el prefijo y el nombre
+    // coinciden; con la anterior no, y por eso son dos constantes y no un
+    // `replace` sobre una. La aserción que exigía un espacio o un guión largo
+    // EN `MARCA` se cayó con el rebrand: afirmaba una propiedad de aquel
+    // nombre, no una regla del módulo.
     expect(PREFIJO_ARCHIVO).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(MARCA).toMatch(/[—\s]/);
   });
 
   it('el asistente tiene nombre propio', () => {
     // Se presenta y firma, así que es una entidad distinta del producto. Si
-    // colgara de `MARCA`, el bot se presentaría como "Orca Ordorica — Nómina".
+    // colgara de `MARCA`, el bot se presentaría con el nombre completo del
+    // producto, que con la marca anterior llevaba un guión largo dentro.
     expect(ASISTENTE.length).toBeGreaterThan(0);
     expect(ASISTENTE).not.toContain('—');
   });

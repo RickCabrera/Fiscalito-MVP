@@ -26,7 +26,7 @@ import { MARCA_CORTA } from './marca';
 
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
-  | 'dashboard' | 'fiscalito' | 'historial' | 'nomina' | 'perfil'
+  | 'dashboard' | 'fiscalito' | 'contabilito' | 'historial' | 'nomina' | 'perfil'
   | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
 
 export interface SidebarLink {
@@ -76,6 +76,13 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // sigue apuntando al PATRONAL de sus clientes y no a un tab de Fiscalito.
   // Va después de Calendario y antes de Perfil: es herramienta, no ajuste.
   { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
+  // Contabilito estaba en BETA en la landing y **no tenía puerta**: la pantalla
+  // de T7 existía y se routeaba, pero al contador sólo se llegaba tecleando la
+  // URL o dando el rodeo por Marketplace → detalle del servicio → "Usar
+  // Contabilito". Va justo debajo de Fiscalito porque es la otra herramienta
+  // que opera sobre el CLIENTE ACTIVO, y la ruta es la misma que ya usaba el
+  // botón del detalle: no hay una segunda forma de entrar que mantener.
+  { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -235,6 +242,14 @@ const RUTAS_CON_CLIENTE = [
   // de catálogo, no lee cliente alguno, y el prefijo corto la habría metido de
   // contrabando junto con la pantalla que sí lo lee.
   '/app/store/fiscalito/use',
+  // Contabilito CUMPLE la regla de admisión, igual que Fiscalito: lee
+  // `ClienteActivoContext` y titula "Pólizas y balanza de {cliente}". Sin el
+  // selector encima, el contador entraría desde el sidebar a la contabilidad
+  // de un cliente que no eligió en esta pantalla y sin forma de cambiarlo.
+  //
+  // `/use` y no `/app/store/contabilito` a secas: la ficha del servicio es
+  // texto de catálogo y no lee cliente alguno.
+  '/app/store/contabilito/use',
 ];
 
 /**

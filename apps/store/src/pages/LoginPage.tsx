@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
+import { MARCA_LOGO } from '../services/marca';
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
@@ -82,8 +82,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <Link to="/" style={{ textDecoration: 'none' }}>
             <div style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: -1, marginBottom: 8 }}>
-              <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
-              <span style={{ color: 'var(--text-muted)' }}>{MARCA_LOGO_2}</span>
+              <span className="gradient-text">{MARCA_LOGO}</span>
             </div>
           </Link>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>

@@ -1,10 +1,18 @@
-# ORCA ORDORICA — NÓMINA · Contexto para Claude Code
+# FISCALITO · Contexto para Claude Code
 
 > **Pivote (corrida O, 2026-09-03).** El producto dejó de ser un marketplace
-> multi-cliente y es la **nómina interna de Orca Ordorica Cristal Templado**. El
-> modo despacho no se borra: se apaga con `VITE_MODO_EMPRESA_UNICA=0` y sigue
-> entero y probado. La marca visible vive en `src/services/marca.ts` — un solo
-> archivo, para que el próximo rebrand sea un cambio y no cuarenta cadenas. Los
+> multi-cliente y pasó a ser la **nómina interna de Orca Ordorica Cristal
+> Templado**. El modo despacho no se borra: se apaga con
+> `VITE_MODO_EMPRESA_UNICA=0` y sigue entero y probado.
+>
+> **Rebrand a Fiscalito (2026-09-15).** La marca visible vuelve a ser
+> **Fiscalito**: la suite fiscal, de nómina y de contabilidad que se le vende a
+> un despacho. "Orca Ordorica Cristal Templado" sigue existiendo en la app, pero
+> como **cliente** —un registro de Firestore y el `placeholder` de razón social
+> en `ConfiguracionEmpresa`—, no como producto. Cambiar el nombre costó editar
+> `src/services/marca.ts` y nada más, que era justo para lo que se creó ese
+> archivo. La marca visible vive ahí — un solo archivo, para que el próximo
+> rebrand sea un cambio y no cuarenta cadenas. Los
 > **nombres internos no se tocan**: rutas (`/app/store/fiscalito/use`), ids de
 > servicio, tipos (`TabFiscalito`), nombres de archivo y llaves de
 > `localStorage` (`fiscalito_*`) siguen igual, porque renombrarlos rompe enlaces
@@ -277,7 +285,7 @@ modulo puro sin JSX. `AppLayout` solo le pone iconos por `id`.
 
 | Perfil | Sidebar |
 |--------|---------|
-| contador | Clientes · Nomina · Calendario (**patronal**, E-07) · Perfil |
+| contador | Clientes · Empleados · Dispositivos · Nomina · Calendario (**patronal**, E-07) · Fiscalito (del cliente activo, T1) · **Contabilito** (del cliente activo) · Perfil |
 | cualquier otro (incluido perfil sin tipo) | Dashboard · Fiscalito · Historial · Nomina (demo) · Perfil |
 
 Los tabs y pantallas de contribuyente **no se borraron**: dejan de mostrarse. Un contador que

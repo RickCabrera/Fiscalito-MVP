@@ -1,9 +1,20 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Cpu, Layers } from 'lucide-react';
-import { SERVICES, etiquetaDeEstado, servicioDisponible } from '../services/storeServices';
-import { MARCA, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
+import { SERVICES, etiquetaDeEstado, rutaDeUso, servicioDisponible } from '../services/storeServices';
+import type { StoreService } from '../services/storeServices';
+import { MARCA, MARCA_LOGO } from '../services/marca';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
+  /**
+   * La portada es PÚBLICA y se pinta antes de que Firebase resuelva la sesión,
+   * así que se mira `user` y no `loading`: mientras auth no resuelva, `user` es
+   * `null` y las tarjetas llevan a `/login`. Eso es exactamente lo que se
+   * quiere — un visitante sin cuenta tiene que pasar por ahí de todos modos, y
+   * si ya tenía sesión, `/login` lo reenvía a la app en cuanto resuelve.
+   */
+  const { user } = useAuth();
+
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       {/* Ambient glows */}
@@ -14,8 +25,7 @@ export default function LandingPage() {
         {/* Nav */}
         <nav style={{ padding: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-            <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{MARCA_LOGO_2}</span>
+            <span className="gradient-text">{MARCA_LOGO}</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <Link to="/login"><button className="btn-secondary">Iniciar sesion</button></Link>
@@ -77,23 +87,7 @@ export default function LandingPage() {
                  primera que se ve en una demo: cuando IMSS Manager pasó a beta,
                  aquí se quedó pintado "Proximamente" a opacidad completa mientras
                  el marketplace de adentro decía "Beta". Lo cazó el revisor. */
-              <div key={s.id} className="card" style={{
-                opacity: servicioDisponible(s) ? 1 : 0.5,
-                textAlign: 'center', padding: 32,
-              }}>
-                <div style={{ fontSize: '2rem', marginBottom: 12 }}>{s.icon}</div>
-                <h3 style={{ fontWeight: 700, marginBottom: 6 }}>{s.name}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{s.tagline}</p>
-                <span style={{
-                  display: 'inline-block', marginTop: 12,
-                  padding: '4px 12px', borderRadius: 'var(--radius-full)',
-                  fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
-                  background: servicioDisponible(s) ? 'var(--border)' : 'var(--purple-bg)',
-                  color: servicioDisponible(s) ? 'var(--teal-light)' : 'var(--purple-light)',
-                }}>
-                  {etiquetaDeEstado(s)}
-                </span>
-              </div>
+              <TarjetaServicio key={s.id} servicio={s} logueado={user !== null} />
             ))}
           </div>
         </section>
@@ -101,10 +95,63 @@ export default function LandingPage() {
         {/* Footer */}
         <footer style={{ padding: '32px 0', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            {MARCA} &copy; 2026 — Nómina, IMSS y cumplimiento laboral
+            {MARCA} &copy; 2026 — Fiscal, nómina y contabilidad para despachos
           </p>
         </footer>
       </div>
     </div>
+  );
+}
+
+/**
+ * Una tarjeta de servicio de la portada.
+ *
+ * ES UN ENLACE, Y ESO ES LO QUE CAMBIÓ. Antes era un `<div>` muerto: la portada
+ * anunciaba Contabilito en BETA y no había desde dónde entrar. El destino lo
+ * decide `rutaDeUso` —una sola respuesta, compartida— y depende de la sesión:
+ * con sesión, su pantalla; sin sesión, `/login`, porque una ruta de `/app` sin
+ * usuario rebota en `ProtectedRoute` y el visitante habría visto un parpadeo en
+ * vez de un formulario.
+ *
+ * Un servicio no disponible (`rutaDeUso` → `null`) se queda como estaba:
+ * atenuado y sin enlace. Prometer una pantalla que no existe es peor que no
+ * ofrecer ninguna.
+ */
+function TarjetaServicio({ servicio, logueado }: { servicio: StoreService; logueado: boolean }) {
+  const disponible = servicioDisponible(servicio);
+  const ruta = rutaDeUso(servicio);
+
+  const cuerpo = (
+    <>
+      <div style={{ fontSize: '2rem', marginBottom: 12 }}>{servicio.icon}</div>
+      <h3 style={{ fontWeight: 700, marginBottom: 6 }}>{servicio.name}</h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{servicio.tagline}</p>
+      <span style={{
+        display: 'inline-block', marginTop: 12,
+        padding: '4px 12px', borderRadius: 'var(--radius-full)',
+        fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
+        background: disponible ? 'var(--border)' : 'var(--purple-bg)',
+        color: disponible ? 'var(--teal-light)' : 'var(--purple-light)',
+      }}>
+        {etiquetaDeEstado(servicio)}
+      </span>
+    </>
+  );
+
+  const estilo: React.CSSProperties = {
+    opacity: disponible ? 1 : 0.5,
+    textAlign: 'center', padding: 32,
+  };
+
+  if (!ruta) return <div className="card" style={estilo}>{cuerpo}</div>;
+
+  return (
+    <Link
+      to={logueado ? ruta : '/login'}
+      className="card"
+      style={{ ...estilo, display: 'block', color: 'inherit', textDecoration: 'none' }}
+    >
+      {cuerpo}
+    </Link>
   );
 }

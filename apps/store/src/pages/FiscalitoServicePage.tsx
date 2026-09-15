@@ -213,7 +213,17 @@ export default function FiscalitoServicePage() {
               que es el mismo modo de falla que E-03 cerró en la nómina. */}
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {esContadorActual
-              ? `${cliente?.nombre} · régimen ${regimenEnUso}`
+              ? /* El encabezado NO puede afirmar un régimen que nadie capturó.
+                   Decía "régimen 612" con la misma tipografía y el mismo aplomo
+                   para un cliente con 612 en su ficha y para uno sin régimen
+                   alguno, y tres renglones más abajo el aviso amarillo lo
+                   desmentía. Dos frases contradictorias en la misma pantalla:
+                   la de arriba, que es la que se lee de un vistazo, era la
+                   falsa. El aviso de abajo se queda —dice qué hacer— pero ya no
+                   tiene que corregir al título. */
+                `${cliente?.nombre} · ${regimenSupuesto
+                  ? `régimen sin capturar (mostrando ${regimenEnUso})`
+                  : `régimen ${regimenEnUso}`}`
               : allowedTabIds.includes('deducciones') && !allowedTabIds.includes('declaracion')
                 ? 'Calcula tus deducciones personales y saldo a favor'
                 : 'Calcula tus pre-declaraciones ISR/IVA'}

@@ -206,16 +206,19 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
 });
 
 describe('sidebar de AppLayout', () => {
-  it('el contador ve exactamente sus siete enlaces', () => {
+  it('el contador ve exactamente sus ocho enlaces', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     const { container } = montar();
 
     // Lista completa y en orden: si alguien agrega un enlace de contribuyente
     // al sidebar del despacho, esto se cae. R-05 sumó Empleados y Dispositivos;
     // T1 sumó el servicio fiscal, que abre el del CLIENTE ACTIVO —no el del
-    // despacho, que es lo que E-07 quitó y sigue sin existir.
+    // despacho, que es lo que E-07 quitó y sigue sin existir. Contabilito entró
+    // después: la portada ya lo anunciaba en BETA y su pantalla (T7) sólo se
+    // alcanzaba tecleando la URL.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario', MARCA_CORTA, 'Perfil',
+      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario',
+      MARCA_CORTA, 'Contabilito', 'Perfil',
     ]);
   });
 

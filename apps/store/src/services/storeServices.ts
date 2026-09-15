@@ -30,7 +30,7 @@ export const SERVICES: StoreService[] = [
     // enlaces guardados— y por eso no se toca (O-02). El `name` sí se ve.
     id: 'fiscalito',
     name: MARCA_CORTA,
-    tagline: 'Tu asistente fiscal con IA',
+    tagline: 'Asistente fiscal',
     description:
       'Calcula tus declaraciones ISR/IVA automaticamente, clasifica facturas CFDI, detecta saldos a favor y te explica cada calculo en lenguaje natural. Compatible con RESICO, Actividad Empresarial, Honorarios y mas.',
     icon: '⚖',
@@ -139,4 +139,33 @@ export function etiquetaDeEstado(servicio: StoreService): string {
   if (servicio.status === 'active') return 'Disponible';
   if (servicio.status === 'beta') return 'Beta';
   return 'Proximamente';
+}
+
+/**
+ * A qué pantalla entra el servicio, o `null` si no se puede entrar todavía.
+ *
+ * Existe porque la Landing necesitaba la misma respuesta que ya daban a mano
+ * los botones de `ServiceDetailPage`: Contabilito estaba anunciado en BETA en la
+ * portada y la tarjeta no llevaba a ningún lado, así que la única puerta era el
+ * rodeo por Marketplace → detalle del servicio.
+ *
+ * **IMSS Manager no tiene pantalla propia** —lo que hace vive en Empleados
+ * (altas y plantilla) y en Nómina (SDI, cuotas por ramo, archivo afiliatorio)—
+ * y por eso apunta a Empleados, que es donde empieza el trabajo. El detalle del
+ * servicio conserva sus DOS botones (Empleados y Nómina) y no consume esta
+ * función: ahí hay espacio para nombrar las dos mitades y aquí no, porque una
+ * tarjeta es un solo destino.
+ *
+ * Un servicio no disponible devuelve `null` en vez de una ruta muerta: la
+ * tarjeta se pinta atenuada y sin enlace, que es lo que ya dice su badge.
+ */
+export function rutaDeUso(servicio: StoreService): string | null {
+  if (!servicioDisponible(servicio)) return null;
+  if (servicio.id === 'fiscalito') return '/app/store/fiscalito/use';
+  if (servicio.id === 'contabilito') return '/app/store/contabilito/use';
+  if (servicio.id === 'imss-manager') return '/app/empleados';
+  // Un servicio nuevo sin ruta declarada cae en su ficha del catálogo, que
+  // siempre existe (`/app/store/:serviceId`). Es preferible a un enlace muerto
+  // y a que la tarjeta deje de responder sin que nadie se entere.
+  return `/app/store/${servicio.id}`;
 }

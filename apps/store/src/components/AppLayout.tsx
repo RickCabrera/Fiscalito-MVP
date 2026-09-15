@@ -1,20 +1,23 @@
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { LayoutDashboard, History, Scale, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint } from 'lucide-react';
+import { LayoutDashboard, History, Scale, BookOpen, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint } from 'lucide-react';
 import { esContador, getSidebarLinks, navActivo, type NavId } from '../services/navigation';
 import { useClienteActivo } from '../context/clienteActivoStore';
 // DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
 import SelectorCliente from './SelectorCliente';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
-import { MARCA_INICIAL, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
+import { MARCA_INICIAL, MARCA_LOGO } from '../services/marca';
 
 /** Icono de cada entrada del sidebar. La lista de entradas y su orden viven en
  *  `services/navigation.ts` (modulo puro); aqui solo se les pone cara. */
 const ICONOS: Record<NavId, React.ReactNode> = {
   dashboard: <LayoutDashboard size={20} />,
   fiscalito: <Scale size={20} />,
+  // El libro contable. `Scale` ya es Fiscalito y `FileStack` se parece
+  // demasiado a `Contact` al tamano del sidebar.
+  contabilito: <BookOpen size={20} />,
   historial: <History size={20} />,
   nomina: <Radio size={20} />,
   clientes: <Users size={20} />,
@@ -79,8 +82,7 @@ export default function AppLayout() {
       <aside className="sidebar-full" style={{ ...sidebarBase, width: 240, padding: '24px 0' }}>
         <div style={{ padding: '0 20px', marginBottom: 40 }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 700, letterSpacing: -0.5 }}>
-            <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{MARCA_LOGO_2}</span>
+            <span className="gradient-text">{MARCA_LOGO}</span>
           </div>
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
