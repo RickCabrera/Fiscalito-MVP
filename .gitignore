@@ -24,8 +24,21 @@ apps/api/pfebrero/
 # Firebase local
 apps/store/.firebase/
 
-# Salida del runner nocturno: log de corrida, no se versiona
+# Salida del runner nocturno: log de corrida, no se versiona. El segundo patron
+# cubre `docs/nocturno-AAAAMMDD-HHMM.txt`, que es como los nombra
+# `scripts/nocturno-v2.ps1`: sin el, un `git add -A` en el commit que marca `[x]`
+# se lleva la salida de la corrida a main.
 docs/nocturno-run.txt
+docs/nocturno-20*.txt
+
+# Centinelas del orquestador nocturno. Los crea la sesion como ultimo acto para
+# decirle al vigilante como termino, y `scripts/nocturno-v2.ps1` los borra al
+# empezar cada vuelta. Son senales entre dos procesos de esta maquina, no
+# historia del repo — y si se colaran a main, la sesion siguiente arrancaria con
+# un centinela puesto y moriria en el primer minuto sin hacer nada.
+TAREA_CERRADA.txt
+TAREA_SALTADA.txt
+COLA_VACIA.txt
 
 # Logs del emulador de Firestore (R-07). Se generan al correr los tests contra
 # el emulador y no aportan nada al repo.
