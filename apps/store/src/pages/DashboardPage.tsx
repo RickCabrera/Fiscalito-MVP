@@ -12,7 +12,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { formatMoney } from '../utils/format';
 import { getTabsForProfile, esContador, rutaInicial, type TabFiscalito } from '../services/navigation';
 import {
-  ArrowRight, FileText, Calculator, Calendar, BarChart3,
+  ArrowRight, Building2, FileText, Calculator, Calendar, BarChart3,
   FileSpreadsheet, Users, TrendingUp, Wallet, Clock, Zap, Loader,
 } from 'lucide-react';
 
@@ -31,6 +31,12 @@ interface ServiceDef {
 }
 
 const SERVICES: ServiceDef[] = [
+  // T6: sin esta card, una persona moral (601) entraría al dashboard y vería
+  // una sola card —Calendario—, porque el resto de los servicios son de persona
+  // física y `getTabsForProfile` se los quita. `categoria` va ausente a
+  // propósito: la estimación PM no se guarda en el historial, así que no hay
+  // "último cálculo" que enseñar.
+  { id: 'pagospm',      label: 'Pagos provisionales PM', icon: <Building2 size={20} />,  color: 'var(--warning)',       tabParam: 'pagospm',      descripcion: 'Estimación ISR — personas morales (601)' },
   { id: 'declaracion',  label: 'Pre-declaración',      icon: <FileText size={20} />,      color: 'var(--teal-light)',    categoria: 'predeclaracion', tabParam: 'declaracion',  descripcion: 'ISR/IVA mensual o bimestral' },
   { id: 'deducciones',  label: 'Deducciones',          icon: <Calculator size={20} />,    color: 'var(--success)',       categoria: 'deducciones',    tabParam: 'deducciones',  descripcion: 'Deducciones personales anuales' },
   { id: 'calendario',   label: 'Calendario fiscal',    icon: <Calendar size={20} />,      color: 'var(--warning)',       tabParam: 'calendario',   descripcion: 'Obligaciones y fechas límite' },

@@ -21,9 +21,9 @@ export const CONTRIBUTOR_PROFILES: Record<ContributorType, ContributorProfile> =
     label: 'Despacho / Contador',
     description: 'Despacho o contador que lleva la contabilidad y la nomina de varios clientes.',
     icon: '🧾',
-    // Solo 612 y 626: son los dos regimenes que el motor y el calendario ya
-    // manejan para persona fisica. 601 (General de Ley PM) queda fuera hasta
-    // que algo aguas abajo lo soporte.
+    // El regimen PROPIO del despacho, que desde E-05 ya no se le pide. Los
+    // regimenes que puede llevarle a sus CLIENTES viven en
+    // `REGIMENES_DE_CLIENTE` (`carteraApi.ts`), y ahi si entro el 601 con T6.
     allowedRegimens: [
       { code: '612', name: 'Actividad Empresarial y Profesional' },
       { code: '626', name: 'RESICO (Regimen Simplificado de Confianza)' },
@@ -105,10 +105,16 @@ export const CONTRIBUTOR_PROFILES: Record<ContributorType, ContributorProfile> =
     label: 'Negocio / PYME',
     description: 'Empresa o negocio con empleados y multiples obligaciones fiscales y laborales.',
     icon: '🏢',
+    // T6: el 601 entra como CASCARON. Es el unico perfil que lo ofrece porque
+    // es el unico que puede ser persona moral, y lo que ve al elegirlo NO es la
+    // app de persona fisica: `getTabsForProfile` le da el tab de pagos
+    // provisionales PM y le quita la pre-declaracion, y el API la rechaza con
+    // un 400 antes de llegar a `calculadora.py`.
     allowedRegimens: [
       { code: '612', name: 'Actividad Empresarial y Profesional' },
       { code: '626', name: 'RESICO (Regimen Simplificado de Confianza)' },
       { code: '621', name: 'Incorporacion Fiscal (RIF)' },
+      { code: '601', name: 'General de Ley Personas Morales' },
     ],
     obligations: [
       'Declaracion mensual o bimestral de ISR e IVA',

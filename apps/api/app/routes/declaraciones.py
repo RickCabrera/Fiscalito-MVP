@@ -24,6 +24,23 @@ from app.services.llm_service import generar_explicacion, generar_explicacion_de
 
 router = APIRouter(tags=["Declaraciones"])
 
+# T6: regimenes que el motor NO calcula. El 601 (personas morales) entro al
+# producto como cascaron —el front lo ofrece en el alta y le pinta una
+# estimacion propia—, asi que la puerta del motor tiene que decir que no de
+# frente. `calculadora.py` solo conoce personas fisicas: sin este guard el 601
+# cae en la rama por defecto y sale un ISR de persona fisica, creible y
+# equivocado, sobre los ingresos de una moral.
+REGIMENES_SIN_MOTOR: dict[str, str] = {
+    "601": "Motor de personas morales en desarrollo",
+}
+
+
+def _rechazar_si_no_hay_motor(regimen: str) -> None:
+    """Corta la peticion ANTES de `calcular_declaracion` si el regimen no tiene motor."""
+    detalle = REGIMENES_SIN_MOTOR.get(regimen)
+    if detalle:
+        raise HTTPException(status_code=400, detail=detalle)
+
 
 @router.post(
     "/pre-declaracion",
@@ -35,6 +52,10 @@ router = APIRouter(tags=["Declaraciones"])
 )
 async def pre_declaracion(req: PreDeclaracionRequest):
     # Validaciones
+    # El regimen se revisa PRIMERO: un 601 sin facturas tiene que enterarse de
+    # que el motor no existe, no de que le falta un XML.
+    _rechazar_si_no_hay_motor(req.contribuyente.regimen)
+
     if not req.facturas:
         raise HTTPException(
             status_code=400,
@@ -116,6 +137,8 @@ async def pre_declaracion(req: PreDeclaracionRequest):
     "Calcula ISR/IVA anual con deducciones personales.",
 )
 async def pre_declaracion_anual(req: PreDeclaracionRequest):
+    _rechazar_si_no_hay_motor(req.contribuyente.regimen)
+
     if not req.facturas:
         raise HTTPException(
             status_code=400,

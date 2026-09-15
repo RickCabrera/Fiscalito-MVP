@@ -972,3 +972,28 @@ ninguna prueba pega a uno.
 - La descripción de la tool le dice al modelo que **reporte los importes tal cual y no
   sume, promedie ni derive nada**: la regla de oro del repo es que el LLM explica y
   nunca calcula.
+
+---
+
+## Declaraciones — regímenes sin motor (T6)
+
+`POST /api/v1/pre-declaracion` y `POST /api/v1/pre-declaracion-anual` **rechazan el régimen
+601 (General de Ley Personas Morales)** con `400 {"detail": "Motor de personas morales en
+desarrollo"}`.
+
+- **El corte va ANTES que cualquier otra validación**, incluida la de "se requiere al menos una
+  factura": un 601 sin facturas tiene que enterarse de que no hay motor, no de que le falta un
+  XML.
+- **Y antes de `calcular_declaracion`.** `app/fiscal_engine/calculadora.py` sólo conoce personas
+  físicas y su rama por defecto no falla: devolvería un ISR de persona física, creíble y
+  equivocado, calculado sobre los ingresos de una moral. El guard es lo único que separa un 400
+  honesto de ese número.
+- La lista vive en `REGIMENES_SIN_MOTOR` (`app/routes/declaraciones.py`), no dispersa en `if`s:
+  el día que exista el motor PM se borra una línea.
+- **El 601 SÍ es un valor conocido del catálogo** —`RegimenFiscal.GENERAL_LEY_PM` en
+  `app/schemas/fiscal.py` y `NOMBRES_REGIMEN` en `app/constants.py`—, y el resto de los
+  endpoints **no lo rechazan**. En particular `POST /api/v1/calendario` lo acepta y le devuelve
+  el calendario de `contributor_type: "pyme"` (mensual + DIOT + anual), que T6 reusó tal cual:
+  **su declaración anual sale al 30 de abril y una persona moral la presenta en marzo**
+  (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, que T6 tenía prohibido
+  tocar. Queda como deuda escrita, no como sorpresa.

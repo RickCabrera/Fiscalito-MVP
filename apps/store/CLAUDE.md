@@ -142,6 +142,7 @@ fiscalito-store-app/
 │   │       ├── RetencionesTab.tsx         # Retenciones a terceros
 │   │       ├── MultiPeriodoTab.tsx        # Analisis multi-periodo
 │   │       ├── EstadoCuentaTab.tsx        # Estado de cuenta y proyeccion anual
+│   │       ├── PagosProvisionalesPMTab.tsx # T6: estimacion ISR personas morales (601)
 │   │       └── DeduccionesPersonalesTab.tsx # Deducciones personales (asalariados)
 │   ├── pages/
 │   │   ├── LandingPage.tsx          # Pagina publica (hero, stats, preview servicios)
@@ -218,7 +219,8 @@ Definidos en `src/services/contributorProfiles.ts`. El campo `contributorType` d
 | independiente (Empresarial) | 612 | Fiscalito | Declaracion, **Anual**, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
 | arrendamiento | 606 | Fiscalito | Declaracion, **Anual**, Calendario, Comparar, Multi-periodo, Estado cuenta |
 | plataformas | 625 | Fiscalito | Declaracion, **Anual**, Calendario, Estado cuenta |
-| pyme | 612, 626, 621 (RIF) | Fiscalito + IMSS Manager + Contabilito | Declaracion, **Anual**, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
+| pyme | 612, 626, 621 (RIF), **601 (PM)** | Fiscalito + IMSS Manager + Contabilito | Declaracion, **Anual**, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
+| **cualquiera con regimen 601** (T6) | 601 | Fiscalito | **Pagos provisionales PM**, Calendario, Pre-declaracion (deshabilitada con mensaje) |
 
 **T3**: el tab `anual` (Declaracion anual) lo ven TODOS menos el asalariado, cuya anual ya
 **es** el tab `deducciones`. Llama a `POST /api/v1/pre-declaracion-anual` y, si el
@@ -228,6 +230,29 @@ lado y **no se restan en pantalla**: el motor no devuelve esa resta y el front n
 El filtro por año lo hace el front porque el endpoint anual **no filtra**: suma todo lo que le
 llega. RESICO (626) no captura deducciones personales ahi — el estimador usa la tarifa general
 del Art. 152, no la del 113-E (DECISION PROVISIONAL, pendiente con la contadora).
+
+### Regimen 601 — Personas Morales (T6, CASCARON)
+
+El 601 se ofrece en el onboarding de `pyme` y en el alta de cliente del despacho
+(`REGIMENES_DE_CLIENTE`), pero **no tiene motor**: `POST /api/v1/pre-declaracion` y
+`/pre-declaracion-anual` lo rechazan con `400 "Motor de personas morales en desarrollo"` antes
+de llegar a `calculadora.py`. Lo que ve es:
+
+- **`PagosProvisionalesPMTab`** (`pagospm`, el tab por DEFECTO): `ingresos nominales x
+  coeficiente de utilidad x 30%` (Arts. 9 y 14 LISR) calculado **en el navegador**, con banner
+  amarillo "Estimacion — motor PM en desarrollo". **No llama al API**, y lista en pantalla lo
+  que la estimacion NO resta (pagos provisionales anteriores, retenciones, PTU, perdidas,
+  ajuste anual por inflacion).
+- **Pre-declaracion**: el tab se queda en la tira y `FiscalitoServicePage` lo reemplaza por un
+  aviso. Deshabilitado con mensaje, no escondido: escondido, nadie sabe si es que la moral no
+  declara o es que el producto no puede. **El corte vive en la pagina y no en
+  `PreDeclaracionTab`**, porque el tab lee `profile.regimen` —el del DESPACHO, vacio desde
+  E-05— y la pagina ya resolvio `regimenEnUso` (el del cliente activo o el del contribuyente).
+- **Calendario**: reusa `generar_calendario()` sin cambios, o sea el de `pyme`. **Su anual sale
+  al 30 de abril y una moral la presenta en marzo** (Art. 76 LISR): deuda declarada en
+  `docs/api-contract.md`, no corregida, porque tocar `fiscal_engine` estaba prohibido en T6.
+- Fuera: anual, comparar regimenes, DIOT, retenciones, multi-periodo y estado de cuenta. Todos
+  salen del motor de persona fisica.
 
 **Nota**: La logica de filtrado de tabs esta en `services/navigation.ts:getTabsForProfile()`
 — **una sola copia**, usada por `FiscalitoServicePage` y por `DashboardPage`. Los tabs se
@@ -530,7 +555,7 @@ avisa, así que escribe uno de esos seis.
 ```
 contributorType: 'contador' | 'asalariado' | 'independiente' | 'arrendamiento' | 'plataformas' | 'pyme' | null
 rfc: string
-regimen: string (codigo SAT: '626', '612', '605', '606', '625')
+regimen: string (codigo SAT: '626', '612', '605', '606', '625', '601')
 nombre: string
 actividad: string
 cp: string

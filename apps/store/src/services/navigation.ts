@@ -263,7 +263,26 @@ export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
 
 export type TabFiscalito =
   | 'declaracion' | 'anual' | 'deducciones' | 'calendario' | 'comparar'
-  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado';
+  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm';
+
+/**
+ * Los tabs de una PERSONA MORAL (601) — T6, cascarón.
+ *
+ * `pagospm` primero **porque es el tab por defecto**: `allowedTabIds[0]` es lo
+ * que la pantalla abre, y abrir en `declaracion` sería recibir a la PM con la
+ * única pantalla que no le sirve.
+ *
+ * `declaracion` entra a propósito aunque el motor no la soporte: la tarea pide
+ * que quede **deshabilitada con mensaje**, no escondida. Escondida, el contador
+ * no tiene cómo saber si es que la PM no declara o es que el producto todavía
+ * no puede; `FiscalitoServicePage` la reemplaza por el aviso. El resto —anual,
+ * comparar, DIOT, retenciones, multi-periodo, estado de cuenta— sí se queda
+ * fuera: todas salen del mismo motor de persona física y no hay nada honesto
+ * que pintar en ellas para una moral.
+ */
+const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
+  'pagospm', 'calendario', 'declaracion',
+]);
 
 /**
  * El set completo: el de `pyme` y el de un 612.
@@ -330,6 +349,13 @@ export function getTabsForProfile(
 
   if (contributorType === 'asalariado' || regimen === '605')
     return ['deducciones', 'calendario'];
+  // T6: el 601 va ANTES de `pyme`, y no es cosmético. Una persona moral se da
+  // de alta como `pyme` —es el único tipo que la ofrece—, así que evaluar el
+  // tipo primero la mandaría al set completo de persona física y le pintaría
+  // pre-declaración, DIOT y comparador de regímenes como si el motor los
+  // supiera calcular para ella.
+  if (regimen === '601')
+    return [...TABS_601];
   if (contributorType === 'pyme')
     return tabsCompletos();
   if (regimen === '626')
@@ -363,6 +389,10 @@ export function getTabsForProfile(
  * contribuyente de ese régimen, en vez de degradar al set completo en silencio.
  */
 function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
+  // T6: un cliente persona moral ve lo mismo que una PM que entra por su
+  // cuenta. El alta de cliente ya ofrece 601 (`REGIMENES_DE_CLIENTE`), así que
+  // esta rama no es hipotética como las de 605/606/625.
+  if (regimen === '601') return [...TABS_601];
   if (regimen === '605') return ['deducciones', 'calendario'];
   if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
   if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];

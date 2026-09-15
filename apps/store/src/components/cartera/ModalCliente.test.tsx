@@ -209,7 +209,10 @@ describe('ModalCliente · el régimen del cliente (T1)', () => {
 
     const select = campo(/Régimen fiscal/) as HTMLSelectElement;
     expect(select.value).toBe('612');
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['612', '626']);
+    // T6 agrego el 601 (personas morales) a `REGIMENES_DE_CLIENTE`. La lista se
+    // sigue comparando ENTERA y en orden a proposito: si manana entra otro
+    // regimen sin que nadie lo piense, este test lo caza igual que cazo este.
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['612', '626', '601']);
 
     llenarBasico();
     fireEvent.change(campo(/Prima de RT/), { target: { value: '0.0054355' } });

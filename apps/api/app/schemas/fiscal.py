@@ -23,7 +23,16 @@ _RFC_PATTERN = re.compile(r"^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$")
 # ============================================================
 
 class RegimenFiscal(str, Enum):
-    """Regimenes fiscales principales para personas fisicas."""
+    """
+    Regimenes fiscales principales.
+
+    Todos son de PERSONA FISICA salvo `GENERAL_LEY_PM` (601), que T6 agrego como
+    CASCARON: el motor no lo calcula y `routes/declaraciones.py` lo rechaza con
+    un 400 antes de llegar a `calculadora.py`. Esta aqui para que el codigo
+    exista como valor conocido del catalogo —el front ya lo ofrece en el alta de
+    cliente y en el onboarding de pyme— y no como una cadena suelta que cada
+    lector interprete a su manera.
+    """
     RESICO = "626"
     ACTIVIDAD_EMPRESARIAL = "612"
     HONORARIOS = "612"  # Mismo codigo, se distingue por actividad
@@ -31,6 +40,7 @@ class RegimenFiscal(str, Enum):
     ARRENDAMIENTO = "606"
     PLATAFORMAS_TECNOLOGICAS = "625"
     RIF = "621"  # Regimen de Incorporacion Fiscal (en extincion)
+    GENERAL_LEY_PM = "601"  # Personas morales. CASCARON: sin motor (T6).
 
 
 class TipoFactura(str, Enum):
