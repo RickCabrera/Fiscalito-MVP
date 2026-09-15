@@ -181,7 +181,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     con categoria 'anual', exporta PDF con pdfExport.ts. Regístralo en ALL_TABS para todos los
     perfiles menos asalariado. Sin lógica fiscal nueva. Máx 300 líneas por archivo."
 
-- [ ] **T4 · Exponer CFDI de nómina 1.2 + parser tipo N** [4–5 h]
+- [x] **T4 · Exponer CFDI de nómina 1.2 + parser tipo N** [4–5 h] **PARCIAL:** nada se verificó en navegador (ningún XML se descargó); el generador **no emite `FormaPago = 99`**, que el doc 24 §2 pide y el XSD deja pasar por opcional — un PAC probablemente lo rechace, y corregirlo es editar el módulo del motor, prohibido en esta tarea; y los datos que el CFDI exige y `EmpleadoCartera` no guarda (RFC, CURP, CP del trabajador) **se capturan en memoria y se pierden al salir**: meterlos en la cartera es tarea propia. Ver `docs/nocturno-log.md`.
   - Hoy: `nomina_engine/cfdi_nomina_xml.py` genera CFDI 4.0 + nomina12 validado contra XSD y
     **nadie lo importa**. `cfdiParser.ts` sólo acepta I/E/T/P y trata N como ingreso (bug
     silencioso).
