@@ -210,7 +210,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     'Generar XML (sin timbrar)' que llame POST /api/v1/nomina/cfdi vía fiscalAgentApi.ts y
     descargue el .xml con badge 'Pendiente de timbrado PAC'. Loading/error obligatorios."
 
-- [ ] **T6 · Régimen 601 Personas Morales (cascarón)** [4 h]
+- [x] **T6 · Régimen 601 Personas Morales (cascarón)** [4 h] **PARCIAL:** nada se verificó en navegador; y el calendario de una PM reusa `generar_calendario()` tal cual, así que su declaración anual sale al 30 de abril cuando una moral la presenta en marzo (Art. 76 LISR) — corregirlo es editar `fiscal_engine`, prohibido en esta tarea. Ver `docs/nocturno-log.md`.
   - Hoy: no existe. `contributorProfiles.ts` dice "601 queda fuera"; `schemas/fiscal.py` no lo
     tiene.
   - Archivos: `contributorProfiles.ts`, `OnboardingWizard.tsx`, `schemas/fiscal.py`,
