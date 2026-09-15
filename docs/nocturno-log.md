@@ -2773,3 +2773,95 @@ criterio de "qué empeora", no el de "qué mejora".
 `npm run build` limpio, **739 tests verdes en 61 archivos** —la misma cifra que
 antes del cambio: ningún test tocado y ninguno añadido—, `eslint` limpio en los
 archivos tocados y la base global del repo quieta en 20 errores / 8 warnings.
+
+---
+
+## T8 · Planes Contador/Despacho + IMSS Manager a beta (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Tercera y última de las tres tareas de ecosistema de la corrida T. Una pasada de
+revisor sobre el entregable, como manda el régimen de la sección T: **aprobó con
+observaciones**, y las tres que pidió se aplicaron antes del push (abajo).
+
+**Lo que quedó.** `services/planes.ts` con los tres planes y sus límites;
+`/app/planes` con tres tarjetas que guardan `users/{uid}.plan`; el uso
+"3 / 25 clientes" en Perfil (`components/perfil/TarjetaPlan.tsx`), en
+`SelectorCliente` y junto al botón de alta; el tope bloquea "Nuevo cliente" con
+el motivo escrito. IMSS Manager pasa a `beta` y entra por Empleados y Nómina.
+
+### Las tres decisiones que alguien va a cuestionar
+
+1. **`plan` es OPCIONAL y el default no se escribe.** `undefined` significa
+   "nunca eligió", que no es lo mismo que estar en el plan más chico.
+   `planDelPerfil()` resuelve el default para mostrarlo y no lo guarda: escribirlo
+   en silencio convertiría una suposición del código en un dato del usuario. De
+   paso deja intactos los ~13 literales de `UserProfile` que viven en los tests.
+2. **`maxUsuarios` NO se hace cumplir, y nunca se hará** mientras un `users/{uid}`
+   sea una persona: la app no tiene cuentas de equipo, así que no hay a quién
+   contar. Está dicho en el código y en `apps/store/CLAUDE.md`. **Si alguien
+   enseña "10 usuarios" del plan Despacho en la demo, está describiendo algo que
+   el producto no tiene.**
+3. **`SelectorCliente` recibe el plan como PROP desde `AppLayout`**, no del
+   contexto. `AppLayout` es su único punto de montaje de producción y ya tiene el
+   perfil en la mano. El costo: la prop es opcional, así que un segundo montaje
+   futuro se llevaría el default sin error de tipo — mitigado porque el default
+   es el plan más chico, subestima en vez de inventar.
+
+### Toqué dos archivos de test, y no es lo que parece
+
+`ProfilePage.test.tsx` (un `MemoryRouter`) y `ClientesPage.test.tsx` (un
+`vi.mock` de `ProfileContext`). **Ninguna aserción cambió**: es el mismo andamio
+que el `CarteraContext.Provider` que esos archivos ya tenían. Las nueve pruebas
+de Perfil se caían porque `<Link>` necesita router, por una razón que no tiene
+nada que ver con lo que miden. El revisor lo revisó renglón por renglón y lo
+avaló. **Los 741 verdes son 739 + 2 casos que `it.each(FORMATOS)` genera solo**
+al iterar los dos formatos nuevos: no escribí ni un test.
+
+### Trampas para quien siga
+
+- **⚠ EL TOPE DE CLIENTES VA A MAIN SIN UNA SOLA PRUEBA.** El régimen MODO DEMO
+  prohíbe tests nuevos, y el mock de `ClientesPage.test.tsx` fija un perfil sin
+  `plan`, así que lo único que se ejercita es el default (25) contra los 3
+  clientes de la demo: **el camino del bloqueo no lo recorre nadie**. Es la
+  primera línea que hay que pinnear en cuanto se pueda escribir un test.
+- **El tope es sólo de interfaz.** No hay guarda en `cartera.crear` ni en el
+  backend. Hoy alcanza porque el botón es el único camino de alta, pero es una
+  asimetría consciente con `SelectorExportacion`, donde este mismo commit sí
+  puso guarda de handler ("`disabled` es una propiedad del DOM, no una garantía").
+  Si aparece un segundo camino de alta, el tope deja de existir.
+- **`status: 'beta'` existía en el tipo desde el principio y NO SIGNIFICABA
+  NADA.** Las cuatro pantallas que pintan `status` —Landing, Marketplace, detalle
+  y Admin— preguntaban `=== 'active'` por su cuenta, así que un servicio en beta
+  se veía idéntico a uno que no existe. Ahora todas preguntan a
+  `servicioDisponible()` / `etiquetaDeEstado()`. **Mi primera versión arregló dos
+  y dejó la Landing —la pantalla PÚBLICA, la primera de la demo— diciendo
+  "Proximamente" de un servicio que el marketplace ya llamaba "Beta".** Lo cazó
+  el revisor. Si agregas una quinta pantalla, pregunta a los helpers.
+- **"Transcritos" no es "probados".** Corregí una frase heredada de `imss.ts` que
+  T8 había copiado a dos docstrings nuevos: de los tres layouts del IMSS, sólo
+  `ALTA` está cableado y medido. `MODIFICACION` y `BAJA` se exportan y **nadie
+  los importa**, ni el código ni un test. Quien los cablee verifica sus 168
+  posiciones contra el PDF; no valen por estar escritos.
+- **Bajas (02) y modificaciones (07) aparecen en el selector, deshabilitadas.**
+  Aparecen porque "¿y las bajas?" es la primera pregunta del operador y una lista
+  donde no están la contesta con silencio. Lo que falta es el MODELO —
+  `EmpleadoCartera` sin fecha de baja, causa ni historial de SBC—, no el layout.
+  Es trabajo de dominio, no de una sesión nocturna.
+- **Planes NO está en el sidebar** y es a propósito: `navigation.test.ts` congela
+  la lista exacta de cada perfil, y no es una herramienta diaria. Se entra desde
+  la tarjeta del Perfil, que es hoy **la única puerta**.
+- **A un `pyme` le empeoró un poco el camino:** antes veía la tarjeta de IMSS
+  Manager atenuada y sin CTA; ahora ve "Beta" con dos botones que lo llevan a un
+  estado vacío pidiéndole elegir un cliente que conceptualmente no tiene. No
+  rompe nada (`SinClienteActivo` con salida), y la demo es de contador.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1 y T2. Lo verificado es el
+  build y la suite, no la pantalla.
+- **Lo que no toqué:** el motor (cero archivos bajo `apps/api/`, verificado con
+  `git diff --name-only main...feat/T8`), `firestore.rules` —escribir `plan` no
+  necesita regla nueva: `users/{uid}` ya permite escritura al dueño—, y el `.env`.
+
+### Cierre
+
+`npm run build` limpio, **741 tests verdes en 61 archivos**, `eslint` global
+quieto en la base del repo: **20 errores / 8 warnings**, los mismos de S-02.
+Archivos nuevos limpios y todos bajo el tope de 300 líneas (`ProfilePage.tsx`
+queda en 300 exactas, al filo).
