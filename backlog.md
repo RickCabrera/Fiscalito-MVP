@@ -123,7 +123,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     ninguna llamada al API. En true, comportamiento actual. try/catch y estados de error en
     SelectorCliente.tsx. Documenta el flag en apps/store/CLAUDE.md."
 
-- [ ] **T8 · Planes Contador/Despacho + IMSS Manager a beta** [ECOSISTEMA · con revisor]
+- [x] **T8 · Planes Contador/Despacho + IMSS Manager a beta** [ECOSISTEMA · con revisor]
   - Hoy: cero referencias a plan, precio o billing. IMSS Manager está `coming_soon` aunque
     cuotas, SDI y altas funcionan.
   - Archivos: `pages/PlanesPage.tsx` (nuevo, `/app/planes`), `services/planes.ts` (nuevo),
