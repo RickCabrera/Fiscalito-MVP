@@ -6,8 +6,14 @@
  * `getTabsForProfile` importan la misma función.
  *
  * E-01: un CONTADOR no es un contribuyente. Lleva la nómina de sus clientes,
- * así que no ve pre-declaración, DIOT, retenciones ni historial propio.
- * Los tabs de contribuyente NO se borran: dejan de mostrarse.
+ * así que no ve pre-declaración, DIOT, retenciones ni historial propio. Los tabs
+ * de contribuyente NO se borran: dejan de mostrarse.
+ *
+ * T1: el despacho sí ve pre-declaración, DIOT y retenciones — pero **las del
+ * cliente que tenga activo**, filtradas por el régimen de ESE cliente. No
+ * contradice a E-01: la extiende por el otro lado. Lo que E-01 le negó fue lo
+ * SUYO, y eso sigue negado —su historial y su dashboard de contribuyente no
+ * existen, y desde E-05 ni siquiera se le pide régimen propio.
  */
 
 import type { ContributorType } from './contributorProfiles';
@@ -63,6 +69,13 @@ const LINKS_CONTADOR: SidebarLink[] = [
   { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
+  // T1: el despacho recupera el servicio fiscal, pero **el del CLIENTE ACTIVO**,
+  // no el suyo propio. E-07 lo había quitado porque el único tab que le quedaba
+  // —su calendario como persona física— dependía de un RFC y un régimen que E-05
+  // dejó de pedirle; ése sigue sin aplicar, y por eso `calendario` de arriba
+  // sigue apuntando al PATRONAL de sus clientes y no a un tab de Fiscalito.
+  // Va después de Calendario y antes de Perfil: es herramienta, no ajuste.
+  { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -210,7 +223,19 @@ export function rutaInicial(tipo: ContributorType | null): string {
  * E-03 mueve la nómina a `/app/clientes/:id/nomina`, esta constante se mueve
  * con ella o el selector desaparece justo donde más se necesita.
  */
-const RUTAS_CON_CLIENTE = ['/app/clientes', '/app/empleados', '/app/dispositivos'];
+const RUTAS_CON_CLIENTE = [
+  '/app/clientes', '/app/empleados', '/app/dispositivos',
+  // T1: entra porque CUMPLE la regla de admisión de arriba, no porque hable de
+  // clientes. `FiscalitoServicePage` lee `useClienteActivo` y filtra sus tabs
+  // con el régimen de ese cliente; sin el selector encima, el contador no
+  // tendría cómo cambiar de cliente sin salirse de la pantalla, y la pantalla
+  // estaría afirmando un régimen que él no eligió.
+  //
+  // `/use` y no `/app/store/fiscalito` a secas: la ficha del servicio es texto
+  // de catálogo, no lee cliente alguno, y el prefijo corto la habría metido de
+  // contrabando junto con la pantalla que sí lo lee.
+  '/app/store/fiscalito/use',
+];
 
 /**
  * Si la ruta habla de UN cliente. Decide dónde se muestra el selector de
@@ -241,42 +266,107 @@ export type TabFiscalito =
   | 'diot' | 'retenciones' | 'multiperiodo' | 'estado';
 
 /**
+ * El set completo: el de `pyme` y el de un 612.
+ *
+ * Congelado, y **se devuelve copiado** (`tabsCompletos()`), no por referencia.
+ * Antes cada rama de `getTabsForProfile` construía su propio literal, así que
+ * extraer la constante introdujo un arreglo compartido entre cuatro ramas: un
+ * `.sort()` o un `.push()` de un consumidor futuro le habría cambiado los tabs a
+ * todos los perfiles a la vez, y eso se ve bien hasta que no. Hoy nadie lo muta
+ * —los dos consumidores sólo hacen `.includes()` y `[0]`— pero la trampa era
+ * nueva y la cerró el revisor de T1.
+ */
+const TABS_COMPLETOS: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
+  'declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+]);
+
+/** Copia fresca del set completo, para no repartir la misma referencia. */
+function tabsCompletos(): TabFiscalito[] {
+  return [...TABS_COMPLETOS];
+}
+
+/**
  * Tabs de Fiscalito que aplican al perfil. La usan `FiscalitoServicePage`
  * (para los tabs) y `DashboardPage` (para las cards de servicio): antes eran
  * dos copias idénticas y divergibles.
  *
- * OJO CON EL ORDEN: la rama de contador va PRIMERO. Un despacho tiene régimen
- * 612 o 626, así que si se evaluara después caería en la rama de RESICO o de
- * Actividad Empresarial y vería pre-declaración, DIOT y retenciones.
+ * QUÉ ES `regimen` CUANDO EL TIPO ES `contador` (T1)
+ * -------------------------------------------------
+ * **El régimen del CLIENTE ACTIVO, no el del despacho.** Un despacho no
+ * presenta las declaraciones de su cliente desde su propio régimen; presenta
+ * las del cliente. Y desde E-05 el perfil del despacho ni siquiera tiene dónde
+ * capturar un régimen propio: `profile.regimen` viene vacío, así que pasarlo
+ * aquí no sólo sería incorrecto, sería inútil.
+ *
+ * Quien resuelve ese régimen es `FiscalitoServicePage` leyendo
+ * `ClienteActivoContext`. Esta función sigue siendo pura y no sabe de contextos.
+ *
+ * OJO CON EL ORDEN: la rama de contador va PRIMERO, y ahora importa MÁS que
+ * antes. Si se evaluara después, un contador cuyo cliente es RESICO caería en
+ * `regimen === '626'` y saldría igual por casualidad — pero uno sin cliente
+ * elegido caería hasta el `return` final y vería tres tabs sin que nada
+ * explicara de dónde salen.
  */
 export function getTabsForProfile(
   contributorType: string | null,
   regimen: string | null,
 ): TabFiscalito[] {
-  // Contador: NINGÚN tab de Fiscalito.
+  // Contador: los tabs del CLIENTE que tiene activo.
   //
-  // Hasta E-06 veía el de calendario, con sus propias obligaciones como persona
-  // física (§D21). E-05 deja de pedirle RFC y régimen —y quita del perfil el
-  // único lugar donde capturarlos—, así que ese tab quedaba muerto: `CalendarioTab`
-  // corta en seco sin esos dos campos. Antes que dejar un callejón con letrero,
-  // se decide de frente: una cuenta de despacho no tiene calendario de
-  // contribuyente, y `FiscalitoServicePage` la manda a `/app/calendario`, que es
-  // el patronal de sus clientes. Consecuencia declarada en §D21: la app ya no
-  // calcula las obligaciones propias del despacho.
-  if (contributorType === 'contador')
-    return [];
+  // E-01 no le daba ninguno y E-07 lo quitó de la pantalla entera, con razones
+  // que siguen en pie para lo que medían: el único tab que le quedaba era su
+  // calendario como persona física (§D21), y E-05 le quitó el RFC y el régimen
+  // de los que ese tab depende. **T1 no lo deshace: lo cambia de sujeto.** Lo
+  // que el despacho recupera no es su Fiscalito, es el de su cliente, y por eso
+  // el calendario que ve aquí también es el del cliente y `/app/calendario`
+  // sigue siendo el patronal de toda la cartera.
+  if (contributorType === 'contador') {
+    // Sin cliente elegido no hay régimen que aplicar. La pantalla pinta un
+    // estado vacío con el selector; devolver tabs aquí los pintaría sobre un
+    // cliente inexistente.
+    if (!regimen) return [];
+    return tabsPorRegimenDeCliente(regimen);
+  }
 
   if (contributorType === 'asalariado' || regimen === '605')
     return ['deducciones', 'calendario'];
   if (contributorType === 'pyme')
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
+    return tabsCompletos();
   if (regimen === '626')
     return ['declaracion', 'calendario', 'comparar', 'estado'];
   if (regimen === '612')
-    return ['declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado'];
+    return tabsCompletos();
   if (contributorType === 'arrendamiento' || regimen === '606')
     return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
   if (contributorType === 'plataformas' || regimen === '625')
     return ['declaracion', 'calendario', 'estado'];
   return ['declaracion', 'calendario', 'estado'];
+}
+
+/**
+ * Tabs que se le pueden trabajar a un cliente del despacho, por su régimen.
+ *
+ * Los dos regímenes que `contributorProfiles.ts` declara para el perfil
+ * `contador` —y los dos únicos que el alta de cliente ofrece— son 612 y 626, y
+ * son los que deciden el caso que importa: a un 626 no se le ofrecen DIOT ni
+ * Retenciones.
+ *
+ * **ESE CORTE ES HEREDADO, NO VERIFICADO.** La rama `regimen === '626'` de abajo
+ * existe desde E-01 y T1 no la inventó: lo que T1 cambió es a quién se le aplica
+ * (el cliente del despacho, no el contribuyente). **Pendiente de confirmar con
+ * la contadora: `docs/decisiones-nomina.md` §D30**, donde queda escrito por qué
+ * DIOT y Retenciones son dos preguntas separadas y por qué la de Retenciones
+ * probablemente no se contesta con el régimen.
+ *
+ * El resto de los regímenes no se inventa: si algún día el alta de cliente
+ * abriera 605, 606 o 625, esto ya responde lo mismo que responde para un
+ * contribuyente de ese régimen, en vez de degradar al set completo en silencio.
+ */
+function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
+  if (regimen === '605') return ['deducciones', 'calendario'];
+  if (regimen === '626') return ['declaracion', 'calendario', 'comparar', 'estado'];
+  if (regimen === '606') return ['declaracion', 'calendario', 'comparar', 'multiperiodo', 'estado'];
+  if (regimen === '625') return ['declaracion', 'calendario', 'estado'];
+  // 612 y cualquier otro: el set completo, que es el de `pyme`.
+  return tabsCompletos();
 }

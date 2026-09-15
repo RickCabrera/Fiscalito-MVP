@@ -543,6 +543,104 @@ perfil. **La pantalla se lo dice al contador**, no sólo este documento: el cale
 lleva una línea fija que aclara que es el de sus clientes y que la app no calcula las del
 despacho.
 
+### Enmienda (T1, 2026-09-15): cambió el SUJETO, no la resolución
+
+El párrafo de arriba decía, en indicativo, que `getTabsForProfile('contador')` devuelve `[]` y
+que `FiscalitoServicePage` redirige a `/app/calendario`. **Desde T1 eso ya no es cierto**, y se
+corrige aquí para que nadie construya sobre la frase vieja.
+
+**Lo que NO cambió, y sigue siendo la resolución de E-07:** el despacho no tiene Fiscalito
+PROPIO. Su ISR e IVA como persona física siguen sin calcularse, sigue sin pedírsele RFC ni
+régimen (E-05), y el enlace **Calendario** del sidebar sigue siendo el **patronal de toda la
+cartera**. La consecuencia declarada arriba sigue abierta, tal cual.
+
+**Lo que T1 agregó es otro sujeto:** el Fiscalito **del cliente activo**. El despacho recupera
+la pantalla —y un enlace propio en el sidebar— pero lo que ve ahí son las declaraciones de UN
+cliente, filtradas por el régimen de ESE cliente, con el nombre del cliente en el encabezado.
+Por eso `getTabsForProfile('contador', regimen)` ahora recibe el régimen del **cliente activo**,
+que sí existe y sí se captura, en vez del régimen del despacho, que desde E-05 viene vacío — y
+por eso el argumento de E-07 ("el tab quedaba muerto sin esos dos campos") no aplica al caso
+nuevo: los campos los pone el cliente.
+
+Sin cliente elegido, `getTabsForProfile` sigue devolviendo `[]`, pero eso ya no significa "no le
+aplica": significa "falta el dato", y la pantalla pinta un estado vacío con salida a la cartera
+en vez de redirigir. **En modo empresa única el redirect de E-07 se conserva intacto**, porque
+ahí no hay cartera ni cliente que elegir.
+
+---
+
+## D29 · El régimen de un cliente dado de alta antes de T1 — PROVISIONAL
+
+**Contexto.** T1 hace que los tabs de Fiscalito de un despacho dependan del régimen fiscal **del
+cliente**, aplicando el corte que `getTabsForProfile` ya traía desde E-01: a un 626 no se le
+ofrecen DIOT ni Retenciones, a un 612 sí. **Ese corte está pendiente de confirmar (§D30)**; lo que
+esta decisión resuelve es otra cosa: qué se hace cuando el régimen no se conoce. El campo
+`regimen` no existía en la cartera: T1 lo crea, con selector en el alta de cliente (612 / 626, los
+dos que `contributorProfiles.ts` ya declaraba para el perfil `contador`).
+
+**El hueco:** los clientes capturados ANTES de T1 no traen el campo. No hay forma de deducirlo —
+el régimen no se sigue del giro, ni de la prima de RT, ni de la plantilla.
+
+**Decisión provisional (sesión nocturna, sin Ricardo):** se aplica **612**, el set completo, que
+es el mismo que ve un `pyme`; **y la pantalla lo dice**, con un aviso visible que nombra el
+régimen supuesto y manda a capturarlo en la ficha del cliente.
+
+**Por qué 612 y no 626, que sería el set más corto.** La regla de la opción conservadora apunta a
+626 si lo que se mide es "cuántas pantallas ofrezco". Aquí se tomó la otra, por dos razones que
+conviene poder discutir:
+
+1. **Ninguno de esos tabs presenta nada por su cuenta.** Generan un cálculo o un archivo que el
+   contador revisa y presenta a mano. Un tab de más sobre un cliente cuyo régimen el contador
+   conoce es una herramienta que no usa; un tab de menos es trabajo que no puede hacer y que la
+   app no explica.
+2. **El supuesto no es silencioso.** Lo conservador en este repo ha sido siempre "no inventes en
+   silencio", y el aviso en pantalla es lo que satisface esa regla. Un default oculto de 626
+   habría escondido DIOT y Retenciones sin decir por qué, que es el modo de falla peor.
+
+**Qué la resolvería:** que Ricardo capture el régimen de los clientes existentes (dos clics por
+cliente), o que diga que prefiere el corte conservador. Mientras tanto sólo afecta a clientes
+anteriores a T1: todo el que se dé de alta desde aquí nace con régimen capturado.
+
+---
+
+## D30 · Qué tabs le tocan a un cliente 626 — ABIERTA, para la contadora
+
+**El corte existe desde E-01 y nadie lo ha verificado.** `getTabsForProfile` esconde **DIOT** y
+**Retenciones** a un régimen 626 y se los muestra a un 612. T1 no inventó esa rama: la heredó y la
+aplicó a los clientes del despacho, que es lo que la volvió visible — y la escribió en el contrato
+y en la pantalla como si fuera un hecho legal. **Eso último se revirtió**: hoy los siete lugares
+donde se afirmaba dicen "criterio heredado, pendiente de confirmar" y apuntan aquí. Lo encontró el
+revisor de T1.
+
+**Son DOS preguntas, y no comparten fundamento. Ése es el punto de esta entrada.**
+
+**1. DIOT.** Un RESICO persona física **sigue siendo causante de IVA**, y el art. 32 fr. VIII de
+la LIVA le aplicaría. Si no la presenta no es por naturaleza del régimen, sino por una
+**facilidad de la Resolución Miscelánea Fiscal** (Título 3.13, las reglas del RESICO PF). Una
+facilidad de RMF **se renueva por ejercicio y se puede modificar**: sin número de regla y sin año
+verificados contra el DOF, nadie puede comprobar el ejercicio que viene si sigue viva. *Pregunta
+concreta:* ¿qué regla de la RMF vigente releva al RESICO PF de la DIOT, y para qué ejercicio?
+
+**2. Retenciones — y aquí el corte probablemente no discrimina lo que parece.**
+
+- Un **RESICO PF con trabajadores SÍ retiene y entera ISR de salarios** (Cap. I del Tít. IV
+  LISR). En un producto de nómina eso no es un caso raro: es el caso. El fixture del propio test
+  de T1 es un 626 con 12 empleados.
+- Del otro lado, una **PF en 612 tampoco es retenedora** de IVA ni de ISR por honorarios o
+  arrendamiento: esa obligación es de personas morales (LIVA 1-A fr. II inciso a; LISR 106 y 116).
+
+O sea que si "Retenciones" significa *retenciones a terceros por honorarios y arrendamiento*, no
+le toca a ninguno de los dos; y si incluye *ISR de salarios*, les toca a los dos. En cualquiera de
+las dos lecturas, **esconderlo por ser 626 esconde trabajo real o no esconde nada.** *Pregunta
+concreta:* ¿qué cubre el tab Retenciones de este producto?
+
+**Mientras tanto, el corte se queda como está**, porque es el comportamiento que ya existía y
+cambiarlo sin respuesta sería sustituir un supuesto por otro. Lo que cambió en T1 es que dejó de
+afirmarse como hecho: el contrato, los docstrings y la pantalla ahora dicen lo que es.
+
+**Riesgo si no se contesta:** un despacho con clientes RESICO con nómina no encuentra dónde
+trabajar sus retenciones de salarios, y la app no le dice por qué.
+
 ---
 
 ## D22 · La clase de riesgo de los clientes sintéticos es un supuesto — PROVISIONAL

@@ -206,14 +206,16 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
 });
 
 describe('sidebar de AppLayout', () => {
-  it('el contador ve exactamente sus seis enlaces', () => {
+  it('el contador ve exactamente sus siete enlaces', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     const { container } = montar();
 
     // Lista completa y en orden: si alguien agrega un enlace de contribuyente
-    // al sidebar del despacho, esto se cae. R-05 sumó Empleados y Dispositivos.
+    // al sidebar del despacho, esto se cae. R-05 sumó Empleados y Dispositivos;
+    // T1 sumó el servicio fiscal, que abre el del CLIENTE ACTIVO —no el del
+    // despacho, que es lo que E-07 quitó y sigue sin existir.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario', 'Perfil',
+      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario', MARCA_CORTA, 'Perfil',
     ]);
   });
 
@@ -240,13 +242,20 @@ describe('sidebar de AppLayout', () => {
     }
   });
 
-  it('el contador no ve Dashboard, el servicio fiscal ni Historial', () => {
+  it('el contador no ve Dashboard ni Historial, y el servicio fiscal sí (T1)', () => {
+    /**
+     * Cambió en T1, y el criterio de por qué cambió está en el enlace mismo:
+     * Dashboard e Historial son del CONTRIBUYENTE —sus stats, sus declaraciones
+     * guardadas— y en una cuenta de despacho no tienen sujeto. El servicio
+     * fiscal sí lo tiene desde T1: el del cliente activo.
+     */
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     montar();
 
     expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
-    expect(screen.queryByRole('link', { name: MARCA_CORTA })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Historial' })).toBeNull();
+    expect(screen.getByRole('link', { name: MARCA_CORTA }).getAttribute('href'))
+      .toBe('/app/store/fiscalito/use');
   });
 
   it('el contribuyente conserva sus cinco enlaces de siempre', () => {

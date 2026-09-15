@@ -15,6 +15,8 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import {
   obtenerPrimasDeRiesgo,
+  REGIMEN_CLIENTE_POR_DEFECTO,
+  REGIMENES_DE_CLIENTE,
   type ClienteCartera,
   type PrimasDeRiesgo,
 } from '../../services/carteraApi';
@@ -29,6 +31,10 @@ function vacio(): Datos {
     nombre: '',
     giro: '',
     origen: 'propio',
+    // T1: decide qué tabs de Fiscalito se le pueden trabajar a este cliente.
+    // Con valor desde el alta, para que el aviso de "régimen supuesto" de
+    // `FiscalitoServicePage` sólo lo vean los clientes anteriores a T1.
+    regimen: REGIMEN_CLIENTE_POR_DEFECTO,
     prima_riesgo: '',
     clase_riesgo: 1,
     // O-cierre: los dos datos que el IMSS asigna y que el exportador de
@@ -126,7 +132,16 @@ export default function ModalCliente({
     setGuardando(true);
     setError(null);
     try {
-      await onGuardar({ ...datos, id: datos.id.trim(), nombre: datos.nombre.trim() });
+      await onGuardar({
+        ...datos,
+        id: datos.id.trim(),
+        nombre: datos.nombre.trim(),
+        // Un cliente guardado ANTES de T1 llega aquí sin la llave, y el `select`
+        // de abajo pinta el default sin disparar `onChange`: sin esta línea se
+        // guardaría tal cual y la pantalla seguiría avisando "régimen supuesto"
+        // después de que el contador ya lo dio por bueno.
+        regimen: datos.regimen || REGIMEN_CLIENTE_POR_DEFECTO,
+      });
       onCerrar();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar');
@@ -186,6 +201,21 @@ export default function ModalCliente({
               value={datos.giro}
               onChange={(e) => setDatos({ ...datos, giro: e.target.value })}
             />
+          </Campo>
+          {/* T1: es el régimen del CLIENTE, y decide sus tabs de Fiscalito —con
+              el corte heredado de E-01, pendiente de confirmar con la contadora
+              (§D30). Sólo 612 y 626: son los dos que el motor y el calendario
+              manejan para persona física (`REGIMENES_DE_CLIENTE`). */}
+          <Campo label="Régimen fiscal" ancho="1 1 240px">
+            <select
+              style={campo}
+              value={datos.regimen || REGIMEN_CLIENTE_POR_DEFECTO}
+              onChange={(e) => setDatos({ ...datos, regimen: e.target.value })}
+            >
+              {REGIMENES_DE_CLIENTE.map((r) => (
+                <option key={r.code} value={r.code}>{r.code} · {r.name}</option>
+              ))}
+            </select>
           </Campo>
         </div>
 

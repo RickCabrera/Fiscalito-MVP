@@ -476,6 +476,30 @@ por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más
 En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
 empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
 
+#### `regimen` — el régimen fiscal del CLIENTE (T1)
+
+Clave de `c_RegimenFiscal` del SAT, hasta 3 dígitos, **opcional y vacía por default** por la
+misma razón que `rfc`: una cartera escrita antes de T1 no la trae y el catálogo de
+demostración tampoco.
+
+Es el régimen **del cliente**, no del despacho. **La API no aplica ninguna regla fiscal sobre
+este campo ni valida el catálogo:** lo guarda y lo devuelve. Quien decide qué pantallas de
+Fiscalito se le pueden trabajar es el front, y el corte concreto que usa hoy —a un 626 no se le
+ofrecen DIOT ni Retenciones, a un 612 sí— es un **criterio heredado de E-01, pendiente de
+confirmar con la contadora** (`docs/decisiones-nomina.md` §D30). No se documenta aquí como regla
+legal porque no se verificó con fuente oficial, y porque DIOT y Retenciones no comparten
+fundamento. El alta de cliente ofrece sólo esas dos claves — las mismas que
+`contributorProfiles.ts` declara para el perfil `contador` y las únicas que el motor y el
+calendario manejan para persona física.
+
+**Vacío significa "no capturado", y el front lo dice en pantalla** en vez de suponerlo en
+silencio: aplica el 612 (el set completo) y avisa de dónde salió ese valor.
+
+El campo existe en `ClienteCarteraSchema` **aunque hoy el dueño del dato siga siendo Firestore**
+(R-07 continúa apagada): sin declararlo, encender R-07 borraría el régimen de cada cliente en el
+primer guardado, porque pydantic descarta lo que no conoce. No hay migración: los documentos sin
+la llave se leen igual.
+
 #### `guia_subdelegacion` — el número que asigna el IMSS (O-04)
 
 Cinco dígitos. Va en las posiciones 134-138 de **cada** movimiento afiliatorio y en el registro

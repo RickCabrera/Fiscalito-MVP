@@ -3,9 +3,14 @@
  *
  * Es un módulo de tres líneas y aun así lleva pruebas, porque de su default
  * cuelga qué app arranca: si alguien invierte la comparación, un build de
- * producción vuelve al modo despacho y **nada más falla**. Los tests de
- * despacho seguirían verdes —declaran su modo— y los de empresa única también,
- * porque stubbean. El default es justo lo que ningún otro test mide.
+ * producción cambia de producto y **nada más falla**. Los tests de despacho
+ * siguen verdes —declaran su modo— y los de empresa única también, porque
+ * stubbean. El default es justo lo que ningún otro test mide.
+ *
+ * **T1 invirtió el default**: era encendido (empresa única, O-01) y ahora es
+ * apagado (despacho). Lo que este archivo mide no cambió de naturaleza —sigue
+ * siendo "qué app arranca sin variable"— sino de valor esperado, y el motivo
+ * está escrito en `modoEmpresa.ts`.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,37 +21,32 @@ describe('modoEmpresaUnica', () => {
     vi.unstubAllEnvs();
   });
 
-  it('viene ENCENDIDO cuando la variable no está puesta', () => {
+  it('viene APAGADO cuando la variable no está puesta: la app del despacho', () => {
     vi.stubEnv('VITE_MODO_EMPRESA_UNICA', undefined as unknown as string);
-    expect(modoEmpresaUnica()).toBe(true);
-  });
-
-  /**
-   * LA REGLA CAMBIÓ EN O-cierre, Y NO ES UN TEST AFLOJADO.
-   *
-   * Antes apagaba **sólo** el literal `'0'`, con este argumento: apagar el
-   * pivote tiene que ser deliberado, y un `.env` a medio escribir no puede
-   * devolver la app del despacho por accidente. El argumento sigue en pie para
-   * el valor VACÍO, y por eso `''` sigue encendiendo.
-   *
-   * Lo que no se sostiene es que `VITE_MODO_EMPRESA_UNICA=false` —la forma que
-   * cualquiera escribiría— dejara el modo encendido **sin decir nada**. Eso no
-   * protege de un dedazo: es un flag que ignora en silencio lo que le
-   * escribieron, y quien lo puso cree que trabaja en modo despacho. Lo señaló
-   * el revisor de cierre.
-   *
-   * La regla nueva: apagan los valores que **no pueden significar otra cosa**;
-   * lo ambiguo o vacío deja el pivote encendido.
-   */
-  it.each(['0', 'false', 'off', 'no', 'FALSE', ' 0 '])('%s apaga el modo', (valor) => {
-    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
     expect(modoEmpresaUnica()).toBe(false);
   });
 
-  it.each(['1', 'true', '', 'si', 'yes', 'x'])('%s lo deja encendido', (valor) => {
-    // El vacío incluido: un `.env` a medio escribir no cambia de app.
+  /**
+   * LA REGLA DE O-cierre SE CONSERVA, ESPEJADA. NO ES UN TEST AFLOJADO.
+   *
+   * O-cierre estableció que el flag no puede ignorar en silencio lo que le
+   * escribieron: `=false` tenía que apagar de verdad, no dejar el modo como
+   * estaba. T1 invierte cuál es el default, así que la misma regla ahora se
+   * aplica del lado de ENCENDER: `=true` enciende igual que `1`.
+   *
+   * Y el argumento del valor VACÍO sigue intacto, sólo que protege al otro
+   * modo: un `.env` a medio escribir no cambia de app, y la app que se queda es
+   * la del despacho.
+   */
+  it.each(['1', 'true', 'on', 'yes', 'si', 'TRUE', ' 1 '])('%s enciende el modo', (valor) => {
     vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
     expect(modoEmpresaUnica()).toBe(true);
+  });
+
+  it.each(['0', 'false', 'off', 'no', '', 'x'])('%s lo deja apagado', (valor) => {
+    // El vacío incluido: un `.env` a medio escribir no cambia de app.
+    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', valor);
+    expect(modoEmpresaUnica()).toBe(false);
   });
 
   it('se re-evalúa en cada llamada, no se congela al importar', () => {

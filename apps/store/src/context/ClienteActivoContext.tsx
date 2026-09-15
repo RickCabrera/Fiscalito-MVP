@@ -55,6 +55,10 @@ function comoResumen(c: ClienteCartera): ClienteResumen {
     giro: c.giro,
     origen: c.origen,
     num_empleados: c.empleados.length,
+    // T1: el régimen viaja al resumen porque `FiscalitoServicePage` filtra sus
+    // tabs con él. Sin esta línea el selector afirma un cliente y la pantalla
+    // le aplica el régimen de otro — o el default, callando que lo hace.
+    regimen: c.regimen,
     prima_riesgo: c.prima_riesgo,
     clase_riesgo: c.clase_riesgo,
     clave_periodicidad: c.clave_periodicidad,
