@@ -6,13 +6,15 @@ import { useAuth } from '../../context/AuthContext';
 import { generarDIOT, type CFDI, type DIOTResponse, tipoParaApi } from '../../services/fiscalAgentApi';
 import { guardarDIOT } from '../../services/declaracionesHistory';
 import { exportarDIOTPDF } from '../../services/pdfExportDIOT';
+import { generarDIOTBatch, DIOT_BATCH_POR_VALIDAR } from '../../services/exportadores/diot';
+import { descargarBytes } from '../../services/exportadores/descargar';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle } from '../../utils/styles';
 import XMLUploader from './XMLUploader';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
-import { Loader, Download, RefreshCw, MessageSquare } from 'lucide-react';
+import { Loader, Download, RefreshCw, MessageSquare, AlertTriangle, FileDown } from 'lucide-react';
 
 export default function DIOTTab() {
   const { profile } = useProfile();
@@ -24,6 +26,8 @@ export default function DIOTTab() {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<DIOTResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
+  const [errorTxt, setErrorTxt] = useState('');
+  const [transliterados, setTransliterados] = useState<string[]>([]);
 
   const handleGenerar = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
@@ -46,6 +50,23 @@ export default function DIOTTab() {
       setError(e instanceof Error ? e.message : 'Error inesperado');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * El .txt de carga batch. Se arma en el momento y no se guarda en el
+   * historial: el historial guarda el RESULTADO del calculo, y este archivo es
+   * una serializacion de ese mismo resultado con un layout que todavia puede
+   * cambiar. Guardarlo congelaria el layout sin validar.
+   */
+  const descargarTxt = (data: DIOTResponse) => {
+    setErrorTxt('');
+    try {
+      const archivo = generarDIOTBatch(data);
+      setTransliterados(archivo.transliterados);
+      descargarBytes(archivo.nombre, archivo.bytes);
+    } catch (e) {
+      setErrorTxt(e instanceof Error ? e.message : 'No se pudo generar el archivo.');
     }
   };
 
@@ -105,10 +126,37 @@ export default function DIOTTab() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+        {/*
+          * La advertencia va ARRIBA del boton, no debajo: quien esta a punto de
+          * bajar un archivo para subirlo al portal del SAT tiene que leer que el
+          * layout no esta validado ANTES de hacer clic. Mismo criterio que
+          * `SelectorExportacion` con los formatos `por-validar`.
+          */}
+        <div className="card" style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {DIOT_BATCH_POR_VALIDAR}
+            </p>
+          </div>
+          {errorTxt && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: 10 }}>{errorTxt}</p>
+          )}
+          {transliterados.length > 0 && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: 10 }}>
+              RFC transliterados a ASCII: {transliterados.join(', ')}
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button className="btn-primary" onClick={() => exportarDIOTPDF(resultado, { nombre: profile.nombre, rfc: profile.rfc })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
+          </button>
+          <button className="btn-secondary" onClick={() => descargarTxt(resultado)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <FileDown size={16} /> Descargar DIOT (.txt)
           </button>
           <button className="btn-secondary" onClick={() => setResultado(null)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

@@ -2865,3 +2865,68 @@ al iterar los dos formatos nuevos: no escribí ni un test.
 quieto en la base del repo: **20 errores / 8 warnings**, los mismos de S-02.
 Archivos nuevos limpios y todos bajo el tope de 300 líneas (`ProfilePage.tsx`
 queda en 300 exactas, al filo).
+
+
+---
+
+## T5 · Constancias de retención por RFC + DIOT .txt (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Primera de las tareas de cableado de la corrida T. Régimen MODO DEMO: **sin plan y sin
+revisor** (sólo T1, T2 y T8 lo llevaban), sin tests nuevos. Corrí la suite completa igual
+porque toqué `SelectorExportacion.tsx`, que sí tiene tests.
+
+**Lo que quedó.** `exportConstanciaRetencion(tercero, retenedor, periodo)` saca un
+`constancia-{RFC}-{Periodo}.pdf` por tercero, con botón "Constancia" por fila en
+`RetencionesTab` y "Descargar todas". `services/exportadores/diot.ts` serializa la respuesta
+de `POST /api/v1/diot` a un `.txt` delimitado por `|`, una línea por proveedor y sin
+encabezados, con botón en `DIOTTab`. Cero cambios bajo `apps/api/`.
+
+### Las trampas, por orden de importancia
+
+- **⚠ EL LAYOUT DE LA DIOT NO ESTÁ VALIDADO, Y NO PUDE VALIDARLO.** Los 15 campos de
+  `CAMPOS` están transcritos de memoria del formato A-29 y **no contrastados contra el
+  instructivo vigente del SAT** — una sesión nocturna no tiene cómo. Por eso el archivo sale
+  con `PORVALIDAR` en el nombre y `DIOT_BATCH_POR_VALIDAR` se pinta **encima** del botón.
+  Quien lo cablee de verdad: compara `CAMPOS` contra el instructivo y sube el `.txt` al
+  validador del portal, que rechaza el archivo entero si el orden no coincide. **No lo
+  enseñes en la demo como algo que se puede enviar.**
+- **El corte por tasa se DEDUCE, y es la decisión que alguien va a cuestionar.** El motor
+  (`app/fiscal_engine/diot.py`) devuelve subtotal e IVA por proveedor y nada más; la DIOT
+  pide el valor de los actos separado en 16% / 0% / exentos. `derivarPorTasa` saca la base
+  del 16% de `iva_pagado / 0.16` —el IVA es el dato duro, no la base— y manda **todo lo no
+  gravado a tasa 0%**, dejando exentos en cero: el agregado no permite separarlos y repartir
+  a ojo sería inventar. Tres `DECISIÓN PROVISIONAL (nocturno)` marcadas en el código: ésa,
+  tipo de tercero `04` y tipo de operación `85`.
+- **La tolerancia de `derivarPorTasa` no es un fudge.** El backend redondea el IVA después
+  de sumarlo, así que `iva/0.16` cae unos centavos bajo el subtotal aunque todo fuera 16%.
+  Sin ese margen (5 centavos por factura) casi todo proveedor sacaba una línea de "tasa 0%"
+  de seis centavos que nadie pagó. Si alguien la quita, que sepa qué está reintroduciendo.
+- **La constancia NO es un CFDI de Retenciones timbrado**, y el PDF lo dice en una banda
+  naranja **arriba, antes de los importes**, no en el pie. El pie de este repo dice
+  "Estimación generada por…", que es genérico; esto es un papel que alguien imprime y le
+  entrega a un proveedor. El timbrado con PAC está fuera de alcance por el `CLAUDE.md` raíz.
+- **"Descargar todas" son N archivos y espaciados a propósito.** `doc.save()` sintetiza un
+  clic por archivo y Chrome bloquea la ráfaga; van con 350 ms entre uno y otro, y el botón
+  se deshabilita mientras tanto para que nadie lo apriete dos veces. Con muchos terceros
+  Chrome pedirá permiso para "descargar varios archivos" — eso es del navegador, no un bug.
+- **`descargarBytes` salió de `SelectorExportacion.tsx`** a `exportadores/descargar.ts`
+  porque la DIOT necesitaba lo mismo. Es un movimiento puro: sus tests mockean
+  `URL.createObjectURL` y `HTMLAnchorElement.prototype.click` globalmente, así que no se
+  enteraron. Los 741 verdes son los mismos 741 de T8.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1, T2 y T8. Verificado: `tsc` + build,
+  la suite y `eslint` limpio en los seis archivos tocados. **Ningún PDF se abrió y ningún
+  `.txt` se cargó en el portal.** La banda del PDF y la tabla de 7 columnas de
+  `RetencionesTab` son código que compila, no pantalla vista.
+- **Sin tests, por régimen.** `derivarPorTasa` es exportada a propósito: es pura, es lo único
+  con aritmética de toda la tarea, y es la primera línea que hay que pinnear en cuanto se
+  pueda escribir un test — los casos que importan son iva=0, el `min` del caso imposible
+  (IVA que implica más base que el subtotal) y la tolerancia.
+- **Lo que no toqué:** el motor (cero archivos bajo `apps/api/`, verificado con
+  `git diff --name-only main...feat/T5`), `docs/api-contract.md` —T5 no expone ni cambia
+  ningún endpoint— y el `.env`.
+
+### Cierre
+
+`npm run build` limpio (único check obligatorio del régimen), **741 tests verdes en 61
+archivos** —ninguno tocado, ninguno añadido—, `eslint` limpio en lo tocado. Todos los
+archivos bajo el tope de 300 líneas: el más grande es `diot.ts` con 249, casi todo docstring.

@@ -452,6 +452,28 @@ suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` 
   `SelectorCliente` —que lo recibe **como prop desde `AppLayout`**, no del contexto— y junto al
   boton de alta en `ClientesPage`.
 
+### Constancias de retencion y DIOT .txt (T5)
+
+Dos entregables por RFC que salen de lo que el backend ya calcula. **Ninguno toca el API.**
+
+- **`pdfExportRetenciones.ts` → `exportConstanciaRetencion(tercero, retenedor, periodo)`**: un
+  PDF por tercero, `constancia-{RFC}-{Periodo}.pdf`, con boton "Constancia" por fila en
+  `RetencionesTab` y "Descargar todas" (N archivos, no un PDF de N paginas: una constancia se le
+  entrega a UN proveedor). **No es un CFDI de Retenciones timbrado por un PAC** y el PDF lo dice
+  en una banda, arriba, antes de los importes — el timbrado esta fuera de alcance por
+  `CLAUDE.md` raiz.
+- **`services/exportadores/diot.ts` → `generarDIOTBatch(respuesta)`**: el `.txt` de carga batch,
+  delimitado por `|`, **una linea por proveedor y sin encabezados**. El archivo lleva
+  `PORVALIDAR` en el nombre y `DIOT_BATCH_POR_VALIDAR` se pinta **encima** del boton: el orden de
+  los campos (`CAMPOS`) NO esta contrastado contra el instructivo vigente del SAT.
+- **El corte por tasa se DEDUCE.** `POST /api/v1/diot` devuelve subtotal e IVA por proveedor y
+  nada mas (`app/fiscal_engine/diot.py`), asi que `derivarPorTasa` saca la base del 16% de
+  `iva_pagado / 0.16` y manda el resto **entero a tasa 0%** — el desglose no permite separar
+  "tasa 0%" de "exentos". Tipo de tercero `04` y tipo de operacion `85` van fijos. Las tres son
+  DECISION PROVISIONAL (nocturno) y estan marcadas en el codigo.
+- **`exportadores/descargar.ts`** (`descargarBytes`) salio de `SelectorExportacion.tsx` para que
+  la DIOT no duplicara el `Blob` + `createObjectURL`. Nada se loguea ni se guarda.
+
 ## FIREBASE
 
 Proyecto: `fiscalito-mvp`
