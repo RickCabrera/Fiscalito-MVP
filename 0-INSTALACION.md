@@ -55,37 +55,79 @@ backlog.md                                 ← nuevo
 > Lee CLAUDE.md y backlog.md. Empezamos con la tarea S-01 (lint backend a cero y
 > cablearlo al CI). Propón el plan y pásalo por el revisor antes de mostrármelo.
 
-## Hook `pre-push` (NO se versiona — recrear en cada clon)
+## Hook `pre-push` (la copia viva NO se versiona — instalarla en cada clon)
 
-`.git/hooks/` vive fuera del control de versiones, así que este hook **no viaja con el
-repo**: en un clon nuevo hay que crearlo a mano o no habrá guardia.
+`.git/hooks/` vive fuera del control de versiones, así que el hook **no viaja con el repo**:
+en un clon nuevo hay que instalarlo o no habrá guardia. La copia buena está versionada en
+**`scripts/git-hooks/pre-push`**; instalarla es copiarla y darle permiso de ejecución:
+
+```sh
+cp scripts/git-hooks/pre-push .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+
+`.gitattributes` fija esa copia con finales **LF** (`scripts/git-hooks/pre-push text eol=lf`).
+No es cosmético: este repo convierte a CRLF por defecto, y un `#!/bin/sh` con un `\r` pegado
+instala un hook que se ve bien y **no corre**.
 
 Qué hace: al empujar a `main`, rechaza el push si el rango toca cualquier archivo que no sea
 `backlog.md` o `docs/nocturno-log.md`. Todo lo demás pasa por PR. Es la guardia real del
 **modo autónomo**, porque `main` no puede protegerse en GitHub: el repo es privado en plan
 gratuito y la API de branch protection responde 403 pidiendo GitHub Pro.
 
-Para recrearlo:
+### Es fail-closed, y no siempre lo fue
+
+Dos agujeros, los dos del mismo tipo — la guardia cayéndose sola justo en el caso raro:
+
+1. **Rango que no resuelve** (un SHA remoto que ya no existe en local, historia reescrita).
+   `git diff` truena, y en la versión original el `for` simplemente no iteraba sobre nada:
+   **el push pasaba**. Ahora el `|| { ...; exit 1; }` lo bloquea con mensaje propio.
+2. **`remote_sha` en ceros** (main no existe en el remoto, o se borró y se recrea). Ahí no
+   hay rango, y `git diff --name-only <sha>` compara ese commit contra el **árbol de
+   trabajo**, no contra el árbol vacío: con el árbol limpio la lista sale vacía y pasaba
+   cualquier contenido. Medido en este repo: `exit 0` empujando un commit que tocaba
+   `apps/api/tests/...`. Ahora esa rama usa `git diff-tree --root`.
+
+**Límite conocido, anotado a propósito:** en la rama de ceros el hook mira sólo el commit de
+la punta. Si se crea `main` en un commit cuya punta toca sólo `backlog.md` pero cuyos
+ancestros tocan otra cosa, pasa. Cerrarlo pide `git log --format= --name-only "$local_sha"`,
+que recorre todo lo alcanzable. Está sin hacer por decisión, no por descuido. Y `git diff
+A..B` es el diff **neto**: un archivo agregado en un commit y borrado en otro dentro del
+mismo push no aparece aquí.
+
+**Lo que ninguna versión de este hook puede:** `git push --no-verify` lo brinca entero. Por
+eso está prohibido en `CLAUDE.md` (sección *Modo autónomo*, bullet de prohibiciones) — contra
+eso no hay mecanismo, sólo protocolo.
+
+### Comprobarlo sin empujar nada
+
+El hook lee las refs de stdin, así que se le pueden dar a mano. Con SHAs reales del repo:
 
 ```sh
-cat > .git/hooks/pre-push <<'HOOK'
-#!/bin/sh
-# Guardia: a main solo entran directo backlog.md y docs/nocturno-log.md. Todo lo demás, por PR.
-while read local_ref local_sha remote_ref remote_sha; do
-  if [ "$remote_ref" = "refs/heads/main" ]; then
-    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
-    for f in $(git diff --name-only "$range"); do
-      case "$f" in
-        backlog.md|docs/nocturno-log.md) ;;
-        *) echo "pre-push BLOQUEADO: '$f' no puede ir directo a main. Abre un PR." >&2; exit 1 ;;
-      esac
-    done
-  fi
-done
-exit 0
-HOOK
-chmod +x .git/hooks/pre-push
+# 1. Rango que sólo toca backlog.md            -> exit 0
+echo "refs/heads/main <nuevo> refs/heads/main <viejo>" | sh .git/hooks/pre-push; echo $?
+
+# 2. Rango que toca cualquier otro archivo     -> exit 1, y dice cuál
+echo "refs/heads/main <nuevo> refs/heads/main <viejo-lejano>" | sh .git/hooks/pre-push; echo $?
+
+# 3. SHA remoto inventado                      -> exit 1 (antes del fix: exit 0)
+echo "refs/heads/main <nuevo> refs/heads/main 0123456789abcdef0123456789abcdef01234567" | sh .git/hooks/pre-push; echo $?
+
+# 4. Rama de ceros con un commit que toca otra cosa -> exit 1 (antes del fix: exit 0)
+echo "refs/heads/main <sha> refs/heads/main 0000000000000000000000000000000000000000" | sh .git/hooks/pre-push; echo $?
 ```
 
-Para comprobar que quedó bien: un commit en `main` que toque cualquier otro archivo debe ser
-rechazado al hacer `git push`, y uno que toque solo `backlog.md` debe pasar.
+## Orquestador nocturno
+
+`scripts/nocturno-v2.ps1` es el que se usa. Abre el panel interactivo de Claude Code por
+tarea y un vigilante mira el repo cada minuto; la sesión avisa cómo terminó dejando un
+centinela vacío en la raíz (`TAREA_CERRADA.txt`, `TAREA_SALTADA.txt`, `COLA_VACIA.txt`), que
+está gitignorado y que el loop borra al empezar cada vuelta. El protocolo que la sesión debe
+seguir está en `CLAUDE.md`, sección *Modo autónomo*.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\nocturno-v2.ps1 -MaxTareas 6
+```
+
+`scripts/nocturno.ps1` (v1) está **SUPERADO**: corre en modo `-p` y busca el resultado en la
+salida de texto, que ya nadie imprime. Se conserva como referencia.

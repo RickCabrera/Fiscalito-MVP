@@ -8,3 +8,10 @@
 # plataforma. No es una excepcion cosmetica: es lo que hace que el hash
 # signifique algo.
 apps/api/tests/xsd/*.xsd -text
+
+# El hook versionado es un script POSIX que se copia a .git/hooks/ y lo ejecuta
+# sh. Con finales CRLF -que es a lo que este repo convierte por defecto- el
+# `#!/bin/sh` de la primera linea llega con un \r pegado y el hook NO CORRE:
+# queda instalado, se ve bien, y no guarda nada. `eol=lf` es lo que hace que la
+# copia versionada sirva al instalarla.
+scripts/git-hooks/pre-push text eol=lf

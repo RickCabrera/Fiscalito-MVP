@@ -7,9 +7,12 @@ El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOM
 ## Cola nocturna
 
 Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no este
-`[x]` ni marcada SALTADA en `docs/nocturno-log.md`. Una tarea por sesion. El detalle de
-cada una vive en su seccion de abajo. **S-00 no esta aqui a proposito:** su criterio de
-cierre exige probar el chat de voz con microfono, asi que es diurna.
+`[x]` ni marcada SALTADA en `docs/nocturno-log.md`. Una tarea por sesion. **Si no queda
+ninguna pendiente, no se inventa: se crea el archivo `COLA_VACIA.txt` en la raiz y la
+sesion termina** (el protocolo completo esta en `CLAUDE.md`, Modo autonomo; aqui solo se
+recuerda). El detalle de cada una vive en su seccion de abajo. **S-00 no esta aqui a
+proposito:** su criterio de cierre exige probar el chat de voz con microfono, asi que es
+diurna.
 
 **CAMBIO DE PRIORIDAD (2026-09-01, demo del 2026-09-02): la Épica E va al frente.**
 D-04…D-07 ya están cerradas; S-03 y lo que sigue quedan en pausa hasta que E-04 cierre.
