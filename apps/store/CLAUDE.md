@@ -422,9 +422,12 @@ Definidos en `src/services/storeServices.ts`. Cada servicio tiene:
 3. **Contabilito** (proximamente) — Contabilidad electronica automatizada. Solo PYMEs.
 
 **`beta` cuenta como usable.** `servicioDisponible()` y `etiquetaDeEstado()` viven en
-`storeServices.ts` y las consultan las DOS pantallas del marketplace. Hasta T8 ambas preguntaban
-`status === 'active'`, asi que el estado `beta` existia en el tipo y **no significaba nada**: un
-servicio en beta se veia igual que uno que no existe.
+`storeServices.ts` y las consultan **las CUATRO pantallas que pintan `status`**: Landing (publica),
+Marketplace, detalle del servicio y Admin. Hasta T8 las cuatro preguntaban `status === 'active'`
+por su cuenta, asi que el estado `beta` existia en el tipo y **no significaba nada**: un servicio
+en beta se veia igual que uno que no existe. **Si agregas una quinta, pregunta aqui** — el primer
+intento de T8 arreglo dos y dejo la Landing diciendo "Proximamente" de un servicio que el
+marketplace ya llamaba "Beta".
 
 **IMSS Manager no tiene pantalla propia.** Lo que hace vive en Empleados (altas y plantilla) y
 en Nomina (SDI, cuotas por ramo, exportador IMSS), y los botones del detalle llevan ahi. Crear

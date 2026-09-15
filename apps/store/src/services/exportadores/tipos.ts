@@ -97,8 +97,12 @@ export interface FormatoExportacion {
    * Porque la pregunta que el operador trae es "¿y las bajas?", y una lista
    * donde sólo existen las altas la contesta con silencio: parece que el
    * formato no existe, no que falta el dato. Los tres layouts —alta,
-   * modificación y baja— están transcritos y probados en `layoutImss.ts`; lo
-   * que falta es que el modelo guarde fecha de baja e historial de SBC.
+   * modificación y baja— están **transcritos** desde la fuente oficial en
+   * `layoutImss.ts`; lo que falta es que el modelo guarde fecha de baja e
+   * historial de SBC.
+   *
+   * Transcritos, **no probados**: sólo el de alta está cableado y medido. Ver
+   * `registro.ts`, que lo explica entero.
    */
   proximamente?: string;
   generar(datos: DatosExportacion): ArchivoGenerado;

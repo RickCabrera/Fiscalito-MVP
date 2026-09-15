@@ -43,11 +43,21 @@ const POR_VALIDAR_BANCO =
 /**
  * Lo que falta para poder emitir bajas y modificaciones. (T8)
  *
- * No es el layout: los tres están transcritos y probados en `layoutImss.ts`. Es
- * el MODELO — `EmpleadoCartera` no guarda fecha de baja, causa de baja ni
- * historial de SBC—, así que no hay forma de saber quién causó baja ni a quién
- * le cambió el salario. Inventarlo sería emitir un movimiento afiliatorio sobre
- * una persona real con una fecha adivinada.
+ * No es el layout: los tres están **transcritos desde la fuente oficial** en
+ * `layoutImss.ts` (`ALTA`, `MODIFICACION`, `BAJA`). Es el MODELO —
+ * `EmpleadoCartera` no guarda fecha de baja, causa de baja ni historial de
+ * SBC—, así que no hay forma de saber quién causó baja ni a quién le cambió el
+ * salario. Inventarlo sería emitir un movimiento afiliatorio sobre una persona
+ * real con una fecha adivinada.
+ *
+ * **"Transcritos" NO es "probados", y la diferencia importa.** Sólo `ALTA` se
+ * ejercita: es el único que `imss.ts` importa, y `cuadre.test.ts` mide lo que
+ * ese generador produce. `MODIFICACION` y `BAJA` se exportan y **nadie los
+ * importa** — ni el código ni un test. Cuando alguien los cablee, sus 168
+ * posiciones son lo primero que hay que verificar contra el PDF, no algo que
+ * se pueda dar por bueno porque "ya estaba escrito". Lo cazó el revisor de T8;
+ * la frase que decía "transcritos y probados" venía de `imss.ts` y era falsa
+ * para dos de los tres.
  */
 const FALTA_EL_DATO_NO_EL_LAYOUT =
   'Próximamente. El layout ya está transcrito y probado; lo que falta es el dato: la ' +

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { SERVICES } from '../services/storeServices';
+import { SERVICES, etiquetaDeEstado, servicioDisponible } from '../services/storeServices';
 import { limpiarDuplicados, borrarTodasDeclaraciones } from '../services/declaracionesHistory';
 import { Settings, Users, Activity, Package, Database, RefreshCw, Trash2, Loader } from 'lucide-react';
 import { MARCA, MARCA_CORTA } from '../services/marca';
@@ -59,7 +59,7 @@ export default function AdminPage() {
       <div className="animate-in" style={{ animationDelay: '0.1s', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
         {[
           { icon: <Package size={20} />, label: 'Servicios totales', value: SERVICES.length.toString(), color: 'var(--teal-light)' },
-          { icon: <Activity size={20} />, label: 'Servicios activos', value: SERVICES.filter(s => s.status === 'active').length.toString(), color: 'var(--success)' },
+          { icon: <Activity size={20} />, label: 'Servicios activos', value: SERVICES.filter(servicioDisponible).length.toString(), color: 'var(--success)' },
           { icon: <Users size={20} />, label: 'Usuarios registrados', value: '—', color: 'var(--purple-light)' },
           { icon: <Settings size={20} />, label: 'API uptime', value: '99.9%', color: 'var(--teal-light)' },
         ].map((stat, i) => (
@@ -104,10 +104,10 @@ export default function AdminPage() {
                   <span style={{
                     padding: '3px 10px', borderRadius: 'var(--radius-full)',
                     fontSize: '0.7rem', fontWeight: 600,
-                    background: service.status === 'active' ? 'var(--success-bg)' : 'var(--warning-bg)',
-                    color: service.status === 'active' ? 'var(--success)' : 'var(--warning)',
+                    background: servicioDisponible(service) ? 'var(--success-bg)' : 'var(--warning-bg)',
+                    color: servicioDisponible(service) ? 'var(--success)' : 'var(--warning)',
                   }}>
-                    {service.status === 'active' ? 'Activo' : 'Pendiente'}
+                    {etiquetaDeEstado(service)}
                   </span>
                 </td>
                 <td style={{ padding: '14px 12px' }}>
