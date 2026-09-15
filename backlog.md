@@ -162,7 +162,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     validar'), serializando DIOTProveedor[] a .txt delimitado por | según layout de carga batch
     DIOT. Botón 'Descargar DIOT (.txt)' en DIOTTab.tsx. Sin cambios en API."
 
-- [ ] **T3 · Tab Declaración anual PF** [3–4 h]
+- [x] **T3 · Tab Declaración anual PF** [3–4 h] **PARCIAL:** el criterio de cierre (12 meses de XMLs demo → desglose anual) NO se verificó en navegador; y el desglose anual y el efecto de las deducciones personales se muestran lado a lado **sin restarse** — la resta exigiría que el motor reciba las deducciones en `/pre-declaracion-anual`. Ver `docs/nocturno-log.md`.
   - Hoy: `POST /api/v1/pre-declaracion-anual` (`routes/declaraciones.py`) y
     `fiscalAgentApi.ts` (`preDeclaracionAnual`) existen; nadie los llama desde la UI.
   - Archivos: `components/fiscalito/PreDeclaracionTab.tsx` (clonar),
