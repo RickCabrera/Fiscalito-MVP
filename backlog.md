@@ -233,7 +233,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     'Motor de personas morales en desarrollo' antes de calculadora.py. No modifiques
     fiscal_engine."
 
-- [ ] **T7 · Cascarón Contabilito** [1–1.5 días]
+- [x] **T7 · Cascarón Contabilito** [1–1.5 días] **PARCIAL:** el criterio de cierre (XMLs demo → una fila por CFDI y Σ cargos = Σ abonos) NO se verificó en navegador; y el catálogo de cuentas sale marcado `PORVALIDAR` — fuera de los ocho códigos que la tarea nombró, códigos y nombres no están contrastados contra el Anexo 24 de la RMF. Ver `docs/nocturno-log.md`.
   - Hoy: sólo una tarjeta `coming_soon` en `storeServices.ts`. Cero código de pólizas,
     balanza, catálogo o buzón.
   - Archivos: `pages/ContabilitoPage.tsx` (nuevo, ruta `/app/store/contabilito/use`),
