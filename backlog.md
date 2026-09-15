@@ -106,7 +106,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     (ClienteActivoContext) cuando el usuario es contador. Sin cliente activo, estado vacío con
     SelectorCliente. No toques lógica fiscal. npm run build al final."
 
-- [ ] **T2 · Backend-como-dueño / credencial GCP** [BLOQUEANTE · ECOSISTEMA · con revisor]
+- [x] **T2 · Backend-como-dueño / credencial GCP** [BLOQUEANTE · ECOSISTEMA · con revisor] **PARCIAL:** falta verificación en navegador del criterio "sin errores en consola" — y sigue viva una llamada al API (`obtenerPeriodoSugerido`) con el flag apagado, que es de R-06/O-03, no de T2. Ver `docs/nocturno-log.md`.
   - Hoy: `services/cartera.ts` apaga el flujo backend por falta de credencial.
     `routes/cartera.py` y `routes/despacho.py` existen.
   - **Decisión para esta corrida: opción B**, salvo que Ricardo haya dejado escrito otra cosa.
