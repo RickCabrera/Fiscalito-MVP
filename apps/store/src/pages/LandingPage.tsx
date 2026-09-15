@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Cpu, Layers } from 'lucide-react';
-import { SERVICES } from '../services/storeServices';
+import { SERVICES, etiquetaDeEstado, servicioDisponible } from '../services/storeServices';
 import { MARCA, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
 
 export default function LandingPage() {
@@ -72,8 +72,13 @@ export default function LandingPage() {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
             {SERVICES.map((s) => (
+              /* T8: el estado sale de `servicioDisponible` / `etiquetaDeEstado`,
+                 no de comparar `status` a mano. Esta pantalla es PÚBLICA y es la
+                 primera que se ve en una demo: cuando IMSS Manager pasó a beta,
+                 aquí se quedó pintado "Proximamente" a opacidad completa mientras
+                 el marketplace de adentro decía "Beta". Lo cazó el revisor. */
               <div key={s.id} className="card" style={{
-                opacity: s.status === 'coming_soon' ? 0.5 : 1,
+                opacity: servicioDisponible(s) ? 1 : 0.5,
                 textAlign: 'center', padding: 32,
               }}>
                 <div style={{ fontSize: '2rem', marginBottom: 12 }}>{s.icon}</div>
@@ -83,10 +88,10 @@ export default function LandingPage() {
                   display: 'inline-block', marginTop: 12,
                   padding: '4px 12px', borderRadius: 'var(--radius-full)',
                   fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
-                  background: s.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
-                  color: s.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
+                  background: servicioDisponible(s) ? 'var(--border)' : 'var(--purple-bg)',
+                  color: servicioDisponible(s) ? 'var(--teal-light)' : 'var(--purple-light)',
                 }}>
-                  {s.status === 'active' ? 'Disponible' : 'Proximamente'}
+                  {etiquetaDeEstado(s)}
                 </span>
               </div>
             ))}

@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ModalCliente from '../components/cartera/ModalCliente';
 import { useCartera } from '../context/carteraStore';
 import type { ClienteCartera } from '../services/carteraApi';
@@ -18,6 +18,8 @@ import { useAuth } from '../context/AuthContext';
 import { esCuentaDeDesarrollo } from '../services/entorno';
 import { etiquetaOrigen, primaComoPorcentaje } from '../services/despachoApi';
 import ErrorAlert from '../components/common/ErrorAlert';
+import { useProfile } from '../context/ProfileContext';
+import { motivoDelTope, planDelPerfil, usoDeClientes } from '../services/planes';
 
 function TarjetaCliente({
   cliente, activo, onAbrir,
@@ -93,6 +95,7 @@ export default function ClientesPage() {
   // no apareciera nunca, sin error y sin mensaje.
   const { clienteId, setClienteId } = useClienteActivo();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const cuentaDeDesarrollo = esCuentaDeDesarrollo(user?.email);
   const cartera = useCartera();
   const clientes = cartera.clientes;
@@ -115,6 +118,15 @@ export default function ClientesPage() {
   const [sembrando, setSembrando] = useState(false);
   const [editando, setEditando] = useState<Omit<ClienteCartera, 'empleados'> | null>(null);
   const navigate = useNavigate();
+
+  // T8: el tope del plan. Es la ÚNICA parte del plan con consecuencia — ver
+  // `services/planes.ts`—, y se calcula contra la cartera ya cargada: mientras
+  // `loading` es `true` la lista está vacía y el uso diría "0 / 25".
+  const plan = planDelPerfil(profile.plan);
+  const uso = usoDeClientes(plan, clientes.length);
+  // Sin cartera cargada no se bloquea nada: un tope calculado sobre una lista
+  // que todavía no llega apagaría el botón en cada arranque.
+  const alTope = !loading && !error && uso.alLimite;
 
   const abrir = (id: string) => {
     setClienteId(id);
@@ -170,14 +182,47 @@ export default function ClientesPage() {
       )}
 
       {!cartera.soloLectura && (
-        <div style={{ marginBottom: 'var(--space-md)' }}>
+        <div style={{ marginBottom: 'var(--space-md)', display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             className="btn-primary"
             onClick={() => { setEditando(null); setModalAbierto(true); }}
-            style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
+            disabled={alTope}
+            title={alTope ? motivoDelTope(plan) : undefined}
+            style={{ display: 'inline-flex', gap: 6, alignItems: 'center', opacity: alTope ? 0.6 : 1 }}
           >
             <Plus size={16} /> Nuevo cliente
           </button>
+          {/* T8: el uso va JUNTO al botón, no en el encabezado. Es el dato que
+              explica por qué el botón está apagado, y separarlo del botón deja
+              al contador buscando el motivo. */}
+          {!loading && !error && (
+            <span
+              style={{
+                fontSize: '0.8rem', fontFamily: "'JetBrains Mono', monospace",
+                color: alTope ? 'var(--warning)' : 'var(--text-muted)',
+              }}
+            >
+              {uso.texto} · plan {plan.nombre}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* El motivo se ESCRIBE, no sólo se pone en un `title`: un botón
+          deshabilitado no recibe hover en táctil, y el contador se quedaría sin
+          saber por qué no puede dar de alta. */}
+      {!cartera.soloLectura && alTope && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 'var(--space-md)', background: 'var(--warning-bg)',
+            border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-sm) var(--space-md)', fontSize: '0.86rem',
+            display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap',
+          }}
+        >
+          <span>{motivoDelTope(plan)}</span>
+          <Link to="/app/planes" style={{ fontWeight: 600 }}>Ver planes</Link>
         </div>
       )}
 

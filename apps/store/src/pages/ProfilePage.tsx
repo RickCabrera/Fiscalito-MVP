@@ -25,6 +25,7 @@ import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { useCartera } from '../context/carteraStore';
 import TarjetaEmpresa from '../components/empresa/TarjetaEmpresa';
 import TipoDeCuenta from '../components/perfil/TipoDeCuenta';
+import TarjetaPlan from '../components/perfil/TarjetaPlan';
 import { Save, User } from 'lucide-react';
 
 const NUM_EMPLEADOS_OPTIONS = ['Solo yo', '2-5', '6-20', '21+'];
@@ -116,6 +117,18 @@ export default function ProfilePage() {
       </div>
 
       <TipoDeCuenta esOperadorDeNomina={esDespacho} tipo={tipo} setTipo={setTipo} />
+
+      {/* T8: plan y uso. Sólo para quien OPERA la nómina —un contribuyente no
+          tiene cartera y "0 / 25 clientes" no le describe nada—, y colgado del
+          perfil GUARDADO como el resto de la pantalla: con el `tipo` local
+          aparecería y desaparecería con un clic en el selector de arriba. */}
+      {esDespacho && (
+        <TarjetaPlan
+          plan={profile.plan}
+          clientes={cartera.clientes.length}
+          conCartera={!empresaUnica}
+        />
+      )}
 
       {/* O-01: los datos patronales de la empresa única. Sólo para quien opera
           la nómina: un contribuyente no tiene empresa que configurar. */}

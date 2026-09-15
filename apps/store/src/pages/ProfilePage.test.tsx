@@ -10,6 +10,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import { CarteraContext } from '../context/carteraStore';
 import { carteraDePrueba } from '../test/carteraDePrueba';
@@ -63,12 +64,20 @@ const { default: ProfilePage } = await import('./ProfilePage');
  * en empresa única. Se usa el mismo doble que el resto de las pantallas en vez
  * de montar el proveedor real, que hablaría con Firestore: la red está cerrada
  * por default en estos tests.
+ *
+ * T8: y el `MemoryRouter`, porque la tarjeta de plan enlaza a `/app/planes`.
+ * **Ninguna aserción de este archivo cambia** — lo que cambia es el entorno que
+ * el componente necesita para montarse, igual que el proveedor de cartera de
+ * arriba. Sin router, `<Link>` lanza y las nueve pruebas se caen juntas por una
+ * razón que no tiene nada que ver con lo que miden.
  */
 function pintar() {
   return render(
-    <CarteraContext.Provider value={carteraDePrueba()}>
-      <ProfilePage />
-    </CarteraContext.Provider>,
+    <MemoryRouter>
+      <CarteraContext.Provider value={carteraDePrueba()}>
+        <ProfilePage />
+      </CarteraContext.Provider>
+    </MemoryRouter>,
   );
 }
 

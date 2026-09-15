@@ -22,6 +22,8 @@ import DashboardPage from './pages/DashboardPage';
 import MarketplacePage from './pages/MarketplacePage';
 import ServiceDetailPage from './pages/ServiceDetailPage';
 import ProfilePage from './pages/ProfilePage';
+// T8: planes de la cuenta. Se entra desde Perfil, no desde el sidebar.
+import PlanesPage from './pages/PlanesPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
@@ -118,6 +120,12 @@ export default function AppRoutes() {
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
         <Route path="store/:serviceId" element={<ServiceDetailPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        {/* T8: no va en el sidebar. `getSidebarLinks` está congelado por
+            `navigation.test.ts` con la lista exacta de cada perfil, y meter
+            "Planes" entre las herramientas del despacho mueve su navegación
+            diaria por una pantalla que se visita una vez. Se llega desde la
+            tarjeta de plan del Perfil. */}
+        <Route path="planes" element={<PlanesPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
             y los enlaces viejos apuntan ahí. En modo empresa única el destino
