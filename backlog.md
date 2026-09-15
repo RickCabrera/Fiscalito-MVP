@@ -143,7 +143,7 @@ lo que aquí se dice, todo lo demás sigue igual):**
     'beta' en storeServices.ts; en afiliatorios deshabilita bajas y modificaciones con tooltip
     'Próximamente'. Sin cambios en API."
 
-- [ ] **T5 · Constancias de retención por RFC + DIOT .txt** [3 h]
+- [x] **T5 · Constancias de retención por RFC + DIOT .txt** [3 h] **PARCIAL:** el layout del `.txt` de la DIOT NO está contrastado contra el instructivo del SAT (sale marcado `PORVALIDAR`) y nada se verificó en navegador. Ver `docs/nocturno-log.md`.
   - Hoy: `pdfExportRetenciones.ts` saca un PDF agregado; `diot.py` calcula pero no serializa
     el layout SAT.
   - Archivos: `pdfExportRetenciones.ts`, `pdfUtils.ts`, `RetencionesTab.tsx`, `DIOTTab.tsx`,
