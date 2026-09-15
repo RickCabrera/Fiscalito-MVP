@@ -27,6 +27,7 @@ import {
   type CFDI,
   type PreDeclaracionResponse,
   type DeduccionesPersonalesResponse,
+  facturasFiscales,
 } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { clasificarFacturaDeduccion, montosCapturados } from '../../services/deduccionesPersonales';
@@ -133,7 +134,7 @@ export default function DeclaracionAnualTab() {
           regimen: profile.regimen,
           contributor_type: tipoParaApi(profile.contributorType),
         },
-        facturas: delEjercicio,
+        facturas: facturasFiscales(delEjercicio),
         periodo_year: ejercicio,
         incluir_explicacion: true,
       });

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
-import { generarDIOT, type CFDI, type DIOTResponse, tipoParaApi } from '../../services/fiscalAgentApi';
+import { generarDIOT, type CFDI, type DIOTResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarDIOT } from '../../services/declaracionesHistory';
 import { exportarDIOTPDF } from '../../services/pdfExportDIOT';
 import { generarDIOTBatch, DIOT_BATCH_POR_VALIDAR } from '../../services/exportadores/diot';
@@ -38,7 +38,7 @@ export default function DIOTTab() {
     try {
       const res = await generarDIOT({
         contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
-        facturas, periodo_year: year, periodo_month: month, incluir_explicacion: true,
+        facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {

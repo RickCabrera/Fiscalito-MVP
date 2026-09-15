@@ -18,7 +18,7 @@ import { parseMultipleCFDI } from '../services/cfdiParser';
 import {
   calcularPreDeclaracion,
   type CFDI,
-  type PreDeclaracionRequest, tipoParaApi } from '../services/fiscalAgentApi';
+  type PreDeclaracionRequest, tipoParaApi, facturasFiscales } from '../services/fiscalAgentApi';
 import { guardarDeclaracion } from '../services/declaracionesHistory';
 import { getAgentActions, getAgentSnapshot } from './AgentContext';
 import type { ToolName, ToolResult } from './types';
@@ -348,7 +348,8 @@ async function ejecutarCalcularPredeclaracion(
       contributor_type: tipoParaApi(profile.contributorType),
       actividad_economica: profile.actividad,
     },
-    facturas: snapshot.facturas,
+    // T4: los recibos de nómina no son facturas del contribuyente.
+    facturas: facturasFiscales(snapshot.facturas),
     periodo_year: args.año,
     periodo_month: args.mes,
     incluir_explicacion: true,

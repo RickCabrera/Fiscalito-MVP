@@ -850,6 +850,100 @@ inflado 77% que ninguna tabla de referencia detecta.
 timbrado es dato de entrada); no acepta conceptos integrables (§D5: el motor no decide qué integra,
 y mandar una despensa completa sobreintegraría); y no usa LLM ni acepta `incluir_explicacion`.
 
+### `POST /api/v1/nomina/cfdi` (T4)
+
+Serializa un recibo **ya calculado** al XML de un CFDI de nómina 4.0 con complemento 1.2,
+**sin timbrar**. Expone `nomina_engine/cfdi_nomina_xml.py`, que existía desde F1-05 validado
+contra los XSD del SAT y que **nadie importaba**.
+
+**Lo que sale de aquí es estructuralmente válido y fiscalmente nada.** Tres cosas lo hacen
+inconfundible, y las tres están en el módulo desde F1-05: no lleva `tfd:TimbreFiscalDigital`
+—el XSD no lo exige, así que su ausencia es legal y verificable—, sus atributos de sello son
+centinelas explícitos (`PRE-RECIBO-SIN-TIMBRAR`, `NoCertificado` de veinte ceros), y el XML
+abre con un comentario que lo dice. **No timbra y no habla con ningún PAC**: está fuera de
+alcance por el `CLAUDE.md` de la raíz.
+
+**No calcula nada.** Los importes llegan del motor por `/nomina/calcular-periodo` y aquí sólo
+se suman para los totales que el comprobante exige — `nomina_engine/recibo.py` es aritmética
+pura sobre partidas dadas. Ni ISR ni cuotas se tocan.
+
+**Request**
+
+```json
+{
+  "recibo": { "...": "un elemento de `recibos[]` de /nomina/calcular-periodo, sin remapear" },
+  "patron": {
+    "rfc": "XAP0101011X0",
+    "nombre": "PATRON DEMO SA DE CV",
+    "regimen_fiscal": "601",
+    "registro_patronal": "X1234567890",
+    "codigo_postal": "91090",
+    "clave_entidad": "VER"
+  },
+  "trabajador": {
+    "rfc": "XACC010101AA3",
+    "nombre": "CARLA DENISSE XOLO PEREZ",
+    "curp": "XACC010101HVZBBB03",
+    "numero_seguridad_social": "01010101033",
+    "codigo_postal": "91020",
+    "fecha_inicio_relacion_laboral": "2024-05-26",
+    "tipo_contrato": "01",
+    "numero_empleado": "E-03",
+    "puesto": "OPERATIVO",
+    "departamento": "OPERACIONES",
+    "riesgo_puesto": "2",
+    "periodicidad_pago": "04",
+    "salario_base_cotizacion": "399.52",
+    "salario_diario_integrado": "399.52"
+  },
+  "periodo": { "inicio": "2026-08-16", "fin": "2026-08-31" },
+  "tipo_nomina": "O"
+}
+```
+
+`recibo` es el **subconjunto** de `ReciboSchema` que el CFDI usa (`empleado_no`, `nombre`,
+`dias_pagados`, `percepciones`, `deducciones`, `otros_pagos`). Un elemento de `recibos[]` tal
+como sale de `/nomina/calcular-periodo` lo satisface **sin remapear**: los campos de más —SBC,
+cuotas, ramos, banderas del clamp— se ignoran. Se declara aparte para que el contrato diga qué
+se usa de verdad.
+
+`antiguedad` es **opcional**: vacía se deriva de `fecha_inicio_relacion_laboral` a
+`periodo.fin` en **semanas completas** (formato `P##W`, doc 24 §2), medida contra el fin del
+periodo que se paga y no contra hoy. Se acepta capturada porque un histórico que venga de un
+CFDI timbrado ya la trae. Los otros defaults son claves de catálogo con un valor único para el
+caso ordinario: `tipo_regimen` `02` (sueldos y salarios), `tipo_jornada` `01` (diurna),
+`sindicalizado` `No`, `tipo_nomina` `O`.
+
+**Respuesta 200**
+
+```json
+{
+  "exito": true,
+  "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>…",
+  "timbrado": false,
+  "nombre_archivo": "cfdi-nomina-sin-timbrar-E-03-2026-08-16-2026-08-31.xml",
+  "advertencia": "Pre-recibo SIN TIMBRAR. No tiene valor fiscal: …"
+}
+```
+
+`timbrado` es **siempre `false`** y no es un campo que algún día se vuelva `true` solo:
+mientras exista, la respuesta afirma que el documento no tiene valor fiscal. El front lo pinta
+como "Pendiente de timbrado PAC". `sin-timbrar` va en el nombre del archivo porque un `.xml`
+suelto en la carpeta de descargas del contador no tiene dónde decir lo que es.
+
+**422** — con el sobre `{"exito": false, "error": "..."}`. **No inventa identidades:** RFC,
+CURP, NSS, códigos postales, registro patronal y clave de entidad son obligatorios y sin
+default. `clave_entidad` no cae a `VER` —es la del patrón del caso real (§D8), no la de nadie
+más— ni `riesgo_puesto` a `99`, que es una afirmación sobre el puesto y no un relleno. Una
+percepción sin el desglose `gravado`/`exento` también se rechaza: asumir "todo gravado" o
+"todo exento" cambiaría la base del ISR de un recibo que alguien va a firmar.
+
+**Lo que el XSD NO valida:** las reglas de la Guía de llenado ni las validaciones adicionales
+del Anexo 20 (§D7). Que valide aquí **no es evidencia de que un PAC lo aceptaría**. En
+particular, el generador **no emite `FormaPago`**, que el doc 24 §2 pide con valor `99`: el XSD
+lo deja pasar porque es opcional, y cambiarlo es tocar el módulo del motor — queda anotado como
+deuda, no corregido de paso.
+
 ### Tool del agente: `calcular_nomina_periodo`
 
 Disponible en `POST /api/v1/agente/predeclaracion`. Recibe `{periodo_inicio,

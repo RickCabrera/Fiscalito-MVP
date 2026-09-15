@@ -2,19 +2,38 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
-import type { CFDI } from '../../services/fiscalAgentApi';
-import { Upload, Trash2, FileText, AlertCircle } from 'lucide-react';
+import { contarNomina, type CFDI } from '../../services/fiscalAgentApi';
+import { Upload, Trash2, FileText, AlertCircle, Receipt } from 'lucide-react';
 
 interface Props {
   facturas: CFDI[];
   onChange: (facturas: CFDI[]) => void;
 }
 
+/**
+ * Sube CFDIs y de-duplica por UUID.
+ *
+ * DESDE T4 CUENTA LOS RECIBOS DE NÓMINA APARTE
+ * --------------------------------------------
+ * Un CFDI de nómina (`TipoDeComprobante="N"`) **entra a la lista pero no al
+ * cálculo**. Antes de T4 el parser lo hacía pasar por ingreso, así que los
+ * sueldos que el patrón pagó le inflaban sus ingresos gravables en silencio.
+ *
+ * Se muestran en vez de descartarse callando: quien arrastró la carpeta
+ * completa del mes tiene que ver que sus recibos llegaron y por qué no suman,
+ * o va a creer que se perdieron. La exclusión de verdad la garantiza el TIPO
+ * (`CFDIFiscal` en `fiscalAgentApi.ts`), no este contador, que es informativo.
+ */
 export default function XMLUploader({ facturas, onChange }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [parseErrors, setParseErrors] = useState<{ fileName: string; error: string }[]>([]);
   const [duplicadas, setDuplicadas] = useState(0);
+
+  // El badge cuenta FACTURAS, y un recibo de nómina no lo es: si los sumara,
+  // el número de arriba no cuadraría con el que el motor recibe.
+  const recibosNomina = contarNomina(facturas);
+  const fiscales = facturas.length - recibosNomina;
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const xmlFiles = Array.from(files).filter((f) => f.name.endsWith('.xml'));
@@ -80,6 +99,22 @@ export default function XMLUploader({ facturas, onChange }: Props) {
         </div>
       )}
 
+      {/* Recibos de nómina: informativo, NO entran al cálculo (T4) */}
+      {recibosNomina > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 12px', borderRadius: 'var(--radius-xs)',
+          background: 'var(--teal-bg-subtle)', border: '1px solid var(--border)',
+          fontSize: '0.78rem', color: 'var(--text-secondary)',
+        }}>
+          <Receipt size={12} />
+          {recibosNomina} recibo{recibosNomina > 1 ? 's' : ''} de nómina detectado
+          {recibosNomina > 1 ? 's' : ''} — no entra{recibosNomina > 1 ? 'n' : ''} en el
+          cálculo: un CFDI de nómina lo emite el patrón a su trabajador, no es una factura
+          de este contribuyente.
+        </div>
+      )}
+
       {/* Summary badge */}
       {facturas.length > 0 && (
         <div style={{
@@ -90,7 +125,7 @@ export default function XMLUploader({ facturas, onChange }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={16} color="var(--teal-light)" />
             <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              {facturas.length} factura{facturas.length > 1 ? 's' : ''} cargada{facturas.length > 1 ? 's' : ''}
+              {fiscales} factura{fiscales === 1 ? '' : 's'} cargada{fiscales === 1 ? '' : 's'}
             </span>
           </div>
           <button onClick={() => { onChange([]); setParseErrors([]); }}

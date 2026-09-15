@@ -68,10 +68,31 @@ export function tipoParaCalendario(tipo: ContributorType | null): ApiContributor
   return tipo ? TIPO_CALENDARIO[tipo] : 'independiente';
 }
 
+/**
+ * Los cuatro tipos de comprobante que el MOTOR acepta. Espeja `TipoFactura` de
+ * `app/schemas/fiscal.py`: mandarle cualquier otro es un 422 de Pydantic.
+ */
+export type TipoComprobanteFiscal = 'I' | 'E' | 'T' | 'P';
+
+/**
+ * `'NOMINA'` es un recibo de nómina (`TipoDeComprobante="N"`), y **no es una
+ * letra del catálogo del SAT a propósito** (T4).
+ *
+ * Antes de T4 el parser hacía `['I','E','T','P'].includes(tipo) ? tipo : 'I'`:
+ * un CFDI de nómina entraba como **ingreso**, y los sueldos que el patrón le
+ * pagó a su gente se sumaban a sus ingresos gravables sin que nada avisara. Es
+ * la peor forma de estar mal — un número creíble y equivocado hacia arriba.
+ *
+ * El centinela es una palabra y no `'N'` para que no pueda confundirse con una
+ * clave del catálogo en ninguna comparación, y para que cualquier `switch` que
+ * lo ignore salte a la vista.
+ */
+export type TipoComprobante = TipoComprobanteFiscal | 'NOMINA';
+
 export interface CFDI {
   uuid: string;
   fecha: string;
-  tipo: 'I' | 'E' | 'T' | 'P';
+  tipo: TipoComprobante;
   rfc_emisor: string;
   rfc_receptor: string;
   subtotal: number;
@@ -86,11 +107,53 @@ export interface CFDI {
   uuid_relacionado?: string;
   monto_pago?: number;
   clave_prod_serv?: string;
+  /** Sólo en `tipo: 'NOMINA'`: `TotalPercepciones` del complemento nomina12. */
+  total_percepciones?: number;
+  /** Sólo en `tipo: 'NOMINA'`: `TotalDeducciones` del complemento nomina12. */
+  total_deducciones?: number;
+}
+
+/**
+ * Un CFDI que el motor fiscal puede recibir. **El tipo es la guarda**, no un
+ * `filter` que alguien recuerde escribir (T4).
+ *
+ * Todos los requests que llevan `facturas` piden `CFDIFiscal[]`, así que pasar
+ * una lista cruda del uploader **rompe el build** y obliga a decidir qué se
+ * hace con los recibos de nómina. La alternativa —confiar en que las seis
+ * pantallas que suben XMLs se acuerden de filtrar— es exactamente el modo de
+ * falla que T4 vino a cerrar, sólo que movido de lugar.
+ */
+export interface CFDIFiscal extends CFDI {
+  tipo: TipoComprobanteFiscal;
+}
+
+/** `true` si es un recibo de nómina y no una factura del contribuyente. */
+export function esNomina(factura: CFDI): boolean {
+  return factura.tipo === 'NOMINA';
+}
+
+/**
+ * Las facturas que sí van al motor: todo menos los recibos de nómina.
+ *
+ * **Por qué se excluyen y no se convierten:** un CFDI de nómina es un
+ * comprobante que el PATRÓN emite a su TRABAJADOR. En la declaración del
+ * patrón no es un ingreso —es una deducción, ya contenida en su contabilidad—
+ * y en la del trabajador asalariado su ISR ya viene retenido. Ninguno de los
+ * dos casos lo suma como factura: el motor no tiene dónde ponerlo, y el
+ * backend lo rechaza con 422 (`TipoFactura` no conoce `N`).
+ */
+export function facturasFiscales(facturas: CFDI[]): CFDIFiscal[] {
+  return facturas.filter((f): f is CFDIFiscal => f.tipo !== 'NOMINA');
+}
+
+/** Cuántos recibos de nómina hay en la lista. Para el contador informativo. */
+export function contarNomina(facturas: CFDI[]): number {
+  return facturas.filter(esNomina).length;
 }
 
 export interface PreDeclaracionRequest {
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   periodo_year: number;
   periodo_month?: number | null;
   periodo_bimestre?: number | null;
@@ -227,7 +290,7 @@ export interface CompararRegimenResponse {
 
 export interface DIOTRequest {
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   periodo_year: number;
   periodo_month: number;
   incluir_explicacion?: boolean;
@@ -255,7 +318,7 @@ export interface DIOTResponse {
 
 export interface RetencionesRequest {
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   periodo_year: number;
   periodo_month: number;
   incluir_explicacion?: boolean;
@@ -283,7 +346,7 @@ export interface RetencionesResponse {
 
 export interface MultiPeriodoRequest {
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   periodo_year: number;
   periodos: number[];
   incluir_explicacion?: boolean;
@@ -314,7 +377,7 @@ export interface MultiPeriodoResponse {
 
 export interface EstadoCuentaRequest {
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   periodo_year: number;
   incluir_explicacion?: boolean;
 }
@@ -443,7 +506,7 @@ export interface DeclaracionHistorialItem {
 export interface AgentePreDeclaracionRequest {
   mensaje: string;
   contribuyente: PerfilContribuyente;
-  facturas: CFDI[];
+  facturas: CFDIFiscal[];
   historial: DeclaracionHistorialItem[];
   periodo_year: number;
   periodo_month?: number | null;

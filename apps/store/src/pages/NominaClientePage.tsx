@@ -31,6 +31,7 @@ import { etiquetaOrigen } from '../services/despachoApi';
 import { useParams } from 'react-router-dom';
 import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
 import SelectorExportacion from '../components/nomina/SelectorExportacion';
+import PanelCFDINomina from '../components/nomina/PanelCFDINomina';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { labelStyle } from '../utils/styles';
 
@@ -280,7 +281,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
       <PasoNomina
         numero={4}
         titulo="Exportar"
-        descripcion="El PDF con los recibos y las cuotas, y los archivos TXT para el IMSS y el banco."
+        descripcion="El PDF con los recibos y las cuotas, los archivos TXT para el IMSS y el banco, y el XML del CFDI de nómina sin timbrar."
         estado={estadoPaso4}
         motivoBloqueo="Calcula la nómina primero (paso 3)."
       >
@@ -311,6 +312,16 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
                   }
                 : null
             }
+          />
+          {/* T4: el XML del recibo, sin timbrar. Va DESPUÉS de los TXT porque
+              es lo más nuevo y lo menos terminado — el PDF sigue siendo el
+              documento que el contador y el patrón leen. */}
+          <PanelCFDINomina
+            nomina={nomina}
+            cliente={cliente}
+            empleados={n.empleadosDeLaCartera}
+            registroPatronal={n.registroPatronal}
+            deshabilitado={!nomina || !cliente}
           />
         </div>
       </PasoNomina>

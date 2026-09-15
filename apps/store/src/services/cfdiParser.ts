@@ -1,12 +1,18 @@
 /** Parser de archivos XML CFDI en el browser usando DOMParser */
 
-import type { CFDI } from './fiscalAgentApi';
+import type { CFDI, TipoComprobante } from './fiscalAgentApi';
 
 const CFDI_NS = 'http://www.sat.gob.mx/cfd/4';
 const CFDI_NS_V3 = 'http://www.sat.gob.mx/cfd/3';
 const TFD_NS = 'http://www.sat.gob.mx/TimbreFiscalDigital';
 const PAGO20_NS = 'http://www.sat.gob.mx/Pagos20';
 const PAGO10_NS = 'http://www.sat.gob.mx/Pagos';
+const NOMINA12_NS = 'http://www.sat.gob.mx/nomina12';
+
+/** Clave de `c_TipoDeduccion` del ISR. Todo lo demás son otras deducciones.
+ *  Es la misma constante que `nomina_engine/recibo.py` declara del lado del
+ *  motor; aquí sólo se LEE de un XML que ya existe, no se calcula nada. */
+const DEDUCCION_ISR = '002';
 
 function getComprobante(doc: Document): Element | null {
   return (
@@ -76,6 +82,36 @@ function getImpuestosGlobales(comp: Element) {
   return { iva_trasladado, iva_retenido, isr_retenido };
 }
 
+/**
+ * Los totales del complemento de nómina 1.2.
+ *
+ * **Se leen, no se derivan.** `TotalPercepciones` y `TotalDeducciones` son
+ * atributos del nodo `nomina12:Nomina` que el patrón ya timbró; recomponerlos
+ * sumando las partidas daría otro número cuando el emisor redondeó distinto, y
+ * el dato bueno es el que está en el papel.
+ *
+ * El ISR retenido sí se suma partida por partida, porque el complemento no
+ * trae un total propio: es la deducción con `TipoDeduccion = 002` (una sola en
+ * un recibo ordinario). Es la misma lectura que ya hace `TablaRecibos`.
+ */
+function getNomina12(doc: Document) {
+  const nomina = doc.getElementsByTagNameNS(NOMINA12_NS, 'Nomina')[0];
+  if (!nomina) return {};
+
+  let isr_retenido = 0;
+  for (const d of Array.from(doc.getElementsByTagNameNS(NOMINA12_NS, 'Deduccion'))) {
+    if (d.getAttribute('TipoDeduccion') === DEDUCCION_ISR) {
+      isr_retenido += floatAttr(d, 'Importe');
+    }
+  }
+
+  return {
+    total_percepciones: floatAttr(nomina, 'TotalPercepciones') || undefined,
+    total_deducciones: floatAttr(nomina, 'TotalDeducciones') || undefined,
+    isr_retenido: isr_retenido || undefined,
+  };
+}
+
 export function parseCFDIFromXML(xmlString: string): CFDI {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlString, 'text/xml');
@@ -93,8 +129,14 @@ export function parseCFDIFromXML(xmlString: string): CFDI {
   const timbre = getTimbreFiscal(doc);
   const uuid = timbre?.getAttribute('UUID') || crypto.randomUUID();
 
+  // `N` (nómina) se reconoce y se marca; NO cae a 'I'. Ver `TipoComprobante`
+  // en `fiscalAgentApi.ts`: hasta T4, un recibo de nómina entraba como ingreso
+  // y le inflaba los ingresos gravables al patrón en silencio.
   const tipoRaw = comp.getAttribute('TipoDeComprobante') || 'I';
-  const tipo = (['I', 'E', 'T', 'P'].includes(tipoRaw) ? tipoRaw : 'I') as CFDI['tipo'];
+  const tipo: TipoComprobante =
+    tipoRaw === 'N'
+      ? 'NOMINA'
+      : (['I', 'E', 'T', 'P'].includes(tipoRaw) ? tipoRaw : 'I') as TipoComprobante;
 
   // Emisor y receptor
   const emisorNS = comp.getElementsByTagNameNS(CFDI_NS, 'Emisor')[0]
@@ -147,6 +189,11 @@ export function parseCFDIFromXML(xmlString: string): CFDI {
     }
   }
 
+  // Un CFDI de nómina no lleva nodo `cfdi:Impuestos`: el ISR retenido vive en
+  // las deducciones del complemento. Por eso el spread va DESPUÉS y pisa el
+  // `isr_retenido` global, que para un recibo de nómina es siempre 0.
+  const nomina12 = tipo === 'NOMINA' ? getNomina12(doc) : {};
+
   return {
     uuid,
     fecha: (comp.getAttribute('Fecha') || '').substring(0, 10),
@@ -164,6 +211,7 @@ export function parseCFDIFromXML(xmlString: string): CFDI {
     monto_pago,
     clave_prod_serv,
     descripcion,
+    ...nomina12,
   };
 }
 

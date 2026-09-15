@@ -121,6 +121,12 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/cfdi",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/demo/plantilla",
       "metodos": [
         "GET"

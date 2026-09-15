@@ -63,6 +63,10 @@ import * as carteraApi from './carteraApi';
 // AUSENTE de este archivo — un módulo entero con cinco funciones que pegan al
 // backend entró por debajo del test que existe para impedir exactamente eso.
 import * as carteraBackend from './carteraBackend';
+// T4: el CFDI de nómina sin timbrar. Se registra el mismo día que nace, para
+// que no repita lo de `carteraBackend` — un módulo entero que pegaba al backend
+// y entró por debajo del test que existe para impedirlo.
+import * as cfdiNominaApi from './cfdiNominaApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -179,6 +183,9 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     integrarSBC: () => carteraApi.integrarSBC({ salario_diario: '500.00', fecha: '2026-09-01' }),
     obtenerPrimasDeRiesgo: () => carteraApi.obtenerPrimasDeRiesgo('2026-09-01'),
   },
+  'cfdiNominaApi.ts': {
+    generarCFDINomina: () => cfdiNominaApi.generarCFDINomina({} as never),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -211,6 +218,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'fiscalAgentApi.ts': fiscalAgentApi,
   'carteraApi.ts': carteraApi,
   'carteraBackend.ts': carteraBackend,
+  'cfdiNominaApi.ts': cfdiNominaApi,
 };
 
 /**
@@ -228,6 +236,12 @@ const HELPERS_PUROS = new Set([
   'tipoParaCalendario',
   'estaVinculado',
   'contarSinVincular',
+  // T4: la frontera de tipos del CFDI de nómina. Ninguna pega al backend.
+  'esNomina',
+  'facturasFiscales',
+  'contarNomina',
+  'faltantesParaCFDI',
+  'reciboParaCFDI',
 ]);
 
 /**
