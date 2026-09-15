@@ -128,6 +128,9 @@ fiscalito-store-app/
 │   │   ├── voice/               # useVoiceChat (hook: STT/Chat/TTS + VAD) + VoiceChatUI
 │   │   └── fiscalito/           # Tabs del servicio Fiscalito
 │   │       ├── PreDeclaracionTab.tsx      # Upload XML + calculo pre-declaracion
+│   │       ├── DeclaracionAnualTab.tsx    # T3: ejercicio completo + deducciones personales
+│   │       ├── ResultadoAnual.tsx         # T3: resultado anual (desglose + deducciones + PDF)
+│   │       ├── CapturaDeducciones.tsx     # Rejilla de deducciones personales, compartida
 │   │       ├── XMLUploader.tsx            # Drag & drop de archivos XML CFDI
 │   │       ├── PeriodSelector.tsx         # Selector de año + mes/bimestre
 │   │       ├── ResultadoDeclaracion.tsx   # Resultado con desglose + explicacion IA + export PDF
@@ -173,6 +176,7 @@ fiscalito-store-app/
 │   │   ├── pdfExportRetenciones.ts  # PDF de retenciones
 │   │   ├── pdfExportMulti.ts        # PDF multi-periodo
 │   │   ├── pdfExportEstado.ts       # PDF estado de cuenta
+│   │   ├── deduccionesPersonales.ts # Campos y clasificacion por ClaveProdServ (compartido)
 │   │   ├── pdfUtils.ts              # Helpers compartidos para exports PDF (colores, tablas)
 │   │   └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
 │   └── utils/
@@ -208,13 +212,22 @@ Definidos en `src/services/contributorProfiles.ts`. El campo `contributorType` d
 
 | Tipo | Regimenes | Servicios visibles | Tabs Fiscalito |
 |------|-----------|-------------------|----------------|
-| **contador** (Despacho / Contador) | — (E-05 no le pide regimen) | ninguno | **Ninguno** (ver E-07) |
+| **contador** (Despacho / Contador) | — (E-05 no le pide regimen) | Fiscalito **del cliente activo** | Los del CLIENTE activo, por su regimen (T1). Sin cliente: ninguno |
 | asalariado | 605 | Fiscalito | Deducciones personales, Calendario |
-| independiente (RESICO) | 626 | Fiscalito | Declaracion, Calendario, Comparar, Estado cuenta |
-| independiente (Empresarial) | 612 | Fiscalito | Declaracion, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
-| arrendamiento | 606 | Fiscalito | Declaracion, Calendario, Comparar, Multi-periodo, Estado cuenta |
-| plataformas | 625 | Fiscalito | Declaracion, Calendario, Estado cuenta |
-| pyme | 612, 626, 621 (RIF) | Fiscalito + IMSS Manager + Contabilito | Declaracion, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
+| independiente (RESICO) | 626 | Fiscalito | Declaracion, **Anual**, Calendario, Comparar, Estado cuenta |
+| independiente (Empresarial) | 612 | Fiscalito | Declaracion, **Anual**, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
+| arrendamiento | 606 | Fiscalito | Declaracion, **Anual**, Calendario, Comparar, Multi-periodo, Estado cuenta |
+| plataformas | 625 | Fiscalito | Declaracion, **Anual**, Calendario, Estado cuenta |
+| pyme | 612, 626, 621 (RIF) | Fiscalito + IMSS Manager + Contabilito | Declaracion, **Anual**, Calendario, Comparar, DIOT, Retenciones, Multi-periodo, Estado cuenta |
+
+**T3**: el tab `anual` (Declaracion anual) lo ven TODOS menos el asalariado, cuya anual ya
+**es** el tab `deducciones`. Llama a `POST /api/v1/pre-declaracion-anual` y, si el
+contribuyente capturo deducciones personales, ademas a `POST /api/v1/deducciones-personales`
+con la **base del ejercicio** que devolvio el primero. Los dos resultados se pintan lado a
+lado y **no se restan en pantalla**: el motor no devuelve esa resta y el front no la inventa.
+El filtro por año lo hace el front porque el endpoint anual **no filtra**: suma todo lo que le
+llega. RESICO (626) no captura deducciones personales ahi — el estimador usa la tarifa general
+del Art. 152, no la del 113-E (DECISION PROVISIONAL, pendiente con la contadora).
 
 **Nota**: La logica de filtrado de tabs esta en `services/navigation.ts:getTabsForProfile()`
 — **una sola copia**, usada por `FiscalitoServicePage` y por `DashboardPage`. Los tabs se

@@ -19,6 +19,10 @@ import type { DIOTResponse, RetencionesResponse, MultiPeriodoResponse, EstadoCue
 
 export type HistorialCategoria =
   | 'predeclaracion'
+  // T3: la declaracion anual del ejercicio. Categoria propia y no
+  // 'predeclaracion' para que el upsert por periodo no pise la mensual: el id
+  // del documento sale de `categoria_periodo`.
+  | 'anual'
   | 'diot'
   | 'retenciones'
   | 'multiperiodo'
@@ -116,6 +120,54 @@ async function upsertDeclaracion(
   const docId = generarDocId(categoria, periodo);
   await setDoc(doc(declaracionesRef(uid), docId), docData);
   return docId;
+}
+
+/**
+ * `DesgloseFiscal` (respuesta del API) → `DesgloseRecord` (lo que se guarda).
+ *
+ * Los dos tipos tienen los mismos campos salvo que en la respuesta casi todos
+ * son opcionales y en el registro no: Firestore rechaza `undefined`, así que
+ * cada campo ausente entra como 0. Era la misma lista de veinte `?? 0`
+ * copiada en `PreDeclaracionTab`, y T3 iba a hacer la tercera copia.
+ *
+ * **No calcula nada**: sólo rellena huecos con cero.
+ */
+export function desgloseRecordDesde(d: {
+  total_ingresos_facturados: number;
+  total_ingresos_gravados: number;
+  cantidad_facturas_ingreso?: number;
+  total_egresos?: number;
+  total_deducciones_autorizadas?: number;
+  cantidad_facturas_egreso?: number;
+  base_isr: number;
+  tasa_isr: number;
+  isr_causado: number;
+  isr_retenido?: number;
+  isr_a_pagar: number;
+  iva_trasladado_cobrado?: number;
+  iva_trasladado_pagado?: number;
+  iva_retenido?: number;
+  iva_a_pagar: number;
+  total_a_pagar: number;
+}): DesgloseRecord {
+  return {
+    total_ingresos_facturados: d.total_ingresos_facturados,
+    total_ingresos_gravados: d.total_ingresos_gravados,
+    cantidad_facturas_ingreso: d.cantidad_facturas_ingreso ?? 0,
+    total_egresos: d.total_egresos ?? 0,
+    total_deducciones_autorizadas: d.total_deducciones_autorizadas ?? 0,
+    cantidad_facturas_egreso: d.cantidad_facturas_egreso ?? 0,
+    base_isr: d.base_isr,
+    tasa_isr: d.tasa_isr,
+    isr_causado: d.isr_causado,
+    isr_retenido: d.isr_retenido ?? 0,
+    isr_a_pagar: d.isr_a_pagar,
+    iva_trasladado_cobrado: d.iva_trasladado_cobrado ?? 0,
+    iva_trasladado_pagado: d.iva_trasladado_pagado ?? 0,
+    iva_retenido: d.iva_retenido ?? 0,
+    iva_a_pagar: d.iva_a_pagar,
+    total_a_pagar: d.total_a_pagar,
+  };
 }
 
 // ── Guardar pre-declaración (backward compatible) ──

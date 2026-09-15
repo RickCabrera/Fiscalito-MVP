@@ -25,6 +25,24 @@ interface DesgloseData {
   total_a_pagar: number;
 }
 
+/**
+ * Deducciones personales del ejercicio (T3), tal como las devolvió
+ * `POST /api/v1/deducciones-personales`. **Opcional**: sólo la declaración
+ * anual la manda, y sólo si el contribuyente capturó algo.
+ *
+ * Los montos vienen del motor y se imprimen tal cual; aquí no se suma, no se
+ * topa y no se resta nada.
+ */
+export interface DeduccionesPDFData {
+  desglose: { concepto: string; monto_solicitado: number; tope_aplicable: number | null; monto_aceptado: number }[];
+  total_antes_tope: number;
+  tope_global: number;
+  tope_tipo: string;
+  total_deducible: number;
+  excedente_no_aprovechado: number;
+  saldo_a_favor_estimado: number;
+}
+
 export interface ExportPDFData {
   periodo: string;
   tipo: string;
@@ -35,6 +53,10 @@ export interface ExportPDFData {
   recomendaciones: string[];
   contribuyente: { nombre: string; rfc: string };
   fechaCalculo: Date;
+  deducciones?: DeduccionesPDFData | null;
+  /** Reemplaza "Pre-declaración fiscal" en el encabezado y en el nombre del archivo. */
+  titulo?: string;
+  prefijoArchivo?: string;
 }
 
 function sanitizeFilename(s: string): string {
@@ -43,6 +65,8 @@ function sanitizeFilename(s: string): string {
 
 export function exportarDeclaracionPDF(data: ExportPDFData): void {
   const { periodo, tipo, regimen, desglose, explicacion, advertencias, recomendaciones, contribuyente, fechaCalculo } = data;
+  const titulo = data.titulo ?? 'Pre-declaración fiscal';
+  const deducciones = data.deducciones ?? null;
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
 
   const pageW = doc.internal.pageSize.getWidth();
@@ -61,7 +85,7 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(18);
   doc.setTextColor(...lightGray);
-  doc.text(' — Pre-declaración fiscal', marginL + doc.getTextWidth(MARCA_CORTA), y);
+  doc.text(` — ${titulo}`, marginL + doc.getTextWidth(MARCA_CORTA), y);
   y += 10;
 
   doc.setFontSize(11);
@@ -187,6 +211,63 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
   y = (doc as any).lastAutoTable?.finalY ?? y + 30;
   y += 8;
 
+  // ── Seccion 3b — Deducciones personales (T3, solo declaracion anual) ──
+  if (deducciones) {
+    if (y > 200) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...accent);
+    doc.text('DEDUCCIONES PERSONALES', marginL, y);
+    y += 2;
+
+    const dedRows: string[][] = deducciones.desglose.map((d) => [
+      d.concepto,
+      fmtMoney(d.monto_solicitado),
+      d.tope_aplicable != null ? fmtMoney(d.tope_aplicable) : 'Sin tope',
+      fmtMoney(d.monto_aceptado),
+    ]);
+    dedRows.push(['Suma antes del tope global', '', '', fmtMoney(deducciones.total_antes_tope)]);
+    dedRows.push([`Tope global (${deducciones.tope_tipo})`, '', '', fmtMoney(deducciones.tope_global)]);
+    dedRows.push(['Total deducible', '', '', fmtMoney(deducciones.total_deducible)]);
+    if (deducciones.excedente_no_aprovechado > 0) {
+      dedRows.push(['Excedente no aprovechado', '', '', fmtMoney(deducciones.excedente_no_aprovechado)]);
+    }
+    dedRows.push(['Efecto estimado en ISR (a favor)', '', '', fmtMoney(deducciones.saldo_a_favor_estimado)]);
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: marginL, right: marginR },
+      head: [['Concepto', 'Solicitado', 'Tope', 'Aceptado']],
+      body: dedRows,
+      theme: 'grid',
+      headStyles: DEFAULT_HEAD_STYLES,
+      bodyStyles: DEFAULT_BODY_STYLES,
+      columnStyles: {
+        0: { cellWidth: contentW * 0.4 },
+        1: { cellWidth: contentW * 0.2, halign: 'right' },
+        2: { cellWidth: contentW * 0.2, halign: 'right' },
+        3: { cellWidth: contentW * 0.2, halign: 'right', fontStyle: 'bold' },
+      },
+      alternateRowStyles: DEFAULT_ALT_ROW_STYLES,
+      styles: DEFAULT_TABLE_STYLES,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = (doc as any).lastAutoTable?.finalY ?? y + 40;
+    y += 4;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...lightGray);
+    const nota = doc.splitTextToSize(
+      'El ISR del DESGLOSE ISR de arriba todavia NO descuenta estas deducciones: el efecto estimado se '
+      + 'calcula aparte, sobre la base del ejercicio, y es el renglon "Efecto estimado en ISR" de esta tabla.',
+      contentW,
+    );
+    for (const line of nota) { doc.text(line, marginL, y); y += 3.5; }
+    y += 6;
+  }
+
   // ── Seccion 4 — Explicacion ──
   if (explicacion) {
     if (y > 230) { doc.addPage(); y = 20; }
@@ -275,6 +356,7 @@ export function exportarDeclaracionPDF(data: ExportPDFData): void {
 
   // ── Descargar ──
   const fechaStr = fechaCalculo.toISOString().substring(0, 10);
-  const filename = `${PREFIJO_ARCHIVO}_PreDeclaracion_${sanitizeFilename(periodo)}_${fechaStr}.pdf`;
+  const prefijoDoc = data.prefijoArchivo ?? 'PreDeclaracion';
+  const filename = `${PREFIJO_ARCHIVO}_${prefijoDoc}_${sanitizeFilename(periodo)}_${fechaStr}.pdf`;
   doc.save(filename);
 }

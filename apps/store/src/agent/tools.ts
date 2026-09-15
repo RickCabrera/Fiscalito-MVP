@@ -59,6 +59,7 @@ const RUTAS_BASE = [
   '/app/profile',
   // Tabs internos de Fiscalito
   '/app/store/fiscalito/use?tab=declaracion',
+  '/app/store/fiscalito/use?tab=anual',
   '/app/store/fiscalito/use?tab=calendario',
   '/app/store/fiscalito/use?tab=comparar',
   '/app/store/fiscalito/use?tab=diot',

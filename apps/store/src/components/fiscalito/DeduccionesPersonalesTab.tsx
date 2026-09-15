@@ -10,47 +10,12 @@ import {
 } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion } from '../../services/declaracionesHistory';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
+import { clasificarFacturaDeduccion, montosCapturados } from '../../services/deduccionesPersonales';
 import { labelStyle } from '../../utils/styles';
 import ErrorAlert from '../common/ErrorAlert';
+import CapturaDeducciones from './CapturaDeducciones';
 import DeduccionesResult from './DeduccionesResult';
-import { Calculator, AlertTriangle, Loader, Upload } from 'lucide-react';
-
-const NIVELES_EDUCATIVOS = [
-  'Preescolar', 'Primaria', 'Secundaria', 'Profesional técnico',
-  'Bachillerato o equivalente',
-];
-
-interface DeduccionField { key: string; label: string; placeholder: string }
-
-const CAMPOS: DeduccionField[] = [
-  { key: 'gastos_medicos', label: 'Gastos médicos y dentales', placeholder: '0.00' },
-  { key: 'colegiaturas', label: 'Colegiaturas', placeholder: '0.00' },
-  { key: 'intereses_hipotecarios', label: 'Intereses hipotecarios reales', placeholder: '0.00' },
-  { key: 'seguros_gastos_medicos', label: 'Primas de seguros de gastos médicos', placeholder: '0.00' },
-  { key: 'donativos', label: 'Donativos', placeholder: '0.00' },
-  { key: 'aportaciones_voluntarias_retiro', label: 'Aportaciones voluntarias al retiro', placeholder: '0.00' },
-  { key: 'funeral', label: 'Gastos funerarios', placeholder: '0.00' },
-  { key: 'transporte_escolar', label: 'Transporte escolar obligatorio', placeholder: '0.00' },
-];
-
-const DIVISION_A_CAMPO: Record<string, string> = { '85': 'gastos_medicos', '42': 'gastos_medicos', '86': 'colegiaturas', '78': 'transporte_escolar' };
-const CLAVE_ESPECIFICA_A_CAMPO: Record<string, string> = { '85171500': 'funeral', '84131500': 'seguros_gastos_medicos', '84131600': 'intereses_hipotecarios', '84121500': 'donativos' };
-
-function clasificarFacturaDeduccion(claveProdServ: string, descripcion?: string): string | null {
-  if (!claveProdServ) return null;
-  if (claveProdServ === '84131500' && descripcion) {
-    const desc = descripcion.toUpperCase();
-    const esRetiro = ['RETIRO', 'AFORE', 'APORTACION VOLUNTARIA', 'AHORRO', 'PPR', 'PLAN PERSONAL', 'PREVISION'].some(kw => desc.includes(kw));
-    if (esRetiro) return 'aportaciones_voluntarias_retiro';
-    return 'seguros_gastos_medicos';
-  }
-  if (CLAVE_ESPECIFICA_A_CAMPO[claveProdServ]) return CLAVE_ESPECIFICA_A_CAMPO[claveProdServ];
-  const clase6 = claveProdServ.substring(0, 6);
-  if (CLAVE_ESPECIFICA_A_CAMPO[clase6]) return CLAVE_ESPECIFICA_A_CAMPO[clase6];
-  const division = claveProdServ.substring(0, 2);
-  if (DIVISION_A_CAMPO[division]) return DIVISION_A_CAMPO[division];
-  return null;
-}
+import { Calculator, Loader, Upload } from 'lucide-react';
 
 export default function DeduccionesPersonalesTab() {
   const { profile } = useProfile();
@@ -110,11 +75,7 @@ export default function DeduccionesPersonalesTab() {
     setError('');
     setGuardado(false);
     try {
-      const fields: Record<string, number> = {};
-      for (const campo of CAMPOS) {
-        const val = parseFloat(values[campo.key] || '0');
-        if (val > 0) fields[campo.key] = val;
-      }
+      const fields = montosCapturados(values);
       const req: DeduccionesPersonalesRequest = {
         ingresos_anuales: ingresosNum,
         incluir_explicacion: true,
@@ -193,40 +154,12 @@ export default function DeduccionesPersonalesTab() {
           </p>
         </div>
 
-        {parseFloat(values['colegiaturas'] || '0') > 0 && !nivelEducativo && (
-          <div style={{
-            padding: '10px 14px', borderRadius: 'var(--radius-xs)',
-            background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
-            fontSize: '0.8rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
-          }}>
-            <AlertTriangle size={14} />
-            Selecciona el nivel educativo para aplicar el tope correcto de colegiaturas
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {CAMPOS.map((campo) => (
-            <div key={campo.key}>
-              <label style={labelStyle}>{campo.label}</label>
-              {campo.key === 'colegiaturas' ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="input-field" type="number" placeholder={campo.placeholder}
-                    value={values[campo.key] || ''} onChange={(e) => setValues((v) => ({ ...v, [campo.key]: e.target.value }))}
-                    style={{ flex: 1, fontFamily: "'JetBrains Mono', monospace" }} />
-                  <select className="input-field" value={nivelEducativo} onChange={(e) => setNivelEducativo(e.target.value)}
-                    style={{ width: 160, cursor: 'pointer', fontSize: '0.82rem' }}>
-                    <option value="">Nivel...</option>
-                    {NIVELES_EDUCATIVOS.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              ) : (
-                <input className="input-field" type="number" placeholder={campo.placeholder}
-                  value={values[campo.key] || ''} onChange={(e) => setValues((v) => ({ ...v, [campo.key]: e.target.value }))}
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }} />
-              )}
-            </div>
-          ))}
-        </div>
+        <CapturaDeducciones
+          values={values}
+          onChange={setValues}
+          nivelEducativo={nivelEducativo}
+          onNivelChange={setNivelEducativo}
+        />
       </div>
 
       <button className="btn-primary" onClick={handleCalc} disabled={loading}
