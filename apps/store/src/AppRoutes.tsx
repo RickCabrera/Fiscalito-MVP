@@ -27,6 +27,8 @@ import PlanesPage from './pages/PlanesPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
+// T7: cascarón de contabilidad electrónica. 100% front, no llama al API.
+import ContabilitoPage from './pages/ContabilitoPage';
 import HistorialPage from './pages/HistorialPage';
 // DEMO E-02: cartera del despacho. Se borra en F2.
 import ClientesPage from './pages/ClientesPage';
@@ -118,6 +120,10 @@ export default function AppRoutes() {
         <Route path="calendario" element={<CalendarioPatronalPage />} />
         <Route path="store" element={<MarketplacePage />} />
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
+        {/* T7. Va ANTES de `store/:serviceId` por legibilidad, no por necesidad:
+            react-router v7 rankea por especificidad y un segmento literal le
+            gana a uno dinámico, así que el orden de declaración no decide. */}
+        <Route path="store/contabilito/use" element={<ContabilitoPage />} />
         <Route path="store/:serviceId" element={<ServiceDetailPage />} />
         <Route path="profile" element={<ProfilePage />} />
         {/* T8: no va en el sidebar. `getSidebarLinks` está congelado por

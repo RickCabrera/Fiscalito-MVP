@@ -165,6 +165,15 @@ export default function ServiceDetailPage() {
                 </button>
               </>
             )}
+            {/* T7: Contabilito SÍ tiene pantalla propia —a diferencia de IMSS
+                Manager— porque lo que hace no vive en ninguna otra: pólizas,
+                balanza y catálogo no son parte de Fiscalito ni de la nómina. */}
+            {service.id === 'contabilito' && disponible && (
+              <button className="btn-primary" onClick={() => navigate('/app/store/contabilito/use')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Zap size={16} /> Usar Contabilito
+              </button>
+            )}
             {service.status === 'active' && service.apiEndpoint && (
               <a href={`${service.apiEndpoint}/docs`} target="_blank" rel="noopener noreferrer">
                 <button className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

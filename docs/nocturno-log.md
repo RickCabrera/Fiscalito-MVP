@@ -3156,3 +3156,63 @@ y `/pre-declaracion-anual` devuelven `400 "Motor de personas morales en desarrol
 - **Lo que no toqué:** `fiscal_engine` completo (incluido `calendario.py`), `calculadora.py`,
   `nomina_engine`, el `.env` y las semillas demo. `docs/api-contract.md` y `apps/store/CLAUDE.md`
   **sí** se actualizaron.
+
+---
+
+## T7 · Cascarón Contabilito (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Última de la corrida T. Régimen MODO DEMO: sin plan, sin revisor y sin tests nuevos. Checks:
+`npm run build` limpio (el único obligatorio, sólo se tocó `apps/store`), suite del front en
+verde (**743, ninguno adaptado ni borrado**) y `eslint` sin errores nuevos (28 problemas antes y
+después, verificado con `git stash`). **Cero cambios en `apps/api`**, así que `api-contract.md`
+no aplica.
+
+**Lo que quedó.** `/app/store/contabilito/use` con cuatro tabs: Catálogo (28 cuentas del código
+agrupador SAT), Pólizas (una por CFDI cargado, expandible a sus movimientos), Balanza (suma por
+cuenta + renglón de cuadre) y Buzón (pantalla de e.firma). `contabilito` pasa a `beta` con
+`features_proximamente`, gana `contador` en `appliesTo` y botón "Usar Contabilito" en el detalle.
+
+### Las trampas, por orden de importancia
+
+- **LA CONTRAPARTE (105/201) SE CALCULA, NO SE COPIA DE `total`.** Es `base + IVA trasladado −
+  retenciones`, y por eso la póliza **cuadra por construcción** aunque el CFDI traiga impuestos
+  que `cfdiParser` no lee: hoy lee IVA (002) e ISR (001), **no IEPS (003)**. Si se hubiera usado
+  el `total`, un CFDI con IEPS dejaba la balanza descuadrada y el criterio de cierre reprobaba
+  sin que se viera por qué. La diferencia contra el `total` del CFDI se guarda en
+  `diferenciaConTotal`, se marca con ⚠ en la fila y se explica arriba de la tabla: **el hueco se
+  enseña, no se cuadra a la fuerza contra un renglón de ajuste**.
+- **EL RFC ES LO QUE DECIDE SI UN CFDI ES INGRESO O GASTO, y para un contador NO puede salir de
+  `profile.rfc`.** Ése es el RFC del DESPACHO, no el del cliente cuya contabilidad se arma:
+  usarlo clasificaría *todas* sus facturas como ajenas y **voltearía cada póliza** — cargos por
+  abonos, ingresos por gastos, sin que nada falle visiblemente. Es la misma trampa que T6
+  documentó con `profile.regimen`, y por eso `rfcDeLaFicha` es `''` cuando el perfil es contador.
+- **`ClienteResumen` NO trae RFC** (sólo `ClienteCartera`, y ahí es opcional y los clientes demo
+  no lo traen), así que exigirlo dejaba la pantalla vacía justo en la demo. Se **deduce**: el RFC
+  propio es el único que aparece en TODOS los comprobantes —de emisor en los que emitió, de
+  receptor en los que recibió—, así que gana el más repetido (empate: alfabético, para que dos
+  corridas den lo mismo). Se pinta en un input editable y la pantalla **dice** cuando lo dedujo.
+  Sin ningún RFC cae a suponer por tipo de comprobante, y también lo dice.
+- **EL CATÁLOGO SALE MARCADO `PORVALIDAR`, con banner.** Los ocho códigos que usan las pólizas
+  (101, 102, 105, 118, 201, 208, 401, 601) venían dados por la tarea; **el resto de códigos y
+  TODOS los nombres se escribieron sin el Anexo 24 de la RMF enfrente**. En un catálogo contable
+  un código equivocado se ve exactamente igual que uno correcto, así que va la misma política que
+  T5 le dio al layout de la DIOT. Cotejarlo contra el Anexo 24 publicado es tarea propia.
+- **Los recibos de nómina NO generan póliza**, y eso es una decisión, no un olvido: sus
+  retenciones y cuotas obrero-patronales van a cuentas que este catálogo no maneja, y una póliza
+  de nómina a medias descuadraría la balanza. Se cuentan y se avisa en pantalla (`facturasFiscales`
+  de T4 los excluye por TIPO, no por un `filter` que alguien recuerde escribir).
+- **Traslados (T) y comprobantes en ceros salen con póliza vacía, no se esconden.** La tarea pide
+  "una fila por CFDI"; desaparecerlos haría que el conteo de la pantalla no cuadrara con el del
+  uploader. Se cuentan aparte y se explica que un traslado no transfiere propiedad.
+- **Nada se guarda.** Los CFDI viven en el estado de la pantalla y se pierden al salir, igual que
+  en los tabs de Fiscalito. Persistir la contabilidad de un cliente es tarea propia.
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR**, igual que T1, T2, T8, T5, T3, T4 y T6. **El criterio de
+  cierre —"con los XMLs demo, Pólizas muestra una fila por CFDI y Σ cargos = Σ abonos"— NO se
+  verificó arrastrando archivos**: no hay test (el régimen los prohibía) y no hubo navegador. Lo
+  que sí está garantizado por construcción es el cuadre, y la balanza **lo comprueba y lo pinta**
+  en vez de afirmarlo: si algo corriente arriba se rompe, el renglón dice "NO cuadra" con la
+  diferencia. Es la primera tarea de la corrida donde el criterio se puede desmentir desde la
+  propia pantalla.
+- **Lo que no toqué:** `fiscal_engine`, `calculadora.py`, `nomina_engine`, `apps/api` entera, el
+  sidebar (`navigation.ts` sigue congelado por `navigation.test.ts`), el `.env` y las semillas
+  demo. `apps/store/CLAUDE.md` **sí** se actualizó (rutas, estructura, servicios y sección propia).

@@ -83,22 +83,34 @@ export const SERVICES: StoreService[] = [
     ],
   },
   {
+    // T7: entra a `beta` con el cascaron. Lo que ya opera —catalogo, polizas
+    // desde los CFDI cargados y balanza que cuadra— vive en
+    // `/app/store/contabilito/use`. Lo que NO, se enumera en
+    // `features_proximamente` en vez de mezclarse con lo anterior: el envio al
+    // buzon necesita e.firma y no existe.
     id: 'contabilito',
     name: 'Contabilito',
     tagline: 'Contabilidad electronica automatizada',
     description:
-      'Genera polizas contables, balanzas de comprobacion y catalogo de cuentas alineado al SAT. Envia tu contabilidad electronica directo al buzon tributario.',
+      'Convierte los CFDI que ya tienes en polizas de partida doble contra el codigo agrupador del SAT y saca la balanza de comprobacion. El envio al buzon tributario necesita e.firma y todavia no: el catalogo de cuentas esta por contrastar contra el Anexo 24.',
     icon: '📊',
-    status: 'coming_soon',
+    status: 'beta',
     category: 'contable',
-    appliesTo: ['pyme'],
+    // El despacho lleva la contabilidad de sus clientes: sin `contador` la
+    // tarjeta le salia "No disponible", igual que le pasaba a IMSS Manager.
+    appliesTo: ['pyme', 'contador'],
     features: [
       'Polizas contables automaticas desde CFDIs',
-      'Balanza de comprobacion mensual',
-      'Catalogo de cuentas SAT',
-      'Envio al buzon tributario',
-      'Reportes para contador externo',
+      'Balanza de comprobacion del lote cargado',
+      'Catalogo de cuentas del codigo agrupador SAT',
+    ],
+    features_proximamente: [
+      'Envio al buzon tributario (requiere e.firma)',
+      'Catalogo contrastado contra el Anexo 24 de la RMF',
+      'Saldos iniciales y balanza del ejercicio',
+      'Polizas de nomina',
       'Conciliacion bancaria basica',
+      'Export a Aspel COI / CONTPAQi',
     ],
   },
 ];
