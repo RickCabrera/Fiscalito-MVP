@@ -46,7 +46,7 @@ const CONTRIBUYENTES: (ContributorType | null)[] = [
 ];
 
 describe('getSidebarLinks', () => {
-  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Fiscalito / Perfil, en ese orden', () => {
+  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Fiscalito / Contabilito / Perfil, en ese orden', () => {
     expect(getSidebarLinks('contador')).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
       // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
@@ -66,6 +66,13 @@ describe('getSidebarLinks', () => {
       // abre es el de su CLIENTE ACTIVO. La etiqueta sale de la marca, igual
       // que la del contribuyente, y por la misma razón de O-02.
       { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
+      // La segunda herramienta sobre el cliente activo. Entró porque la portada
+      // ya anunciaba Contabilito en BETA y el contador no tenía puerta: la
+      // pantalla de T7 existía y sólo se alcanzaba tecleando la URL. La
+      // etiqueta va literal y no por `MARCA_CORTA`: Contabilito es el nombre
+      // de un servicio del catálogo, no el de la marca que lo aloja, y los dos
+      // coincidieron alguna vez por accidente del rebrand.
+      { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
   });

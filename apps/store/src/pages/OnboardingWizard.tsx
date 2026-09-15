@@ -30,7 +30,7 @@ import StepDatosFiscales from '../components/onboarding/StepDatosFiscales';
 import StepDatosDespacho from '../components/onboarding/StepDatosDespacho';
 import StepDatosPersonales from '../components/onboarding/StepDatosPersonales';
 import StepConfirmar from '../components/onboarding/StepConfirmar';
-import { MARCA, MARCA_LOGO_1, MARCA_LOGO_2 } from '../services/marca';
+import { MARCA, MARCA_LOGO } from '../services/marca';
 
 /** Un paso del wizard. El id es lo que manda; el índice sólo ordena. */
 type PasoId = 'tipo' | 'fiscales' | 'despacho' | 'personales' | 'confirmar';
@@ -163,8 +163,7 @@ export default function OnboardingWizard() {
       {/* Header */}
       <div style={{ padding: '32px 24px 0', width: '100%', maxWidth: 720, textAlign: 'center' }}>
         <div style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 8 }}>
-          <span className="gradient-text">{MARCA_LOGO_1}</span>{' '}
-          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{MARCA_LOGO_2}</span>
+          <span className="gradient-text">{MARCA_LOGO}</span>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           {esDespacho

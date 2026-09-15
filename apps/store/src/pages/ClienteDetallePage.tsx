@@ -45,6 +45,29 @@ function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: string; mono
   );
 }
 
+/**
+ * Estado vacío de la pestaña Plantilla: un título y una explicación de QUÉ VA
+ * AHÍ.
+ *
+ * Los tres casos sin tabla —404, error del API y ficha con cero empleados— se
+ * pintan con esta misma forma para que se lean como el mismo tipo de mensaje y
+ * no como tres accidentes distintos. Va aquí y no en `components/common/`
+ * porque hoy lo usa una sola pantalla; el día que lo pida una segunda, se mueve.
+ */
+function EstadoVacio({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
+      <Info size={18} style={{ flexShrink: 0, marginTop: 2, color: 'var(--text-muted)' }} />
+      <div>
+        <div style={{ fontSize: '0.92rem', fontWeight: 600, marginBottom: 6 }}>{titulo}</div>
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+          {children}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // E-04: los mismos estilos que las tablas de nómina, para que la ficha y los
 // recibos se lean igual. Eran th/td locales escritos en E-02.
 
@@ -233,15 +256,47 @@ export default function ClienteDetallePage() {
 
             {vista === 'plantilla' && fichaNoExiste && (
               <div className="card" style={{ padding: 'var(--space-lg)' }}>
-                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                  Este cliente lo diste de alta tú, así que no tiene ficha en el catálogo de
-                  demostración. La pestaña <strong>Empleados</strong> es la que lleva su
-                  plantilla.
-                </p>
+                {/* UN SOLO MENSAJE, Y NO ES PEREZA. El primer intento partía
+                    esto en dos —"lo diste de alta tú" contra "el API no
+                    respondió"— y no hay con qué: `obtenerCliente` convierte
+                    TODA respuesta no-ok en un `Error` con un texto, el 404 de
+                    la ficha incluido (`despachoApi.ts:leer`), así que el
+                    código de estado no sobrevive al viaje y las dos causas
+                    llegan aquí idénticas. Separarlas de verdad es cambiar el
+                    cliente REST para que conserve el status; adivinarlas por el
+                    texto del mensaje es peor que no distinguirlas. Mientras
+                    tanto la frase nombra las dos posibilidades en vez de
+                    afirmar la que no consta. */}
+                <EstadoVacio titulo="Sin plantilla de referencia">
+                  Aquí va la plantilla <strong>de referencia</strong>: salario diario, SBC, factor
+                  de integración y antigüedad reconstruidos de un CFDI de nómina ya timbrado, para
+                  contrastar contra ellos lo que calcula la app. Sólo la tienen los clientes del
+                  catálogo de demostración, y la de éste no llegó: lo normal es que{' '}
+                  <strong>lo diste de alta tú</strong>, y si no, que el servicio de nómina no haya
+                  respondido. Su plantilla de trabajo es la de la pestaña{' '}
+                  <strong>Empleados</strong>, que además es la editable y la que alimenta el
+                  cálculo.
+                </EstadoVacio>
               </div>
             )}
 
-            {vista === 'plantilla' && cliente && (
+            {vista === 'plantilla' && cliente && cliente.empleados.length === 0 && (
+              <div className="card" style={{ padding: 'var(--space-lg)' }}>
+                {/* La ficha llegó y trae CERO empleados. Sin esto se pintaba la
+                    tabla con sus ocho encabezados y ni una fila debajo, más el
+                    pie de página hablando de factores y antigüedades que no
+                    existían: una pantalla que parece rota y no dice nada. */}
+                <EstadoVacio titulo="La ficha no trae empleados">
+                  El servicio de nómina conoce a <strong>{cabecera.nombre}</strong> pero su
+                  plantilla de referencia viene vacía: no hay CFDI timbrado del que reconstruir
+                  salarios ni SBC. Captura su gente en la pestaña <strong>Empleados</strong> —es
+                  la que alimenta el cálculo de la nómina— y esta pestaña seguirá siendo sólo el
+                  histórico con el que se contrasta.
+                </EstadoVacio>
+              </div>
+            )}
+
+            {vista === 'plantilla' && cliente && cliente.empleados.length > 0 && (
             <>
             <div className="card" style={{ padding: 'var(--space-lg)' }}>
               <div style={envoltura}>
