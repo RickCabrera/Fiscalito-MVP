@@ -107,11 +107,52 @@ export const PARAMETROS_DE_LEY: ParametrosSalariales = {
   },
 };
 
+/**
+ * Régimen fiscal del CLIENTE, no del despacho (T1).
+ *
+ * Es lo que decide qué tabs de Fiscalito se le pueden trabajar. **El corte
+ * concreto 612 / 626 es un criterio HEREDADO de E-01, no una regla verificada:**
+ * `getTabsForProfile` ya escondía DIOT y Retenciones a un 626 desde antes de T1,
+ * y lo único que T1 hace es aplicarlo al cliente del despacho en vez de al
+ * contribuyente. **Queda pendiente de confirmar con la contadora (§D30)**, y son
+ * dos preguntas distintas que no comparten fundamento — el detalle está ahí.
+ *
+ * Sólo 612 y 626, que son los dos que `contributorProfiles.ts` ya declara para
+ * el perfil `contador` y los dos que el motor y el calendario manejan para
+ * persona física. 601 (General de Ley PM) queda fuera hasta que algo aguas
+ * abajo lo soporte — el mismo corte, y por la misma razón, que se documentó ahí.
+ */
+export const REGIMENES_DE_CLIENTE = [
+  { code: '612', name: 'Actividad Empresarial y Profesional' },
+  { code: '626', name: 'RESICO (Régimen Simplificado de Confianza)' },
+] as const;
+
+/**
+ * El régimen con el que se lee un cliente que NO lo trae capturado.
+ *
+ * DECISIÓN PROVISIONAL (nocturno): ver `docs/decisiones-nomina.md` §D29.
+ *
+ * **No es una adivinanza silenciosa**: es el default del alta, y la pantalla de
+ * Fiscalito avisa cuando lo está aplicando por ausencia de dato en vez de por
+ * captura. Se eligió 612 —el set completo, el de `pyme`— y no 626 porque
+ * esconder tabs le quita al contador herramientas de trabajo sin decirle por
+ * qué, mientras que un tab de más sobre un cliente que el contador conoce no
+ * presenta nada solo: la DIOT se genera, se revisa y se presenta a mano.
+ */
+export const REGIMEN_CLIENTE_POR_DEFECTO = '612';
+
 export interface ClienteCartera {
   id: string;
   nombre: string;
   giro: string;
   origen: string;
+  /**
+   * Régimen fiscal del cliente (T1). **Opcional**: una cartera escrita antes de
+   * T1 no lo trae, y exigirlo dejaría al contador sin sus clientes por un campo
+   * de más — la misma política que `rfc` y `registro_patronal`. Vacío o ausente
+   * se lee como `REGIMEN_CLIENTE_POR_DEFECTO`.
+   */
+  regimen?: string;
   /**
    * RFC del patrón. **Opcional**: los tres clientes de demostración no lo
    * traen, y una cartera escrita antes de O-01 tampoco. Lo captura la

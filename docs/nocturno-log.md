@@ -2560,3 +2560,95 @@ errores en vez de mandar a arreglar-reintentar-descubrir de uno en uno.
 relación con F-01, inflando el diff de 100 a 142 líneas. Mecánico y benigno, pero
 es "de pasada" y no debería repetirse: correr `ruff format` sobre el archivo
 entero en vez de sobre lo agregado.
+
+---
+
+## T1 · Tabs del perfil contador (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Primera tarea de la corrida T. Un pase de revisor sobre el entregable, como manda
+el régimen de la sección T: **bloqueó la primera vez y aprobó la segunda.**
+
+**Paso 0, que era la mitad de la tarea.** `modoEmpresaUnica()` venía ENCENDIDO por
+default desde O-01. Lo invertí **en el código**, no en el `.env`: el argumento
+original de O-01 —"el default no puede depender de un archivo gitignoreado"— sigue
+en pie, sólo que ahora protege al producto que se demuestra. El modo empresa única
+no se borró: se enciende con `VITE_MODO_EMPRESA_UNICA=1` y sus pruebas siguen
+midiendo lo mismo.
+
+**⚠ LO PRIMERO QUE HAY QUE DECIRLE A RICARDO:** su `.env` local de `apps/store`
+probablemente trae `VITE_MODO_EMPRESA_UNICA=1` de la corrida O, y **eso gana sobre
+el default nuevo**. Si no lo quita o lo pone en `0`, la demo arranca en modo empresa
+única y **nada de T1 se ve**. No pude verificarlo: ese archivo está en deny-list.
+
+**El cliente no tenía régimen en ningún lado**, así que "cliente 626 no ve
+DIOT/Retenciones" no era verificable. Agregué `regimen` a `ClienteCartera`,
+`ClienteResumen`, al alta de cliente y a `ClienteCarteraSchema` del backend. Ese
+último está fuera de los archivos que T1 lista y lo hice igual: sin declararlo,
+encender R-07 borraría el régimen en el primer guardado, porque pydantic descarta
+lo que no conoce. `docs/api-contract.md` va en el mismo entregable.
+
+### El bloqueo que importa, y lo que dejó abierto
+
+El revisor bloqueó porque escribí **"un RESICO (626) no presenta DIOT ni retiene a
+terceros"** en indicativo, sin fuente, en siete lugares — incluidos el contrato y
+**la pantalla que lee el contador**. Dos problemas: la mitad de la DIOT no se
+sostiene por naturaleza del régimen sino por una **facilidad de RMF**, que se
+renueva por ejercicio; y la de Retenciones es probablemente falsa — **un RESICO PF
+con trabajadores sí retiene ISR de salarios**, y el fixture del propio test es un
+626 con 12 empleados, en un producto de nómina.
+
+**El corte no lo inventó T1:** `getTabsForProfile` ya escondía DIOT y Retenciones a
+un 626 desde E-01. Lo que T1 hizo fue elevarlo a hecho legal documentado. Eso se
+revirtió: los siete lugares dicen ahora "criterio heredado, pendiente de confirmar",
+la pantalla ya no enseña ninguna regla fiscal, y el contrato dice explícito que **la
+API no aplica regla fiscal alguna sobre el campo ni valida el catálogo**.
+
+**§D30 · ABIERTA, para la contadora.** Las dos preguntas, que no comparten
+fundamento: (1) qué regla de la RMF vigente releva al RESICO PF de la DIOT y para
+qué ejercicio; (2) qué cubre el tab Retenciones — si son retenciones a terceros por
+honorarios/arrendamiento, no le tocan a ninguna PF; si incluye ISR de salarios, les
+tocan a las dos. **El corte se queda como está** mientras no haya respuesta: moverlo
+sin la contadora sería sustituir un supuesto por otro. Las leyes que §D30 cita son
+el **planteamiento** de la pregunta, no una respuesta verificada.
+
+**§D29 · PROVISIONAL.** Un cliente anterior a T1 no trae régimen. Se le aplica 612
+(el set completo) **y la pantalla lo dice** con un aviso. Elegí eso sobre el 626
+"conservador" porque ninguno de esos tabs presenta nada solo, y un default oculto
+habría escondido pantallas sin decir por qué. El revisor confirmó la decisión.
+
+**§D21 llevaba enmienda obligada:** afirmaba en indicativo que
+`getTabsForProfile('contador')` devuelve `[]` y que la pantalla redirige. T1 cambia
+el **sujeto**, no la resolución de E-07: el despacho sigue sin Fiscalito PROPIO, y
+lo que recupera es el **del cliente activo**.
+
+### Trampas para quien siga
+
+- **Riesgo residual del cambio de default.** Invertirlo cambió el mundo en el que
+  corren ~32 archivos de test que **no declaran modo**. Ocho se cayeron
+  (`agent/modoEmpresaUnicaEnElAsistente.test.ts`) y se arreglaron declarándolo con
+  el helper nuevo `modoEmpresa()`, gemelo de `modoDespacho()`. El resto sigue verde,
+  **pero verde sólo prueba que sus aserciones se cumplen en el modo nuevo, no que
+  midan lo que su nombre dice.** `ClienteActivoContext.test.tsx`,
+  `ClientesPage.test.tsx` y `ModalCliente.test.tsx` son de despacho y no declaran
+  modo: hoy aciertan por default, y volverán a heredar el ambiente si se mueve otra
+  vez.
+- **`SelectorCliente.tsx` entró al diff y está fuera de los archivos listados.** No
+  es "de pasada": su docstring afirmaba la lectura de §D21 que **E-07 ya había
+  resuelto al revés**, en un archivo que T1 toca de todos modos.
+- **Cobertura muerta desde E-07 que revivió.** El test `'un contribuyente con un
+  ?tab= que no le toca queda con el query limpio'` ejercita el cuerpo del efecto que
+  limpia el query. Desde E-07 el contador se salía por el `return` del efecto y
+  **nadie recorría ese cuerpo**: sustituirlo por un no-op no rompía nada.
+- **T3 va a tocar `FiscalitoServicePage.tsx` y `ALL_TABS`.** Ojo: T1 le agregó una
+  rama de estado vacío antes del `return` principal y extrajo `ICONO_CABECERA` /
+  `TITULO_CABECERA`. Y `getTabsForProfile` tiene ahora `tabsPorRegimenDeCliente`
+  aparte, con `TABS_COMPLETOS` congelado que se devuelve **copiado**.
+- **Lo que no toqué:** el motor, ni el corte fiscal en sí, ni el `.env`.
+
+### Cierre
+
+Front **739 verdes** (61 archivos, +2 por los de `ModalCliente`), backend **1311**,
+`tsc` y `npm run build` limpios, `ruff` limpio, `eslint` en **20 errores / 8
+warnings** — la base exacta de S-02, sin moverse.
+
+Nada de esto se ha visto en un navegador.

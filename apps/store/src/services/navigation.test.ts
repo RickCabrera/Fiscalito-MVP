@@ -3,9 +3,12 @@
  *
  * Los dos invariantes que protege este archivo:
  *
- * 1. Un CONTADOR ve exactamente cuatro entradas y ninguna de contribuyente. La
+ * 1. Un CONTADOR ve una lista EXACTA y ninguna entrada de contribuyente. La
  *    aserción es sobre la lista COMPLETA, no sobre presencia: si alguien agrega
- *    "Historial" al sidebar del despacho, esto se cae.
+ *    "Historial" al sidebar del despacho, esto se cae. La lista lleva **siete**
+ *    entradas: las cuatro de E-01, más Empleados y Dispositivos (R-05), más
+ *    Fiscalito —el del cliente activo— que sumó T1. "Historial" y "Dashboard"
+ *    siguen siendo las que no pueden aparecer, porque ésas sí serían suyas.
  * 2. Los cinco tipos de contribuyente y el perfil sin tipo siguen viendo lo
  *    mismo que antes de E-01. La tarea es aditiva o no es.
  */
@@ -43,7 +46,7 @@ const CONTRIBUYENTES: (ContributorType | null)[] = [
 ];
 
 describe('getSidebarLinks', () => {
-  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Perfil, en ese orden', () => {
+  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Fiscalito / Perfil, en ese orden', () => {
     expect(getSidebarLinks('contador')).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
       // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
@@ -59,8 +62,21 @@ describe('getSidebarLinks', () => {
       // E-07: dejó de apuntar al tab de contribuyente. Ahora es el calendario
       // PATRONAL de sus clientes.
       { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
+      // T1: el servicio fiscal vuelve al sidebar del despacho, pero lo que
+      // abre es el de su CLIENTE ACTIVO. La etiqueta sale de la marca, igual
+      // que la del contribuyente, y por la misma razón de O-02.
+      { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
+  });
+
+  it('el contador NO ve Dashboard ni Historial: ésos sí serían suyos', () => {
+    // La otra mitad del invariante 1. Fiscalito entró en T1 porque lo que abre
+    // es de su cliente; un dashboard de contribuyente y un historial de
+    // declaraciones propias no tienen sujeto en una cuenta de despacho.
+    const ids = getSidebarLinks('contador').map((l) => l.id);
+    expect(ids).not.toContain('dashboard');
+    expect(ids).not.toContain('historial');
   });
 
   it('ningún contribuyente ve las entradas del despacho', () => {
@@ -171,23 +187,44 @@ describe('navActivo (E-06)', () => {
 
 describe('getTabsForProfile', () => {
   /**
-   * EL CASO QUE VALE EL ARCHIVO. Un despacho tiene régimen 612 o 626, así que
-   * si la rama de contador se evaluara DESPUÉS de las de régimen, caería en la
-   * de RESICO o en la de Actividad Empresarial y vería pre-declaración, DIOT y
-   * retenciones. Los dos regímenes que el perfil permite están probados.
+   * EL CASO QUE VALE EL ARCHIVO, REESCRITO EN T1.
+   *
+   * Lo que se mide sigue siendo lo mismo —qué ve un despacho en Fiscalito— pero
+   * cambió el SUJETO: hasta E-07 el `regimen` que llegaba aquí con
+   * `contributorType: 'contador'` era el del despacho (y desde E-05 venía
+   * vacío, así que el tab que le quedaba estaba muerto). Desde T1 es el del
+   * CLIENTE ACTIVO, que sí existe y sí se captura en el alta.
+   *
+   * El caso que decide la tarea es el par 612 / 626, con el corte que E-01 ya
+   * traía y que §D30 deja pendiente de confirmar con la contadora. Lo que se
+   * fija aquí no es la regla fiscal —esa puede moverse— sino que el régimen del
+   * cliente **se aplique**: si alguien colapsara las dos ramas al set completo,
+   * los dos clientes verían lo mismo y la pantalla se vería perfectamente bien.
    */
-  it.each(['612', '626'])('el contador con régimen %s no ve NINGÚN tab', (regimen) => {
-    /**
-     * Cambió en E-07. E-01 le dejaba el tab de calendario —sus obligaciones
-     * propias como persona física, §D21 provisional—, pero E-05 deja de pedirle
-     * RFC y régimen y `CalendarioTab` corta en seco sin esos dos campos: el tab
-     * quedaba muerto. Su calendario es ahora el PATRONAL, en `/app/calendario`,
-     * y `FiscalitoServicePage` lo redirige ahí.
-     */
-    expect(getTabsForProfile('contador', regimen)).toEqual([]);
+  it('el contador con un cliente 612 ve el set completo', () => {
+    expect(getTabsForProfile('contador', '612')).toEqual([
+      'declaracion', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+    ]);
   });
 
-  it('el contador sin régimen capturado —que es su estado normal desde E-05— tampoco', () => {
+  it('el contador con un cliente 626 NO ve DIOT ni Retenciones', () => {
+    const tabs = getTabsForProfile('contador', '626');
+    expect(tabs).toEqual(['declaracion', 'calendario', 'comparar', 'estado']);
+    expect(tabs).not.toContain('diot');
+    expect(tabs).not.toContain('retenciones');
+  });
+
+  it('el contador con un cliente 612 y uno 626 no ve lo mismo', () => {
+    // La aserción que no se puede satisfacer por accidente: dos listas iguales
+    // pasarían los dos tests de arriba sólo si además fueran las esperadas,
+    // pero ésta se cae en cuanto el filtro por régimen deje de aplicarse.
+    expect(getTabsForProfile('contador', '612')).not.toEqual(getTabsForProfile('contador', '626'));
+  });
+
+  it('el contador SIN cliente elegido no ve ningún tab', () => {
+    // No es el caso de E-07 con otro nombre: aquí el vacío significa "falta el
+    // dato", y `FiscalitoServicePage` pinta el estado con el selector en vez de
+    // una tira de tabs sobre un cliente inexistente.
     expect(getTabsForProfile('contador', null)).toEqual([]);
     expect(getTabsForProfile('contador', '')).toEqual([]);
   });

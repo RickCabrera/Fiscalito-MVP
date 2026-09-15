@@ -40,11 +40,11 @@ afterEach(() => {
   cleanup();
 });
 
-function pintar(idsExistentes: string[] = []) {
+function pintar(idsExistentes: string[] = [], cliente: Parameters<typeof ModalCliente>[0]['cliente'] = null) {
   const onGuardar = vi.fn().mockResolvedValue(undefined);
   render(
     <ModalCliente
-      cliente={null}
+      cliente={cliente}
       idsExistentes={idsExistentes}
       onGuardar={onGuardar}
       onCerrar={vi.fn()}
@@ -189,5 +189,57 @@ describe('ModalCliente · la periodicidad', () => {
     const select = campo(/Periodicidad/) as HTMLSelectElement;
     expect(select.disabled).toBe(true);
     expect(Array.from(select.options).map((o) => o.value)).toEqual(['04']);
+  });
+});
+
+describe('ModalCliente · el régimen del cliente (T1)', () => {
+  /**
+   * ES EL ORIGEN DEL DATO DEL QUE CUELGA T1 ENTERA. Si esto guarda mal, la
+   * pantalla de Fiscalito filtra sus tabs con el régimen equivocado y se ve
+   * perfectamente bien haciéndolo.
+   *
+   * El corte fiscal 612/626 NO se mide aquí —ése vive en `navigation.ts` y está
+   * pendiente de confirmar (§D30)—: aquí sólo se mide que el valor que el
+   * contador elige sea el que sale por `onGuardar`.
+   */
+  it('nace con 612 y guarda lo que el contador elija', async () => {
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    const onGuardar = pintar();
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+
+    const select = campo(/Régimen fiscal/) as HTMLSelectElement;
+    expect(select.value).toBe('612');
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['612', '626']);
+
+    llenarBasico();
+    fireEvent.change(campo(/Prima de RT/), { target: { value: '0.0054355' } });
+    fireEvent.change(select, { target: { value: '626' } });
+    fireEvent.click(botonAlta());
+
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].regimen).toBe('626');
+  });
+
+  it('un cliente ANTERIOR a T1 deja de arrastrar el campo vacío al reguardarse', async () => {
+    /**
+     * LA RAMA QUE NO SE VE. Un cliente guardado antes de T1 llega sin la llave,
+     * y el `select` pinta el default **sin disparar `onChange`**: sin el
+     * `regimen: datos.regimen || REGIMEN_CLIENTE_POR_DEFECTO` del handler se
+     * guardaría igual de vacío, y la pantalla de Fiscalito seguiría avisando
+     * "régimen supuesto" después de que el contador ya lo dio por bueno.
+     */
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    const onGuardar = pintar([], {
+      id: 'viejo', nombre: 'Cliente Viejo', giro: 'Servicios', origen: 'propio',
+      prima_riesgo: '0.0054355', clase_riesgo: 1, clave_periodicidad: '04',
+      zona: 'general', periodo_sugerido: { inicio: '', fin: '', fecha_pago: null },
+    });
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+
+    expect((campo(/Régimen fiscal/) as HTMLSelectElement).value).toBe('612');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Guardar$/ }));
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0].regimen).toBe('612');
   });
 });

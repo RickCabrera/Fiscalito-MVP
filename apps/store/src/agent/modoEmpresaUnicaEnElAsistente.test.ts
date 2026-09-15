@@ -29,7 +29,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
-import { modoDespacho } from '../test/modoDespacho';
+import { modoDespacho, modoEmpresa } from '../test/modoDespacho';
 
 vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion: vi.fn() }));
@@ -82,6 +82,13 @@ beforeEach(() => {
 });
 
 describe('en modo empresa única el asistente no habla de despacho ni de clientes', () => {
+  /**
+   * T1: este bloque medía el modo empresa única heredándolo del default, que
+   * hasta T1 era ése. Al invertirse, pasó a medir el despacho y se cayó entero.
+   * Ahora lo declara, igual que sus gemelos de abajo declaran el despacho.
+   */
+  modoEmpresa();
+
   it('el prompt no dice "DESPACHO CONTABLE"', async () => {
     expect(await promptDeSistema()).not.toMatch(/DESPACHO CONTABLE/);
   });
@@ -130,6 +137,8 @@ describe('en modo despacho el prompt de siempre no se tocó', () => {
 });
 
 describe('la tool de navegación no ofrece una ruta que redirige', () => {
+  modoEmpresa();
+
   /** El enum de rutas que viaja al LLM. */
   function rutasDelEnum(): string[] {
     const navegar = toolsOpenAI().find((t) => t.function.name === 'navegar')!;

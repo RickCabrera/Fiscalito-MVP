@@ -43,6 +43,11 @@ export interface ClienteResumen {
   clase_riesgo: number | null;
   clave_periodicidad: string;
   zona: string;
+  /**
+   * Régimen fiscal del cliente (T1). Opcional por la misma razón que en
+   * `ClienteCartera`: el catálogo de demostración del backend no lo trae.
+   */
+  regimen?: string;
 }
 
 export interface ClienteDetalle extends ClienteResumen {

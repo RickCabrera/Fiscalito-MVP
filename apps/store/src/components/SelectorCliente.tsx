@@ -1,11 +1,21 @@
 /**
  * Selector de cliente activo, en la barra superior (E-02).
  *
- * SÓLO SE MUESTRA EN RUTAS CON ALCANCE DE CLIENTE. Calendario y Perfil son del
- * DESPACHO, no de un cliente: §D21 dice explícito que el calendario de una
- * cuenta de despacho muestra sus obligaciones propias y nada patronal. Un
- * selector de cliente visible ahí le mentiría al contador sobre lo que está
- * viendo.
+ * SÓLO SE MUESTRA EN RUTAS CON ALCANCE DE CLIENTE, y quién entra a esa lista lo
+ * decide `rutaTieneAlcanceDeCliente` con una regla que no se ha relajado desde
+ * E-02: entra la ruta que **lee** un cliente y le pide sus datos, no la que
+ * habla de clientes.
+ *
+ * Calendario y Perfil siguen fuera. Perfil es del DESPACHO; y Calendario, desde
+ * E-07, sí es patronal —§D21 quedó resuelta, y la frase que este bloque traía
+ * antes ("muestra sus obligaciones propias y nada patronal") describía la
+ * lectura provisional de E-01— pero es el de TODA la cartera: un selector de
+ * "cliente activo" sobre una lista que mezcla los tres clientes afirmaría un
+ * alcance que la pantalla no tiene.
+ *
+ * T1 sumó `/app/store/fiscalito/use`, que sí cumple la regla: filtra sus tabs
+ * con el régimen del cliente activo, y sin este selector el contador no tendría
+ * cómo cambiar de cliente sin salirse de la pantalla.
  *
  * DEMO — se borra en F2.
  */

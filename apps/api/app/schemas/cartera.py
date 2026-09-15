@@ -153,6 +153,21 @@ class ClienteCarteraSchema(BaseModel):
         "desarrollo (R-06).",
     )
 
+    regimen: str = Field(
+        default="",
+        max_length=3,
+        pattern=r"^\d{0,3}$",
+        description="Clave del régimen fiscal del CLIENTE (c_RegimenFiscal del SAT), no del "
+        "despacho. Lo consume el FRONT para decidir qué pantallas de Fiscalito se le pueden "
+        "trabajar (T1); **este schema no aplica ninguna regla fiscal sobre él y no valida "
+        "el catálogo**, sólo lo guarda y lo devuelve. El corte concreto 612/626 es un "
+        "criterio heredado de E-01, pendiente de confirmar con la contadora "
+        "(docs/decisiones-nomina.md §D30). **Vacío = no capturado**, y el front lo dice en "
+        "pantalla en vez de suponerlo en silencio; una cartera escrita antes de T1 no lo "
+        "trae. El campo existe aquí aunque hoy el dueño del dato sea Firestore (R-07 sigue "
+        "apagada) porque sin él, encender R-07 borraría el régimen de cada cliente en el "
+        "primer guardado: pydantic descarta lo que no declara.",
+    )
     rfc: str = Field(
         default="",
         max_length=13,
