@@ -425,6 +425,32 @@ DB: Firestore
 - `VITE_FISCAL_AGENT_URL` — URL del Fiscal Agent API (default: `http://localhost:8000`)
 - `VITE_OPENAI_API_KEY` — API key de OpenAI para voice chat (Whisper + GPT-4o-mini + TTS). **NOTA**: esta key se expone en el bundle del cliente; aceptable para demo/hackathon, no para produccion.
 
+#### Flags (los dos vienen APAGADOS; ver `.env.example`)
+
+Los dos se leen con la misma regla (`services/flagEncendido.ts`): encienden `1`,
+`true`, `on`, `yes`, `si` y `sí`; **cualquier otra cosa, y la variable ausente,
+dejan el flag apagado**. Un valor que no se entiende no enciende nada y tampoco
+avisa, así que escribe uno de esos seis.
+
+- `VITE_CARTERA_BACKEND` (R-07, T2) — **quién es el dueño de la cartera**
+  (clientes y empleados), y se decide una vez al cargar la app, en
+  `services/cartera.ts`. Apagado (**default**): todo el CRUD va por
+  `services/carteraFirestore.ts`, o sea Firestore desde el navegador.
+  Encendido: va por `services/carteraBackend.ts` contra `/api/v1/cartera/*`.
+  **El backend existe y está probado, pero exige credenciales de GCP**
+  (`GOOGLE_APPLICATION_CREDENTIALS` o ADC) en `apps/api`; sin ellas responde
+  **503 a todo el CRUD**, que no se ve como un problema de configuración sino
+  como una app que dejó de guardar clientes. Enciéndelo sólo después de
+  comprobar que `GET /api/v1/cartera/clientes` responde 200. **No hay migración
+  de datos**: las rutas de Firestore (`users/{uid}/clientes/{id}/empleados/{id}`)
+  son las mismas de los dos lados, así que apagarlo tampoco mueve nada. El
+  contrato vive en `docs/api-contract.md`, y R-07 sigue ABIERTA en `backlog.md`.
+- `VITE_MODO_EMPRESA_UNICA` (O-01, default invertido en T1) — apagado
+  (**default**) es la app del DESPACHO: cartera, selector de cliente activo y el
+  Fiscalito de cada cliente. Encendido es la nómina de UNA empresa implícita,
+  sin cartera ni lista de clientes. Ninguno de los dos modos se borra; se
+  apagan. Ojo con tu `.env` local: gana sobre el default.
+
 ### Estructura Firestore:
 
 **Perfil de usuario** — `users/{uid}`:

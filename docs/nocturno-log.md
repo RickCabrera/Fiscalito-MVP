@@ -2652,3 +2652,124 @@ Front **739 verdes** (61 archivos, +2 por los de `ModalCliente`), backend **1311
 warnings** — la base exacta de S-02, sin moverse.
 
 Nada de esto se ha visto en un navegador.
+
+---
+
+## T2 · Backend-como-dueño / credencial GCP (2026-09-15, MODO AUTÓNOMO + MODO DEMO)
+
+Segunda tarea de la corrida T. Un pase de revisor sobre el entregable, como manda
+el régimen de la sección T: **aprobó con observaciones**, con una corrección
+obligada que se aplicó antes del push (abajo).
+
+**Lo primero, porque cambia cómo se lee la tarea: el grueso de T2 YA ESTABA HECHO
+por R-07.** `services/cartera.ts` ya traía el flag `VITE_CARTERA_BACKEND` con
+default apagado y el despacho a `carteraFirestore.ts`, con `cartera.test.ts`
+pinneando el default por identidad de función. Los dos modales del alta
+—`ModalCliente` y `ModalEmpleado`— ya tenían su `try/catch` y su mensaje, y
+`SelectorCliente` ya distinguía "cartera vacía" de "no se pudo cargar". La opción
+B que el backlog manda elegir **era el estado del árbol**. Quien lea "T2: opción
+B" esperando un cambio de arquitectura no lo va a encontrar, y no porque se
+recortara.
+
+Nota del revisor que conviene conservar: el `try/catch` que T2 pide en
+`SelectorCliente` **no tiene dónde ir** — ese componente no llama a nada, lee del
+contexto. Lo que la tarea describe ya lo cubren los dos modales.
+
+### Lo que sí faltaba, y es lo que va en el PR
+
+1. **El flag se leía con `=== '1'` y nada más.** `VITE_CARTERA_BACKEND=true` en un
+   `.env` dejaba el backend apagado **sin decirlo** — y eso no se ve como un error
+   de configuración, se ve como un backend que "no hace nada". `modoEmpresa.ts` ya
+   resolvía esto con un conjunto de valores aceptados y la frase que lo justifica
+   ("un flag que ignora en silencio lo que le escribieron es peor que no tenerlo").
+   Extraje ese conjunto a `services/flagEncendido.ts` y ahora los dos flags leen
+   igual. Refactor sin cambio de comportamiento: mismo `Set`, misma normalización,
+   los 15 casos de `modoEmpresa.test.ts` intactos.
+2. **Las cuatro escrituras de `carteraFirestore.ts` no tenían cota**, pese a que el
+   encabezado del archivo afirma "ningún `await` sin tope". **Esto no está listado
+   en T2 y lo hice igual**, porque es justo el "Listo cuando": la promesa de
+   `setDoc` sólo resuelve cuando el servidor acusa recibo, así que sin red se queda
+   pendiente para siempre, `ModalCliente` sólo hace `setGuardando(false)` en su
+   `catch`, y lo que ve el contador al dar de alta un cliente enfrente de la sala es
+   "Guardando…" eterno con el botón muerto y ni un mensaje. `TIMEOUT_ESCRITURA_MS =
+   10000` y `escrituraConTimeout()`. **El mensaje no miente**: dice que no hubo
+   confirmación —no que falló— y que reintentar es seguro, que lo es, porque las
+   cuatro operaciones son idempotentes (id determinista y `merge`).
+3. **`SelectorCliente`: del error se podía ver, pero no salir.** El mensaje no decía
+   el motivo y no ofrecía reintentar, y esta barra vive en las rutas con alcance de
+   cliente: ahí el contador no tenía **ninguna** forma de recuperar la cartera sin
+   recargar la página, porque el botón de reintentar está en `ClientesPage`, que es
+   otra pantalla. Ahora hay "Reintentar" cableado a `recargar`. El motivo va en el
+   `title` y no en el texto a propósito: el detalle que trae `cargarCartera` es de
+   diagnóstico ("… tardó más de 2500 ms") y la barra superior se proyecta en
+   pantalla grande.
+4. **Documentación**, que T2 pide explícitamente: `apps/store/CLAUDE.md` estrena
+   subsección "Flags" con los DOS —`VITE_CARTERA_BACKEND` y
+   `VITE_MODO_EMPRESA_UNICA`, que tampoco estaba documentado y es el que decide si
+   la app arranca como despacho o como empresa única—, más `.env.example` y una
+   nota en `docs/api-contract.md`.
+
+### Lo que el revisor bloqueó de un renglón, y por qué importa
+
+Mi primera versión le puso a la lectura de empleados de `borrarCliente` la cota
+CORTA (2500 ms, la del primer pintado) con el argumento de que "es una lectura".
+**Eso introducía un fallo que antes no existía:** borrar un cliente con plantilla
+en una red lenta reventaría donde antes sólo tardaba. Mi propio argumento para los
+10 s —no hay pantalla esperando— aplica idéntico ahí. Corregido a
+`TIMEOUT_ESCRITURA_MS`. Es la clase de error que sólo se ve leyendo el diff con el
+criterio de "qué empeora", no el de "qué mejora".
+
+### Trampas para quien siga
+
+- **⚠ "En `false`, ninguna llamada al API" SIGUE SIENDO FALSO, y T2 no lo arregla.**
+  Lo cazó el revisor. `carteraFirestore.ts` llama a `obtenerPeriodoSugerido()`
+  contra el Fiscal Agent en **cada** `cargarCartera`, una vez por clave de
+  periodicidad, con el flag apagado y todo. El código lo maneja bien —cota y
+  `catch` que conserva el snapshot— pero **el navegador loguea el request fallido
+  igual**, así que es el candidato número uno a ensuciar la consola durante la demo
+  si el API no está levantado. No lo toqué: es de R-06/O-03, no de T2, y meterle
+  mano sería scope creep de verdad. **Si alguien ve rojo en la consola de la demo,
+  mira aquí primero.**
+- **NADA DE ESTO SE VIO EN UN NAVEGADOR.** El "Listo cuando" de T2 dice "sin errores
+  en consola" y eso exige levantar la app y autenticarse como contador con
+  credenciales de Firebase que la sesión no tiene. Por eso la tarea se marca
+  **PARCIAL** por el punto 7 del régimen, no `[x]` liso: lo verificado es el build
+  y la suite, no la pantalla.
+- **Las cotas de escritura van a main SIN UN SOLO TEST**, porque el régimen MODO
+  DEMO prohíbe tests nuevos. Deuda declarada, y el revisor la subrayó: los 739
+  verdes NO recorren ese camino, pasan porque los mocks de `setDoc`/`deleteDoc`/
+  `commit` resuelven al instante. `carteraFirestore.test.ts` ya cubre las dos cotas
+  de LECTURA con `vi.useFakeTimers()` y el patrón se copia en cuatro líneas: es lo
+  primero que hay que pinnear en cuanto se pueda escribir un test.
+- **`ErrorDeTiempo` existe por una razón concreta.** `escrituraConTimeout` necesita
+  distinguir el rechazo de la cota del de Firestore, y hacerlo comparando cadenas
+  ataría el comportamiento a la redacción de un mensaje que un test de ese mismo
+  archivo ya inspecciona (`toContain('tardó')`). El texto se conservó; lo que cambió
+  es que ya no es la única forma de reconocerlo.
+- **La cola de escrituras de Firestore NO sobrevive a una recarga.**
+  `services/firebase.ts` usa `getFirestore()` sin persistencia offline, así que el
+  envío encolado vive en memoria. El mensaje de la cota lo respeta con un
+  condicional en vez de prometer que el dato está a salvo; si alguien enciende la
+  persistencia algún día, ese texto se puede volver más rotundo.
+- **`BACKEND_ES_DUENO` es `const` y `modoEmpresaUnica()` es función**, aunque desde
+  T2 compartan lectura. No es descuido —el dueño del dato se decide una vez por
+  proceso— pero implica que `vi.stubEnv` no puede voltear el primero en un test.
+  Queda dicho en el docstring, porque compartir helper invita a suponer lo
+  contrario.
+- **`carteraFirestore.ts` queda en 422 líneas**, sobre el tope de 300 de
+  `apps/store/CLAUDE.md`. Ya estaba en ~357 y el crecimiento es casi todo docstring;
+  el corte natural, cuando toque, es sacar los helpers de cota a un módulo propio.
+  Es la misma deuda declarada de `ModalEmpleado.tsx` y `useNominaCliente.ts`.
+- **R-07 sigue ABIERTA y sigue intacta.** Con el flag encendido el camino del backend
+  no cambió ni una línea; lo único que se movió es cuántas formas de escribir "sí"
+  lo encienden. Lo que le falta para producción es lo mismo que decía `cartera.ts`
+  antes de esta tarea: credenciales de GCP en `apps/api`, y un
+  `GET /api/v1/cartera/clientes` que responda 200 antes de tocar el `.env`.
+- **Lo que no toqué:** el motor (cero cambios bajo `apps/api/`, verificado con
+  `git diff --name-only`), el corte fiscal de T1, el `.env` real y `firestore.rules`.
+
+### Cierre
+
+`npm run build` limpio, **739 tests verdes en 61 archivos** —la misma cifra que
+antes del cambio: ningún test tocado y ninguno añadido—, `eslint` limpio en los
+archivos tocados y la base global del repo quieta en 20 errores / 8 warnings.

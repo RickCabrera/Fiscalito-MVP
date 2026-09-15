@@ -590,6 +590,11 @@ encenderlo sin ellas daría 503 en todo el CRUD. Se enciende con
 `GET /api/v1/cartera/clientes` responde 200. **No hay migración de datos**: las
 rutas de Firestore son las mismas de los dos lados.
 
+T2 le dio al flag la misma lectura que a `VITE_MODO_EMPRESA_UNICA`
+(`services/flagEncendido.ts`): además de `1` encienden `true`, `on`, `yes`, `si`
+y `sí`, y todo lo demás lo deja apagado. Antes sólo valía `=== '1'`, así que un
+`.env` con `VITE_CARTERA_BACKEND=true` dejaba el backend apagado sin decirlo.
+
 **Dispositivos NO están aquí.** R-04 los dejó viviendo en Firestore escritos por
 el front; meterlos en la misma corrida haría nacer la colección con dos dueños
 dentro del mismo día, que es el problema que R-07 cierra. Es tarea propia.

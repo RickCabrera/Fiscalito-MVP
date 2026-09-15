@@ -17,16 +17,31 @@
  * con el régimen del cliente activo, y sin este selector el contador no tendría
  * cómo cambiar de cliente sin salirse de la pantalla.
  *
+ * T2 · EL ERROR SE PODÍA VER PERO NO SE PODÍA SALIR DE ÉL
+ * -------------------------------------------------------
+ * La barra ya distinguía "no hay clientes" de "no se pudo cargar" —eso es de
+ * R-06 y sigue igual—, pero el mensaje era una frase muerta: no decía el
+ * motivo y no ofrecía reintentar. Y esta barra está en las rutas con alcance
+ * de cliente, así que ahí el contador se quedaba sin **ninguna** forma de
+ * recuperar la cartera sin recargar la página entera: el botón de reintentar
+ * de `ClientesPage` vive en otra pantalla, y llegar a él exige salirse de
+ * donde estaba.
+ *
+ * El motivo va en el `title` y no en el texto a propósito: el detalle que trae
+ * `cargarCartera` es de diagnóstico ("La cartera de Firestore tardó más de
+ * 2500 ms"), y ponerlo en la barra superior mientras se proyecta en pantalla
+ * grande es ruido. Visible al pasar el cursor, y suficiente para copiarlo.
+ *
  * DEMO — se borra en F2.
  */
 
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Building2, Loader } from 'lucide-react';
+import { Building2, Loader, RefreshCw } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import { rutaTieneAlcanceDeCliente } from '../services/navigation';
 
 export default function SelectorCliente() {
-  const { clientes, clienteId, loading, error, setClienteId } = useClienteActivo();
+  const { clientes, clienteId, loading, error, setClienteId, recargar } = useClienteActivo();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { id: idDeLaRuta } = useParams();
@@ -74,9 +89,28 @@ export default function SelectorCliente() {
         Cliente activo
       </label>
       {error ? (
-        <span style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
-          No se pudo cargar la cartera
-        </span>
+        <>
+          <span role="alert" title={error} style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
+            No se pudo cargar la cartera
+          </span>
+          {/* Reintentar es sólo volver a leer: `recargar` incrementa el
+              contador de intentos de `CarteraProvider` y el efecto de carga
+              corre de nuevo. No escribe nada, así que pulsarlo de más es
+              inofensivo. */}
+          <button
+            type="button"
+            onClick={recargar}
+            title="Volver a cargar la cartera"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'none', border: 'none', padding: '2px 4px',
+              color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem',
+            }}
+          >
+            <RefreshCw size={13} />
+            Reintentar
+          </button>
+        </>
       ) : loading ? (
         <Loader size={14} className="spin" color="var(--text-muted)" />
       ) : (

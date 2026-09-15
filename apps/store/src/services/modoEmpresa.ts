@@ -50,23 +50,18 @@
  * consulta en render.
  */
 
-/**
- * Las formas de ENCENDER el modo, en un solo lugar.
- *
- * El conjunto es el espejo del que O-cierre escribió para apagarlo, y se
- * conserva la misma regla: valen los valores que **no pueden significar otra
- * cosa**. Un flag que ignora en silencio lo que le escribieron es peor que no
- * tenerlo, así que `VITE_MODO_EMPRESA_UNICA=true` enciende igual que `1`.
- *
- * Lo ambiguo y lo vacío dejan el modo APAGADO: un `.env` a medio escribir no
- * cambia de app, y la app que se queda es la del despacho.
- */
-const ENCENDIDO = new Set(['1', 'true', 'on', 'yes', 'si', 'sí']);
+import { flagEncendido } from './flagEncendido';
 
-/** `true` si la app es la nómina de una sola empresa. Default: **no** (T1). */
+/**
+ * `true` si la app es la nómina de una sola empresa. Default: **no** (T1).
+ *
+ * Qué cuenta como "encendido" lo decide `flagEncendido`, que T2 extrajo de aquí
+ * para que `VITE_CARTERA_BACKEND` leyera con la misma regla: valen los valores
+ * que **no pueden significar otra cosa** (`1`, `true`, `on`, `yes`, `si`, `sí`)
+ * y lo ambiguo o vacío deja el modo APAGADO. El conjunto no cambió al mudarse.
+ */
 export function modoEmpresaUnica(): boolean {
-  const v = import.meta.env.VITE_MODO_EMPRESA_UNICA;
-  return ENCENDIDO.has(String(v ?? '').trim().toLowerCase());
+  return flagEncendido(import.meta.env.VITE_MODO_EMPRESA_UNICA);
 }
 
 /**

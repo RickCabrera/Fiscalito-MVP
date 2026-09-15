@@ -38,6 +38,12 @@
  * reventar —eso se atrapa— sino **colgarse**: sin cota, el proveedor no resuelve
  * nunca, `loading` se queda en `true` para siempre y la pantalla no llega ni a
  * poder decir que algo salió mal.
+ *
+ * **T2: hasta aquí la frase de arriba era falsa para las ESCRITURAS**, que eran
+ * las únicas cuatro llamadas del archivo sin cota. Ahí el síntoma no es un
+ * spinner de carga sino un "Guardando…" eterno con el botón muerto, que es el
+ * peor de los dos porque el contador ya tecleó los datos. Ver
+ * `TIMEOUT_ESCRITURA_MS`.
  */
 
 import {
@@ -75,6 +81,62 @@ const TIMEOUT_MS = 2500;
  */
 const TIMEOUT_RESPALDO_MS = 8000;
 
+/**
+ * La ESCRITURA lleva su propia cota, y es la más holgada de las tres. (T2)
+ *
+ * POR QUÉ FALTABA Y POR QUÉ IMPORTA
+ * ---------------------------------
+ * El encabezado de este archivo afirma *"ningún `await` sin tope"*, y de las
+ * cuatro escrituras de abajo **no era cierto en ninguna**. El modo de falla no
+ * es que Firestore reviente —eso lo atrapan los modales, que ya tienen su
+ * `try/catch` y su mensaje— sino que **no conteste**: la promesa de `setDoc`
+ * sólo resuelve cuando el servidor acusa recibo, así que sin red se queda
+ * pendiente **para siempre**. Lo que ve el contador es "Guardando…" eterno, el
+ * botón deshabilitado y ni un mensaje: exactamente lo que T2 viene a que no
+ * pase al dar de alta un cliente o un empleado enfrente de nadie.
+ *
+ * **La cota NO cancela la escritura, y el mensaje no miente.** El SDK conserva
+ * el envío encolado y lo manda al reconectar; lo único que hace el tope es
+ * devolverle el control a la pantalla. Por eso el texto dice que puede haber
+ * quedado guardada, en vez de afirmar que falló.
+ *
+ * Con una acotación que el mensaje respeta: `services/firebase.ts` usa
+ * `getFirestore()` **sin persistencia offline**, así que esa cola vive en
+ * memoria y NO sobrevive a una recarga de la página. De ahí el condicional —
+ * "si el envío ya había salido"— en vez de prometer que el dato está a salvo.
+ *
+ * Reintentar es seguro: las cuatro operaciones son idempotentes —id
+ * determinista y `merge`—, así que un segundo intento sobre una escritura que
+ * sí llegó vuelve a dejar lo mismo.
+ *
+ * 10 s y no 2500 ms como la lectura: aquí no hay un primer pintado esperando,
+ * y un tope corto convertiría cualquier red lenta en un susto innecesario.
+ */
+const TIMEOUT_ESCRITURA_MS = 10000;
+
+/**
+ * Cota para una escritura, con el mensaje que la pantalla acaba mostrando.
+ *
+ * `qué` se redacta como sujeto, y tiene que caber en las DOS frases que puede
+ * acabar leyendo el contador: la de `conTimeout` ("… tardó más de 10000 ms") y
+ * la de aquí abajo ("… no recibió confirmación del servidor"). De ahí *"El
+ * guardado del cliente"* y *"La baja del empleado"*.
+ */
+function escrituraConTimeout(promesa: Promise<void>, que: string): Promise<void> {
+  return conTimeout(promesa, que, TIMEOUT_ESCRITURA_MS).catch((e: unknown) => {
+    // Un fallo de Firestore —permiso denegado, reglas, red que sí contesta—
+    // viaja tal cual: su mensaje dice más que cualquier cosa que se pueda
+    // escribir aquí, y los modales ya lo muestran.
+    if (!(e instanceof ErrorDeTiempo)) throw e;
+    throw new Error(
+      `${que} no recibió confirmación del servidor en ${TIMEOUT_ESCRITURA_MS / 1000} s. ` +
+        'Revisa tu conexión y vuelve a intentar: reintentar no duplica nada, y ' +
+        'si el envío ya había salido el cambio aparecerá al recargar una vez ' +
+        'que vuelva la conexión.',
+    );
+  });
+}
+
 /** De dónde salió lo que se está viendo. La pantalla lo dice, no lo esconde. */
 export type OrigenCartera = 'firestore' | 'backend';
 
@@ -89,12 +151,23 @@ export interface CarteraCargada {
   error: string | null;
 }
 
+/**
+ * Que la cota saltó, distinguible sin leer el texto del mensaje.
+ *
+ * `escrituraConTimeout` necesita saber si el rechazo es de la cota o de
+ * Firestore para decidir qué mensaje enseñar, y hacerlo comparando cadenas ata
+ * ese comportamiento a la redacción de un `Error` — que un test de este mismo
+ * archivo ya inspecciona (`toContain('tardó')`). El texto se conserva tal cual;
+ * lo que cambia es que ya no es la única forma de reconocerlo.
+ */
+class ErrorDeTiempo extends Error {}
+
 function conTimeout<T>(promesa: Promise<T>, que: string, ms = TIMEOUT_MS): Promise<T> {
   let temporizador: ReturnType<typeof setTimeout>;
   return Promise.race([
     promesa,
     new Promise<T>((_, rechazar) => {
-      temporizador = setTimeout(() => rechazar(new Error(`${que} tardó más de ${ms} ms`)), ms);
+      temporizador = setTimeout(() => rechazar(new ErrorDeTiempo(`${que} tardó más de ${ms} ms`)), ms);
     }),
     // Se limpia el timer gane quien gane: sin esto queda uno colgado por
     // llamada. Inofensivo con topes cortos, sucio en cuanto alguien llame esto
@@ -312,17 +385,31 @@ export async function guardarCliente(
   uid: string,
   cliente: Omit<ClienteCartera, 'empleados'>,
 ): Promise<void> {
-  await setDoc(clienteRef(uid, cliente.id), cliente, { merge: true });
+  await escrituraConTimeout(
+    setDoc(clienteRef(uid, cliente.id), cliente, { merge: true }),
+    'El guardado del cliente',
+  );
 }
 
 export async function borrarCliente(uid: string, clienteId: string): Promise<void> {
   // Firestore no borra subcolecciones en cascada: sin esto los empleados
   // quedarían huérfanos y reaparecerían al recrear un cliente con el mismo id.
-  const empleados = await getDocs(empleadosRef(uid, clienteId));
+  //
+  // Esta lectura lleva la cota de ESCRITURA aunque sea un `getDocs`: no es la
+  // que bloquea un primer pintado —nadie está esperando una pantalla— sino un
+  // paso intermedio de un borrado que el contador ya pidió. Con los 2500 ms de
+  // la lectura de arranque, borrar un cliente con plantilla en una red lenta
+  // reventaría donde antes sólo tardaba, que es un fallo que esta tarea habría
+  // INTRODUCIDO en vez de cerrar.
+  const empleados = await conTimeout(
+    getDocs(empleadosRef(uid, clienteId)),
+    'La lectura de los empleados a borrar',
+    TIMEOUT_ESCRITURA_MS,
+  );
   const lote = writeBatch(db);
   empleados.docs.forEach((d) => lote.delete(d.ref));
   lote.delete(clienteRef(uid, clienteId));
-  await lote.commit();
+  await escrituraConTimeout(lote.commit(), 'La baja del cliente');
 }
 
 export async function guardarEmpleado(
@@ -330,7 +417,10 @@ export async function guardarEmpleado(
   clienteId: string,
   empleado: EmpleadoCartera,
 ): Promise<void> {
-  await setDoc(empleadoRef(uid, clienteId, empleado.empleado_no), empleado, { merge: true });
+  await escrituraConTimeout(
+    setDoc(empleadoRef(uid, clienteId, empleado.empleado_no), empleado, { merge: true }),
+    'El guardado del empleado',
+  );
 }
 
 export async function borrarEmpleado(
@@ -338,5 +428,8 @@ export async function borrarEmpleado(
   clienteId: string,
   empleadoNo: string,
 ): Promise<void> {
-  await deleteDoc(empleadoRef(uid, clienteId, empleadoNo));
+  await escrituraConTimeout(
+    deleteDoc(empleadoRef(uid, clienteId, empleadoNo)),
+    'La baja del empleado',
+  );
 }
