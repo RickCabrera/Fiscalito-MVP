@@ -126,6 +126,11 @@ fiscalito-store-app/
 │   │   ├── historial/           # HistorialCard, HistorialFilters, ExpandedDetail
 │   │   ├── onboarding/          # Step{Tipo,DatosFiscales,DatosPersonales,Confirmar} + WizardProgress + styles.ts
 │   │   ├── voice/               # useVoiceChat (hook: STT/Chat/TTS + VAD) + VoiceChatUI
+│   │   ├── contabilidad/        # Tabs de Contabilito (T7)
+│   │   │   ├── CatalogoTab.tsx        # Codigo agrupador SAT (PORVALIDAR)
+│   │   │   ├── PolizasTab.tsx         # Una poliza por CFDI, expandible a sus movimientos
+│   │   │   ├── BalanzaTab.tsx         # Balanza de comprobacion del lote + cuadre
+│   │   │   └── BuzonTab.tsx           # "Requiere e.firma — proximamente"
 │   │   └── fiscalito/           # Tabs del servicio Fiscalito
 │   │       ├── PreDeclaracionTab.tsx      # Upload XML + calculo pre-declaracion
 │   │       ├── DeclaracionAnualTab.tsx    # T3: ejercicio completo + deducciones personales
@@ -160,6 +165,7 @@ fiscalito-store-app/
 │   │   ├── CalendarioPatronalPage.tsx # Obligaciones patronales de la cartera (E-07)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
 │   │   ├── PlanesPage.tsx           # Planes y limite de clientes, sin cobro (T8)
+│   │   ├── ContabilitoPage.tsx      # Contabilito: catalogo, polizas, balanza y buzon (T7)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
 │   │   ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
@@ -177,6 +183,10 @@ fiscalito-store-app/
 │   │   ├── pdfExportRetenciones.ts  # PDF de retenciones
 │   │   ├── pdfExportMulti.ts        # PDF multi-periodo
 │   │   ├── pdfExportEstado.ts       # PDF estado de cuenta
+│   │   ├── contabilidad/            # Contabilito (T7) — 100% front, no toca el API
+│   │   │   ├── catalogoSAT.ts       # ~28 cuentas del codigo agrupador SAT (PORVALIDAR)
+│   │   │   ├── polizas.ts           # CFDI -> partida doble (cuadra por construccion)
+│   │   │   └── balanza.ts           # Suma por cuenta y comprueba el cuadre
 │   │   ├── deduccionesPersonales.ts # Campos y clasificacion por ClaveProdServ (compartido)
 │   │   ├── pdfUtils.ts              # Helpers compartidos para exports PDF (colores, tablas)
 │   │   └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
@@ -201,6 +211,7 @@ fiscalito-store-app/
 /app/nomina-demo               → redireccion a /app/clientes/demo/nomina (ruta vieja de D-07)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
+/app/store/contabilito/use     → ContabilitoPage (protegida, Contabilito: catalogo/polizas/balanza/buzon — T7)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
 /app/profile                   → ProfilePage (protegida)
 /app/planes                    → PlanesPage (protegida, planes y limite de clientes — T8; se entra desde Perfil, no del sidebar)
@@ -457,7 +468,9 @@ Definidos en `src/services/storeServices.ts`. Cada servicio tiene:
 2. **IMSS Manager** (**beta**, T8) — SDI, cuotas por ramo, altas y archivo de movimientos
    afiliatorios. PYMEs y contador. Bajas y modificaciones de salario NO: falta el dato, no el
    layout (ver `exportadores/registro.ts`).
-3. **Contabilito** (proximamente) — Contabilidad electronica automatizada. Solo PYMEs.
+3. **Contabilito** (**beta**, T7) — Polizas de partida doble desde los CFDI, balanza de
+   comprobacion y catalogo del codigo agrupador SAT. PYMEs y contador. El envio al buzon
+   tributario NO: necesita e.firma (ver `features_proximamente`).
 
 **`beta` cuenta como usable.** `servicioDisponible()` y `etiquetaDeEstado()` viven en
 `storeServices.ts` y las consultan **las CUATRO pantallas que pintan `status`**: Landing (publica),
@@ -489,6 +502,38 @@ suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` 
 - El uso ("3 / 25 clientes") se pinta en Perfil (`components/perfil/TarjetaPlan.tsx`), en
   `SelectorCliente` —que lo recibe **como prop desde `AppLayout`**, no del contexto— y junto al
   boton de alta en `ClientesPage`.
+
+### Contabilito — contabilidad electronica (T7, CASCARON)
+
+`/app/store/contabilito/use`. **100% front y sin una sola llamada al API**, y puede serlo
+porque aqui no se calcula ningun impuesto: los importes (subtotal, descuento, IVA trasladado,
+retenciones) ya vienen leidos del XML por `cfdiParser.ts` y solo se acomodan en los dos lados
+de una partida doble. Nada se guarda: los comprobantes viven en el estado de la pantalla.
+
+- **`catalogoSAT.ts`** — subconjunto de ~28 cuentas de primer nivel del codigo agrupador del
+  SAT (Anexo 24 de la RMF). **Marcado `PORVALIDAR`, con banner en el tab Catalogo**: los ocho
+  codigos que usan las polizas (101, 102, 105, 118, 201, 208, 401, 601) venian dados por la
+  tarea; el resto de codigos y TODOS los nombres se escribieron sin el Anexo 24 enfrente. Misma
+  politica que el layout de la DIOT en T5.
+- **`polizas.ts`** — una poliza por CFDI fiscal. Emitido: cargo 105 Clientes + 107
+  Contribuciones a favor / abono 401 Ingresos + 208 IVA trasladado. Recibido: cargo 601 Gastos
+  + 118 IVA acreditable / abono 201 Proveedores + 216 Retenciones por enterar. Un Egreso (E)
+  invierte cargos y abonos; un Pago (P) mueve 102 Bancos contra 105/201; un Traslado (T) no
+  mueve nada. **Los recibos de nomina se excluyen** (`facturasFiscales`, T4) y se cuentan
+  aparte.
+- **La contraparte (105/201) se CALCULA, no se copia de `total`**: `base + IVA trasladado −
+  retenciones`. Asi la poliza cuadra por construccion aunque el CFDI traiga impuestos que el
+  parser no lee (IEPS). Cuando el `total` del CFDI y lo contabilizado difieren, la diferencia
+  se guarda en `diferenciaConTotal` y la fila la marca — no se cuadra a la fuerza.
+- **El RFC decide de que lado cae cada poliza** y por eso se pinta editable arriba. Para un
+  **contador NO se usa `profile.rfc`**: ese es el del DESPACHO, no el del cliente, y usarlo
+  voltearia todas las polizas — la misma trampa que T6 documento con `profile.regimen`.
+  `ClienteResumen` **no trae RFC**, asi que sin captura manual se deduce: el RFC que aparece en
+  mas comprobantes es el propio (esta en todos, de emisor o de receptor). La pantalla dice
+  cuando lo dedujo.
+- **Balanza sin saldos iniciales**: es la del lote cargado, no la del ejercicio, y lo dice.
+- **Tab Buzon**: pantalla de "Requiere e.firma — proximamente" con la lista de lo que falta. Sin
+  boton: el envio de contabilidad electronica se firma y se sella, y nada de eso existe.
 
 ### Constancias de retencion y DIOT .txt (T5)
 
