@@ -14,22 +14,261 @@ recuerda). El detalle de cada una vive en su seccion de abajo. **S-00 no esta aq
 proposito:** su criterio de cierre exige probar el chat de voz con microfono, asi que es
 diurna.
 
+**CAMBIO DE PRIORIDAD (2026-09-15, demo de despacho contable): la sección T va al frente,
+en MODO DEMO (régimen escrito en la sección T).** Van en este orden: T1, T2 y T8 primero,
+porque son el ecosistema contador/despacho; luego el cableado y los cascarones.
+
+1. T1
+2. T2
+3. T8
+4. T5
+5. T3
+6. T4
+7. T6
+8. T7
+
+*Prioridad anterior (2026-09-01), en pausa hasta que T cierre:*
+
 **CAMBIO DE PRIORIDAD (2026-09-01, demo del 2026-09-02): la Épica E va al frente.**
 D-04…D-07 ya están cerradas; S-03 y lo que sigue quedan en pausa hasta que E-04 cierre.
 
-1. E-01
-2. E-02
-3. E-03
-4. E-04
-5. S-03
-6. F1-07
-7. F1-08
-8. F1-06
-9. S-02
-10. S-01b
+9. E-01
+10. E-02
+11. E-03
+12. E-04
+13. S-03
+14. F1-07
+15. F1-08
+16. F1-06
+17. S-02
+18. S-01b
 
 **D-08 no está en la cola**, igual que S-00: necesita el checador físico enfrente, así que es
 diurna. F0-01, F0-02, F1-01…F1-05 y D-04…D-07 ya están cerradas.
+
+## T — Demo despacho contable (2026-09-15, MODO DEMO)
+
+**El porqué.** Demo de despacho contable con 2–3 horas de margen. No da tiempo para el
+protocolo completo en cada tarea, así que Ricardo autoriza un régimen recortado. Estas tareas
+**no venían del backlog**. Orden = prioridad. T1, T2 y T8 son el ecosistema
+contador/despacho y **ésas sí tienen que quedar bien**. Las demás son cableado y cascarones.
+
+**Régimen MODO DEMO (autorizado por Ricardo; manda sobre `CLAUDE.md` §Modo autónomo sólo en
+lo que aquí se dice, todo lo demás sigue igual):**
+
+1. **Una tarea por sesión**, como siempre. Rama `feat/<id>` desde `main` actualizado. El texto
+   original hablaba de ramas `feature/` desde `stable` y de worktrees: **ignóralo**, aquí manda
+   `main`.
+2. **Sin plan escrito y sin revisor**, EXCEPTO **T1, T2 y T8**: esas llevan **una** pasada de
+   revisor sobre el entregable. Si bloquea, corrige y vuelve a pasar; si bloquea dos veces, la
+   tarea se SALTA con el protocolo normal (`TAREA_SALTADA.txt`).
+3. **Sin tests nuevos.** Prohibido borrar, desactivar o saltar los que ya existen.
+4. **Único check obligatorio antes del PR:** `npm run build` si tocaste `apps/store`, y
+   `pytest -q` sólo de las carpetas de tests del área que tocaste si tocaste `apps/api`. Si
+   rompiste un test existente, lo arreglas en el código, no en el test.
+5. **No esperes CI.** En cuanto pase el check local: push, `gh pr create`, `gh pr merge --squash
+   --delete-branch`. Después sigue el cierre normal: `[x]` en `backlog.md` directo a `main`
+   (commit que toca sólo ese archivo) y `TAREA_CERRADA.txt`.
+6. **Nota del log corta:** 10–15 líneas, dentro de la rama y antes del PR, con lo que quedó, lo
+   que no y las trampas. **No leas `docs/nocturno-log.md` completo** (pesa más de 150 KB): lee
+   sólo las últimas entradas.
+7. **Si la tarea no cabe en la sesión:** mergea lo que funcione sin romper nada, marca `[x]` y
+   agrega en esa misma línea `**PARCIAL:** falta …`. No reintentes lo que quedó fuera.
+8. **Motor intocable:** nada de cambios de cálculo en `fiscal_engine`, `calculadora.py` ni
+   `nomina_engine`. Si una tarea parece exigir uno, no lo hagas: deja esa parte fuera y anótala.
+9. **La demo funciona en TODO momento:** nada de migraciones destructivas ni de borrar
+   semillas o clientes demo.
+10. **Los números de línea de este texto pueden estar desfasados.** Verifica el archivo antes
+    de editar, no confíes a ciegas en `archivo.ts:NN`.
+
+- [x] **T1 · Tabs del perfil contador** [BLOQUEANTE · ECOSISTEMA · con revisor]
+  - **Paso 0, antes que nada:** este repo tiene el flag `MODO_EMPRESA_UNICA` de O-01, que
+    nació **encendido por default** para el pivote a Orca. Esta demo es de **despacho**:
+    verifica el default y déjalo en modo despacho (flag apagado) sin borrar el modo empresa
+    única. Si el flag encendido sigue siendo el default, nada de lo que sigue se ve.
+  - Hoy: `contributorProfiles.ts` define `contador`, pero `services/navigation.ts` no le asigna
+    ningún tab de Fiscalito. Un despacho entra y ve vacío.
+  - **Ojo con E-01:** E-01 dejó al contador con sidebar **Clientes / Nómina / Calendario /
+    Perfil**. T1 **agrega** los tabs de Fiscalito del cliente; no quita ni rompe esa navegación
+    de despacho.
+  - Archivos: `services/navigation.ts`, `pages/FiscalitoServicePage.tsx`
+    (`getTabsForProfile`), `context/ClienteActivoContext.tsx`.
+  - `navigation.ts`: `contador` → mismo set que `pyme`.
+  - `getTabsForProfile()`: si es contador, filtrar por régimen del **cliente activo**, no del
+    contador.
+  - Sin cliente activo → estado vacío con `SelectorCliente`.
+  - *Listo cuando:* contador + cliente 612 ve todos los tabs; cliente 626 no ve
+    DIOT/Retenciones; sin cliente no hay pantalla en blanco; Clientes, Nómina y Calendario
+    siguen funcionando.
+  - Prompt de referencia: "En apps/store, el perfil 'contador' no recibe tabs de Fiscalito
+    (services/navigation.ts). Dale el mismo set que 'pyme' y haz que
+    FiscalitoServicePage.getTabsForProfile() filtre por el régimen del cliente activo
+    (ClienteActivoContext) cuando el usuario es contador. Sin cliente activo, estado vacío con
+    SelectorCliente. No toques lógica fiscal. npm run build al final."
+
+- [ ] **T2 · Backend-como-dueño / credencial GCP** [BLOQUEANTE · ECOSISTEMA · con revisor]
+  - Hoy: `services/cartera.ts` apaga el flujo backend por falta de credencial.
+    `routes/cartera.py` y `routes/despacho.py` existen.
+  - **Decisión para esta corrida: opción B**, salvo que Ricardo haya dejado escrito otra cosa.
+    Flag `VITE_CARTERA_BACKEND` (default `false`); en `false`, todo el CRUD va por
+    `carteraFirestore.ts`. La opción A (service account + `GOOGLE_APPLICATION_CREDENTIALS`)
+    necesita una credencial que una sesión nocturna no tiene.
+  - **No deshace R-07:** con el flag en `true` el comportamiento actual queda intacto, y R-07
+    sigue ABIERTA.
+  - try/catch y estado de error en `SelectorCliente.tsx`.
+  - *Listo cuando:* crear cliente, agregar empleado y cambiar cliente activo, sin errores en
+    consola.
+  - Prompt de referencia: "En apps/store/src/services/cartera.ts agrega flag
+    VITE_CARTERA_BACKEND (default false). En false, cartera usa carteraFirestore.ts directo,
+    ninguna llamada al API. En true, comportamiento actual. try/catch y estados de error en
+    SelectorCliente.tsx. Documenta el flag en apps/store/CLAUDE.md."
+
+- [ ] **T8 · Planes Contador/Despacho + IMSS Manager a beta** [ECOSISTEMA · con revisor]
+  - Hoy: cero referencias a plan, precio o billing. IMSS Manager está `coming_soon` aunque
+    cuotas, SDI y altas funcionan.
+  - Archivos: `pages/PlanesPage.tsx` (nuevo, `/app/planes`), `services/planes.ts` (nuevo),
+    `users/{uid}.plan` + `ProfileContext`, `storeServices.ts`, `exportadores/registro.ts`.
+  - `planes.ts`: contador (1 usuario / 25 clientes), despacho (10 / 200), empresa (1 / 1).
+    `precio: 'Consultar'`.
+  - Página con 3 tarjetas; "Seleccionar" guarda `plan` en el perfil. Uso actual "X / N
+    clientes" en Perfil y en `SelectorCliente`.
+  - Al llegar al límite, bloquear "Nuevo cliente" con mensaje.
+  - IMSS Manager → `beta`; bajas y modificaciones deshabilitadas con tooltip "Próximamente".
+  - *Listo cuando:* el contador ve su plan y su contador de clientes; IMSS Manager entra a
+    cuotas/altas sin romper.
+  - Prompt de referencia: "Agrega planes sin billing: services/planes.ts con contador (1/25),
+    despacho (10/200), empresa (1/1), precio 'Consultar'. pages/PlanesPage.tsx en /app/planes
+    con 3 tarjetas y botón que guarda users/{uid}.plan vía ProfileContext. Uso 'X / N clientes'
+    en ProfilePage y SelectorCliente.tsx; al límite bloquea 'Nuevo cliente'. imss-manager →
+    'beta' en storeServices.ts; en afiliatorios deshabilita bajas y modificaciones con tooltip
+    'Próximamente'. Sin cambios en API."
+
+- [ ] **T5 · Constancias de retención por RFC + DIOT .txt** [3 h]
+  - Hoy: `pdfExportRetenciones.ts` saca un PDF agregado; `diot.py` calcula pero no serializa
+    el layout SAT.
+  - Archivos: `pdfExportRetenciones.ts`, `pdfUtils.ts`, `RetencionesTab.tsx`, `DIOTTab.tsx`,
+    `services/exportadores/diot.ts` (nuevo, patrón de `registro.ts`).
+  - `exportConstanciaRetencion(tercero)` → PDF por RFC. Botón "Constancia" por fila +
+    "Descargar todas".
+  - `exportadores/diot.ts` → `.txt` delimitado por `|` (RFC, tipo tercero, tipo operación, IVA
+    16/0/exento). Marcar "layout por validar".
+  - Botón "Descargar DIOT (.txt)" en `DIOTTab`.
+  - *Listo cuando:* sale un PDF `constancia-{RFC}-{periodo}.pdf` por tercero, y un `.txt` con
+    una línea por proveedor, sin encabezados.
+  - Prompt de referencia: "(1) De pdfExportRetenciones.ts crea
+    exportConstanciaRetencion(tercero, perfil, periodo) → PDF individual por RFC con
+    pdfUtils.ts; botón 'Constancia' por fila en RetencionesTab.tsx. (2) Crea
+    services/exportadores/diot.ts siguiendo el patrón de exportadores/registro.ts (fuente 'por
+    validar'), serializando DIOTProveedor[] a .txt delimitado por | según layout de carga batch
+    DIOT. Botón 'Descargar DIOT (.txt)' en DIOTTab.tsx. Sin cambios en API."
+
+- [ ] **T3 · Tab Declaración anual PF** [3–4 h]
+  - Hoy: `POST /api/v1/pre-declaracion-anual` (`routes/declaraciones.py`) y
+    `fiscalAgentApi.ts` (`preDeclaracionAnual`) existen; nadie los llama desde la UI.
+  - Archivos: `components/fiscalito/PreDeclaracionTab.tsx` (clonar),
+    `FiscalitoServicePage.tsx` (`ALL_TABS`), `DeduccionesPersonalesTab.tsx`,
+    `declaracionesHistory.ts`, `pdfExport.ts`.
+  - `DeclaracionAnualTab.tsx`: selector de ejercicio, uploader de XMLs del año, llama
+    `preDeclaracionAnual()`.
+  - Integrar deducciones personales al request anual.
+  - Registrar en `ALL_TABS` para todos menos asalariado.
+  - Historial `categoria: 'anual'` + PDF.
+  - *Listo cuando:* 12 meses de XMLs demo 612 → desglose anual con deducciones y saldo;
+    aparece en historial; exporta PDF.
+  - Prompt de referencia: "Crea components/fiscalito/DeclaracionAnualTab.tsx clonando
+    PreDeclaracionTab.tsx. Llama preDeclaracionAnual() de fiscalAgentApi.ts, acepta
+    deducciones personales (reusa captura de DeduccionesPersonalesTab.tsx), guarda en historial
+    con categoria 'anual', exporta PDF con pdfExport.ts. Regístralo en ALL_TABS para todos los
+    perfiles menos asalariado. Sin lógica fiscal nueva. Máx 300 líneas por archivo."
+
+- [ ] **T4 · Exponer CFDI de nómina 1.2 + parser tipo N** [4–5 h]
+  - Hoy: `nomina_engine/cfdi_nomina_xml.py` genera CFDI 4.0 + nomina12 validado contra XSD y
+    **nadie lo importa**. `cfdiParser.ts` sólo acepta I/E/T/P y trata N como ingreso (bug
+    silencioso).
+  - Archivos API: `routes/nomina.py`, `schemas/nomina.py`, `nomina_engine/cfdi_nomina_xml.py`
+    (sólo se importa, no se cambia), `tests/nomina/`.
+  - Archivos front: `pages/NominaClientePage.tsx`, `services/cfdiParser.ts`,
+    `services/fiscalAgentApi.ts`, `components/fiscalito/XMLUploader.tsx`.
+  - `POST /api/v1/nomina/cfdi` → `{ xml, timbrado: false }`.
+  - Botón "Generar XML (sin timbrar)" por empleado + "Generar todos"; descarga `.xml`; badge
+    "Pendiente de timbrado PAC".
+  - `cfdiParser.ts`: detectar `TipoDeComprobante="N"`, leer nomina12, devolver
+    `tipo: 'NOMINA'`.
+  - Excluir NOMINA del request de pre-declaración; contador informativo "N recibos de nómina
+    detectados".
+  - *Listo cuando:* sale un XML descargable que pasa el XSD, y subir un XML de nómina al
+    uploader NO altera los ingresos. Excepción a la regla de sin tests: **si los tests
+    existentes del XSD se pueden apuntar al endpoint con una línea, hazlo**; si no, déjalo.
+  - Prompt de referencia (API): "Expón nomina_engine/cfdi_nomina_xml.py en POST
+    /api/v1/nomina/cfdi dentro de routes/nomina.py. Input: schema de salida de
+    /nomina/calcular-periodo para un empleado. Output: {xml: str, timbrado: false}. Schema en
+    schemas/nomina.py. No implementes timbrado PAC."
+  - Prompt de referencia (front): "(1) services/cfdiParser.ts: detectar
+    TipoDeComprobante='N', leer nomina12 (TotalPercepciones, TotalDeducciones, ISR retenido),
+    devolver tipo 'NOMINA' en vez de caer a 'I'; excluir NOMINA del request de pre-declaración
+    y mostrar contador informativo en XMLUploader.tsx. (2) pages/NominaClientePage.tsx: botón
+    'Generar XML (sin timbrar)' que llame POST /api/v1/nomina/cfdi vía fiscalAgentApi.ts y
+    descargue el .xml con badge 'Pendiente de timbrado PAC'. Loading/error obligatorios."
+
+- [ ] **T6 · Régimen 601 Personas Morales (cascarón)** [4 h]
+  - Hoy: no existe. `contributorProfiles.ts` dice "601 queda fuera"; `schemas/fiscal.py` no lo
+    tiene.
+  - Archivos: `contributorProfiles.ts`, `OnboardingWizard.tsx`, `schemas/fiscal.py`,
+    `routes/declaraciones.py`, `components/fiscalito/PagosProvisionalesPMTab.tsx` (nuevo).
+  - `{ code: '601', name: 'General de Ley Personas Morales' }` en pyme y en la cartera de
+    contador.
+  - `"601"` en el enum de `PerfilContribuyente.regimen`.
+  - Guard en `routes/declaraciones.py`: 601 → 400 "Motor de personas morales en desarrollo".
+    **No llega a `calculadora.py`.**
+  - `PagosProvisionalesPMTab`: coeficiente de utilidad + ingresos del mes → `ingresos × CU ×
+    30%` estimado en el front, con banner amarillo "Estimación — motor PM en desarrollo".
+  - Calendario PM reusa `generar_calendario()`.
+  - *Listo cuando:* el onboarding permite 601; el tab PM muestra la estimación; la
+    pre-declaración normal queda deshabilitada con mensaje.
+  - Prompt de referencia: "Agrega régimen 601 como cascarón. apps/store:
+    contributorProfiles.ts (pyme y contador), OnboardingWizard.tsx, y nuevo
+    components/fiscalito/PagosProvisionalesPMTab.tsx que estime ISR = ingresos × coeficiente
+    de utilidad × 30% en front con banner 'Estimación — motor PM en desarrollo'. apps/api:
+    '601' en enum de schemas/fiscal.py y guard en routes/declaraciones.py que devuelva 400
+    'Motor de personas morales en desarrollo' antes de calculadora.py. No modifiques
+    fiscal_engine."
+
+- [ ] **T7 · Cascarón Contabilito** [1–1.5 días]
+  - Hoy: sólo una tarjeta `coming_soon` en `storeServices.ts`. Cero código de pólizas,
+    balanza, catálogo o buzón.
+  - Archivos: `pages/ContabilitoPage.tsx` (nuevo, ruta `/app/store/contabilito/use`),
+    `services/contabilidad/{catalogoSAT,polizas,balanza}.ts` (nuevos), `storeServices.ts`
+    (→ `beta`).
+  - `catalogoSAT.ts`: ~25 cuentas del código agrupador SAT (101 caja, 102 bancos, 105
+    clientes, 118 IVA acreditable, 201 proveedores, 208 IVA trasladado, 401 ingresos, 601
+    gastos…).
+  - `polizas.ts`: desde los CFDI ya parseados. Ingreso → cargo 105 / abono 401 + 208. Gasto →
+    cargo 601 + 118 / abono 201.
+  - `balanza.ts`: suma cargos y abonos por cuenta; debe cuadrar.
+  - Página con tabs Catálogo · Pólizas · Balanza · Buzón ("Requiere e.firma — próximamente").
+  - 100% front, nada en API.
+  - *Listo cuando:* con los XMLs demo, Pólizas muestra una fila por CFDI y Σ cargos = Σ abonos;
+    el Marketplace muestra Contabilito en beta.
+  - Prompt de referencia: "Crea el cascarón de Contabilito 100% front.
+    pages/ContabilitoPage.tsx en /app/store/contabilito/use con tabs Catálogo, Pólizas,
+    Balanza, Buzón. services/contabilidad/: catalogoSAT.ts (25 cuentas código agrupador SAT),
+    polizas.ts (deriva pólizas de los CFDI parseados por cfdiParser.ts: ingreso → cargo 105
+    clientes / abono 401 ingresos + 208 IVA trasladado; gasto → cargo 601 gastos + 118 IVA
+    acreditable / abono 201 proveedores), balanza.ts (suma por cuenta, debe cuadrar). Tab Buzón
+    sólo pantalla 'Requiere e.firma — próximamente'. contabilito → 'beta' en storeServices.ts.
+    Reglas de CLAUDE.md: CSS variables, sin frameworks CSS, máx 300 líneas por archivo."
+
+### Fuera de alcance de T (guion para la demo, no son tareas)
+- Timbrado PAC: "El XML ya sale válido contra XSD; el timbrado se conecta a un PAC por API en
+  la siguiente fase."
+- Descarga masiva SAT con e.firma: "Hoy entra por XML; la descarga automática con e.firma es
+  el siguiente paso."
+- Presentación real de declaraciones: "Igual que COI: dejamos el cálculo listo para captura.
+  Ninguna herramienta presenta sin e.firma."
+- SUA / SIPARE / IDSE / EMA-EBA: "Las cuotas ya salen; la integración con sistemas del IMSS va
+  después."
+- Export a Aspel COI / CONTPAQi: "Las pólizas de Contabilito son la base; el layout de
+  importación a COI es un exportador más."
 
 ## E — Épica de despacho (para la demo del 2026-09-02)
 
