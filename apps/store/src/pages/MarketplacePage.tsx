@@ -1,4 +1,4 @@
-import { SERVICES } from '../services/storeServices';
+import { SERVICES, etiquetaDeEstado, servicioDisponible } from '../services/storeServices';
 import { useProfile } from '../context/ProfileContext';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -47,7 +47,9 @@ export default function MarketplacePage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
         {sorted.map((service, idx) => {
           const applies = !tipo || service.appliesTo.includes(tipo);
-          const dimmed = !applies || service.status === 'coming_soon';
+          // T8: `beta` deja de verse como "no existe". Ver `servicioDisponible`.
+          const disponible = servicioDisponible(service);
+          const dimmed = !applies || !disponible;
 
           return (
             <div
@@ -77,7 +79,7 @@ export default function MarketplacePage() {
               {/* Top accent line */}
               <div style={{
                 position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                background: service.status === 'active' && applies ? 'var(--accent-gradient)' : 'var(--border)',
+                background: disponible && applies ? 'var(--accent-gradient)' : 'var(--border)',
               }} />
 
               {/* Badges */}
@@ -90,11 +92,11 @@ export default function MarketplacePage() {
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
-                  background: service.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
-                  color: service.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
-                  border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
+                  background: disponible ? 'var(--border)' : 'var(--purple-bg)',
+                  color: disponible ? 'var(--teal-light)' : 'var(--purple-light)',
+                  border: `1px solid ${disponible ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
                 }}>
-                  {service.status === 'active' ? 'Disponible' : 'Proximamente'}
+                  {etiquetaDeEstado(service)}
                 </span>
 
                 {tipo && !applies && (
@@ -155,7 +157,7 @@ export default function MarketplacePage() {
               </ul>
 
               {/* CTA */}
-              {service.status === 'active' && applies ? (
+              {disponible && applies ? (
                 <Link to={`/app/store/${service.id}`}>
                   <button className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     Ver servicio <ArrowRight size={16} />

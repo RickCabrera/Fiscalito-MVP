@@ -185,7 +185,8 @@ export default function AppLayout() {
 
       {/* Main content */}
       <main className="main-with-sidebar" style={{ flex: 1, marginLeft: 240, minHeight: '100vh' }}>
-        <SelectorCliente />
+        {/* T8: el plan viaja como prop — este componente ya tiene el perfil. */}
+        <SelectorCliente plan={profile.plan} />
         <Outlet />
       </main>
       <FiscalitoVoiceChat />

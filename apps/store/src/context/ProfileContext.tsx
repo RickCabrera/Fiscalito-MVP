@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp, DocumentData } from 'firebase/fir
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import type { ContributorType } from '../services/contributorProfiles';
+import type { IdPlan } from '../services/planes';
 
 export interface UserProfile {
   contributorType: ContributorType | null;
@@ -18,6 +19,18 @@ export interface UserProfile {
   numEmpleados: string;
   /** Solo perfil contador (E-01). Cuenta vieja sin el campo -> '' via DEFAULT_PROFILE. */
   nombreDespacho: string;
+  /**
+   * Plan elegido en `/app/planes` (T8). **OPCIONAL de verdad, no por descuido.**
+   *
+   * `undefined` significa "esta cuenta nunca eligió plan", que no es lo mismo
+   * que estar en el plan más chico: `planDelPerfil()` resuelve el default para
+   * mostrarlo, pero no lo escribe. Guardar un default en silencio convertiría
+   * una suposición del código en un dato del usuario.
+   *
+   * No lleva default en `DEFAULT_PROFILE` por lo mismo, y eso además deja
+   * intactos los literales de `UserProfile` que ya existen.
+   */
+  plan?: IdPlan;
   onboardingComplete: boolean;
 }
 

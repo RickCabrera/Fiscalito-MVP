@@ -66,8 +66,10 @@ export default function SelectorExportacion({
 
   const exportar = () => {
     // Guarda propia, no sólo `disabled`: es una propiedad del DOM, no una
-    // garantía del handler.
-    if (!datos || deshabilitado) return;
+    // garantía del handler. T8 suma `proximamente` por la misma razón: un
+    // `<option disabled>` se puede saltar con `fireEvent.change` o desde la
+    // consola, y del otro lado hay un `generar` que levanta.
+    if (!datos || deshabilitado || formato.proximamente) return;
     setError(null);
     try {
       const archivo = formato.generar(datos);
@@ -97,8 +99,15 @@ export default function SelectorExportacion({
           }}
         >
           {FORMATOS.map((f) => (
-            <option key={f.id} value={f.id}>
+            // T8: los movimientos que todavía no se emiten —bajas (02) y
+            // modificaciones de salario (07)— aparecen en la lista y NO se
+            // pueden elegir. Aparecen porque "¿y las bajas?" es la primera
+            // pregunta del operador, y una lista donde no están la contesta
+            // con silencio. `disabled` es lo que impide llamar a un `generar`
+            // que levanta; el motivo va en el `title` y en la etiqueta.
+            <option key={f.id} value={f.id} disabled={!!f.proximamente} title={f.proximamente}>
               {f.nombre}
+              {f.proximamente ? '  — Próximamente' : ''}
               {f.fuente.estado === 'por-validar' ? '  ⚠ por validar' : ''}
             </option>
           ))}

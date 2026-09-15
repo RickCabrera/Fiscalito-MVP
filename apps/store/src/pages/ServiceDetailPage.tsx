@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getServiceById } from '../services/storeServices';
-import { ArrowLeft, ExternalLink, Check, Code, Zap } from 'lucide-react';
+import { etiquetaDeEstado, getServiceById, servicioDisponible } from '../services/storeServices';
+import { ArrowLeft, Check, Clock, Code, ExternalLink, Zap } from 'lucide-react';
 import { MARCA_CORTA } from '../services/marca';
 
 export default function ServiceDetailPage() {
@@ -16,6 +16,9 @@ export default function ServiceDetailPage() {
       </div>
     );
   }
+
+  // T8: `beta` cuenta como usable. Ver `servicioDisponible`.
+  const disponible = servicioDisponible(service);
 
   return (
     <div className="page-container">
@@ -39,11 +42,11 @@ export default function ServiceDetailPage() {
             <span style={{
               padding: '4px 14px', borderRadius: 'var(--radius-full)',
               fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
-              background: service.status === 'active' ? 'var(--border)' : 'var(--purple-bg)',
-              color: service.status === 'active' ? 'var(--teal-light)' : 'var(--purple-light)',
-              border: `1px solid ${service.status === 'active' ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
+              background: disponible ? 'var(--border)' : 'var(--purple-bg)',
+              color: disponible ? 'var(--teal-light)' : 'var(--purple-light)',
+              border: `1px solid ${disponible ? 'var(--border-hover)' : 'var(--purple-muted)'}`,
             }}>
-              {service.status === 'active' ? 'Activo' : 'Proximamente'}
+              {etiquetaDeEstado(service)}
             </span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', lineHeight: 1.6, maxWidth: 600 }}>
@@ -67,6 +70,25 @@ export default function ServiceDetailPage() {
                   <Check size={12} color="var(--teal-light)" />
                 </div>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
+              </div>
+            ))}
+
+            {/* T8: lo que TODAVÍA no hace, en la misma tarjeta y a la vista.
+                Un servicio en beta con una sola lista a palomita afirma que
+                todo opera, y esto es lo que alguien está a punto de prometerle
+                a un cliente. */}
+            {service.features_proximamente?.map((f) => (
+              <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, opacity: 0.6 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--purple-bg)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', marginTop: 1,
+                }}>
+                  <Clock size={12} color="var(--purple-light)" />
+                </div>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {f} <em style={{ fontStyle: 'normal', color: 'var(--purple-light)' }}>— Proximamente</em>
+                </span>
               </div>
             ))}
           </div>
@@ -124,6 +146,24 @@ export default function ServiceDetailPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Zap size={16} /> Usar {MARCA_CORTA}
               </button>
+            )}
+            {/* T8: IMSS Manager no tiene pantalla propia — lo que hace vive en
+                Empleados (altas y plantilla) y en Nómina (SDI, cuotas por ramo
+                y el archivo de movimientos afiliatorios). El botón lleva ahí en
+                vez de a una pantalla vacía que anunciaría un módulo que no
+                existe. Las dos rutas resuelven el cliente activo por su cuenta
+                y sin cliente piden uno, así que no hay forma de caer en blanco. */}
+            {service.id === 'imss-manager' && disponible && (
+              <>
+                <button className="btn-primary" onClick={() => navigate('/app/empleados')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Zap size={16} /> Altas y plantilla
+                </button>
+                <button className="btn-secondary" onClick={() => navigate('/app/nomina')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  SDI y cuotas
+                </button>
+              </>
             )}
             {service.status === 'active' && service.apiEndpoint && (
               <a href={`${service.apiEndpoint}/docs`} target="_blank" rel="noopener noreferrer">

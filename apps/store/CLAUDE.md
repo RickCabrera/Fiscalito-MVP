@@ -155,12 +155,14 @@ fiscalito-store-app/
 │   │   ├── NominaDelClienteActivo.tsx # /app/nomina -> nomina del cliente activo (E-03)
 │   │   ├── CalendarioPatronalPage.tsx # Obligaciones patronales de la cartera (E-07)
 │   │   ├── ProfilePage.tsx          # Datos del contribuyente (RFC, regimen, tipo)
+│   │   ├── PlanesPage.tsx           # Planes y limite de clientes, sin cobro (T8)
 │   │   └── AdminPage.tsx            # Panel de admin (gestion servicios/usuarios)
 │   ├── services/
 │   │   ├── firebase.ts              # Config Firebase (initializeApp, auth, db)
 │   │   ├── storeServices.ts         # Catalogo de servicios del marketplace
 │   │   ├── contributorProfiles.ts   # Definiciones de perfiles de contribuyente (incl. contador)
 │   │   ├── navigation.ts            # Sidebar, tabs por perfil y alcance de cliente (modulo puro)
+│   │   ├── planes.ts                # Planes, limites y uso de clientes — sin billing (T8)
 │   │   ├── despachoApi.ts           # Cliente REST de la cartera y del calendario patronal (E-02, E-07)
 │   │   ├── calendarioPatronal.ts    # Logica pura del calendario patronal: agrupacion y estados (E-07)
 │   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
@@ -196,6 +198,7 @@ fiscalito-store-app/
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
 /app/profile                   → ProfilePage (protegida)
+/app/planes                    → PlanesPage (protegida, planes y limite de clientes — T8; se entra desde Perfil, no del sidebar)
 /app/admin                     → AdminPage (protegida)
 ```
 
@@ -403,7 +406,9 @@ El Fiscal Agent es **stateless**: no guarda datos del usuario. Todo viene en el 
 Definidos en `src/services/storeServices.ts`. Cada servicio tiene:
 - `id`, `name`, `tagline`, `description`, `icon` (emoji)
 - `status`: 'active' | 'coming_soon' | 'beta'
-- `features`: lista de funcionalidades
+- `features`: lista de funcionalidades **que ya operan**
+- `features_proximamente?`: lo que todavia NO hace (T8). Se pinta atenuado en el detalle del
+  servicio. Un `beta` con una sola lista a palomita afirma que todo funciona.
 - `category`: 'fiscal' | 'laboral' | 'contable'
 - `apiEndpoint?`: URL del backend del servicio
 - `externalUrl?`: URL externa del servicio
@@ -411,8 +416,38 @@ Definidos en `src/services/storeServices.ts`. Cada servicio tiene:
 
 ### Servicios actuales:
 1. **Fiscalito** (activo) — Asistente fiscal con Fiscal Agent API. Aplica a todos los tipos.
-2. **IMSS Manager** (proximamente) — Gestion de empleados ante el IMSS. Solo PYMEs.
+2. **IMSS Manager** (**beta**, T8) — SDI, cuotas por ramo, altas y archivo de movimientos
+   afiliatorios. PYMEs y contador. Bajas y modificaciones de salario NO: falta el dato, no el
+   layout (ver `exportadores/registro.ts`).
 3. **Contabilito** (proximamente) — Contabilidad electronica automatizada. Solo PYMEs.
+
+**`beta` cuenta como usable.** `servicioDisponible()` y `etiquetaDeEstado()` viven en
+`storeServices.ts` y las consultan las DOS pantallas del marketplace. Hasta T8 ambas preguntaban
+`status === 'active'`, asi que el estado `beta` existia en el tipo y **no significaba nada**: un
+servicio en beta se veia igual que uno que no existe.
+
+**IMSS Manager no tiene pantalla propia.** Lo que hace vive en Empleados (altas y plantilla) y
+en Nomina (SDI, cuotas por ramo, exportador IMSS), y los botones del detalle llevan ahi. Crear
+una pantalla `/app/store/imss-manager/use` anunciaria un modulo que no existe.
+
+### Planes de la cuenta (T8)
+
+`services/planes.ts` define tres —contador (1 usuario / 25 clientes), despacho (10 / 200) y
+empresa (1 / 1)—, con `precio: 'Consultar'` en los tres. **No hay billing**: ni pasarela, ni
+suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` via
+`ProfileContext` y se elige en `/app/planes`.
+
+- **`maxClientes` SI se hace cumplir**: bloquea "Nuevo cliente" en `ClientesPage` con el motivo
+  escrito (no solo en un `title`: un boton deshabilitado no recibe hover en tactil).
+- **`maxUsuarios` NO**: la app no tiene cuentas de equipo, un `users/{uid}` es una persona. El
+  numero describe el plan, no algo que el codigo vigile.
+- **El campo es opcional**: `undefined` = nunca eligio, y `planDelPerfil()` resuelve el default
+  (`empresa` en modo empresa unica, `contador` si no) **sin escribirlo**. Guardar un default en
+  silencio convierte una suposicion del codigo en un dato del usuario.
+- Elegir un plan mas chico que la cartera **no borra clientes**: solo impide dar de alta otro.
+- El uso ("3 / 25 clientes") se pinta en Perfil (`components/perfil/TarjetaPlan.tsx`), en
+  `SelectorCliente` —que lo recibe **como prop desde `AppLayout`**, no del contexto— y junto al
+  boton de alta en `ClientesPage`.
 
 ## FIREBASE
 
@@ -465,6 +500,7 @@ telefono: string
 nombreNegocio: string (solo PYME)
 numEmpleados: string (solo PYME)
 nombreDespacho: string (solo contador)
+plan?: 'contador' | 'despacho' | 'empresa'   (T8; ausente = nunca eligio, ver services/planes.ts)
 onboardingComplete: boolean
 updatedAt: serverTimestamp
 ```

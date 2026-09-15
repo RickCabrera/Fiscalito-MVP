@@ -40,6 +40,25 @@ const POR_VALIDAR_BANCO =
   'manual vigente del banco. **Los importes sí están verificados**: salen del mismo cálculo ' +
   'que el PDF y cuadran al centavo contra el motor.';
 
+/**
+ * Lo que falta para poder emitir bajas y modificaciones. (T8)
+ *
+ * No es el layout: los tres están transcritos y probados en `layoutImss.ts`. Es
+ * el MODELO — `EmpleadoCartera` no guarda fecha de baja, causa de baja ni
+ * historial de SBC—, así que no hay forma de saber quién causó baja ni a quién
+ * le cambió el salario. Inventarlo sería emitir un movimiento afiliatorio sobre
+ * una persona real con una fecha adivinada.
+ */
+const FALTA_EL_DATO_NO_EL_LAYOUT =
+  'Próximamente. El layout ya está transcrito y probado; lo que falta es el dato: la ' +
+  'ficha del empleado no guarda fecha de baja, causa de baja ni historial de SBC, así que ' +
+  'no hay de dónde sacar quién causó baja ni a quién le cambió el salario.';
+
+/** Un formato registrado pero sin datos para emitir. Ver `proximamente`. */
+function noEmitible(que: string): never {
+  throw new Error(`${que} todavía no se emite. ${FALTA_EL_DATO_NO_EL_LAYOUT}`);
+}
+
 export const FORMATOS: FormatoExportacion[] = [
   {
     id: 'imss',
@@ -50,6 +69,26 @@ export const FORMATOS: FormatoExportacion[] = [
       'ni historial de SBC.',
     fuente: { estado: 'oficial', cita: FUENTE_IMSS },
     generar: generarMovimientosImss,
+  },
+  {
+    id: 'imss-baja',
+    nombre: 'Bajas IMSS (movimiento 02)',
+    descripcion:
+      'Trabajadores que causaron baja en el periodo. Todavía no se emite: la ficha del ' +
+      'empleado no guarda fecha ni causa de baja.',
+    fuente: { estado: 'oficial', cita: FUENTE_IMSS },
+    proximamente: FALTA_EL_DATO_NO_EL_LAYOUT,
+    generar: () => noEmitible('El movimiento de baja'),
+  },
+  {
+    id: 'imss-modificacion',
+    nombre: 'Modificaciones de salario IMSS (movimiento 07)',
+    descripcion:
+      'Cambios de SBC del periodo. Todavía no se emite: no hay historial de SBC contra el ' +
+      'cual comparar.',
+    fuente: { estado: 'oficial', cita: FUENTE_IMSS },
+    proximamente: FALTA_EL_DATO_NO_EL_LAYOUT,
+    generar: () => noEmitible('La modificación de salario'),
   },
   {
     id: 'generico',

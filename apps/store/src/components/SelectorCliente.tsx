@@ -32,6 +32,18 @@
  * 2500 ms"), y ponerlo en la barra superior mientras se proyecta en pantalla
  * grande es ruido. Visible al pasar el cursor, y suficiente para copiarlo.
  *
+ * T8 · EL PLAN LLEGA COMO PROP, NO DEL CONTEXTO
+ * ----------------------------------------------
+ * El chip de "3 / 25 clientes" necesita el plan, que vive en el perfil. La barra
+ * NO lo lee de `ProfileContext`: se lo pasa `AppLayout`, que ya tiene el perfil
+ * en la mano para decidir el sidebar. Así este componente sigue dependiendo de
+ * un solo contexto —el del cliente activo— y se monta suelto en una prueba sin
+ * arrastrar medio árbol de proveedores.
+ *
+ * `plan` es opcional y sin plan manda el default (`planDelPerfil`), que es el
+ * MÁS CHICO de los de cartera: si algún día alguien monta esta barra sin
+ * pasárselo, el chip subestima la capacidad en vez de inventarla.
+ *
  * DEMO — se borra en F2.
  */
 
@@ -39,8 +51,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Building2, Loader, RefreshCw } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import { rutaTieneAlcanceDeCliente } from '../services/navigation';
+import { planDelPerfil, usoDeClientes } from '../services/planes';
 
-export default function SelectorCliente() {
+export default function SelectorCliente({ plan: planDelUsuario }: { plan?: string }) {
   const { clientes, clienteId, loading, error, setClienteId, recargar } = useClienteActivo();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -54,6 +67,12 @@ export default function SelectorCliente() {
   // El error sí se muestra: una API caída no puede verse igual que no tener
   // clientes.
   if (!loading && !error && clientes.length === 0) return null;
+
+  // El conteo es el de la CARTERA VISIBLE, que es la que el contador ve en el
+  // desplegable de al lado. Si algún día esta barra paginara, este número
+  // dejaría de ser el uso del plan y habría que pedírselo a la cartera.
+  const plan = planDelPerfil(planDelUsuario);
+  const uso = usoDeClientes(plan, clientes.length);
 
   const cambiar = (nuevo: string) => {
     setClienteId(nuevo);
@@ -127,6 +146,21 @@ export default function SelectorCliente() {
             </option>
           ))}
         </select>
+      )}
+
+      {/* T8: el uso del plan, donde el contador ya está mirando su cartera. No
+          se pinta mientras carga ni con error: un "0 / 25" durante la carga
+          diría que la cuenta está vacía. */}
+      {!error && !loading && (
+        <span
+          title={`Plan ${plan.nombre}${uso.alLimite ? ' — al límite' : ''}`}
+          style={{
+            fontSize: '0.78rem', fontFamily: "'JetBrains Mono', monospace",
+            color: uso.alLimite ? 'var(--warning)' : 'var(--text-muted)',
+          }}
+        >
+          {uso.texto}
+        </span>
       )}
     </div>
   );

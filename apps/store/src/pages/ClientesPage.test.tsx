@@ -99,6 +99,24 @@ vi.mock('../context/clienteActivoStore', () => ({
   }),
 }));
 
+/**
+ * T8: la pantalla lee el perfil para saber el plan, que es lo que decide el
+ * tope de clientes.
+ *
+ * **Ninguna aserción de este archivo cambia**: es el entorno que el componente
+ * necesita para montarse, como el doble de la cartera de arriba. El perfil va
+ * SIN `plan` a propósito —una cuenta que nunca eligió— para que lo que se
+ * ejercite sea el default, que es lo que ve todo el mundo hoy.
+ */
+vi.mock('../context/ProfileContext', () => ({
+  useProfile: () => ({
+    profile: { contributorType: 'contador', onboardingComplete: true },
+    loading: false,
+    error: null,
+    setProfile: vi.fn(),
+  }),
+}));
+
 vi.mock('react-router-dom', async () => {
   const real = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return { ...real, useNavigate: () => navigate };
