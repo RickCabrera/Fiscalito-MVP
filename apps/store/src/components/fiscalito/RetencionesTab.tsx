@@ -5,14 +5,16 @@ import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, tipoParaApi } from '../../services/fiscalAgentApi';
 import { guardarRetenciones } from '../../services/declaracionesHistory';
-import { exportarRetencionesPDF } from '../../services/pdfExportRetenciones';
+import {
+  exportarRetencionesPDF, exportConstanciaRetencion, exportTodasLasConstancias,
+} from '../../services/pdfExportRetenciones';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle } from '../../utils/styles';
 import XMLUploader from './XMLUploader';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
-import { Loader, Download, RefreshCw, MessageSquare } from 'lucide-react';
+import { Loader, Download, RefreshCw, MessageSquare, FileText } from 'lucide-react';
 
 export default function RetencionesTab() {
   const { profile } = useProfile();
@@ -24,6 +26,7 @@ export default function RetencionesTab() {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<RetencionesResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
+  const [bajandoTodas, setBajandoTodas] = useState(false);
 
   const handleConsultar = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
@@ -46,6 +49,29 @@ export default function RetencionesTab() {
       setError(e instanceof Error ? e.message : 'Error inesperado');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * El retenedor es el perfil: las constancias las emite quien retuvo. Se arma
+   * una vez y se pasa a las dos exportaciones para que el PDF agregado y las
+   * constancias individuales no puedan decir cosas distintas.
+   */
+  const retenedor = { nombre: profile.nombre, rfc: profile.rfc };
+
+  /**
+   * `bajandoTodas` no es decoracion: `exportTodasLasConstancias` espacia las
+   * descargas a proposito (ver su docstring), asi que con varios terceros la
+   * rafaga dura segundos. Sin el estado, el boton se ve inerte y el operador
+   * lo vuelve a apretar, duplicando los archivos.
+   */
+  const descargarTodas = async () => {
+    if (!resultado) return;
+    setBajandoTodas(true);
+    try {
+      await exportTodasLasConstancias(resultado, retenedor);
+    } finally {
+      setBajandoTodas(false);
     }
   };
 
@@ -78,8 +104,8 @@ export default function RetencionesTab() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['RFC Tercero', 'Nombre', 'Total pagado', 'ISR retenido', 'IVA retenido', '#'].map((h) => (
-                    <th key={h} style={thStyle}>{h}</th>
+                  {['RFC Tercero', 'Nombre', 'Total pagado', 'ISR retenido', 'IVA retenido', '#', ''].map((h, i) => (
+                    <th key={i} style={thStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -92,6 +118,12 @@ export default function RetencionesTab() {
                     <td style={tdMonoStyle}>{fmtMoney(r.isr_retenido)}</td>
                     <td style={tdMonoStyle}>{fmtMoney(r.iva_retenido)}</td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{r.cantidad_facturas}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>
+                      <button className="btn-secondary" onClick={() => exportConstanciaRetencion(r, retenedor, resultado.periodo)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', fontSize: '0.75rem' }}>
+                        <FileText size={13} /> Constancia
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 <tr style={{ background: 'var(--teal-bg-subtle)' }}>
@@ -100,6 +132,7 @@ export default function RetencionesTab() {
                   <td style={{ ...tdMonoStyle, fontWeight: 700 }}>{fmtMoney(resultado.total_isr_retenido)}</td>
                   <td style={{ ...tdMonoStyle, fontWeight: 700 }}>{fmtMoney(resultado.total_iva_retenido)}</td>
                   <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>{resultado.terceros.reduce((s, t) => s + t.cantidad_facturas, 0)}</td>
+                  <td style={tdStyle} />
                 </tr>
               </tbody>
             </table>
@@ -118,10 +151,16 @@ export default function RetencionesTab() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-          <button className="btn-primary" onClick={() => exportarRetencionesPDF(resultado, { nombre: profile.nombre, rfc: profile.rfc })}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button className="btn-primary" onClick={() => exportarRetencionesPDF(resultado, retenedor)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
+          </button>
+          <button className="btn-secondary" onClick={descargarTodas}
+            disabled={bajandoTodas || resultado.terceros.length === 0}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, opacity: bajandoTodas ? 0.7 : 1 }}>
+            {bajandoTodas ? <Loader size={16} className="spin" /> : <FileText size={16} />}
+            {bajandoTodas ? 'Descargando...' : `Descargar todas (${resultado.terceros.length})`}
           </button>
           <button className="btn-secondary" onClick={() => setResultado(null)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

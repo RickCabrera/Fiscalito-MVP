@@ -29,25 +29,15 @@
 import { useState } from 'react';
 import { AlertTriangle, FileDown, Info } from 'lucide-react';
 import { FORMATOS } from '../../services/exportadores/registro';
+import { descargarBytes } from '../../services/exportadores/descargar';
 import type { ArchivoGenerado, DatosExportacion } from '../../services/exportadores/tipos';
 import { campoInput } from '../cartera/estilosCampo';
 
 const ACCION: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8 };
 
+/** Envuelve `descargarBytes`, que T5 sacó de aquí para compartirlo con la DIOT. */
 function descargar(archivo: ArchivoGenerado): void {
-  // `text/plain` y no un tipo inventado: es lo que es, y así el navegador no
-  // intenta abrirlo en una pestaña.
-  // El `slice()` copia a un `ArrayBuffer` propio: `Uint8Array<ArrayBufferLike>`
-  // no es un `BlobPart` válido porque podría respaldarse en un
-  // `SharedArrayBuffer`, que `Blob` no acepta.
-  const url = URL.createObjectURL(
-    new Blob([archivo.bytes.slice().buffer as ArrayBuffer], { type: 'text/plain' }),
-  );
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = archivo.nombre;
-  a.click();
-  URL.revokeObjectURL(url);
+  descargarBytes(archivo.nombre, archivo.bytes);
 }
 
 export default function SelectorExportacion({
