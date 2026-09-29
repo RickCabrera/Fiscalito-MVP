@@ -95,7 +95,7 @@ para clientes ya existentes, sin migraciones destructivas ni borrar semillas o c
     longitud incorrecta para su régimen se rechaza con mensaje; los clientes demo siguen
     abriendo y calculando nómina igual que antes.
 
-- [ ] **C-02 · Fiscalito usa el RFC y el régimen del cliente activo** [depende de C-01]
+- [x] **C-02 · Fiscalito usa el RFC y el régimen del cliente activo** [depende de C-01]
   - Hoy: `PreDeclaracionTab.tsx` arma el perfil desde el usuario, y lo mismo hacen DIOT,
     Declaración anual, Retenciones, EstadoCuenta y MultiPeriodo. `clasificar_facturas`
     (`calculadora.py`) marca ingreso si ese RFC es el emisor y egreso si es el receptor.
