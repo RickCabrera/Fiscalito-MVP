@@ -20,6 +20,7 @@
  */
 
 import type { ParametrosSalariales } from '../../services/carteraApi';
+import { problemaRfc } from '../cartera/datosFiscalesCliente';
 
 /** Rango de la prima de RT en PORCENTAJE, el mismo que el motor acota en fracción. */
 const PRIMA_MINIMA_PCT = 0.5;
@@ -65,9 +66,12 @@ export function validar(
   if (razonSocial.trim() === '') {
     e.razonSocial = 'La razón social es obligatoria: es lo que sale impreso en los recibos.';
   }
-  if (rfc.trim() !== '' && rfc.trim().length !== 12 && rfc.trim().length !== 13) {
-    e.rfc = 'El RFC de una persona moral son 12 caracteres y el de una física 13.';
-  }
+  // C-01: la MISMA regla que el alta de cliente y que `schemas/cartera.py`.
+  // Antes sólo se medía la longitud, y con `VITE_CARTERA_BACKEND` encendido un
+  // RFC de 12 caracteres mal formado pasaba aquí y rebotaba con 422 al guardar.
+  // Sin régimen: la empresa no lo captura, así que sólo se valida el formato.
+  const problema = problemaRfc(rfc, '', false);
+  if (problema) e.rfc = problema;
   if (rp.trim() !== '' && rp.trim().length !== 11) {
     e.registroPatronal =
       'El registro patronal son 11 caracteres: los 10 del registro más su dígito verificador.';

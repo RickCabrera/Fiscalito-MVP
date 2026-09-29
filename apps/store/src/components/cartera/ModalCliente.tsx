@@ -21,6 +21,8 @@ import {
   type PrimasDeRiesgo,
 } from '../../services/carteraApi';
 import Campo from './Campo';
+import CamposFiscalesCliente from './CamposFiscalesCliente';
+import { normalizarRfc, problemasFiscales } from './datosFiscalesCliente';
 import { campoInput as campo } from './estilosCampo';
 
 type Datos = Omit<ClienteCartera, 'empleados'>;
@@ -35,6 +37,10 @@ function vacio(): Datos {
     // Con valor desde el alta, para que el aviso de "régimen supuesto" de
     // `FiscalitoServicePage` sólo lo vean los clientes anteriores a T1.
     regimen: REGIMEN_CLIENTE_POR_DEFECTO,
+    // C-01: obligatorios en el alta, y por eso nacen vacíos y no con un default.
+    rfc: '',
+    codigo_postal: '',
+    clave_entidad: '',
     prima_riesgo: '',
     clase_riesgo: 1,
     // O-cierre: los dos datos que el IMSS asigna y que el exportador de
@@ -111,7 +117,11 @@ export default function ModalCliente({
   const guiaMalFormada =
     (datos.guia_subdelegacion ?? '').trim() !== '' &&
     !/^\d{1,5}$/.test((datos.guia_subdelegacion ?? '').trim());
+  // C-01: contra el régimen que se VE y se guarda —el del select—, así que un
+  // cliente anterior a T1 se valida contra el 612 que la pantalla le enseña.
+  const regimenEfectivo = datos.regimen || REGIMEN_CLIENTE_POR_DEFECTO;
   const puedeGuardar =
+    problemasFiscales(datos, regimenEfectivo, esAlta).length === 0 &&
     datos.id.trim() !== '' &&
     datos.nombre.trim() !== '' &&
     datos.prima_riesgo !== '' &&
@@ -140,7 +150,10 @@ export default function ModalCliente({
         // de abajo pinta el default sin disparar `onChange`: sin esta línea se
         // guardaría tal cual y la pantalla seguiría avisando "régimen supuesto"
         // después de que el contador ya lo dio por bueno.
-        regimen: datos.regimen || REGIMEN_CLIENTE_POR_DEFECTO,
+        regimen: regimenEfectivo,
+        rfc: normalizarRfc(datos.rfc ?? ''),
+        codigo_postal: (datos.codigo_postal ?? '').trim(),
+        clave_entidad: datos.clave_entidad ?? '',
       });
       onCerrar();
     } catch (e) {
@@ -218,6 +231,13 @@ export default function ModalCliente({
             </select>
           </Campo>
         </div>
+
+        <CamposFiscalesCliente
+          datos={datos}
+          regimen={regimenEfectivo}
+          obligatorio={esAlta}
+          onChange={(cambio) => setDatos({ ...datos, ...cambio })}
+        />
 
         {idRepetido && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>

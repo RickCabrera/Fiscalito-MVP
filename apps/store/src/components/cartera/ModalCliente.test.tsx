@@ -59,6 +59,11 @@ const botonAlta = () => screen.getByRole('button', { name: /Dar de alta/ });
 function llenarBasico() {
   fireEvent.change(campo(/Identificador/), { target: { value: 'tortilleria-lopez' } });
   fireEvent.change(campo(/Razón social/), { target: { value: 'Tortillería López' } });
+  // C-01: RFC, CP y entidad son obligatorios en el alta. RFC de persona física
+  // (13), que casa con el 612 del default y con el 626.
+  fireEvent.change(campo(/^RFC/), { target: { value: 'LOPT800101AB1' } });
+  fireEvent.change(campo(/Código postal/), { target: { value: '91000' } });
+  fireEvent.change(campo(/Entidad federativa/), { target: { value: 'VER' } });
 }
 
 describe('ModalCliente · la prima de RT se acota contra el Art. 72', () => {
@@ -244,5 +249,115 @@ describe('ModalCliente · el régimen del cliente (T1)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Guardar$/ }));
     await waitFor(() => expect(onGuardar).toHaveBeenCalled());
     expect(onGuardar.mock.calls[0][0].regimen).toBe('612');
+  });
+});
+
+describe('ModalCliente · RFC, código postal y entidad (C-01)', () => {
+  const VIEJO = {
+    id: 'viejo', nombre: 'Cliente Viejo', giro: 'Servicios', origen: 'propio',
+    prima_riesgo: '0.0054355', clase_riesgo: 1, clave_periodicidad: '04',
+    zona: 'general', periodo_sugerido: { inicio: '', fin: '', fecha_pago: null },
+  };
+
+  async function alta() {
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    const onGuardar = pintar();
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    llenarBasico();
+    fireEvent.change(campo(/Prima de RT/), { target: { value: '0.0054355' } });
+    return onGuardar;
+  }
+
+  it('un alta completa manda RFC en mayúsculas, CP y entidad', async () => {
+    const onGuardar = await alta();
+    fireEvent.change(campo(/^RFC/), { target: { value: 'lopt800101ab1' } });
+    expect((campo(/^RFC/) as HTMLInputElement).value).toBe('LOPT800101AB1');
+    fireEvent.click(botonAlta());
+
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    const guardado = onGuardar.mock.calls[0][0];
+    expect(guardado.rfc).toBe('LOPT800101AB1');
+    expect(guardado.codigo_postal).toBe('91000');
+    expect(guardado.clave_entidad).toBe('VER');
+  });
+
+  it.each([
+    [/^RFC/, ''],
+    [/Código postal/, ''],
+    [/Entidad federativa/, ''],
+  ])('en un alta, %s vacío no se puede guardar', async (etiqueta, valor) => {
+    const onGuardar = await alta();
+    fireEvent.change(campo(etiqueta), { target: { value: valor } });
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+    fireEvent.click(botonAlta());
+    expect(onGuardar).not.toHaveBeenCalled();
+  });
+
+  it('un RFC de persona moral con régimen 612 se rechaza con mensaje', async () => {
+    const onGuardar = await alta();
+    fireEvent.change(campo(/^RFC/), { target: { value: 'LOP800101AB1' } });
+
+    expect(screen.getByRole('alert').textContent).toMatch(/persona física.*13 caracteres/);
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+    fireEvent.click(botonAlta());
+    expect(onGuardar).not.toHaveBeenCalled();
+  });
+
+  it('cambiar a 601 con un RFC de 13 también se rechaza', async () => {
+    await alta();
+    fireEvent.change(campo(/Régimen fiscal/), { target: { value: '601' } });
+    expect(screen.getByRole('alert').textContent).toMatch(/persona moral.*12 caracteres/);
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+  });
+
+  it('un RFC mal formado se rechaza con mensaje', async () => {
+    await alta();
+    fireEvent.change(campo(/^RFC/), { target: { value: 'LOPT80A101AB1' } });
+    expect(screen.getByRole('alert').textContent).toMatch(/formato válido/);
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+  });
+
+  it('un CP de 4 dígitos se rechaza con mensaje', async () => {
+    await alta();
+    fireEvent.change(campo(/Código postal/), { target: { value: '9100' } });
+    expect(screen.getByRole('alert').textContent).toMatch(/5 dígitos/);
+    await waitFor(() => expect(botonAlta()).toHaveProperty('disabled', true));
+  });
+
+  it('editar un cliente existente SIN RFC y agregárselo lo guarda', async () => {
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    const onGuardar = pintar(['viejo'], VIEJO);
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    // En la edición no son obligatorios: sin asterisco.
+    expect(screen.getByLabelText(/^RFC$/)).toBeTruthy();
+
+    fireEvent.change(campo(/^RFC/), { target: { value: 'VIEJ700101XY9' } });
+    fireEvent.change(campo(/Entidad federativa/), { target: { value: 'CMX' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Guardar$/ }));
+
+    await waitFor(() => expect(onGuardar).toHaveBeenCalled());
+    expect(onGuardar.mock.calls[0][0]).toMatchObject({
+      id: 'viejo', rfc: 'VIEJ700101XY9', clave_entidad: 'CMX', codigo_postal: '',
+    });
+  });
+
+  it('en la edición un RFC mal formado también bloquea', async () => {
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    pintar(['viejo'], { ...VIEJO, rfc: 'VIEJ700101XY9' });
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    fireEvent.change(campo(/^RFC/), { target: { value: 'VIEJ70' } });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^Guardar$/ })).toHaveProperty('disabled', true),
+    );
+  });
+
+  it('un cliente sin régimen capturado se valida contra el 612 que la pantalla enseña', async () => {
+    // El select pinta 612 y eso es lo que se guarda (T1): un RFC de 12 choca
+    // contra ESE régimen, visible, no contra uno escondido.
+    obtenerPrimasDeRiesgo.mockResolvedValue(PRIMAS);
+    pintar(['viejo'], { ...VIEJO, rfc: 'VIE700101XY9' });
+    await waitFor(() => expect(obtenerPrimasDeRiesgo).toHaveBeenCalled());
+    expect((campo(/Régimen fiscal/) as HTMLSelectElement).value).toBe('612');
+    expect(screen.getByRole('alert').textContent).toMatch(/612.*13 caracteres/);
   });
 });

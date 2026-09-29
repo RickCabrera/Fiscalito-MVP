@@ -500,6 +500,37 @@ El campo existe en `ClienteCarteraSchema` **aunque hoy el dueño del dato siga s
 primer guardado, porque pydantic descarta lo que no conoce. No hay migración: los documentos sin
 la llave se leen igual.
 
+#### `rfc`, `codigo_postal` y `clave_entidad` — los datos fiscales del cliente (C-01)
+
+El alta y la edición de cliente del despacho los capturan; son **obligatorios en un alta nueva
+del formulario** y **opcionales para el contrato**: los tres van vacíos por default, así que un
+cliente de demostración o uno guardado antes de C-01 se sigue guardando sin ellos.
+
+- **`rfc`** — se guarda en mayúsculas y sin espacios (el backend normaliza antes de validar).
+  Si trae valor: formato `^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$` y, para los regímenes que conoce, la
+  longitud tiene que casar con `regimen`: **601 = 12, 612 = 13, 626 = 12 o 13**
+  (`docs/decisiones-nomina.md` §D31). Otro régimen, o vacío: sólo formato. Un RFC y un régimen
+  que no casan **rebotan en cualquier guardado** con 422, no sólo cuando cambia el RFC; el
+  formulario aplica la misma regla, así que ningún camino acepta lo que el otro rechaza.
+- **`codigo_postal`** — 5 dígitos (`^(\d{5})?$`), del domicilio fiscal. Sirve como default
+  del `LugarExpedicion` del CFDI de nómina, pero **no siempre coinciden** (ABIERTO, contadora).
+- **`clave_entidad`** — clave del catálogo `c_Estado` del SAT, sólo México (33 claves: las 32
+  entidades con `CMX` y la anterior `DIF` para la Ciudad de México). Fuente:
+  `apps/api/tests/xsd/catCFDI.xsd`, y un test compara `ENTIDADES_C_ESTADO` contra ese archivo.
+  Sirve como default de la `ClaveEntFed` del CFDI de nómina, pero ésa es la entidad donde el
+  **trabajador presta el servicio** (la que pesa para el ISN), no necesariamente la del cliente
+  (ABIERTO, contadora).
+
+**En `GET /cartera/clientes`** vienen cuando el documento los tiene y **faltan** cuando no (la
+lectura no tipa estricto): el front lee ausente como "Sin capturar".
+
+**ABIERTO — el `PUT` escribe el documento completo.** `guardar_cliente` hace `model_dump` de
+todo el schema, defaults incluidos, así que un `PUT` que no mande `codigo_postal` o
+`clave_entidad` los escribe **vacíos** aunque el merge de Firestore conserve lo demás. Hoy nadie
+lo dispara: la Configuración de empresa (O-01, modo empresa única) no los manda, pero sólo pasa
+por aquí con `VITE_CARTERA_BACKEND` encendido, y R-07 sigue apagada. Es el mismo comportamiento
+que ya tenía `regimen`. Con Firestore (el default) `setDoc(merge: true)` los conserva.
+
 #### `guia_subdelegacion` — el número que asigna el IMSS (O-04)
 
 Cinco dígitos. Va en las posiciones 134-138 de **cada** movimiento afiliatorio y en el registro

@@ -9,84 +9,17 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import FilaCliente from '../components/cartera/FilaCliente';
 import ModalCliente from '../components/cartera/ModalCliente';
 import { useCartera } from '../context/carteraStore';
-import type { ClienteCartera } from '../services/carteraApi';
-import { Building2, ChevronRight, Loader, Plus, RefreshCw, Users } from 'lucide-react';
+import { sinEmpleados, type ClienteCartera } from '../services/carteraApi';
+import { Building2, Loader, Plus, RefreshCw } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import { useAuth } from '../context/AuthContext';
 import { esCuentaDeDesarrollo } from '../services/entorno';
-import { etiquetaOrigen, primaComoPorcentaje } from '../services/despachoApi';
 import ErrorAlert from '../components/common/ErrorAlert';
 import { useProfile } from '../context/ProfileContext';
 import { motivoDelTope, planDelPerfil, usoDeClientes } from '../services/planes';
-
-function TarjetaCliente({
-  cliente, activo, onAbrir,
-}: { cliente: ClienteCartera; activo: boolean; onAbrir: () => void }) {
-  return (
-    <button
-      onClick={onAbrir}
-      className="card"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 'var(--space-md)', width: '100%',
-        padding: 'var(--space-md) var(--space-lg)', textAlign: 'left', cursor: 'pointer',
-        border: `1.5px solid ${activo ? 'var(--accent-active)' : 'var(--border)'}`,
-        background: activo ? 'var(--accent-active-bg)' : 'var(--bg-card)',
-        color: 'var(--text-primary)',
-      }}
-    >
-      <div
-        style={{
-          width: 44, height: 44, borderRadius: 'var(--radius-sm)', flexShrink: 0,
-          background: 'var(--accent-gradient)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <Building2 size={20} color="var(--text-on-accent)" />
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '1rem' }}>{cliente.nombre}</span>
-          {activo && (
-            <span
-              style={{
-                fontSize: '0.7rem', fontWeight: 600, letterSpacing: 0.3,
-                padding: '2px 8px', borderRadius: 'var(--radius-full)',
-                background: 'var(--accent-active)', color: 'var(--text-on-accent)',
-              }}
-            >
-              ACTIVO
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-          {cliente.giro} · {etiquetaOrigen(cliente.origen)}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)', flexShrink: 0 }}>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-            <Users size={14} color="var(--text-muted)" />
-            <span style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-              {cliente.empleados.length}
-            </span>
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>empleados</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.9rem' }}>
-            {primaComoPorcentaje(cliente.prima_riesgo)}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>prima de RT</div>
-        </div>
-        <ChevronRight size={18} color="var(--text-muted)" />
-      </div>
-    </button>
-  );
-}
 
 export default function ClientesPage() {
   // El cliente ACTIVO sigue saliendo del contexto de E-02 (es lo que lee el
@@ -275,11 +208,13 @@ export default function ClientesPage() {
 
       <div className="animate-in" style={{ animationDelay: '0.1s', display: 'grid', gap: 'var(--space-sm)' }}>
         {clientes.map((c) => (
-          <TarjetaCliente
+          <FilaCliente
             key={c.id}
             cliente={c}
             activo={c.id === clienteId}
+            editable={!cartera.soloLectura}
             onAbrir={() => abrir(c.id)}
+            onEditar={() => { setEditando(sinEmpleados(c)); setModalAbierto(true); }}
           />
         ))}
       </div>

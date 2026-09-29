@@ -643,6 +643,29 @@ trabajar sus retenciones de salarios, y la app no le dice por qué.
 
 ---
 
+## D31 · La longitud del RFC de un cliente RESICO (626) — PROVISIONAL (nocturno, C-01)
+
+**Qué se decidió.** El alta y la edición de cliente validan que la longitud del RFC case con el
+régimen: **601 = 12** (persona moral), **612 = 13** (persona física) y **626 = 12 o 13**.
+
+**Por qué 626 admite las dos, contra el texto del backlog.** La tarea C-01 dice "612/626 = 13".
+Pero el RESICO no es sólo de personas físicas: el Título VII, Capítulo XII de la LISR
+(Arts. 206-215) lo abre también a personas morales, que tributan con la misma clave 626 de
+`c_RegimenFiscal`. Exigir 13 dejaría a un cliente RESICO moral **legítimo** sin poder darse de
+alta, sin salida en pantalla. Lo conservador aquí es no rechazar un RFC válido: el formato se
+sigue validando, sólo se admite la otra longitud.
+
+**Dónde vive.** `components/cartera/datosFiscalesCliente.ts` (front) y
+`LONGITUDES_RFC_POR_REGIMEN` en `app/schemas/cartera.py` (backend), las dos con el comentario
+`DECISIÓN PROVISIONAL (nocturno)`. Los tests de los dos lados llevan el mismo vector.
+
+**Qué la resolvería.** Que Ricardo o la contadora confirmen si el despacho atiende RESICO de
+personas morales. Si no, se puede cerrar a 13 cambiando una línea en cada lado. Nota: el motor y
+los tabs de Fiscalito tratan hoy al 626 como persona física (§D30); aceptar el RFC de una moral
+aquí **no** hace que se le calcule como moral.
+
+---
+
 ## D22 · La clase de riesgo de los clientes sintéticos es un supuesto — PROVISIONAL
 
 **Contexto (E-02).** La cartera de la demo lleva dos clientes inventados —una cafetería y un

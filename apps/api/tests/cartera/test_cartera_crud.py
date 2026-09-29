@@ -27,6 +27,8 @@ distinto y honesto. Se corren aparte y su salida va al log de la sesión.
 from __future__ import annotations
 
 import os
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -35,6 +37,7 @@ from app.exceptions import FiscalAgentError
 from app.main import app
 from app.repositorio_cartera import CarteraEnMemoria, FirestoreCartera
 from app.routes import cartera as rutas_cartera
+from app.schemas.datos_fiscales_cliente import ENTIDADES_C_ESTADO
 
 UID_A = "uid-despacho-a"
 UID_B = "uid-despacho-b"
@@ -318,6 +321,134 @@ class TestValidacion:
         )
         assert r.status_code == 200
 
+
+# ─────────────────────────────────────────────────────────────
+# C-01: RFC, codigo postal y entidad federativa del cliente
+# ─────────────────────────────────────────────────────────────
+
+XSD_CAT_CFDI = Path(__file__).resolve().parents[1] / "xsd" / "catCFDI.xsd"
+
+
+class TestDatosFiscalesDelCliente:
+    """
+    MISMO VECTOR QUE `apps/store/src/components/cartera/datosFiscalesCliente.test.ts`.
+    Son dos implementaciones del mismo criterio y divergir tiene que romper una
+    prueba: con el flag de R-07 encendido, lo que el formulario acepta y el
+    backend rechaza es un 422 sobre un campo que el contador ya dio por bueno.
+    """
+
+    def test_se_guardan_y_se_devuelven(self, http: TestClient):
+        datos = {
+            **CLIENTE,
+            "regimen": "612",
+            "rfc": "abcd010101ab1",
+            "codigo_postal": "91000",
+            "clave_entidad": "VER",
+        }
+        assert http.put(
+            "/api/v1/cartera/clientes/mio", json=datos, headers=_como(UID_A)
+        ).status_code == 200
+        guardado = http.get("/api/v1/cartera/clientes", headers=_como(UID_A)).json()
+        cliente = guardado["clientes"][0]
+        # Se normaliza a mayusculas, igual que `normalizarRfc` del front.
+        assert cliente["rfc"] == "ABCD010101AB1"
+        assert cliente["codigo_postal"] == "91000"
+        assert cliente["clave_entidad"] == "VER"
+
+    def test_un_cliente_sin_los_campos_nuevos_se_sigue_guardando(self, http: TestClient):
+        # Los clientes demo y los anteriores a C-01 no los traen.
+        r = http.put("/api/v1/cartera/clientes/mio", json=CLIENTE, headers=_como(UID_A))
+        assert r.status_code == 200
+
+    @pytest.mark.parametrize(
+        ("regimen", "rfc"),
+        [
+            ("612", "ABCD010101AB1"),
+            ("601", "ABC010101AB1"),
+            # DECISION PROVISIONAL (nocturno), §D31: RESICO admite moral y fisica.
+            ("626", "ABC010101AB1"),
+            ("626", "ABCD010101AB1"),
+            # Regimen no capturado: solo se valida el formato.
+            ("", "ABC010101AB1"),
+            ("612", "ÑAND010101AB1"),
+        ],
+    )
+    def test_rfc_valido_para_su_regimen(self, http: TestClient, regimen: str, rfc: str):
+        r = http.put(
+            "/api/v1/cartera/clientes/mio",
+            json={**CLIENTE, "regimen": regimen, "rfc": rfc},
+            headers=_como(UID_A),
+        )
+        assert r.status_code == 200
+
+    @pytest.mark.parametrize(
+        ("regimen", "rfc"),
+        [
+            ("612", "ABC010101AB1"),   # 12 con persona fisica
+            ("601", "ABCD010101AB1"),  # 13 con persona moral
+            ("612", "ABCD01"),         # incompleto
+            ("612", "ABCD0101X1AB1"),  # letra en la fecha
+            ("", "1234010101AB1"),     # digitos donde van letras
+        ],
+    )
+    def test_rfc_mal_formado_o_de_otra_persona_se_rechaza(
+        self, http: TestClient, regimen: str, rfc: str
+    ):
+        r = http.put(
+            "/api/v1/cartera/clientes/mio",
+            json={**CLIENTE, "regimen": regimen, "rfc": rfc},
+            headers=_como(UID_A),
+        )
+        assert r.status_code == 422
+
+    def test_rfc_y_regimen_que_no_casan_bloquean_TODO_guardado(self, http: TestClient):
+        """
+        Se valida en cada guardado, no solo cuando cambia el RFC: cambiar el giro
+        de un cliente cuyo RFC de 12 quedo junto a un regimen 612 rebota hasta
+        corregir uno de los dos. El formulario aplica la misma regla.
+        """
+        r = http.put(
+            "/api/v1/cartera/clientes/mio",
+            json={**CLIENTE, "regimen": "612", "rfc": "ABC010101AB1", "giro": "Otro giro"},
+            headers=_como(UID_A),
+        )
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("cp", ["9100", "910000", "9100A"])
+    def test_codigo_postal_de_5_digitos(self, http: TestClient, cp: str):
+        r = http.put(
+            "/api/v1/cartera/clientes/mio",
+            json={**CLIENTE, "codigo_postal": cp},
+            headers=_como(UID_A),
+        )
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("clave", ["XXX", "ver", "TX"])
+    def test_entidad_fuera_del_catalogo_se_rechaza(self, http: TestClient, clave: str):
+        r = http.put(
+            "/api/v1/cartera/clientes/mio",
+            json={**CLIENTE, "clave_entidad": clave},
+            headers=_como(UID_A),
+        )
+        assert r.status_code == 422
+
+    def test_el_catalogo_es_el_c_Estado_versionado_del_SAT(self):
+        """
+        `ENTIDADES_C_ESTADO` contra el `catCFDI.xsd` del repo. El XSD trae
+        tambien estados de EE. UU. y provincias de Canada (claves de 2 letras) y
+        no los agrupa por pais, asi que se filtran por longitud y el resultado se
+        compara contra el conjunto EXACTO, no solo contra el conteo: una clave
+        de 3 letras de otro pais que apareciera en una version nueva del XSD
+        rompe este test en vez de colarse.
+        """
+        ns = {"xs": "http://www.w3.org/2001/XMLSchema"}
+        arbol = ET.parse(XSD_CAT_CFDI)
+        tipo = arbol.getroot().find("xs:simpleType[@name='c_Estado']", ns)
+        assert tipo is not None
+        claves = {e.get("value") for e in tipo.iter(f"{{{ns['xs']}}}enumeration")}
+        de_mexico = {c for c in claves if c is not None and len(c) == 3}
+        assert de_mexico == set(ENTIDADES_C_ESTADO)
+        assert len(ENTIDADES_C_ESTADO) == 33
 
 # ─────────────────────────────────────────────────────────────
 # CORS: el preflight que el navegador hace antes de un PUT

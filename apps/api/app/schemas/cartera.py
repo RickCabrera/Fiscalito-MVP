@@ -27,6 +27,11 @@ from app.nomina_engine.integracion import (
     validar_tabla_vacaciones,
 )
 from app.nomina_engine.tablas_imss import PRIMA_RT_MAXIMA, PRIMA_RT_MINIMA
+from app.schemas.datos_fiscales_cliente import (
+    ENTIDADES_C_ESTADO,
+    LONGITUDES_RFC_POR_REGIMEN,
+    RFC_O_VACIO,
+)
 from app.schemas.empleado import EmpleadoCarteraSchema
 from app.schemas.nomina import PeriodoNomina
 
@@ -159,9 +164,10 @@ class ClienteCarteraSchema(BaseModel):
         pattern=r"^\d{0,3}$",
         description="Clave del régimen fiscal del CLIENTE (c_RegimenFiscal del SAT), no del "
         "despacho. Lo consume el FRONT para decidir qué pantallas de Fiscalito se le pueden "
-        "trabajar (T1); **este schema no aplica ninguna regla fiscal sobre él y no valida "
-        "el catálogo**, sólo lo guarda y lo devuelve. El corte concreto 612/626 es un "
-        "criterio heredado de E-01, pendiente de confirmar con la contadora "
+        "trabajar (T1). **Este schema no valida el catálogo**; la única regla que aplica con "
+        "él es que la longitud del `rfc` case con 601/612/626 (C-01, ver `rfc`). El corte "
+        "concreto 612/626 de los tabs es un criterio heredado de E-01, pendiente de "
+        "confirmar con la contadora "
         "(docs/decisiones-nomina.md §D30). **Vacío = no capturado**, y el front lo dice en "
         "pantalla en vez de suponerlo en silencio; una cartera escrita antes de T1 no lo "
         "trae. El campo existe aquí aunque hoy el dueño del dato sea Firestore (R-07 sigue "
@@ -171,8 +177,23 @@ class ClienteCarteraSchema(BaseModel):
     rfc: str = Field(
         default="",
         max_length=13,
-        description="RFC del patrón. **Vacío cuando no se conoce y nunca inventado**, misma "
-        "política que el NSS del empleado. Lo captura la Configuración de empresa (O-01).",
+        pattern=RFC_O_VACIO,
+        description="RFC del cliente (el patrón, en nómina). **Vacío cuando no se conoce y "
+        "nunca inventado**, misma política que el NSS del empleado. Lo capturan el alta y la "
+        "edición de cliente (C-01) y la Configuración de empresa (O-01). Se guarda en "
+        "mayúsculas y sin espacios. Si trae valor, se valida el formato y, para los regímenes "
+        "601/612/626, que la longitud case (601 = 12, 612 = 13, 626 = 12 o 13).",
+    )
+    codigo_postal: str = Field(
+        default="",
+        pattern=r"^(\d{5})?$",
+        description="CP del domicilio fiscal (C-01), 5 dígitos. Vacío = no capturado. Sólo "
+        "candidato a default del `LugarExpedicion` del CFDI de nómina: no siempre coinciden.",
+    )
+    clave_entidad: str = Field(
+        default="",
+        description="Entidad del cliente (C-01), catálogo `c_Estado`. Vacío = no capturada. "
+        "Sólo candidata a default de `ClaveEntFed`, que es donde el trabajador presta el servicio.",
     )
     guia_subdelegacion: str = Field(
         default="",
@@ -223,6 +244,37 @@ class ClienteCarteraSchema(BaseModel):
         "pantalla de nómina pide capturar las fechas (R-06).",
     )
 
+    @field_validator("rfc", mode="before")
+    @classmethod
+    def _rfc_normalizado(cls, valor: object) -> object:
+        """Mayúsculas y sin espacios antes del patrón, igual que `normalizarRfc` del front."""
+        return valor.strip().upper() if isinstance(valor, str) else valor
+
+    @field_validator("clave_entidad")
+    @classmethod
+    def _entidad_del_catalogo(cls, valor: str) -> str:
+        if valor and valor not in ENTIDADES_C_ESTADO:
+            raise ValueError(f"La clave de entidad {valor!r} no está en el catálogo c_Estado.")
+        return valor
+
+    @model_validator(mode="after")
+    def _rfc_casa_con_el_regimen(self) -> ClienteCarteraSchema:
+        """
+        Un RFC de 12 es de persona moral y uno de 13 de persona física.
+
+        **Se valida en cada guardado, no sólo cuando cambia el RFC**: un cliente
+        con RFC y régimen que no casan no se vuelve a guardar hasta corregir uno
+        de los dos, y el mensaje dice cuál es el conflicto. El front aplica la
+        misma regla y bloquea el mismo guardado, así que no hay un camino que
+        acepte lo que el otro rechaza.
+        """
+        admitidas = LONGITUDES_RFC_POR_REGIMEN.get(self.regimen)
+        if self.rfc and admitidas and len(self.rfc) not in admitidas:
+            raise ValueError(
+                f"El RFC {self.rfc!r} tiene {len(self.rfc)} caracteres y el régimen "
+                f"{self.regimen} admite {' o '.join(map(str, admitidas))}."
+            )
+        return self
 
 class ClientesCarteraResponse(BaseModel):
     exito: bool = True

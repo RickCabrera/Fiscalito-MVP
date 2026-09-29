@@ -159,11 +159,24 @@ export interface ClienteCartera {
    */
   regimen?: string;
   /**
-   * RFC del patrón. **Opcional**: los tres clientes de demostración no lo
-   * traen, y una cartera escrita antes de O-01 tampoco. Lo captura la
-   * Configuración de empresa (O-01) y lo consume el exportador de O-04.
+   * RFC del cliente (el patrón, en nómina). **Opcional**: los tres clientes de
+   * demostración no lo traen, y una cartera escrita antes de O-01 tampoco. Lo
+   * capturan el alta y la edición de cliente (C-01) —obligatorio en el alta— y
+   * la Configuración de empresa (O-01); lo consume el exportador de O-04.
+   * Reglas en `components/cartera/datosFiscalesCliente.ts`.
    */
   rfc?: string;
+  /**
+   * Código postal del domicilio fiscal (C-01). Opcional por la misma razón que
+   * `rfc`. Sólo candidato a default del `LugarExpedicion` del CFDI de nómina.
+   */
+  codigo_postal?: string;
+  /**
+   * Entidad federativa (C-01), clave del catálogo `c_Estado` del SAT. Opcional
+   * por la misma razón que `rfc`. Sólo candidata a default de la `ClaveEntFed`
+   * del CFDI de nómina, que es donde el TRABAJADOR presta el servicio.
+   */
+  clave_entidad?: string;
   /**
    * Registro patronal del IMSS, **11 caracteres** (10 + dígito verificador).
    * Opcional por la misma razón que `rfc`. Sin él no se pueden emitir
@@ -198,6 +211,16 @@ export interface EmpleadosSemilla {
   /** Cuántos NO tienen `employee_no`. Lo cuenta el backend, no la UI. */
   sin_vincular: number;
   empleados: EmpleadoCartera[];
+}
+
+/**
+ * El cliente sin su plantilla: lo que `ModalCliente` edita y `guardarCliente`
+ * escribe (C-01). Los empleados se guardan aparte, uno por uno.
+ */
+export function sinEmpleados(c: ClienteCartera): Omit<ClienteCartera, 'empleados'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { empleados, ...resto } = c;
+  return resto;
 }
 
 /** `true` si sus checadas no tienen con qué casarse. */

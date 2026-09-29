@@ -65,6 +65,7 @@ const estado = {
   clienteId: 'demo' as string | null,
   loading: false,
   error: null as string | null,
+  soloLectura: false,
 };
 
 vi.mock('../context/carteraStore', async () => {
@@ -81,7 +82,7 @@ vi.mock('../context/carteraStore', async () => {
         error: estado.error,
         recargar,
         origen: 'firestore',
-        soloLectura: false,
+        soloLectura: estado.soloLectura,
         clientePorId: (id: string) => estado.clientes.find((c) => c.id === id) ?? null,
       }),
   };
@@ -136,6 +137,7 @@ afterEach(() => {
   estado.clienteId = 'demo';
   estado.loading = false;
   estado.error = null;
+  estado.soloLectura = false;
   navigate.mockClear();
   setClienteId.mockClear();
   recargar.mockClear();
@@ -257,5 +259,26 @@ describe('estados que no son la lista feliz', () => {
     for (const ajeno of ['Servicios Administrativos Integrales', 'Cafetería La Estación', 'Taller Mecánico Nogal']) {
       expect(screen.queryByText(ajeno), `apareció ${ajeno}`).toBeNull();
     }
+  });
+});
+
+describe('editar un cliente desde la lista (C-01)', () => {
+  it('"Editar" abre el modal con los datos del cliente y el id bloqueado', () => {
+    montar();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar Cafeteria La Estacion' }));
+
+    const dialogo = screen.getByRole('dialog', { name: 'Editar Cafeteria La Estacion' });
+    const id = dialogo.querySelector('input') as HTMLInputElement;
+    expect(id.value).toBe('cafeteria');
+    expect(id.disabled).toBe(true);
+    // Editar NO abre la ficha ni cambia el cliente activo.
+    expect(navigate).not.toHaveBeenCalled();
+    expect(setClienteId).not.toHaveBeenCalled();
+  });
+
+  it('una cartera de sólo lectura no ofrece editar', () => {
+    estado.soloLectura = true;
+    montar();
+    expect(screen.queryByRole('button', { name: /^Editar / })).toBeNull();
   });
 });
