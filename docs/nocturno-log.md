@@ -3442,7 +3442,7 @@ por eso `docs/api-contract.md` no cambia. `pytest` no aplica.
 - **Privacidad:** los tests nuevos usan RFC sintéticos (XIQB891116QE4 / EKU9003173C9, de pruebas
   del SAT). El RFC de las demo-xmls **no** se escribió en ningún archivo nuevo: el test lo lee
   del XML en runtime (ya registrado aparte que esos XML parecen traer datos de una persona).
-- **Trampa de herramienta:** al escribir código con secuencias `̀` (barra-u) por las
+- **Trampa de herramienta:** al escribir código con secuencias `\u0300` (barra-u + código) por las
   herramientas Write/Edit o un heredoc, llegan convertidas al carácter real. Si hace falta el
   escape literal, construirlo con `String.fromCharCode(92)` desde node.
 - `contratoRutas.test.ts` exige declarar cada export nuevo de `fiscalAgentApi.ts`:
