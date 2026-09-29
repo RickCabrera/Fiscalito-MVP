@@ -72,7 +72,7 @@ esquema de cartera. **La demo funciona en todo momento:** los campos nuevos son 
 para clientes ya existentes, sin migraciones destructivas ni borrar semillas o clientes demo.
 **Los números de línea citados pueden estar desfasados:** verifica antes de editar.
 
-- [ ] **C-01 · RFC, código postal y entidad federativa en el alta y la edición de cliente**
+- [x] **C-01 · RFC, código postal y entidad federativa en el alta y la edición de cliente**
   - Hoy: `components/cartera/ModalCliente.tsx` pide 9 campos y ninguno es el RFC. El
     esquema ya tiene `rfc` opcional (`schemas/cartera.py`, `carteraApi.ts`), pero ninguna
     pantalla del despacho lo llena. El código postal (`LugarExpedicion`,
