@@ -29,6 +29,7 @@ import {
 } from 'react';
 import type { CFDI, PreDeclaracionResponse } from '../services/fiscalAgentApi';
 import type { AgentSharedState, ToolCallLogEntry } from './types';
+import { ClienteActivoContext } from '../context/clienteActivoStore';
 
 interface AgentContextValue {
   // ── Estado reactivo (para componentes que renderizan UI) ──
@@ -95,6 +96,20 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [periodoYear, setPeriodoYear] = useState(() => new Date().getFullYear());
   const [periodoMonth, setPeriodoMonth] = useState(() => new Date().getMonth() + 1);
   const [toolCallLog, setToolCallLog] = useState<ToolCallLogEntry[]>([]);
+
+  // C-02: las facturas y el resultado de la pre-declaración son de UN sujeto.
+  // Al cambiar de cliente activo se tiran —aquí y no en el tab, porque este
+  // proveedor vive toda la sesión y el tab se desmonta al navegar—: si no, los
+  // XML de un cliente se recalcularían con el RFC del siguiente. Se ajusta el
+  // estado durante el render (patrón de React para "resetear al cambiar una
+  // prop"), no en un efecto, para no pintar un cuadro con los datos viejos.
+  const clienteActivoId = useContext(ClienteActivoContext)?.clienteId ?? null;
+  const [clienteDelLote, setClienteDelLote] = useState(clienteActivoId);
+  if (clienteDelLote !== clienteActivoId) {
+    setClienteDelLote(clienteActivoId);
+    setFacturasState([]);
+    setResultadoState(null);
+  }
 
   // Mantener stateRef sincronizado con el estado para acceso desde tools.
   useEffect(() => {

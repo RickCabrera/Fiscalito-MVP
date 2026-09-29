@@ -2,7 +2,7 @@
 
 import type { PreDeclaracionResponse } from '../../services/fiscalAgentApi';
 import { exportarDeclaracionPDF } from '../../services/pdfExport';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { formatMoney } from '../../utils/format';
 import { AlertTriangle, Lightbulb, RefreshCw, MessageSquare, Download } from 'lucide-react';
 
@@ -16,7 +16,9 @@ function formatTasa(tasa: number): string {
 }
 
 export default function ResultadoDeclaracion({ resultado, onNuevaDeclaracion }: Props) {
-  const { profile } = useProfile();
+  // C-02: el PDF lleva al sujeto del cálculo —el cliente activo si quien mira
+  // es un contador—, no el nombre y el RFC del despacho.
+  const perfil = usePerfilFiscal();
   const d = resultado.desglose;
   const totalAPagar = d.total_a_pagar;
   const esAFavor = totalAPagar < 0;
@@ -30,7 +32,7 @@ export default function ResultadoDeclaracion({ resultado, onNuevaDeclaracion }: 
       explicacion: resultado.explicacion ?? null,
       advertencias: resultado.advertencias ?? [],
       recomendaciones: resultado.recomendaciones ?? [],
-      contribuyente: { nombre: profile.nombre, rfc: profile.rfc },
+      contribuyente: { nombre: perfil.nombre, rfc: perfil.rfc },
       fechaCalculo: new Date(),
     });
   };

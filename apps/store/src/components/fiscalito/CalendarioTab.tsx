@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerCalendario, type ObligacionFiscal, tipoParaCalendario } from '../../services/fiscalAgentApi';
+import { obtenerCalendario, type ObligacionFiscal, tipoParaCalendario, tipoCalendarioDeRegimen } from '../../services/fiscalAgentApi';
 import { obtenerHistorial, type DeclaracionRecord } from '../../services/declaracionesHistory';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Calendar, Clock, AlertCircle, Loader, CheckCircle2 } from 'lucide-react';
 
 const MES_NUM_TO_NAME: Record<number, string> = {
@@ -72,14 +74,18 @@ function isObligacionCompletada(
 
 export default function CalendarioTab() {
   const { profile } = useProfile();
+  // C-02: el calendario es del sujeto del cálculo — el cliente activo si quien
+  // mira es un contador, con su RFC, su régimen y SU historial.
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const [obligaciones, setObligaciones] = useState<ObligacionFiscal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!profile.rfc || !profile.regimen) {
-      setError('Completa tu RFC y régimen en tu perfil para ver tu calendario.');
+    if (perfil.falta) {
+      // Al cliente se le pide el dato con `FaltaDatoFiscal`, abajo; el contribuyente conserva su mensaje.
+      if (perfil.sujeto === 'contribuyente') setError('Completa tu RFC y régimen en tu perfil para ver tu calendario.');
       setLoading(false);
       return;
     }
@@ -89,12 +95,14 @@ export default function CalendarioTab() {
         const yearActual = new Date().getFullYear();
         const [res, historial] = await Promise.all([
           obtenerCalendario({
-            rfc: profile.rfc,
-            regimen: profile.regimen,
-            contributor_type: tipoParaCalendario(profile.contributorType),
+            rfc: perfil.rfc,
+            regimen: perfil.regimen,
+            contributor_type: perfil.sujeto === 'cliente'
+              ? tipoCalendarioDeRegimen(perfil.regimen)
+              : tipoParaCalendario(profile.contributorType),
             year: yearActual,
           }),
-          user?.uid ? obtenerHistorial(user.uid, 100) : Promise.resolve([]),
+          user?.uid ? obtenerHistorial(user.uid, 100, undefined, perfil.clienteId) : Promise.resolve([]),
         ]);
 
         const obligacionesConEstado = res.obligaciones.map((ob) => ({
@@ -109,7 +117,9 @@ export default function CalendarioTab() {
       }
     };
     load();
-  }, [profile.rfc, profile.regimen, profile.contributorType, user?.uid]);
+  }, [perfil.rfc, perfil.regimen, perfil.sujeto, perfil.falta, perfil.clienteId, profile.contributorType, user?.uid]);
+
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
   if (loading) {
     return (

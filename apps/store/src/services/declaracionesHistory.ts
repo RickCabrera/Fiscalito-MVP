@@ -14,6 +14,11 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { DIOTResponse, RetencionesResponse, MultiPeriodoResponse, EstadoCuentaResponse } from './fiscalAgentApi';
+import { camposDeCliente, delAmbito, docIdHistorial, milisDe } from './historialCliente';
+import { MESES, parsearPeriodo } from './periodoHistorial';
+
+/** C-02: id del cliente con que se calculó. `null`/ausente = el contribuyente. */
+type ClienteId = string | null | undefined;
 
 // ── Tipos ──
 
@@ -55,6 +60,8 @@ export interface DeclaracionRecord {
   periodo: string;
   regimen: string;
   fecha_calculo: Timestamp | Date;
+  /** C-02: cliente del despacho con que se calculó. Ausente = el contribuyente. */
+  cliente_id?: string;
   // Pre-declaración / deducciones fields
   desglose?: DesgloseRecord;
   explicacion?: string | null;
@@ -99,26 +106,17 @@ function declaracionesRef(uid: string) {
   return collection(db, 'users', uid, 'declaraciones');
 }
 
-// ── Upsert helper ──
-
-function generarDocId(categoria: string, periodo: string): string {
-  const raw = `${categoria}_${periodo}`;
-  return raw
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9_]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '');
-}
+// ── Upsert helper (el id y el ámbito por cliente viven en `historialCliente.ts`) ──
 
 async function upsertDeclaracion(
   uid: string,
   categoria: HistorialCategoria,
   periodo: string,
-  docData: Record<string, unknown>
+  docData: Record<string, unknown>,
+  clienteId?: ClienteId,
 ): Promise<string> {
-  const docId = generarDocId(categoria, periodo);
-  await setDoc(doc(declaracionesRef(uid), docId), docData);
+  const docId = docIdHistorial(categoria, periodo, clienteId);
+  await setDoc(doc(declaracionesRef(uid), docId), { ...docData, ...camposDeCliente(clienteId) });
   return docId;
 }
 
@@ -175,14 +173,15 @@ export function desgloseRecordDesde(d: {
 export async function guardarDeclaracion(
   uid: string,
   data: Omit<DeclaracionRecord, 'id' | 'categoria'>,
-  categoria: HistorialCategoria = 'predeclaracion'
+  categoria: HistorialCategoria = 'predeclaracion',
+  clienteId?: ClienteId,
 ): Promise<string> {
   const docData = {
     ...data,
     categoria,
     fecha_calculo: Timestamp.now(),
   };
-  return upsertDeclaracion(uid, categoria, data.periodo, docData);
+  return upsertDeclaracion(uid, categoria, data.periodo, docData, clienteId);
 }
 
 // ── Guardar DIOT ──
@@ -190,7 +189,8 @@ export async function guardarDeclaracion(
 export async function guardarDIOT(
   uid: string,
   res: DIOTResponse,
-  facturasCount: number
+  facturasCount: number,
+  clienteId?: ClienteId,
 ): Promise<string> {
   return upsertDeclaracion(uid, 'diot', res.periodo, {
     categoria: 'diot' as HistorialCategoria,
@@ -205,7 +205,7 @@ export async function guardarDIOT(
     })),
     total_operaciones: res.total_operaciones,
     total_iva: res.total_iva,
-  });
+  }, clienteId);
 }
 
 // ── Guardar Retenciones ──
@@ -213,7 +213,8 @@ export async function guardarDIOT(
 export async function guardarRetenciones(
   uid: string,
   res: RetencionesResponse,
-  facturasCount: number
+  facturasCount: number,
+  clienteId?: ClienteId,
 ): Promise<string> {
   return upsertDeclaracion(uid, 'retenciones', res.periodo, {
     categoria: 'retenciones' as HistorialCategoria,
@@ -229,14 +230,15 @@ export async function guardarRetenciones(
     })),
     total_isr_retenido: res.total_isr_retenido,
     total_iva_retenido: res.total_iva_retenido,
-  });
+  }, clienteId);
 }
 
 // ── Guardar Multi-periodo ──
 
 export async function guardarMultiPeriodo(
   uid: string,
-  res: MultiPeriodoResponse
+  res: MultiPeriodoResponse,
+  clienteId?: ClienteId,
 ): Promise<string> {
   return upsertDeclaracion(uid, 'multiperiodo', `Año ${res.year}`, {
     categoria: 'multiperiodo' as HistorialCategoria,
@@ -258,14 +260,15 @@ export async function guardarMultiPeriodo(
       promedio: res.acumulado.promedio_mensual,
       tendencia: res.acumulado.tendencia,
     },
-  });
+  }, clienteId);
 }
 
 // ── Guardar Estado de cuenta ──
 
 export async function guardarEstadoCuenta(
   uid: string,
-  res: EstadoCuentaResponse
+  res: EstadoCuentaResponse,
+  clienteId?: ClienteId,
 ): Promise<string> {
   const ivaNeto = res.iva_cobrado_acumulado - res.iva_pagado_acumulado - res.iva_retenido_acumulado;
   return upsertDeclaracion(uid, 'estado_cuenta', `Año ${res.year}`, {
@@ -283,7 +286,7 @@ export async function guardarEstadoCuenta(
       isr_faltante: res.isr_faltante,
       iva_neto: ivaNeto,
     },
-  });
+  }, clienteId);
 }
 
 // ── Leer historial ──
@@ -291,8 +294,19 @@ export async function guardarEstadoCuenta(
 export async function obtenerHistorial(
   uid: string,
   maxResults = 20,
-  categoria?: HistorialCategoria
+  categoria?: HistorialCategoria,
+  clienteId?: ClienteId,
 ): Promise<DeclaracionRecord[]> {
+  // C-02: el historial de UN cliente. Sólo igualdad en la query —no pide un
+  // índice compuesto nuevo— y la categoría, el orden y el límite van en memoria.
+  if (clienteId) {
+    const snap = await getDocs(query(declaracionesRef(uid), where('cliente_id', '==', clienteId)));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data(), categoria: d.data().categoria ?? 'predeclaracion' }) as DeclaracionRecord)
+      .filter((r) => !categoria || r.categoria === categoria)
+      .sort((a, b) => milisDe(b.fecha_calculo) - milisDe(a.fecha_calculo))
+      .slice(0, maxResults);
+  }
   const q = categoria
     ? query(
         declaracionesRef(uid),
@@ -314,15 +328,10 @@ export async function obtenerHistorial(
       // Backward compatible: old records without categoria default to 'predeclaracion'
       categoria: data.categoria ?? 'predeclaracion',
     } as DeclaracionRecord;
-  });
+  }).filter((r) => delAmbito(r, null)); // el contribuyente no ve cálculos de un cliente
 }
 
 // ── Limpieza de duplicados históricos ──
-
-const MESES: Record<string, number> = {
-  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
-};
 
 export async function limpiarDuplicados(uid: string): Promise<number> {
   const q = query(declaracionesRef(uid), orderBy('fecha_calculo', 'desc'));
@@ -332,7 +341,9 @@ export async function limpiarDuplicados(uid: string): Promise<number> {
 
   for (const d of snapshot.docs) {
     const data = d.data();
-    const key = `${data.categoria ?? 'predeclaracion'}_${data.periodo ?? ''}`;
+    // C-02: el cliente entra a la llave; si no, el "Enero" de un cliente sería
+    // "duplicado" del de otro y se borraría.
+    const key = `${data.cliente_id ?? ''}|${data.categoria ?? 'predeclaracion'}_${data.periodo ?? ''}`;
     const fecha = data.fecha_calculo instanceof Timestamp
       ? data.fecha_calculo.toDate()
       : new Date(data.fecha_calculo);
@@ -352,31 +363,13 @@ export async function limpiarDuplicados(uid: string): Promise<number> {
   return eliminados;
 }
 
-// ── Helper para parsear periodos ──
-
-function parsearPeriodo(periodo: string): { month: number; year: number } | null {
-  const parts = periodo.toLowerCase().trim().split(/\s+/);
-  if (parts.length < 2) return null;
-  // "Bimestre 1 2026" → último mes del bimestre
-  if (parts[0] === 'bimestre') {
-    const bim = parseInt(parts[1]);
-    const year = parseInt(parts[2]);
-    if (!bim || isNaN(year)) return null;
-    return { month: bim * 2, year };
-  }
-  // "Enero 2026"
-  const month = MESES[parts[0]];
-  const year = parseInt(parts[parts.length - 1]);
-  if (!month || isNaN(year)) return null;
-  return { month, year };
-}
-
 // ── Obtener acumulado de meses anteriores (Art. 106) ──
 
 export async function obtenerAcumuladoAnterior(
   uid: string,
   year: number,
-  currentMonth: number
+  currentMonth: number,
+  clienteId?: ClienteId,
 ): Promise<{
   ingresos_acumulados: number;
   deducciones_acumuladas: number;
@@ -399,6 +392,7 @@ export async function obtenerAcumuladoAnterior(
 
   for (const d of snapshot.docs) {
     const data = d.data();
+    if (!delAmbito(data, clienteId)) continue; // C-02: sólo los meses de ESTE sujeto
     const periodo: string = data.periodo ?? '';
     const parsed = parsearPeriodo(periodo);
     if (!parsed || parsed.year !== year) continue;
@@ -432,7 +426,8 @@ export async function obtenerAcumuladoAnterior(
 export async function obtenerISRPagadoAnterior(
   uid: string,
   year: number,
-  currentMonth: number
+  currentMonth: number,
+  clienteId?: ClienteId,
 ): Promise<number> {
   const q = query(
     declaracionesRef(uid),
@@ -443,6 +438,7 @@ export async function obtenerISRPagadoAnterior(
 
   for (const d of snapshot.docs) {
     const data = d.data();
+    if (!delAmbito(data, clienteId)) continue; // C-02: sólo los meses de ESTE sujeto
     const periodo: string = data.periodo ?? '';
     // Parsear "Enero 2026", "Bimestre 1 2026", etc.
     const parts = periodo.toLowerCase().split(' ');

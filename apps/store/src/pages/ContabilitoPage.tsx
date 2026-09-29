@@ -16,9 +16,9 @@
  * De quien diga el RFC de arriba, y esa pregunta no es cosmética: el mismo CFDI
  * es un ingreso para quien lo emitió y un gasto para quien lo recibió, así que
  * **el RFC decide de qué lado de la póliza cae cada cuenta**. Se resuelve en
- * este orden: lo tecleado a mano, el RFC del contribuyente —que **no aplica a
- * un despacho**, ver abajo— y, si no hay ninguno, el que más se repite entre
- * los comprobantes cargados. Se enseña y se puede corregir a mano: una
+ * este orden: lo tecleado a mano, el RFC de la ficha —el del contribuyente, o
+ * desde C-02 el del **cliente activo** si quien mira es un despacho— y, si no
+ * hay ninguno, el que más se repite entre los comprobantes cargados. Se enseña y se puede corregir a mano: una
  * suposición que no se ve es una suposición que nadie desmiente.
  */
 
@@ -28,6 +28,7 @@ import { ArrowLeft, BookOpen, FileStack, Scale, Inbox } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
 import { esContador } from '../services/navigation';
+import { usePerfilFiscal } from '../context/usePerfilFiscal';
 import XMLUploader from '../components/fiscalito/XMLUploader';
 import CatalogoTab from '../components/contabilidad/CatalogoTab';
 import PolizasTab from '../components/contabilidad/PolizasTab';
@@ -49,8 +50,19 @@ const TABS: { id: TabContabilito; label: string; icon: React.ReactNode }[] = [
 
 const IDS_TAB = TABS.map((t) => t.id);
 
+/**
+ * C-02: el contenido se REMONTA al cambiar de cliente activo. Los comprobantes
+ * y el RFC tecleado son de un sujeto; sin la `key`, un RFC escrito a mano para
+ * el cliente A seguiría pisando al de B y sus XML se contabilizarían como de B.
+ */
 export default function ContabilitoPage() {
+  const { clienteId } = usePerfilFiscal();
+  return <ContabilitoDelSujeto key={clienteId ?? 'propio'} />;
+}
+
+function ContabilitoDelSujeto() {
   const { profile } = useProfile();
+  const perfilFiscal = usePerfilFiscal();
   const clienteActivo = useContext(ClienteActivoContext);
   const [searchParams, setSearchParams] = useSearchParams();
   const [facturas, setFacturas] = useState<CFDI[]>([]);
@@ -64,14 +76,13 @@ export default function ContabilitoPage() {
   /**
    * El RFC capturado que sirve para ESTA pantalla.
    *
-   * Para un contador **no hay ninguno**, y eso es deliberado: `profile.rfc` es
-   * el del DESPACHO, no el del cliente cuya contabilidad se está armando, y
-   * `ClienteResumen` no trae RFC —el catálogo del despacho nunca lo expuso—.
-   * Usar el del despacho clasificaría todas las facturas del cliente como
-   * ajenas y voltearía cada póliza. Es la misma trampa que T6 documentó con
-   * `profile.regimen`.
+   * Para un contador es el del CLIENTE ACTIVO (C-02), nunca `profile.rfc`: ése
+   * es el del DESPACHO, y usarlo clasificaría todas las facturas del cliente
+   * como ajenas y voltearía cada póliza — la misma trampa que T6 documentó con
+   * `profile.regimen`. Un cliente sin RFC capturado deja esto vacío, y manda
+   * el deducido.
    */
-  const rfcDeLaFicha = esDespacho ? '' : (profile.rfc || '').toUpperCase();
+  const rfcDeLaFicha = esDespacho ? perfilFiscal.rfc : (profile.rfc || '').toUpperCase();
   const rfcPropio = (rfcManual || rfcDeLaFicha || rfcInferido).toUpperCase();
   /** El RFC en uso no salió de una ficha: se dedujo de los comprobantes. */
   const rfcDeducido = !rfcManual && !rfcDeLaFicha && rfcInferido !== '';

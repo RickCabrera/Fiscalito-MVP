@@ -1,9 +1,10 @@
 /** Tab de retenciones hechas a terceros */
 
 import { useState } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
+import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarRetenciones } from '../../services/declaracionesHistory';
 import {
   exportarRetencionesPDF, exportConstanciaRetencion, exportTodasLasConstancias,
@@ -14,10 +15,11 @@ import XMLUploader from './XMLUploader';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Loader, Download, RefreshCw, MessageSquare, FileText } from 'lucide-react';
 
 export default function RetencionesTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const [facturas, setFacturas] = useState<CFDI[]>([]);
   const [year, setYear] = useState(2025);
@@ -30,18 +32,18 @@ export default function RetencionesTab() {
 
   const handleConsultar = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
-    if (!profile.rfc || !profile.regimen) { setError('Completa tu RFC y régimen en tu perfil.'); return; }
+    if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
     setGuardado(false);
     try {
       const res = await obtenerRetencionesTerceros({
-        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarRetenciones(user.uid, res, facturas.length)
+        guardarRetenciones(user.uid, res, facturas.length, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -53,11 +55,12 @@ export default function RetencionesTab() {
   };
 
   /**
-   * El retenedor es el perfil: las constancias las emite quien retuvo. Se arma
+   * El retenedor es el sujeto del cálculo —el contribuyente o, desde C-02, el
+   * cliente activo—: las constancias las emite quien retuvo. Se arma
    * una vez y se pasa a las dos exportaciones para que el PDF agregado y las
    * constancias individuales no puedan decir cosas distintas.
    */
-  const retenedor = { nombre: profile.nombre, rfc: profile.rfc };
+  const retenedor = { nombre: perfil.nombre, rfc: perfil.rfc };
 
   /**
    * `bajandoTodas` no es decoracion: `exportTodasLasConstancias` espacia las
@@ -74,6 +77,9 @@ export default function RetencionesTab() {
       setBajandoTodas(false);
     }
   };
+
+  // C-02: sin RFC (o sin régimen) del cliente no hay cálculo; se pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
   if (resultado) {
     return (

@@ -69,6 +69,32 @@ export function tipoParaCalendario(tipo: ContributorType | null): ApiContributor
 }
 
 /**
+ * El tipo que `/calendario` recibe para un CLIENTE del despacho (C-02).
+ *
+ * Desde T1 el calendario que ve un contador es el de su cliente activo, y
+ * `tipoParaCalendario('contador')` le mandaba siempre `independiente`: a una
+ * persona moral (601, alcanzable por `TABS_601`) le pintaba obligaciones de
+ * persona física. El cliente no tiene "tipo de contribuyente" capturado —sólo
+ * régimen—, así que se deduce de él, con la misma equivalencia que el
+ * onboarding usa para ofrecer cada régimen (`contributorProfiles.ts`).
+ *
+ * DECISIÓN PROVISIONAL (nocturno): 601 → `pyme` (el tipo que ofrece el 601),
+ * 605 → `asalariado`, 606 → `arrendamiento`, 625 → `plataformas`; 612, 626 y
+ * cualquier otro → `independiente`, que es lo que ya se mandaba. Extiende a los
+ * clientes del despacho lo que §D21 decidía para el calendario propio del
+ * despacho; pendiente de confirmar con la contadora.
+ */
+export function tipoCalendarioDeRegimen(regimen: string): ApiContributorType {
+  switch (regimen) {
+    case '601': return 'pyme';
+    case '605': return 'asalariado';
+    case '606': return 'arrendamiento';
+    case '625': return 'plataformas';
+    default: return 'independiente';
+  }
+}
+
+/**
  * Los cuatro tipos de comprobante que el MOTOR acepta. Espeja `TipoFactura` de
  * `app/schemas/fiscal.py`: mandarle cualquier otro es un 422 de Pydantic.
  */
