@@ -3266,3 +3266,28 @@ vuelva a la cola.
 de construirla, comprueba si el CI ya arranca (`gh run list --limit 3`, o `gh run rerun` del
 último run de `main` y revisa la anotación del job). Si sigue el rechazo por facturación, la
 tarea acabará SALTADA igual que C-01: considera saltarla sin construir para no gastar la sesión.
+
+---
+
+## C-03 · SALTADA (2026-09-29) — el CI sigue sin arrancar por facturación; no se construyó
+
+**Razón del salto.** Antes de construir se comprobó el CI, como pedía la nota de C-02: se
+re-corrió el run `36574108068` de `main` y GitHub Actions volvió a rechazar Frontend y Backend
+en 2-3 s con "The job was not started because recent account payments have failed or your
+spending limit needs to be increased". Sin CI verde el protocolo no permite mergear, así que
+C-03 acabaría SALTADA igual que C-01 después de gastar la sesión. Se saltó **sin crear rama ni
+PR**: no hay trabajo parcial que recuperar.
+
+**Lo que se sabe de C-03 para quien la retome** (sólo lectura del backlog, sin tocar código):
+es independiente de C-01/C-02; los filtros citados son `endsWith('.xml')` en `XMLUploader.tsx`,
+`PreDeclaracionTab.tsx` y `DeduccionesPersonalesTab.tsx`, pero la tarea pide barrer **todos**
+los de `apps/store/src` (Contabilito y Declaración anual incluidos) y los `accept` de los
+`<input type="file">`, y reportar en pantalla los archivos rechazados con su nombre.
+
+**Para Ricardo:** (1) arreglar *Billing & plans* de la cuenta de GitHub; (2) quitar las marcas
+SALTADA de C-01 (restaurar `feat/C-01` y reabrir #47), C-02 y C-03 para que vuelvan a la cola.
+
+**Para la siguiente sesión:** con C-01, C-02 y C-03 SALTADAS, la sección C de la Cola nocturna
+queda sin pendientes; lo que sigue listado abajo son prioridades anteriores ya cerradas o en
+pausa. Revisa la cola con cuidado antes de decidir si hay algo que tomar o si toca
+`COLA_VACIA.txt`. Y mientras la facturación siga rota, ningún PR tendrá CI verde.
