@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import DatosFiscalesFicha from '../components/cartera/DatosFiscalesFicha';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import { useCartera } from '../context/carteraStore';
 import { useAuth } from '../context/AuthContext';
@@ -210,6 +211,9 @@ export default function ClienteDetallePage() {
               mono
             />
           </div>
+
+          {/* C-01: RFC, CP y entidad, con la edición del cliente. */}
+          {deLaCartera && <DatosFiscalesFicha cliente={deLaCartera} />}
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
             <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>

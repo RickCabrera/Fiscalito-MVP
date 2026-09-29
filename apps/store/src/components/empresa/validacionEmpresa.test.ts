@@ -238,3 +238,16 @@ describe('`diasDeLey` no puede divergir del motor', () => {
     expect(diasDeLey(anios)).toBe(dias);
   });
 });
+
+describe('validar · el RFC de la empresa sigue la regla del alta de cliente (C-01)', () => {
+  it('un RFC de 12 caracteres mal formado se rechaza aquí y no con un 422 al guardar', () => {
+    // Antes sólo se medía la longitud: esto pasaba en pantalla y el backend
+    // (`schemas/cartera.py`) lo rechazaba con el flag de R-07 encendido.
+    expect(validar('Orca Ordorica', 'OOC01AAAAAAA', '', '1.0').rfc).toMatch(/formato/);
+  });
+
+  it('uno bien formado de moral o de física pasa', () => {
+    expect(validar('Orca Ordorica', 'OOC010101AAA', '', '1.0').rfc).toBeUndefined();
+    expect(validar('Orca Ordorica', 'OOCA010101AAA', '', '1.0').rfc).toBeUndefined();
+  });
+});

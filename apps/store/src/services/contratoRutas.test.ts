@@ -236,6 +236,8 @@ const HELPERS_PUROS = new Set([
   'tipoParaCalendario',
   'estaVinculado',
   'contarSinVincular',
+  // C-01: le quita la plantilla al cliente antes de editarlo. No pega al backend.
+  'sinEmpleados',
   // T4: la frontera de tipos del CFDI de nómina. Ninguna pega al backend.
   'esNomina',
   'facturasFiscales',

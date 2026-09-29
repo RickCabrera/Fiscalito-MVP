@@ -3219,6 +3219,68 @@ cuenta + renglón de cuadre) y Buzón (pantalla de e.firma). `contabilito` pasa 
 
 ---
 
+## C-01 · RFC, código postal y entidad en el alta y la edición de cliente (2026-09-29, MODO AUTÓNOMO, protocolo normal)
+
+Primera de la sección C. Protocolo completo: plan con revisor (APROBADO CON OBSERVACIONES, las
+8 resueltas o declaradas) y entregable con revisor (APROBADO CON OBSERVACIONES, ver abajo).
+Checks: `pytest -q` **1338 passed, 9 deselected** (el marcador `emulador`, como siempre, cero
+skips); `ruff` limpio en lo tocado; `npm run build` limpio; `eslint` **28 problemas antes y
+después** (verificado con `git stash -u`); `npm test` **784/784 en 62 archivos**. **Motor
+intocado**: cero cambios en `fiscal_engine`, `calculadora.py`, `nomina_engine`.
+
+**Lo que quedó.**
+- `ModalCliente` pide **RFC, código postal y entidad** (`CamposFiscalesCliente.tsx`). Obligatorios
+  en el ALTA, opcionales en la EDICIÓN (un cliente anterior a C-01 se sigue guardando sin ellos),
+  y un valor mal formado se rechaza siempre, con mensaje. RFC en mayúsculas al teclear.
+- **Editar cliente**: botón lápiz por renglón en `/app/clientes` (`FilaCliente.tsx`, la tarjeta
+  se movió ahí sin cambios para bajar `ClientesPage` de 297→232 líneas) y "Editar datos" en la
+  ficha (`DatosFiscalesFicha.tsx`, que además pinta RFC/CP/entidad o "Sin capturar"). Los dos
+  se esconden con `soloLectura`. La ficha sólo edita si el cliente está en la CARTERA.
+- Reglas puras en `components/cartera/datosFiscalesCliente.ts`; el backend las espeja en
+  `app/schemas/datos_fiscales_cliente.py` y las aplica `ClienteCarteraSchema` (`rfc` con patrón
+  + normalizado a mayúsculas, `codigo_postal`, `clave_entidad` contra `c_Estado`, y un
+  `model_validator` de longitud RFC↔régimen). **Mismo vector de casos en pytest y vitest.**
+- Catálogo `c_Estado`: 33 claves (32 + `CMX` y la anterior `DIF` para CDMX), comparado por
+  **conjunto exacto** contra `apps/api/tests/xsd/catCFDI.xsd` en los dos lados.
+- `validacionEmpresa.ts` (O-01) usa ahora el mismo `problemaRfc` (sin régimen → sólo formato):
+  antes medía sólo la longitud, y con R-07 encendida un RFC mal formado rebotaba con 422.
+- `docs/api-contract.md` (sección nueva) y `docs/decisiones-nomina.md` **§D31**.
+
+### Las trampas y lo que queda ABIERTO
+
+- **DECISIÓN PROVISIONAL (nocturno) §D31: 626 acepta RFC de 12 Y de 13.** El backlog decía
+  "626 = 13", pero RESICO también es de personas morales (Arts. 206-215 LISR). Cerrarlo a 13 es
+  una línea en cada lado si Ricardo/la contadora lo deciden. El motor sigue tratando 626 como
+  física (§D30); aceptar el RFC no cambia eso.
+- **RFC y régimen que no casan bloquean CUALQUIER guardado** (front y back, igual). Un cliente
+  viejo con RFC de 12 y régimen 612 no se deja guardar ni para cambiarle el giro hasta corregir
+  uno de los dos. Es a propósito y tiene test.
+- **Régimen en edición: se mantuvo el comportamiento de T1.** Un cliente sin régimen se pinta y
+  se guarda como 612; el RFC se valida contra ESE régimen visible. El revisor sugirió "sin
+  default"; no se cambió porque es una decisión deliberada de T1 con test propio.
+- **ABIERTO para quien encienda R-07:** `PUT /cartera/clientes/{id}` hace `model_dump` completo,
+  así que un guardado de la Configuración de empresa (O-01) con `VITE_CARTERA_BACKEND` encendido
+  escribiría `codigo_postal` y `clave_entidad` **vacíos** (Firestore con `merge` los conserva).
+  Hoy no se dispara (R-07 apagada, O-01 no los captura). Mismo comportamiento que ya tenía
+  `regimen`. Está en `api-contract.md`.
+- **ABIERTO para la contadora:** el CP del domicilio fiscal y la entidad del cliente son sólo
+  *candidatos* a default de `LugarExpedicion` y `ClaveEntFed` del CFDI de nómina; `ClaveEntFed`
+  es donde el TRABAJADOR presta el servicio (ISN). La documentación ya lo dice así. **No** se
+  precargaron en `PanelCFDINomina` (sería "de pasada"): es tarea propia cuando se decida.
+- **Tope de 300 líneas, declarado:** `ModalCliente.tsx` ya estaba en 360 y quedó en ~380;
+  `schemas/cartera.py` pasó de 258 a 310 (las constantes ya se sacaron a
+  `datos_fiscales_cliente.py`; lo que queda son las descripciones de los campos y los tres
+  validadores). Partirlos es tarea propia, no se reescribió de pasada.
+- `contratoRutas.test.ts` exige declarar cada export nuevo de `carteraApi.ts`: `sinEmpleados`
+  (helper puro) se agregó a `HELPERS_PUROS`, que es lo que el test pide, no un aflojamiento.
+- **Nada de esto se vio en un navegador**: el "al recargar siguen ahí" está cubierto por los
+  tests (el objeto que sale del modal llega igual a los dos caminos; el backend lo guarda y lo
+  devuelve), no por una recarga real. **Para C-02**: el RFC del cliente activo ya existe en
+  `ClienteCartera.rfc`; `ClienteResumen` (el de `ClienteActivoContext`) sigue SIN RFC, así que
+  C-02 tiene que leerlo de la cartera (`useCartera().clientePorId`), no del contexto activo.
+
+---
+
 ## C-01 · REACTIVADA (saltada el 2026-09-29 por facturación de GitHub) — el CI no corre por facturación de GitHub Actions, no por el código
 
 **Razón del salto.** El PR **#47** abrió bien, pero GitHub Actions **no arrancó ningún job**:

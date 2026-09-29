@@ -300,3 +300,32 @@ describe('la ficha con la cartera POBLADA (el estado real tras sembrar)', () => 
     expect(etiqueta?.parentElement?.textContent).toBe('Empleados0');
   });
 });
+
+describe('RFC, CP y entidad en la ficha (C-01)', () => {
+  it('un cliente de demostración sin ellos abre igual y dice "Sin capturar"', async () => {
+    enCartera.clientes = [enLaCartera(2)];
+    montar('demo');
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Servicios Administrativos Integrales' })).toBeTruthy(),
+    );
+    expect(screen.getAllByText('Sin capturar')).toHaveLength(3);
+  });
+
+  it('pinta lo capturado y "Editar datos" abre el modal de ESE cliente', async () => {
+    respuesta.falla = 'El cliente no está en la cartera de la demo.';
+    enCartera.clientes = [{
+      ...enLaCartera(1), id: 'mio', nombre: 'Tortilleria Lopez',
+      rfc: 'LOPT800101AB1', codigo_postal: '91000', clave_entidad: 'VER',
+    }];
+    montar('mio');
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Tortilleria Lopez' })).toBeTruthy());
+    expect(screen.getByText('LOPT800101AB1')).toBeTruthy();
+    expect(screen.getByText('91000')).toBeTruthy();
+    expect(screen.getByText('Veracruz (VER)')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Editar datos/ }));
+    const dialogo = screen.getByRole('dialog', { name: 'Editar Tortilleria Lopez' });
+    expect(dialogo).toBeTruthy();
+    expect((screen.getByLabelText(/^RFC/) as HTMLInputElement).value).toBe('LOPT800101AB1');
+  });
+});
