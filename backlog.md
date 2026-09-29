@@ -14,37 +14,119 @@ recuerda). El detalle de cada una vive en su seccion de abajo. **S-00 no esta aq
 proposito:** su criterio de cierre exige probar el chat de voz con microfono, asi que es
 diurna.
 
+**CAMBIO DE PRIORIDAD (2026-09-29): la sección C va al frente, con el protocolo NORMAL de
+`CLAUDE.md` §Modo autónomo** (plan + revisor en plan y entregable, tests, CI). **No aplica el
+MODO DEMO de la sección T.** Orden: C-01 antes que C-02, porque C-02 necesita el RFC que
+captura C-01. C-03 es independiente.
+
+1. C-01
+2. C-02
+3. C-03
+
+*Prioridad anterior (2026-09-15), ya cerrada:*
+
 **CAMBIO DE PRIORIDAD (2026-09-15, demo de despacho contable): la sección T va al frente,
 en MODO DEMO (régimen escrito en la sección T).** Van en este orden: T1, T2 y T8 primero,
 porque son el ecosistema contador/despacho; luego el cableado y los cascarones.
 
-1. T1
-2. T2
-3. T8
-4. T5
-5. T3
-6. T4
-7. T6
-8. T7
+4. T1
+5. T2
+6. T8
+7. T5
+8. T3
+9. T4
+10. T6
+11. T7
 
 *Prioridad anterior (2026-09-01), en pausa hasta que T cierre:*
 
 **CAMBIO DE PRIORIDAD (2026-09-01, demo del 2026-09-02): la Épica E va al frente.**
 D-04…D-07 ya están cerradas; S-03 y lo que sigue quedan en pausa hasta que E-04 cierre.
 
-9. E-01
-10. E-02
-11. E-03
-12. E-04
-13. S-03
-14. F1-07
-15. F1-08
-16. F1-06
-17. S-02
-18. S-01b
+12. E-01
+13. E-02
+14. E-03
+15. E-04
+16. S-03
+17. F1-07
+18. F1-08
+19. F1-06
+20. S-02
+21. S-01b
 
 **D-08 no está en la cola**, igual que S-00: necesita el checador físico enfrente, así que es
 diurna. F0-01, F0-02, F1-01…F1-05 y D-04…D-07 ya están cerradas.
+
+## C — El cliente es el contribuyente (2026-09-29)
+
+**El porqué.** Salió de una auditoría del código pedida por Ricardo. Para un contador,
+**Fiscalito no funciona hoy**: todos los tabs mandan el RFC y el régimen del **perfil del
+usuario**, no los del cliente activo, y el alta de cliente **no pide RFC**. Un contador no
+tiene RFC en su perfil, así que el cálculo falla con "Completa tu RFC y régimen en tu perfil".
+Si lo tuviera, clasificaría emitidas y recibidas con el RFC equivocado. Además, los XML con
+extensión `.XML` en mayúsculas se descartan **en silencio**.
+
+**Régimen:** protocolo normal de `CLAUDE.md`. **Motor intocable:** nada de cambios en
+`fiscal_engine`, `calculadora.py` ni `nomina_engine`. Esto es cableado del front y del
+esquema de cartera. **La demo funciona en todo momento:** los campos nuevos son opcionales
+para clientes ya existentes, sin migraciones destructivas ni borrar semillas o clientes demo.
+**Los números de línea citados pueden estar desfasados:** verifica antes de editar.
+
+- [ ] **C-01 · RFC, código postal y entidad federativa en el alta y la edición de cliente**
+  - Hoy: `components/cartera/ModalCliente.tsx` pide 9 campos y ninguno es el RFC. El
+    esquema ya tiene `rfc` opcional (`schemas/cartera.py`, `carteraApi.ts`), pero ninguna
+    pantalla del despacho lo llena. El código postal (`LugarExpedicion`,
+    `schemas/nomina.py`) y la entidad (`ClaveEntFed`/ISN) no existen en el cliente. Además,
+    **un cliente no se puede editar después del alta**: `setEditando` sólo recibe `null` en
+    `ClientesPage.tsx`. Sin edición, los clientes existentes nunca podrían recibir su RFC.
+  - Archivos: `ModalCliente.tsx`, `ClientesPage.tsx`, `carteraFirestore.ts`,
+    `carteraApi.ts`, `schemas/cartera.py`, `docs/api-contract.md` si cambia el esquema del
+    backend (va en el mismo entregable).
+  - Campos nuevos: **RFC** (12 caracteres para moral, 13 para física; mayúsculas; validar
+    el formato y que la longitud case con el régimen: 601 = 12, 612/626 = 13), **código
+    postal** (5 dígitos) y **entidad federativa** (select con el catálogo `c_Estado` del SAT,
+    citado en el código).
+  - Opcionales para no romper clientes ya guardados. Obligatorios en un alta nueva.
+  - Habilitar **editar cliente** desde la lista y la ficha, reusando `ModalCliente`.
+  - Mismo cambio en los dos caminos de cartera (`VITE_CARTERA_BACKEND` en `true` y en
+    `false`), para que el flag no cambie qué se guarda.
+  - *Listo cuando:* doy de alta un cliente con RFC, CP y entidad, y al recargar siguen ahí;
+    edito un cliente existente sin RFC, se lo agrego y se guarda; un RFC mal formado o de
+    longitud incorrecta para su régimen se rechaza con mensaje; los clientes demo siguen
+    abriendo y calculando nómina igual que antes.
+
+- [ ] **C-02 · Fiscalito usa el RFC y el régimen del cliente activo** [depende de C-01]
+  - Hoy: `PreDeclaracionTab.tsx` arma el perfil desde el usuario, y lo mismo hacen DIOT,
+    Declaración anual, Retenciones, EstadoCuenta y MultiPeriodo. `clasificar_facturas`
+    (`calculadora.py`) marca ingreso si ese RFC es el emisor y egreso si es el receptor.
+    Contabilito ya lo resuelve por su lado (`ContabilitoPage.tsx`, `polizas.ts`).
+  - Centralizar en **un solo lugar** (p. ej. un hook `usePerfilFiscal()`) de dónde sale el
+    RFC y el régimen: si el usuario es contador → los del **cliente activo**
+    (`ClienteActivoContext`); si no → los del perfil, como hoy. Que los seis tabs lo usen,
+    en vez de que cada uno arme su perfil.
+  - Contabilito: si hay cliente activo con RFC, usarlo por default; lo escrito a mano y la
+    deducción por el RFC más repetido se quedan como respaldo.
+  - Cliente activo sin RFC → mensaje "Captura el RFC de este cliente" con acceso directo a
+    editarlo (C-01). **No** el "Completa tu perfil" del contribuyente.
+  - El historial de declaraciones debe quedar asociado al cliente con el que se calculó,
+    para que un cliente no vea el historial de otro. Si eso exige cambiar la forma del
+    documento en Firestore, que sea aditivo; lo que no quepa se deja ABIERTO en el log.
+  - No tocar el flujo del contribuyente ni el del modo empresa única.
+  - *Listo cuando:* como contador, con un cliente 612 cuyo RFC es el de las demo-xmls, la
+    pre-declaración clasifica emitidas y recibidas correctamente; si cambio de cliente
+    activo, el cálculo usa el RFC del nuevo; un cliente sin RFC muestra el mensaje con acceso
+    a editarlo; un contribuyente calcula exactamente igual que antes.
+
+- [ ] **C-03 · Aceptar XML con extensión en mayúsculas (`.XML`)**
+  - Hoy: los uploaders filtran con `f.name.endsWith('.xml')`, que distingue mayúsculas
+    (`XMLUploader.tsx`, `PreDeclaracionTab.tsx`, `DeduccionesPersonalesTab.tsx`). Un
+    `.XML` se tira **sin avisar**, y no aparece ni en el contador de "nómina excluidos".
+  - Buscar **todos** los filtros por extensión en `apps/store/src` (incluidos Contabilito
+    y Declaración anual), no sólo los tres citados. Comparar sin distinguir mayúsculas y
+    revisar también el atributo `accept` de los `<input type="file">`.
+  - Un archivo que se descarta por no ser XML se reporta en pantalla, no desaparece.
+  - *Listo cuando:* un `.XML` entra exactamente igual que un `.xml` en todos los
+    uploaders; un archivo que no es XML se muestra como rechazado con su nombre.
 
 ## T — Demo despacho contable (2026-09-15, MODO DEMO)
 
