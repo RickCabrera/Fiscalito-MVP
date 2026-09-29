@@ -3219,7 +3219,7 @@ cuenta + renglón de cuadre) y Buzón (pantalla de e.firma). `contabilito` pasa 
 
 ---
 
-## C-01 · SALTADA (2026-09-29) — el CI no corre por facturación de GitHub Actions, no por el código
+## C-01 · REACTIVADA (saltada el 2026-09-29 por facturación de GitHub) — el CI no corre por facturación de GitHub Actions, no por el código
 
 **Razón del salto.** El PR **#47** abrió bien, pero GitHub Actions **no arrancó ningún job**:
 "The job was not started because recent account payments have failed or your spending limit
@@ -3245,7 +3245,7 @@ verde**: cualquier tarea nueva acabará igual que ésta. C-03 es independiente d
 
 ---
 
-## C-02 · SALTADA (2026-09-29) — depende de C-01, que no está mergeada; y el CI sigue sin arrancar
+## C-02 · REACTIVADA (saltada el 2026-09-29 por facturación de GitHub) — depende de C-01, que no está mergeada; y el CI sigue sin arrancar
 
 **Razón del salto.** C-02 está marcada `[depende de C-01]` en el backlog: necesita el RFC del
 cliente que captura C-01 y el acceso directo a **editar cliente** que C-01 habilita (el mensaje
@@ -3269,7 +3269,7 @@ tarea acabará SALTADA igual que C-01: considera saltarla sin construir para no 
 
 ---
 
-## C-03 · SALTADA (2026-09-29) — el CI sigue sin arrancar por facturación; no se construyó
+## C-03 · REACTIVADA (saltada el 2026-09-29 por facturación de GitHub) — el CI sigue sin arrancar por facturación; no se construyó
 
 **Razón del salto.** Antes de construir se comprobó el CI, como pedía la nota de C-02: se
 re-corrió el run `36574108068` de `main` y GitHub Actions volvió a rechazar Frontend y Backend
@@ -3291,3 +3291,23 @@ SALTADA de C-01 (restaurar `feat/C-01` y reabrir #47), C-02 y C-03 para que vuel
 queda sin pendientes; lo que sigue listado abajo son prioridades anteriores ya cerradas o en
 pausa. Revisa la cola con cuidado antes de decidir si hay algo que tomar o si toca
 `COLA_VACIA.txt`. Y mientras la facturación siga rota, ningún PR tendrá CI verde.
+
+---
+
+## C-01, C-02 y C-03 · REACTIVADAS (2026-09-29) — la facturación de GitHub Actions ya está arreglada
+
+**Los tres saltos de arriba fueron por facturación, no por el código.** GitHub Actions rechazaba
+todos los jobs de la cuenta ("recent account payments have failed or your spending limit needs to
+be increased"). Ricardo arregló *Billing & plans*; se comprobó re-corriendo el run `36574392212`
+de `main`: Frontend y Backend **arrancaron y salieron en verde**. Las tres entradas anteriores se
+conservan como registro; su cabecera ya no dice SALTADA y **las tres vuelven a la Cola nocturna**.
+
+**Estado de cada una para la siguiente sesión:**
+- **C-01:** NO la reconstruyas. Su entregable (`ea52d57`, revisado y con checks verdes) se
+  restauró en `feat/C-01` y el **PR #47 está reabierto**, con `main` mergeado dentro para resolver
+  el choque de este log. Lo mergea Ricardo. Si `gh pr view 47 --json state` dice MERGED y el
+  backlog aún no tiene `[x]`, sólo falta el cierre (marca `[x]` en `backlog.md`, commit a main).
+  Si sigue OPEN, C-01 no está cerrada y **C-02 todavía no se puede construir** (depende de ella).
+- **C-02:** pendiente, depende de C-01 mergeada. Lee la nota de sesión de C-01 (arriba de estas
+  entradas): el RFC se lee de `useCartera().clientePorId`, no de `ClienteActivoContext`.
+- **C-03:** pendiente e independiente. No se construyó nada; empieza de cero.
