@@ -10,11 +10,13 @@ import {
 } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion } from '../../services/declaracionesHistory';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
+import { ACCEPT_XML, separarXml, type ArchivoRechazado } from '../../services/archivosXml';
 import { clasificarFacturaDeduccion, montosCapturados } from '../../services/deduccionesPersonales';
 import { labelStyle } from '../../utils/styles';
 import ErrorAlert from '../common/ErrorAlert';
 import CapturaDeducciones from './CapturaDeducciones';
 import DeduccionesResult from './DeduccionesResult';
+import ErroresDeCarga from './ErroresDeCarga';
 import { Calculator, Loader, Upload } from 'lucide-react';
 
 export default function DeduccionesPersonalesTab() {
@@ -32,11 +34,15 @@ export default function DeduccionesPersonalesTab() {
   const [facturasCount, setFacturasCount] = useState(0);
   const [facturasIgnoradas, setFacturasIgnoradas] = useState(0);
   const [mesesNomina, setMesesNomina] = useState(0);
+  // C-03: lo que no se cargó (no es XML, o el parser no lo pudo leer) se muestra; antes se perdía.
+  const [erroresCarga, setErroresCarga] = useState<ArchivoRechazado[]>([]);
 
   const handleXMLUpload = async (files: FileList | File[]) => {
-    const xmlFiles = Array.from(files).filter(f => f.name.endsWith('.xml'));
+    const { xml: xmlFiles, rechazados } = separarXml(files);
+    if (rechazados.length > 0) setErroresCarga(prev => [...prev, ...rechazados]);
     if (xmlFiles.length === 0) return;
     const result = await parseMultipleCFDI(xmlFiles);
+    if (result.errors.length > 0) setErroresCarga(prev => [...prev, ...result.errors]);
     const nuevosValues: Record<string, number> = {};
     let ignoradas = 0;
     for (const cfdi of result.success) {
@@ -109,7 +115,7 @@ export default function DeduccionesPersonalesTab() {
     }
   };
 
-  const reset = () => { setResultado(null); setValues({}); setIngresos(''); setError(''); setMesesNomina(0); };
+  const reset = () => { setResultado(null); setValues({}); setIngresos(''); setError(''); setMesesNomina(0); setErroresCarga([]); };
 
   if (resultado) {
     return <DeduccionesResult resultado={resultado} guardado={guardado} onReset={reset} />;
@@ -141,7 +147,7 @@ export default function DeduccionesPersonalesTab() {
           borderRadius: 'var(--radius)', padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 20,
           background: xmlsCargados ? 'var(--success-bg)' : 'transparent',
         }} onClick={() => xmlInputRef.current?.click()}>
-          <input ref={xmlInputRef} type="file" accept=".xml" multiple style={{ display: 'none' }}
+          <input ref={xmlInputRef} type="file" accept={ACCEPT_XML} multiple style={{ display: 'none' }}
             onChange={(e) => e.target.files && handleXMLUpload(e.target.files)} />
           <Upload size={20} style={{ color: 'var(--teal-light)', marginBottom: 8 }} />
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -153,6 +159,9 @@ export default function DeduccionesPersonalesTab() {
             El sistema clasificará cada factura según su ClaveProdServ del SAT
           </p>
         </div>
+        {erroresCarga.length > 0 && (
+          <div style={{ marginTop: -8, marginBottom: 20 }}><ErroresDeCarga errores={erroresCarga} /></div>
+        )}
 
         <CapturaDeducciones
           values={values}

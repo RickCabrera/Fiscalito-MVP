@@ -5,6 +5,7 @@ import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
+import { ACCEPT_XML, separarXml } from '../../services/archivosXml';
 import { calcularPreDeclaracion, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, obtenerAcumuladoAnterior, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { useAgent } from '../../agent/AgentContext';
@@ -14,6 +15,7 @@ import SuccessNotice from '../common/SuccessNotice';
 import FacturaTable from './FacturaTable';
 import ResultadoDeclaracion from './ResultadoDeclaracion';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
+import ErroresDeCarga from './ErroresDeCarga';
 import { Upload, AlertCircle, Loader, CheckCircle } from 'lucide-react';
 
 const MESES = [
@@ -88,7 +90,8 @@ export default function PreDeclaracionTab() {
   }, [year, month, user?.uid, esEmpresarialOArr, modoManual, perfil.clienteId]);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
-    const xmlFiles = Array.from(files).filter((f) => f.name.endsWith('.xml'));
+    const { xml: xmlFiles, rechazados } = separarXml(files);
+    if (rechazados.length > 0) setParseErrors((prev) => [...prev, ...rechazados]);
     if (xmlFiles.length === 0) return;
     const result = await parseMultipleCFDI(xmlFiles);
     const existingUuids = new Set(agent.facturas.map((f) => f.uuid));
@@ -185,19 +188,11 @@ export default function PreDeclaracionTab() {
         <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
         <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Arrastra tus archivos XML aquí</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>o haz clic para seleccionar archivos CFDI</div>
-        <input ref={fileInputRef} type="file" accept=".xml" multiple hidden
+        <input ref={fileInputRef} type="file" accept={ACCEPT_XML} multiple hidden
           onChange={(e) => e.target.files && handleFiles(e.target.files)} />
       </div>
 
-      {parseErrors.length > 0 && (
-        <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-xs)', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
-          {parseErrors.map((err, i) => (
-            <div key={i} style={{ fontSize: '0.8rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AlertCircle size={14} /> {err.fileName}: {err.error}
-            </div>
-          ))}
-        </div>
-      )}
+      <ErroresDeCarga errores={parseErrors} amplio />
 
       <FacturaTable facturas={facturas} onRemove={removeCFDI} />
 

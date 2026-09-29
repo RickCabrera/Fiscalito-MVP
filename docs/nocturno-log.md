@@ -3447,3 +3447,47 @@ por eso `docs/api-contract.md` no cambia. `pytest` no aplica.
   escape literal, construirlo con `String.fromCharCode(92)` desde node.
 - `contratoRutas.test.ts` exige declarar cada export nuevo de `fiscalAgentApi.ts`:
   `tipoCalendarioDeRegimen` se agregó a `HELPERS_PUROS` (lo que el test pide, no aflojarlo).
+
+---
+
+## C-03 · Aceptar XML con extensión en mayúsculas (`.XML`) (2026-09-29, MODO AUTÓNOMO, protocolo normal)
+
+Plan con revisor (APROBADO CON OBSERVACIONES, 6 obs, todas atendidas) y entregable con revisor
+(APROBADO CON OBSERVACIONES, 4 obs, declaradas aquí). Checks: `npm run build` limpio; `eslint .`
+**28 problemas antes y después** (el único en un archivo tocado es preexistente:
+`PreDeclaracionTab` L63 `set-state-in-effect`, no se tocó); `npm test` **844/844 en 68 archivos**
+(antes 831/66). Cero cambios en `apps/api`, ningún endpoint → `api-contract.md` no cambia.
+
+**Lo que quedó.**
+- Sólo había **tres** filtros por extensión en `apps/store/src`: `XMLUploader`,
+  `PreDeclaracionTab` y `DeduccionesPersonalesTab`. Contabilito, Anual, DIOT, Retenciones,
+  Multi-periodo y Estado de cuenta montan `XMLUploader` (sin filtro propio). El agente de voz
+  carga las demo-xmls desde su `index.json` sin filtrar. `apps/api` no filtra por extensión.
+- `services/archivosXml.ts`: `separarXml` (`/\.xml$/i`) + `ACCEPT_XML`
+  (`.xml,.XML,text/xml,application/xml`). **Todo uploader nuevo debe pasar por ahí**; anotado en
+  `apps/store/CLAUDE.md`.
+- `components/fiscalito/ErroresDeCarga.tsx`: la caja roja "`nombre: motivo`" que estaba duplicada;
+  `amplio` conserva las medidas que ya usaba la pre-declaración. Los rechazados van a la misma
+  lista que los errores del parser y se limpian igual (Limpiar / `resetAll` / `reset`).
+- Deducciones personales ahora también muestra los XML que el parser no pudo leer (antes se
+  perdían en silencio).
+- Tests: `services/archivosXml.test.ts` y `components/fiscalito/uploadersXml.test.tsx` (los tres
+  uploaders, por `change` y por `drop`; un `NOMINA.XML` se cuenta como recibo excluido). Fixture
+  sintético reutilizable en `src/test/cfdiSintetico.ts` (RFC de pruebas del SAT, UUID inventados).
+  Mutación: volver a `endsWith('.xml')` tumba 7 de 13.
+
+**Trampas y ABIERTO.**
+- **Nada se vio en un navegador real**, sólo jsdom. El `accept` con `.XML` en el diálogo nativo
+  (Safari/macOS en particular) no está verificado; lo que protege de verdad es `separarXml`.
+- Los rechazados **se acumulan** entre cargas sucesivas hasta Limpiar/reset, igual que ya hacían
+  los errores del parser. Si molesta, es decisión de UX aparte.
+- `PreDeclaracionTab` bajó 348→343 pero sigue sobre el tope de 300 (deuda previa).
+- `DeduccionesPersonalesTab` sigue leyendo `profile.rfc` (ABIERTO desde C-02, no tocado).
+- En un test, el botón "Calcular pre-declaración" **siempre** se pinta: no sirve para saber si
+  entró una factura; usa el encabezado "N factura(s)" de `FacturaTable`.
+- Trampa de herramienta: un heredoc de bash con JSX largo falló con "unexpected EOF"; escribir
+  los tests con la herramienta Write.
+
+**Para la siguiente sesión:** con C-03 cerrada, la sección C de la Cola nocturna queda sin
+pendientes. Lo listado debajo son prioridades anteriores cerradas o en pausa: revisa con cuidado
+antes de decidir si hay algo que tomar o si toca `COLA_VACIA.txt`.

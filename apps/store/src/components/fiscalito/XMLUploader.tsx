@@ -3,7 +3,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
 import { contarNomina, type CFDI } from '../../services/fiscalAgentApi';
-import { Upload, Trash2, FileText, AlertCircle, Receipt } from 'lucide-react';
+import { ACCEPT_XML, separarXml } from '../../services/archivosXml';
+import ErroresDeCarga from './ErroresDeCarga';
+import { Upload, Trash2, FileText, Receipt } from 'lucide-react';
 
 interface Props {
   facturas: CFDI[];
@@ -36,7 +38,8 @@ export default function XMLUploader({ facturas, onChange }: Props) {
   const fiscales = facturas.length - recibosNomina;
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
-    const xmlFiles = Array.from(files).filter((f) => f.name.endsWith('.xml'));
+    const { xml: xmlFiles, rechazados } = separarXml(files);
+    if (rechazados.length > 0) setParseErrors((prev) => [...prev, ...rechazados]);
     if (xmlFiles.length === 0) return;
     const result = await parseMultipleCFDI(xmlFiles);
     const existingUuids = new Set(facturas.map((f) => f.uuid));
@@ -77,20 +80,12 @@ export default function XMLUploader({ facturas, onChange }: Props) {
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           o haz clic para seleccionar CFDIs
         </div>
-        <input ref={fileInputRef} type="file" accept=".xml" multiple hidden
+        <input ref={fileInputRef} type="file" accept={ACCEPT_XML} multiple hidden
           onChange={(e) => e.target.files && handleFiles(e.target.files)} />
       </div>
 
       {/* Parse errors */}
-      {parseErrors.length > 0 && (
-        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-xs)', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
-          {parseErrors.map((err, i) => (
-            <div key={i} style={{ fontSize: '0.78rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <AlertCircle size={12} /> {err.fileName}: {err.error}
-            </div>
-          ))}
-        </div>
-      )}
+      <ErroresDeCarga errores={parseErrors} />
 
       {/* Duplicadas */}
       {duplicadas > 0 && (
