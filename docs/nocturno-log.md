@@ -3242,3 +3242,27 @@ rama `feat/C-01`, reabrir #47 y quitar esta marca SALTADA (o re-lanzar la tarea)
 del cliente capturado). Sin C-01 mergeada, `ClienteCartera.rfc` ya existe como campo opcional
 pero ninguna pantalla lo llena. Y **mientras la facturación siga rota, ningún PR podrá tener CI
 verde**: cualquier tarea nueva acabará igual que ésta. C-03 es independiente de C-01.
+
+---
+
+## C-02 · SALTADA (2026-09-29) — depende de C-01, que no está mergeada; y el CI sigue sin arrancar
+
+**Razón del salto.** C-02 está marcada `[depende de C-01]` en el backlog: necesita el RFC del
+cliente que captura C-01 y el acceso directo a **editar cliente** que C-01 habilita (el mensaje
+"Captura el RFC de este cliente" debe llevar ahí). C-01 está SALTADA con su PR #47 cerrado, así
+que en `main` ninguna pantalla llena `ClienteCartera.rfc`: construir C-02 encima sería
+rama-sobre-rama (prohibido) o reimplementar C-01 "de pasada" (prohibido). No se creó rama ni PR.
+
+**Además, el CI sigue roto.** Esta sesión re-corrió el run `36573910655` de `main` y GitHub
+Actions volvió a rechazar ambos jobs: "The job was not started because recent account payments
+have failed or your spending limit needs to be increased". Aunque C-02 se pudiera construir, no
+tendría CI verde para mergear.
+
+**Para Ricardo:** (1) arreglar *Billing & plans*; (2) retomar C-01 (restaurar `feat/C-01`,
+reabrir #47) y quitar su marca SALTADA; (3) después, quitar esta marca SALTADA de C-02 para que
+vuelva a la cola.
+
+**Para la siguiente sesión:** la siguiente en la cola es **C-03** (independiente de C-01). Antes
+de construirla, comprueba si el CI ya arranca (`gh run list --limit 3`, o `gh run rerun` del
+último run de `main` y revisa la anotación del job). Si sigue el rechazo por facturación, la
+tarea acabará SALTADA igual que C-01: considera saltarla sin construir para no gastar la sesión.
