@@ -145,6 +145,7 @@ fiscalito-store-app/
 │   │       ├── ResultadoAnual.tsx         # T3: resultado anual (desglose + deducciones + PDF)
 │   │       ├── CapturaDeducciones.tsx     # Rejilla de deducciones personales, compartida
 │   │       ├── XMLUploader.tsx            # Drag & drop de archivos XML CFDI
+│   │       ├── ErroresDeCarga.tsx         # Archivos no cargados (no-XML o ilegibles), con su nombre (C-03)
 │   │       ├── PeriodSelector.tsx         # Selector de año + mes/bimestre
 │   │       ├── ResultadoDeclaracion.tsx   # Resultado con desglose + explicacion IA + export PDF
 │   │       ├── DeduccionesResult.tsx      # Resultado de deducciones personales
@@ -185,6 +186,7 @@ fiscalito-store-app/
 │   │   ├── calendarioPatronal.ts    # Logica pura del calendario patronal: agrupacion y estados (E-07)
 │   │   ├── fiscalAgentApi.ts        # Cliente REST para Fiscal Agent API (todos los endpoints)
 │   │   ├── cfdiParser.ts            # Parser de XML CFDI v3/v4 (DOMParser, sin deps externas)
+│   │   ├── archivosXml.ts           # Filtro de uploaders: `.xml` sin mayúsculas + rechazados con nombre (C-03). Todo uploader de CFDI pasa por `separarXml` y `ACCEPT_XML`; no filtres con `endsWith('.xml')`
 │   │   ├── declaracionesHistory.ts  # CRUD Firestore para historial de declaraciones
 │   │   ├── pdfExport.ts             # PDF de pre-declaracion
 │   │   ├── pdfExportDIOT.ts         # PDF de DIOT
