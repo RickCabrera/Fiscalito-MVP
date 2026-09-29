@@ -3216,3 +3216,29 @@ cuenta + renglón de cuadre) y Buzón (pantalla de e.firma). `contabilito` pasa 
 - **Lo que no toqué:** `fiscal_engine`, `calculadora.py`, `nomina_engine`, `apps/api` entera, el
   sidebar (`navigation.ts` sigue congelado por `navigation.test.ts`), el `.env` y las semillas
   demo. `apps/store/CLAUDE.md` **sí** se actualizó (rutas, estructura, servicios y sección propia).
+
+---
+
+## C-01 · SALTADA (2026-09-29) — el CI no corre por facturación de GitHub Actions, no por el código
+
+**Razón del salto.** El PR **#47** abrió bien, pero GitHub Actions **no arrancó ningún job**:
+"The job was not started because recent account payments have failed or your spending limit
+needs to be increased" (Frontend y Backend, 2-4 s). Se reintentó una vez (`gh run rerun`) con
+el mismo rechazo. El protocolo exige CI verde para mergear, así que tras dos intentos la tarea se
+SALTA. **El push de hoy a main (`5525752 backkkklog`) también falló igual**: es de toda la
+cuenta, no de esta rama. Arreglar la facturación está fuera del alcance de una sesión autónoma.
+
+**El entregable está COMPLETO y no se perdió.** Checks locales verdes (pytest 1338 passed / 9
+deselected, ruff limpio, build limpio, eslint 28→28, vitest 784/784) y revisor APROBADO CON
+OBSERVACIONES en plan y entregable. El commit `ea52d57` vive en el PR #47 cerrado: en GitHub,
+**"Restore branch"** en el PR y reabrirlo lo devuelve tal cual. La nota larga de la sesión
+(decisiones, trampas, ABIERTOS, la D31 de RESICO) va **dentro de ese commit** en
+`docs/nocturno-log.md`: léela ahí al retomarlo.
+
+**Para Ricardo:** arreglar *Billing & plans* de la cuenta y, para retomar C-01, restaurar la
+rama `feat/C-01`, reabrir #47 y quitar esta marca SALTADA (o re-lanzar la tarea).
+
+**Para la siguiente sesión:** la cola sigue con **C-02, que depende de C-01** (necesita el RFC
+del cliente capturado). Sin C-01 mergeada, `ClienteCartera.rfc` ya existe como campo opcional
+pero ninguna pantalla lo llena. Y **mientras la facturación siga rota, ningún PR podrá tener CI
+verde**: cualquier tarea nueva acabará igual que ésta. C-03 es independiente de C-01.
