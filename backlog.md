@@ -117,7 +117,7 @@ para clientes ya existentes, sin migraciones destructivas ni borrar semillas o c
     activo, el cálculo usa el RFC del nuevo; un cliente sin RFC muestra el mensaje con acceso
     a editarlo; un contribuyente calcula exactamente igual que antes.
 
-- [ ] **C-03 · Aceptar XML con extensión en mayúsculas (`.XML`)**
+- [x] **C-03 · Aceptar XML con extensión en mayúsculas (`.XML`)**
   - Hoy: los uploaders filtran con `f.name.endsWith('.xml')`, que distingue mayúsculas
     (`XMLUploader.tsx`, `PreDeclaracionTab.tsx`, `DeduccionesPersonalesTab.tsx`). Un
     `.XML` se tira **sin avisar**, y no aparece ni en el contador de "nómina excluidos".
