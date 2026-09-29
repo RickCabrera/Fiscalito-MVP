@@ -1,9 +1,10 @@
 /** Tab para generar la declaración DIOT */
 
 import { useState } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { generarDIOT, type CFDI, type DIOTResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
+import { generarDIOT, type CFDI, type DIOTResponse, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarDIOT } from '../../services/declaracionesHistory';
 import { exportarDIOTPDF } from '../../services/pdfExportDIOT';
 import { generarDIOTBatch, DIOT_BATCH_POR_VALIDAR } from '../../services/exportadores/diot';
@@ -14,10 +15,11 @@ import XMLUploader from './XMLUploader';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Loader, Download, RefreshCw, MessageSquare, AlertTriangle, FileDown } from 'lucide-react';
 
 export default function DIOTTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const [facturas, setFacturas] = useState<CFDI[]>([]);
   const [year, setYear] = useState(2025);
@@ -31,18 +33,18 @@ export default function DIOTTab() {
 
   const handleGenerar = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
-    if (!profile.rfc || !profile.regimen) { setError('Completa tu RFC y régimen en tu perfil.'); return; }
+    if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
     setGuardado(false);
     try {
       const res = await generarDIOT({
-        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarDIOT(user.uid, res, facturas.length)
+        guardarDIOT(user.uid, res, facturas.length, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -69,6 +71,9 @@ export default function DIOTTab() {
       setErrorTxt(e instanceof Error ? e.message : 'No se pudo generar el archivo.');
     }
   };
+
+  // C-02: sin RFC (o sin régimen) del cliente no hay cálculo; se pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
   if (resultado) {
     return (
@@ -150,7 +155,7 @@ export default function DIOTTab() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn-primary" onClick={() => exportarDIOTPDF(resultado, { nombre: profile.nombre, rfc: profile.rfc })}
+          <button className="btn-primary" onClick={() => exportarDIOTPDF(resultado, { nombre: perfil.nombre, rfc: perfil.rfc })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
           </button>

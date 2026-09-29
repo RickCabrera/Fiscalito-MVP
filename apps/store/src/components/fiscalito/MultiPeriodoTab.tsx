@@ -1,9 +1,10 @@
 /** Tab de cálculo multi-periodo con gráfica de barras CSS */
 
 import { useState } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
+import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarMultiPeriodo } from '../../services/declaracionesHistory';
 import { exportarMultiPeriodoPDF } from '../../services/pdfExportMulti';
 import { fmtMoney } from '../../utils/format';
@@ -11,6 +12,7 @@ import { thStyle, tdStyle, tdMonoStyle, labelStyle } from '../../utils/styles';
 import XMLUploader from './XMLUploader';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Loader, Download, RefreshCw, MessageSquare } from 'lucide-react';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -18,7 +20,7 @@ const YEARS = [2026, 2025, 2024, 2023];
 const TENDENCIA_EMOJI: Record<string, string> = { subiendo: '📈', bajando: '📉', estable: '➡️' };
 
 export default function MultiPeriodoTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const [facturas, setFacturas] = useState<CFDI[]>([]);
   const [year, setYear] = useState(2025);
@@ -39,18 +41,18 @@ export default function MultiPeriodoTab() {
   const handleCalcular = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
     if (selected.length === 0) { setError('Selecciona al menos un periodo.'); return; }
-    if (!profile.rfc || !profile.regimen) { setError('Completa tu RFC y régimen en tu perfil.'); return; }
+    if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
     setGuardado(false);
     try {
       const res = await calcularMultiPeriodo({
-        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(facturas), periodo_year: year, periodos: selected, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarMultiPeriodo(user.uid, res)
+        guardarMultiPeriodo(user.uid, res, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -60,6 +62,9 @@ export default function MultiPeriodoTab() {
       setLoading(false);
     }
   };
+
+  // C-02: sin RFC (o sin régimen) del cliente no hay cálculo; se pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
   if (resultado) {
     const { acumulado } = resultado;
@@ -148,7 +153,7 @@ export default function MultiPeriodoTab() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-          <button className="btn-primary" onClick={() => exportarMultiPeriodoPDF(resultado, { nombre: profile.nombre, rfc: profile.rfc })}
+          <button className="btn-primary" onClick={() => exportarMultiPeriodoPDF(resultado, { nombre: perfil.nombre, rfc: perfil.rfc })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
           </button>

@@ -1,10 +1,11 @@
 /** Tab de pre-declaración: subir XMLs, ver tabla de facturas, calcular */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
 import { parseMultipleCFDI } from '../../services/cfdiParser';
-import { calcularPreDeclaracion, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
+import { calcularPreDeclaracion, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, obtenerAcumuladoAnterior, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { useAgent } from '../../agent/AgentContext';
 import { labelStyle } from '../../utils/styles';
@@ -12,6 +13,7 @@ import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
 import FacturaTable from './FacturaTable';
 import ResultadoDeclaracion from './ResultadoDeclaracion';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Upload, AlertCircle, Loader, CheckCircle } from 'lucide-react';
 
 const MESES = [
@@ -21,7 +23,7 @@ const MESES = [
 const YEARS = [2026, 2025, 2024, 2023];
 
 export default function PreDeclaracionTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const agent = useAgent();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,8 +53,8 @@ export default function PreDeclaracionTab() {
   } | null>(null);
   const [loadingAcumulado, setLoadingAcumulado] = useState(false);
 
-  const esArrendamiento = profile.regimen === '606';
-  const esEmpresarialOArr = ['612', '606'].includes(profile.regimen || '');
+  const esArrendamiento = perfil.regimen === '606';
+  const esEmpresarialOArr = ['612', '606'].includes(perfil.regimen);
 
   useEffect(() => {
     if (!esEmpresarialOArr || month <= 1 || !user?.uid) {
@@ -63,7 +65,7 @@ export default function PreDeclaracionTab() {
     let cancelled = false;
     setLoadingAcumulado(true);
     setLoadingPagos(true);
-    obtenerAcumuladoAnterior(user.uid, year, month)
+    obtenerAcumuladoAnterior(user.uid, year, month, perfil.clienteId)
       .then((result) => {
         if (cancelled) return;
         setAcumuladoAnterior(result);
@@ -83,7 +85,7 @@ export default function PreDeclaracionTab() {
         }
       });
     return () => { cancelled = true; };
-  }, [year, month, user?.uid, esEmpresarialOArr, modoManual]);
+  }, [year, month, user?.uid, esEmpresarialOArr, modoManual, perfil.clienteId]);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     const xmlFiles = Array.from(files).filter((f) => f.name.endsWith('.xml'));
@@ -109,17 +111,13 @@ export default function PreDeclaracionTab() {
 
   const handleCalcular = async () => {
     if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
-    if (!profile.rfc || !profile.regimen) { setError('Completa tu RFC y régimen en tu perfil.'); return; }
+    if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
     setGuardado(false);
     try {
       const res = await calcularPreDeclaracion({
-        contribuyente: {
-          rfc: profile.rfc,
-          regimen: profile.regimen,
-          contributor_type: tipoParaApi(profile.contributorType),
-        },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(facturas),
         periodo_year: year,
         periodo_month: month,
@@ -142,7 +140,7 @@ export default function PreDeclaracionTab() {
           explicacion: res.explicacion ?? null,
           advertencias: res.advertencias ?? [], recomendaciones: res.recomendaciones ?? [],
           facturas_count: facturas.length,
-        }).then(() => setGuardado(true)).catch(() => { /* silent */ });
+        }, 'predeclaracion', perfil.clienteId).then(() => setGuardado(true)).catch(() => { /* silent */ });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error inesperado');
@@ -158,6 +156,8 @@ export default function PreDeclaracionTab() {
     setError('');
   };
 
+  // C-02: un cliente sin RFC (o sin régimen) no llega a cargar XML: se le pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
   if (resultado) {
     return (
       <div>

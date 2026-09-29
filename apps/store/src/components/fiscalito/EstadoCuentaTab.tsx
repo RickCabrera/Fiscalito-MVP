@@ -1,9 +1,10 @@
 /** Tab de estado de cuenta fiscal anual */
 
 import { useState } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse, tipoParaApi, facturasFiscales } from '../../services/fiscalAgentApi';
+import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse, facturasFiscales } from '../../services/fiscalAgentApi';
 import { guardarEstadoCuenta } from '../../services/declaracionesHistory';
 import { exportarEstadoCuentaPDF } from '../../services/pdfExportEstado';
 import { fmtMoney } from '../../utils/format';
@@ -11,6 +12,7 @@ import { labelStyle } from '../../utils/styles';
 import XMLUploader from './XMLUploader';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { Loader, Download, RefreshCw, AlertTriangle, MessageSquare } from 'lucide-react';
 
 const YEARS = [2026, 2025, 2024, 2023];
@@ -20,7 +22,7 @@ function fmtPct(n: number): string {
 }
 
 export default function EstadoCuentaTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const [facturas, setFacturas] = useState<CFDI[]>([]);
   const [year, setYear] = useState(2025);
@@ -31,18 +33,18 @@ export default function EstadoCuentaTab() {
 
   const handleGenerar = async () => {
     if (facturas.length === 0) { setError('Sube las facturas del año completo.'); return; }
-    if (!profile.rfc || !profile.regimen) { setError('Completa tu RFC y régimen en tu perfil.'); return; }
+    if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
     setGuardado(false);
     try {
       const res = await obtenerEstadoCuenta({
-        contribuyente: { rfc: profile.rfc, regimen: profile.regimen, contributor_type: tipoParaApi(profile.contributorType) },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(facturas), periodo_year: year, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarEstadoCuenta(user.uid, res)
+        guardarEstadoCuenta(user.uid, res, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -52,6 +54,9 @@ export default function EstadoCuentaTab() {
       setLoading(false);
     }
   };
+
+  // C-02: sin RFC (o sin régimen) del cliente no hay cálculo; se pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
   if (resultado) {
     const r = resultado;
@@ -145,7 +150,7 @@ export default function EstadoCuentaTab() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-          <button className="btn-primary" onClick={() => exportarEstadoCuentaPDF(r, { nombre: profile.nombre, rfc: profile.rfc })}
+          <button className="btn-primary" onClick={() => exportarEstadoCuentaPDF(r, { nombre: perfil.nombre, rfc: perfil.rfc })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
           </button>

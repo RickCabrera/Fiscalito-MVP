@@ -666,6 +666,30 @@ aquí **no** hace que se le calcule como moral.
 
 ---
 
+## D32 · El calendario fiscal de un cliente del despacho: qué tipo de contribuyente se le manda — PROVISIONAL (nocturno, C-02)
+
+**Contexto.** Desde T1 el tab Calendario que ve un contador es el de su **cliente activo**, y
+C-02 lo hizo calcular con el RFC y el régimen de ese cliente. `POST /api/v1/calendario` exige
+además un `contributor_type` concreto, y el cliente no tiene ese dato: sólo régimen. Hasta C-02
+se mandaba siempre `independiente` (`tipoParaCalendario('contador')`, §D21), lo que a una
+persona moral (601, alcanzable por `TABS_601`) le pintaba obligaciones de persona física.
+
+**Qué se decidió.** Se deduce del régimen del cliente (`tipoCalendarioDeRegimen` en
+`services/fiscalAgentApi.ts`): **601 → `pyme`** (el tipo que ofrece el 601 en el onboarding),
+605 → `asalariado`, 606 → `arrendamiento`, 625 → `plataformas`; **612, 626 y cualquier otro →
+`independiente`**, que es lo que ya se mandaba. Es la misma equivalencia que el onboarding usa
+para ofrecer cada régimen (`contributorProfiles.ts`), no una regla fiscal nueva.
+
+**Relacionado, misma tarea:** un cliente **sin régimen capturado no calcula** en ningún tab. La
+pantalla sigue mostrando los tabs del 612 con su aviso (T1), pero el cálculo pide capturar el
+régimen: un ISR calculado con un régimen supuesto es un número falso con cara de verdadero.
+
+**Qué la resolvería.** Que la contadora confirme qué obligaciones espera ver para un cliente
+601 y para un RESICO moral (§D31): hoy el calendario de `pyme` pone la anual de la moral al
+30 de abril, cuando una moral la presenta en marzo (Art. 76 LISR) — deuda ya declarada en T6.
+
+---
+
 ## D22 · La clase de riesgo de los clientes sintéticos es un supuesto — PROVISIONAL
 
 **Contexto (E-02).** La cartera de la demo lleva dos clientes inventados —una cafetería y un

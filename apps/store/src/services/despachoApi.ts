@@ -48,6 +48,11 @@ export interface ClienteResumen {
    * `ClienteCartera`: el catálogo de demostración del backend no lo trae.
    */
   regimen?: string;
+  /**
+   * RFC del cliente (C-02). Opcional: el catálogo de demostración del backend
+   * no lo trae, y los clientes dados de alta antes de C-01 tampoco.
+   */
+  rfc?: string;
 }
 
 export interface ClienteDetalle extends ClienteResumen {

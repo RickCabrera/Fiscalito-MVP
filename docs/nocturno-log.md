@@ -3373,3 +3373,77 @@ conservan como registro; su cabecera ya no dice SALTADA y **las tres vuelven a l
 - **C-02:** pendiente, depende de C-01 mergeada. Lee la nota de sesión de C-01 (arriba de estas
   entradas): el RFC se lee de `useCartera().clientePorId`, no de `ClienteActivoContext`.
 - **C-03:** pendiente e independiente. No se construyó nada; empieza de cero.
+
+---
+
+## C-02 · Fiscalito usa el RFC y el régimen del cliente activo (2026-09-29, MODO AUTÓNOMO, protocolo normal)
+
+Protocolo completo: plan con revisor (APROBADO CON OBSERVACIONES, 11 obs, todas resueltas o
+declaradas aquí) y entregable con revisor (APROBADO CON OBSERVACIONES, 8 obs; se agregaron los
+tests que pidió y lo demás va abajo). Checks: `npm run build` limpio; `eslint` **28 problemas
+antes y después**, idénticos en los archivos tocados; `npm test` **831/831 en 66 archivos**
+(antes 784/62). **Motor y API intocados**: cero cambios en `apps/api`, ningún endpoint nuevo,
+por eso `docs/api-contract.md` no cambia. `pytest` no aplica.
+
+**Lo que quedó.**
+- **Una sola costura**: `context/perfilFiscal.ts` (`resolverPerfilFiscal`, puro) +
+  `context/usePerfilFiscal.ts`. Contador → RFC/régimen/nombre del **cliente activo**;
+  cualquier otro → su perfil, **literal** (mismo request campo por campo, `contributor_type`
+  incluido). `ClienteResumen` ganó `rfc?` y `comoResumen` lo copia de la cartera: el RFC se lee
+  del contexto activo, NO de `useCartera` (así no hay segunda costura ni truena sin proveedor).
+- Lo usan: Pre-declaración, Anual, DIOT, Retenciones, Multi-periodo, Estado de cuenta,
+  **Calendario**, el PDF de `ResultadoDeclaracion`, Contabilito, y `FiscalitoServicePage` para
+  escoger tabs (`regimenParaTabs` + `regimenSupuesto`, el aviso de T1 sigue igual).
+- `FaltaDatoFiscal.tsx`: "Captura el RFC de este cliente." con **Editar cliente** (abre
+  `ModalCliente` ahí; al guardar, el tab aparece solo) o link a la ficha si la cartera es de solo
+  lectura / no hay proveedor. Sin `role="status"`: chocaba con el aviso de régimen (2 tests T1).
+- **Cliente sin régimen NO calcula** (§D32): los tabs se ven con el 612 supuesto, el cálculo pide
+  capturarlo. Decisión conservadora, aprobada por el revisor.
+- **Cambiar de cliente es empezar de cero**: `key` por cliente en el contenedor de tabs y en
+  Contabilito (wrapper `ContabilitoPage` → `ContabilitoDelSujeto`), y `AgentProvider` tira
+  facturas/resultado de la pre-declaración al cambiar `clienteId` (ajuste de estado en render,
+  no efecto). Verificado por mutación: sin ese reset el test de cambio de cliente falla.
+- **Historial por cliente, aditivo** (`services/historialCliente.ts`): con cliente se guarda
+  `cliente_id` y el docId va `c_<id codificado>__<categoria_periodo>` (el id conserva caja y
+  escapa símbolos, reversible); sin cliente, **idéntico a antes**. `obtenerHistorial`,
+  `obtenerAcumuladoAnterior` (Art. 106), `obtenerISRPagadoAnterior` y `limpiarDuplicados`
+  respetan el ámbito. La query por cliente es sólo igualdad (`where cliente_id ==`), sin índice
+  compuesto nuevo; orden/categoría/límite en memoria.
+- `declaracionesHistory.ts` 522→518 (el parseo de periodos se movió **sin cambios** a
+  `services/periodoHistorial.ts`); `PreDeclaracionTab` 348→348. Ambos siguen sobre el tope de
+  300: partirlos es tarea propia.
+- Docs: `apps/store/CLAUDE.md` (sección "De quién es el RFC con que se calcula", historial,
+  Contabilito, `tipoCalendarioDeRegimen`) y `docs/decisiones-nomina.md` **§D32**.
+
+### Las trampas y lo que queda ABIERTO
+
+- **DECISIÓN PROVISIONAL (nocturno) §D32, para Ricardo y la contadora:** el calendario del
+  cliente manda `contributor_type` deducido del régimen (`tipoCalendarioDeRegimen`): **601 →
+  `pyme`** (antes `independiente`: un contador con cliente 601 **verá obligaciones distintas**),
+  605/606/625 → su tipo, 612/626/otro → `independiente` como antes.
+- **"Clasifica emitidas y recibidas correctamente" se probó en el REQUEST, no punta a punta**:
+  el test (`pages/fiscalitoDelCliente.test.tsx`) sube las demo-xmls reales y comprueba que viaja
+  el RFC del cliente, igual al emisor de las de ingreso y al receptor de la de egreso. Quien
+  clasifica es `clasificar_facturas` (backend, sin cambios, con sus tests). **Nada se vio en un
+  navegador.**
+- **Modo empresa única, Contabilito:** `esContador` no mira el modo, así que ahí el RFC por
+  default ahora es el de la empresa (si la Configuración lo tiene); antes quedaba vacío y se
+  deducía. Coherente, pero es un cambio visible en ese modo. Fiscalito no cambia ahí (redirige).
+- **ABIERTO `DeduccionesPersonalesTab`**: sigue leyendo `profile.rfc` y guarda sin `cliente_id`.
+  Hoy un contador no llega (sólo 605, que el alta no ofrece); el día que el alta ofrezca 605,
+  aparece el mismo defecto. Es cambiar 3 líneas al hook + `perfil.clienteId` al guardar.
+- **ABIERTO registros viejos**: cálculos de un contador anteriores a C-02 (sin `cliente_id`) no
+  aparecen en ninguna vista por cliente ni del contribuyente. No hay forma honesta de saber de
+  qué cliente eran; en la práctica casi no existen (un contador no podía calcular sin régimen).
+- **ABIERTO fuera de alcance:** el chat de voz (`agent/tools.ts:377`) guarda sin `cliente_id`,
+  pero para un contador no calcula (`tools.ts:309` lo corta). `borrarTodasDeclaraciones` (Admin)
+  borra los de todos los clientes. `obtenerHistorial` del contribuyente pide N y filtra después:
+  hoy da igual (un contribuyente no tiene registros de cliente), si eso cambiara saldrían < N.
+- **Privacidad:** los tests nuevos usan RFC sintéticos (XIQB891116QE4 / EKU9003173C9, de pruebas
+  del SAT). El RFC de las demo-xmls **no** se escribió en ningún archivo nuevo: el test lo lee
+  del XML en runtime (ya registrado aparte que esos XML parecen traer datos de una persona).
+- **Trampa de herramienta:** al escribir código con secuencias `̀` (barra-u) por las
+  herramientas Write/Edit o un heredoc, llegan convertidas al carácter real. Si hace falta el
+  escape literal, construirlo con `String.fromCharCode(92)` desde node.
+- `contratoRutas.test.ts` exige declarar cada export nuevo de `fiscalAgentApi.ts`:
+  `tipoCalendarioDeRegimen` se agregó a `HELPERS_PUROS` (lo que el test pide, no aflojarlo).

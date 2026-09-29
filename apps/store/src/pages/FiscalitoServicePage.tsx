@@ -16,6 +16,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
 import { REGIMEN_CLIENTE_POR_DEFECTO } from '../services/carteraApi';
+import { usePerfilFiscal } from '../context/usePerfilFiscal';
 import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { getTabsForProfile, esContador, type TabFiscalito } from '../services/navigation';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
@@ -96,11 +97,12 @@ export default function FiscalitoServicePage() {
    */
   const clienteActivo = useContext(ClienteActivoContext);
   const cliente = esContadorActual ? clienteActivo?.cliente ?? null : null;
+  // C-02: el régimen de los tabs sale del MISMO lugar que el RFC y el régimen
+  // con que calculan los tabs (`perfilFiscal.ts`), para que no se desalineen.
+  const perfilFiscal = usePerfilFiscal();
   /** `true` si el régimen que se está aplicando salió del default, no del alta. */
-  const regimenSupuesto = esContadorActual && cliente !== null && !cliente.regimen;
-  const regimenEnUso = esContadorActual
-    ? cliente && (cliente.regimen || REGIMEN_CLIENTE_POR_DEFECTO)
-    : profile.regimen;
+  const regimenSupuesto = perfilFiscal.regimenSupuesto;
+  const regimenEnUso = perfilFiscal.regimenParaTabs;
   /** T6: el régimen que se está trabajando es el de una persona moral (601). */
   const esPersonaMoral = regimenEnUso === '601';
 
@@ -278,13 +280,16 @@ export default function FiscalitoServicePage() {
       </div>
 
       {/* Tab content */}
-      <div className="animate-in" style={{ animationDelay: '0.15s' }}>
+      {/* C-02: `key` por cliente. Sin ella, los XML, el resultado y los pagos
+          anteriores del cliente A sobrevivían al cambio de cliente, y recalcular
+          mandaba los XML de A con el RFC de B. Cambiar de cliente es empezar de
+          cero. (Lo que vive en `AgentContext` se limpia allá.) */}
+      <div key={perfilFiscal.clienteId ?? 'propio'} className="animate-in" style={{ animationDelay: '0.15s' }}>
         {/* T6: la pre-declaración de una persona moral se DESHABILITA aquí y no
-            dentro de `PreDeclaracionTab`, porque el tab lee `profile.regimen` y
-            eso es el régimen del DESPACHO —vacío desde E-05— cuando quien mira
-            es un contador. `regimenEnUso` ya resolvió de quién es el régimen
-            (del cliente activo o del contribuyente), así que el corte vive
-            donde está el dato correcto y cubre los dos casos de una vez. */}
+            dentro de `PreDeclaracionTab`. Cuando T6 lo escribió, el tab leía
+            `profile.regimen` —el del DESPACHO— y aquí estaba el dato correcto;
+            desde C-02 los dos leen `usePerfilFiscal`, y el corte se queda aquí
+            porque con él la tira sigue siendo la única que decide qué se pinta. */}
         {activeTab === 'declaracion' && (esPersonaMoral ? <AvisoMotorPM /> : <PreDeclaracionTab />)}
         {activeTab === 'pagospm' && <PagosProvisionalesPMTab />}
         {activeTab === 'anual' && <DeclaracionAnualTab />}

@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { tipoParaApi, tipoParaCalendario } from './fiscalAgentApi';
+import { tipoParaApi, tipoParaCalendario, tipoCalendarioDeRegimen } from './fiscalAgentApi';
 import type { ContributorType } from './contributorProfiles';
 
 const CONTRIBUYENTES: ContributorType[] = [
@@ -67,6 +67,31 @@ describe('tipoParaCalendario', () => {
     const todos: (ContributorType | null)[] = ['contador', ...CONTRIBUYENTES, null];
     for (const tipo of todos) {
       expect(validos).toContain(tipoParaCalendario(tipo));
+    }
+  });
+});
+
+describe('tipoCalendarioDeRegimen (C-02, §D32 PROVISIONAL)', () => {
+  /**
+   * El calendario del CLIENTE activo de un despacho. El cliente no tiene tipo
+   * de contribuyente capturado, sólo régimen, y de él se deduce.
+   */
+  it.each([
+    ['601', 'pyme'],
+    ['605', 'asalariado'],
+    ['606', 'arrendamiento'],
+    ['625', 'plataformas'],
+    ['612', 'independiente'],
+    ['626', 'independiente'],
+    ['', 'independiente'],
+    ['999', 'independiente'],
+  ])('régimen %s → %s', (regimen, tipo) => {
+    expect(tipoCalendarioDeRegimen(regimen)).toBe(tipo);
+  });
+
+  it('nunca devuelve un tipo que el endpoint rechace con 400', () => {
+    for (const r of ['601', '605', '606', '612', '621', '625', '626', '']) {
+      expect(CONTRIBUYENTES).toContain(tipoCalendarioDeRegimen(r));
     }
   });
 });

@@ -18,12 +18,12 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
 import {
   calcularPreDeclaracionAnual,
   calcularDeduccionesPersonales,
-  tipoParaApi,
   type CFDI,
   type PreDeclaracionResponse,
   type DeduccionesPersonalesResponse,
@@ -37,6 +37,7 @@ import FacturaTable from './FacturaTable';
 import XMLUploader from './XMLUploader';
 import CapturaDeducciones from './CapturaDeducciones';
 import ResultadoAnual from './ResultadoAnual';
+import FaltaDatoFiscal from './FaltaDatoFiscal';
 import { AlertCircle, Calculator, Loader } from 'lucide-react';
 
 const YEARS = [2026, 2025, 2024, 2023];
@@ -56,7 +57,7 @@ function capturaDeduccionesAplica(regimen: string): boolean {
 }
 
 export default function DeclaracionAnualTab() {
-  const { profile } = useProfile();
+  const perfil = usePerfilFiscal();
   const { user } = useAuth();
 
   const [ejercicio, setEjercicio] = useState(YEARS[0]);
@@ -70,7 +71,7 @@ export default function DeclaracionAnualTab() {
   const [deducciones, setDeducciones] = useState<DeduccionesPersonalesResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
 
-  const conDeducciones = capturaDeduccionesAplica(profile.regimen || '');
+  const conDeducciones = capturaDeduccionesAplica(perfil.regimen);
   const delEjercicio = facturas.filter((f) => f.fecha.startsWith(String(ejercicio)));
   const fuera = facturas.length - delEjercicio.length;
 
@@ -115,8 +116,8 @@ export default function DeclaracionAnualTab() {
       setError(`No hay facturas del ejercicio ${ejercicio}. Sube los XMLs del año que vas a declarar.`);
       return;
     }
-    if (!profile.rfc || !profile.regimen) {
-      setError('Completa tu RFC y régimen en tu perfil.');
+    if (perfil.falta) {
+      setError(mensajeFalta(perfil.falta));
       return;
     }
     if (conDeducciones && parseFloat(values['colegiaturas'] || '0') > 0 && !nivelEducativo) {
@@ -129,11 +130,7 @@ export default function DeclaracionAnualTab() {
     setGuardado(false);
     try {
       const res = await calcularPreDeclaracionAnual({
-        contribuyente: {
-          rfc: profile.rfc,
-          regimen: profile.regimen,
-          contributor_type: tipoParaApi(profile.contributorType),
-        },
+        contribuyente: contribuyenteParaApi(perfil),
         facturas: facturasFiscales(delEjercicio),
         periodo_year: ejercicio,
         incluir_explicacion: true,
@@ -167,7 +164,7 @@ export default function DeclaracionAnualTab() {
           advertencias: res.advertencias ?? [],
           recomendaciones: res.recomendaciones ?? [],
           facturas_count: delEjercicio.length,
-        }, 'anual').then(() => setGuardado(true)).catch(() => { /* el historial no bloquea el cálculo */ });
+        }, 'anual', perfil.clienteId).then(() => setGuardado(true)).catch(() => { /* el historial no bloquea el cálculo */ });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error inesperado');
@@ -186,12 +183,15 @@ export default function DeclaracionAnualTab() {
     setError('');
   };
 
+  // C-02: sin RFC (o sin régimen) del cliente no hay cálculo; se pide aquí.
+  if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
+
   if (resultado) {
     return (
       <ResultadoAnual
         resultado={resultado}
         deducciones={deducciones}
-        contribuyente={{ nombre: profile.nombre, rfc: profile.rfc }}
+        contribuyente={{ nombre: perfil.nombre, rfc: perfil.rfc }}
         guardado={guardado}
         onNueva={reset}
       />

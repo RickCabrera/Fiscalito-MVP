@@ -234,6 +234,8 @@ const HELPERS_PUROS = new Set([
   'primaComoPorcentaje',
   'tipoParaApi',
   'tipoParaCalendario',
+  // C-02: régimen del cliente → tipo del calendario. Un switch, no pega al backend.
+  'tipoCalendarioDeRegimen',
   'estaVinculado',
   'contarSinVincular',
   // C-01: le quita la plantilla al cliente antes de editarlo. No pega al backend.

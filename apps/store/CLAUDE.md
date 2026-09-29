@@ -265,13 +265,31 @@ de llegar a `calculadora.py`. Lo que ve es:
 - **Pre-declaracion**: el tab se queda en la tira y `FiscalitoServicePage` lo reemplaza por un
   aviso. Deshabilitado con mensaje, no escondido: escondido, nadie sabe si es que la moral no
   declara o es que el producto no puede. **El corte vive en la pagina y no en
-  `PreDeclaracionTab`**, porque el tab lee `profile.regimen` —el del DESPACHO, vacio desde
+  `PreDeclaracionTab`**, porque el tab leia (hasta C-02) `profile.regimen` —el del DESPACHO, vacio desde
   E-05— y la pagina ya resolvio `regimenEnUso` (el del cliente activo o el del contribuyente).
 - **Calendario**: reusa `generar_calendario()` sin cambios, o sea el de `pyme`. **Su anual sale
   al 30 de abril y una moral la presenta en marzo** (Art. 76 LISR): deuda declarada en
   `docs/api-contract.md`, no corregida, porque tocar `fiscal_engine` estaba prohibido en T6.
 - Fuera: anual, comparar regimenes, DIOT, retenciones, multi-periodo y estado de cuenta. Todos
   salen del motor de persona fisica.
+
+### De quien es el RFC con que se calcula (C-02)
+
+**Una sola costura: `context/perfilFiscal.ts` (`resolverPerfilFiscal`, puro) y su hook
+`usePerfilFiscal()`.** Contador → RFC, regimen y nombre del **cliente activo**
+(`ClienteResumen.rfc`, que `comoResumen` copia de la cartera); cualquier otro → su perfil,
+**literal como antes**. La usan Pre-declaracion, Anual, DIOT, Retenciones, Multi-periodo, Estado de
+cuenta, Calendario, el PDF de `ResultadoDeclaracion`, Contabilito y el regimen con que
+`FiscalitoServicePage` escoge los tabs (`regimenParaTabs`, con el default 612 y su aviso).
+**No construyas otro perfil a mano en un tab.**
+
+- Cliente sin RFC → `FaltaDatoFiscal`: "Captura el RFC de este cliente" con **Editar cliente**
+  (`ModalCliente` ahi mismo) o, si la cartera es de solo lectura, link a la ficha.
+- Cliente **sin regimen → no calcula** (§D32): los tabs se ven con el 612 supuesto, el calculo no.
+- **Cambiar de cliente es empezar de cero**: el contenido de los tabs lleva `key` por cliente y
+  `AgentProvider` tira facturas y resultado de la pre-declaracion al cambiar de cliente activo.
+- `DeduccionesPersonalesTab` **sigue leyendo el perfil** (solo aplica a 605, que el alta de
+  cliente no ofrece). Pendiente declarado en `docs/nocturno-log.md`.
 
 **Nota**: La logica de filtrado de tabs esta en `services/navigation.ts:getTabsForProfile()`
 — **una sola copia**, usada por `FiscalitoServicePage` y por `DashboardPage`. Los tabs se
@@ -356,6 +374,8 @@ nuevo dejaria de romper el build y pasaria a romperse en vivo con un 422. Todo p
   400 si no lo reconoce. **Su entrada `contador` quedo inalcanzable por construccion en E-07**:
   un despacho ya no llega a esa pantalla. Se conserva solo como guarda de exhaustividad del
   `Record`. Ver `docs/decisiones-nomina.md` D21.
+- `tipoCalendarioDeRegimen(regimen)` — el calendario del **cliente activo** de un contador
+  (C-02): el tipo se deduce del regimen del cliente (601 → `pyme`, ...). PROVISIONAL, §D32.
 
 Los dos mapas son `Record<ContributorType, ...>` exhaustivos a proposito: un tipo nuevo rompe
 el build y obliga a decidir que se le manda al backend.
@@ -536,9 +556,10 @@ de una partida doble. Nada se guarda: los comprobantes viven en el estado de la 
 - **El RFC decide de que lado cae cada poliza** y por eso se pinta editable arriba. Para un
   **contador NO se usa `profile.rfc`**: ese es el del DESPACHO, no el del cliente, y usarlo
   voltearia todas las polizas — la misma trampa que T6 documento con `profile.regimen`.
-  `ClienteResumen` **no trae RFC**, asi que sin captura manual se deduce: el RFC que aparece en
-  mas comprobantes es el propio (esta en todos, de emisor o de receptor). La pantalla dice
-  cuando lo dedujo.
+  Desde C-02 el default es el **RFC del cliente activo** (`usePerfilFiscal`); si el cliente no
+  lo tiene capturado se deduce: el RFC que aparece en mas comprobantes es el propio (esta en
+  todos, de emisor o de receptor). La pantalla dice cuando lo dedujo. Lo tecleado a mano manda
+  sobre los dos, y la pantalla se remonta al cambiar de cliente para que no se herede.
 - **Balanza sin saldos iniciales**: es la del lote cargado, no la del ejercicio, y lo dice.
 - **Tab Buzon**: pantalla de "Requiere e.firma — proximamente" con la lista de lo que falta. Sin
   boton: el envio de contabilidad electronica se firma y se sella, y nada de eso existe.
@@ -638,7 +659,14 @@ terceros: array (para retenciones)
 resultados: array (para multiperiodo)
 acumulado: object (stats multiperiodo)
 estado_cuenta: object (para estado de cuenta)
+cliente_id?: string (C-02: cliente del despacho con que se calculo; ausente = el contribuyente)
 ```
+
+**C-02, aditivo:** un calculo hecho para un cliente guarda `cliente_id` y su `docId` va
+prefijado (`c_<cliente>__<categoria_periodo>`, `services/historialCliente.ts`), asi que dos
+clientes no se pisan el mismo periodo. Uno de contribuyente se guarda **igual que siempre**. Las
+lecturas (`obtenerHistorial`, `obtenerAcumuladoAnterior`) filtran por ese ambito: un cliente
+solo ve lo suyo y el contribuyente nunca ve lo de un cliente.
 
 ## ESTADO ACTUAL
 

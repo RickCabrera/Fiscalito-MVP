@@ -59,6 +59,10 @@ function comoResumen(c: ClienteCartera): ClienteResumen {
     // tabs con él. Sin esta línea el selector afirma un cliente y la pantalla
     // le aplica el régimen de otro — o el default, callando que lo hace.
     regimen: c.regimen,
+    // C-02: y el RFC por la misma razón. Los tabs de Fiscalito clasifican
+    // emitidas y recibidas con él (`usePerfilFiscal`); sin esta línea tendrían
+    // que ir a la cartera por su cuenta, que sería una segunda costura.
+    rfc: c.rfc,
     prima_riesgo: c.prima_riesgo,
     clase_riesgo: c.clase_riesgo,
     clave_periodicidad: c.clave_periodicidad,
