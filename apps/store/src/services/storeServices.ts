@@ -85,12 +85,13 @@ export const SERVICES: StoreService[] = [
   {
     // P2: el backend lleva catalogo, polizas automaticas desde la boveda,
     // polizas manuales y balanza con saldos. Lo que NO, en
-    // `features_proximamente`: el envio al buzon necesita e.firma (P2-07).
+    // `features_proximamente`. P2-06 concilia bancos; P2-07 genera y valida la
+    // contabilidad electronica, pero el ENVIO al SAT no tiene API: se sube en el portal.
     id: 'contabilito',
     name: 'Contabilito',
     tagline: 'Contabilidad electronica automatizada',
     description:
-      'Genera las polizas de cada cliente desde su boveda de CFDI con reglas configurables, contra un catalogo ligado al codigo agrupador del SAT, y saca la balanza de comprobacion con saldos, mayor y auxiliares. El envio al buzon tributario necesita e.firma y todavia no.',
+      'Genera las polizas de cada cliente desde su boveda de CFDI con reglas configurables, contra un catalogo ligado al codigo agrupador del SAT, saca la balanza de comprobacion con saldos, mayor y auxiliares, concilia bancos y genera los XML de contabilidad electronica del Anexo 24 validados contra el XSD del SAT. El envio al buzon tributario se hace en el portal del SAT: no hay API.',
     icon: '📊',
     status: 'beta',
     category: 'contable',
@@ -103,10 +104,11 @@ export const SERVICES: StoreService[] = [
       'Catalogo de cuentas por cliente con el codigo agrupador SAT completo',
       'Balanza de comprobacion con saldos, mayor y auxiliares',
       'Polizas manuales y cierre de periodo',
+      'Conciliacion bancaria (CSV, XLSX, OFX y PDF) con emparejamiento automatico',
+      'XML de contabilidad electronica (Anexo 24) validados contra el XSD, ZIP para el portal',
     ],
     features_proximamente: [
-      'Envio al buzon tributario (requiere e.firma)',
-      'Conciliacion bancaria',
+      'Envio automatico al buzon tributario (el SAT no tiene API; hoy se sube en el portal)',
       'Reportes contables y export a Excel/PDF',
       'Export a Aspel COI / CONTPAQi',
     ],
