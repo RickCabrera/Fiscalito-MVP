@@ -46,8 +46,7 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.contabilidad.polizas import cancelar_por_cfdi
-from app.exceptions import FiscalAgentError
+from app.contabilidad.polizas import cancelar_por_cfdi_o_alertar
 from app.integraciones.sat_estatus import EstatusCfdi, ExpresionCfdi, SatEstatus
 from app.modelos.cfdi import Comprobante
 from app.modelos.nucleo import Cliente
@@ -111,6 +110,7 @@ class ResultadoVerificacion:
     en_proceso: int = 0
     errores: int = 0
     pendientes: int = 0
+    reversas_fallidas: int = 0
     detalle_errores: list[str] = field(default_factory=list)
 
     def como_dict(self) -> dict[str, Any]:
@@ -165,13 +165,10 @@ def _aplicar(db: Session, c: Comprobante, est: EstatusCfdi, momento: datetime,
         if previo != "cancelado":
             r.nuevos_cancelados += 1
             # P2-03: la póliza del CFDI deja de contar (o se revierte si su mes se cerró).
-            try:
-                with db.begin_nested():
-                    cancelar_por_cfdi(db, c)
-            except FiscalAgentError:
-                # Periodo de la reversa cerrado: el generador lo vuelve a intentar en su
-                # siguiente corrida (`revertir_cancelados`); el estatus se guarda igual.
-                pass
+            # Si no se puede (periodo de la reversa cerrado u otro error), queda una alerta
+            # consultable; el estatus se guarda igual y el generador lo reintenta.
+            if cancelar_por_cfdi_o_alertar(db, c) == "alerta":
+                r.reversas_fallidas += 1
     elif c.estatus_sat == "vigente":
         r.vigentes += 1
     if est.en_proceso_de_cancelacion:

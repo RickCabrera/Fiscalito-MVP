@@ -95,13 +95,31 @@ def test_falso_obtiene_guarda_y_lee(db_sesion, cliente):
     assert doc.resultado == "positiva" and doc.lectura == "pdf" and doc.origen == "falso"
     assert doc.folio.startswith("26NA") and doc.fecha == date.today()
     assert cumplimiento.leer_pdf(doc, almacen).startswith(b"%PDF-")
-    assert cumplimiento.semaforo(doc) == "verde"
+    # Revisión P1: una opinión del adaptador falso es SIMULADA: gris, nunca verde.
+    assert cumplimiento.semaforo(doc) == "gris"
+    assert cumplimiento.marca(doc) == cumplimiento.MARCA_SIMULADO
     # Mismo PDF otra vez = mismo renglón.
     otra = cumplimiento.obtener_y_guardar(db_sesion, cliente, "opinion", falso, "uid-a", almacen)
     assert otra.id == doc.id
     constancia = cumplimiento.obtener_y_guardar(db_sesion, cliente, "constancia", falso,
                                                 "uid-a", almacen)
     assert constancia.folio == "12345678901" and constancia.resultado == "desconocido"
+
+
+def test_semaforo_honesto_con_el_origen():
+    """Revisión P1: falso → gris "Simulado"; manual → color del sentido + no verificado."""
+    hoy = date.today()
+    falso = DocumentoCumplimiento(resultado="positiva", fecha=hoy, origen="falso")
+    manual = DocumentoCumplimiento(resultado="positiva", fecha=hoy, origen="manual")
+    portal = DocumentoCumplimiento(resultado="positiva", fecha=hoy, origen="portal_sat")
+    assert cumplimiento.detalle_semaforo(falso) == {
+        "semaforo": "gris", "origen": "falso", "marca": cumplimiento.MARCA_SIMULADO}
+    assert cumplimiento.detalle_semaforo(manual) == {
+        "semaforo": "verde", "origen": "manual", "marca": cumplimiento.MARCA_MANUAL}
+    assert cumplimiento.detalle_semaforo(portal) == {
+        "semaforo": "verde", "origen": "portal_sat", "marca": None}
+    assert cumplimiento.detalle_semaforo(None) == {"semaforo": "gris", "origen": None,
+                                                   "marca": None}
 
 
 def test_semaforo():
@@ -293,6 +311,45 @@ def test_portal_sat_flujo_simulado(firmante):
     assert any("id=fiel" in str(p.url) for p in portal.peticiones)
 
 
+class PortalDesviado(PortalSimulado):
+    """El formulario de login con e.firma apunta fuera del SAT (página alterada)."""
+
+    def __call__(self, p: httpx.Request) -> httpx.Response:
+        if "nidp/app/login?id=fiel" in str(p.url):
+            self.peticiones.append(p)
+            return httpx.Response(200, text=(
+                '<form id="certform" method="post" action="https://sat.gob.mx.evil.example/robar">'
+                '<input name="guid" value="GUID-XYZ"/><input name="token"/>'
+                '<input name="fert"/></form>'))
+        if "evil.example" in str(p.url):
+            raise AssertionError("Se mandó el token firmado fuera del SAT")
+        return super().__call__(p)
+
+
+def test_host_permitido_solo_sat_por_https():
+    from app.integraciones.opinion_cumplimiento import host_permitido
+
+    assert host_permitido("https://loginda.siat.sat.gob.mx/nidp/app/login?sid=0")
+    assert host_permitido("https://sat.gob.mx/x")
+    assert not host_permitido("http://loginda.siat.sat.gob.mx/x")  # sin TLS
+    assert not host_permitido("https://sat.gob.mx.evil.example/x")
+    assert not host_permitido("https://evilsat.gob.mx/x")
+    assert not host_permitido("https://evil.example/?u=https://sat.gob.mx")
+
+
+def test_login_efirma_no_envia_el_token_fuera_del_sat(firmante):
+    """Revisión P1: allowlist de hosts antes de mandar el token firmado a una `action`."""
+    f, _par = firmante
+    portal = PortalDesviado()
+    adaptador = OpinionPortalSat(http=httpx.Client(transport=httpx.MockTransport(portal),
+                                                   follow_redirects=True))
+    with pytest.raises(FiscalAgentError, match="no es un dominio del SAT") as e:
+        adaptador.obtener(SolicitudCumplimiento(rfc=RFC, tipo="opinion", firmante=lambda: f))
+    assert "sat.gob.mx.evil.example" in e.value.message
+    assert not portal.token
+    assert not any("evil" in str(p.url) for p in portal.peticiones)
+
+
 def test_portal_sat_cambiado_falla_con_mensaje_claro(firmante):
     f, _par = firmante
     adaptador = OpinionPortalSat(http=httpx.Client(
@@ -341,12 +398,16 @@ def test_api_obtener_ahora_y_semaforo_en_cartera(api, con_clientes, sesionador):
     assert procesar_siguiente(sesionador).estado == "hecho"
 
     h = a.get("/api/v1/sat/clientes/taller/opinion").json()
-    assert h["semaforo"] == "verde" and h["ultimo"]["resultado"] == "positiva"
+    # El adaptador falso no es el SAT: gris con la marca de simulado (revisión P1).
+    assert h["semaforo"] == "gris" and h["ultimo"]["resultado"] == "positiva"
+    assert h["origen"] == "falso" and h["marca"] == cumplimiento.MARCA_SIMULADO
     assert h["via"] == "falso" and len(h["historial"]) == 1
     assert h["config"] == {"automatico": True, "dia_del_mes": 1, "constancia": True}
 
     cartera = {c["clave"]: c for c in a.get("/api/v1/sat/cartera/semaforo").json()["clientes"]}
-    assert cartera["taller"]["opinion"]["semaforo"] == "verde"
+    assert cartera["taller"]["opinion"]["semaforo"] == "gris"
+    assert cartera["taller"]["opinion"]["origen"] == "falso"
+    assert cartera["taller"]["opinion"]["marca"] == cumplimiento.MARCA_SIMULADO
     assert cartera["sinrfc"]["opinion"]["semaforo"] == "gris"
 
     doc_id = h["ultimo"]["id"]
@@ -370,6 +431,7 @@ def test_api_subir_pdf_config_y_multitenant(api, con_clientes, monkeypatch):
                data={"tipo": "opinion"})
     assert r.status_code == 200, r.text
     assert r.json()["semaforo"] == "rojo" and r.json()["documento"]["origen"] == "manual"
+    assert r.json()["marca"] == cumplimiento.MARCA_MANUAL  # pinta su sentido, no verificada
     assert a.post("/api/v1/sat/clientes/taller/opinion/pdf",
                   files={"archivo": ("x.pdf", b"nada", "application/pdf")}).status_code == 422
 

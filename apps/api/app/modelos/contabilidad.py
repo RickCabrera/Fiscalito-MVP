@@ -31,6 +31,7 @@ from sqlalchemy import (
     Numeric,
     String,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -89,6 +90,10 @@ class ConfigContable(ConMarcasDeTiempo, Base):
     tope_activo: Mapped[Decimal] = mapped_column(DINERO, default=Decimal("0"))
     uso_s01_no_deducible: Mapped[bool] = mapped_column(Boolean, default=True)
     efectivo_no_deducible: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Retenciones de facturas PPD en cuentas "pendientes" hasta el pago (la obligación de
+    # retener nace con el pago). Default true: es la regla legal (revisión P2).
+    retenciones_al_pago: Mapped[bool] = mapped_column(Boolean, default=True,
+                                                      server_default=true())
     plantilla_concepto: Mapped[str] = mapped_column(String(200), default="")
     # Día 1 de un mes: los saldos iniciales cuentan para periodos que empiezan ese día o
     # después. None = cuentan siempre.
@@ -138,7 +143,8 @@ class Poliza(ConMarcasDeTiempo, Base):
     estado: Mapped[str] = mapped_column(String(10), default="activa", index=True)
     uuid_cfdi: Mapped[str | None] = mapped_column(String(36), index=True)
     tipo_cfdi: Mapped[str] = mapped_column(String(1), default="")
-    # "cfdi:<UUID>" o "reversa:<UUID>"; None en pólizas manuales.
+    # "cfdi:<UUID>" (o "cfdi:<UUID>@AAAA-MM-DD": complemento partido por fecha de pago) o
+    # "reversa:<…>"; None en pólizas manuales.
     clave_origen: Mapped[str | None] = mapped_column(String(60))
     reversa_de_id: Mapped[int | None] = mapped_column(
         ForeignKey("polizas.id", ondelete="SET NULL")

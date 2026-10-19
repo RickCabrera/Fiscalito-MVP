@@ -16144,9 +16144,10 @@
           },
           "mes": {
             "type": "integer",
-            "maximum": 12.0,
+            "maximum": 13.0,
             "minimum": 1.0,
-            "title": "Mes"
+            "title": "Mes",
+            "description": "1-12; 13 = balanza de cierre del ejercicio"
           },
           "tipo_envio": {
             "type": "string",
@@ -16713,6 +16714,17 @@
               }
             ],
             "title": "Efectivo No Deducible"
+          },
+          "retenciones_al_pago": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retenciones Al Pago"
           },
           "tope_activo": {
             "anyOf": [

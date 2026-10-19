@@ -467,6 +467,7 @@ _RE_PAQUETE = re.compile(rb"<(?:[\w.-]+:)?Paquete\b[^>]*?(/?)>")
 _RE_COD = re.compile(rb'CodEstatus\s*=\s*"([^"]*)"')
 _RE_MSG = re.compile(rb'Mensaje\s*=\s*"([^"]*)"')
 BLOQUE = 64 * 1024
+BLANCOS = b" \t\r\n"
 
 
 def _trozos(archivo: IO[bytes]) -> Iterator[bytes]:
@@ -520,7 +521,9 @@ def extraer_paquete(respuesta: IO[bytes], destino: IO[bytes]) -> ResultadoDescar
         corte = pendiente.find(b"<")
         if corte >= 0:
             pendiente, fin = pendiente[:corte], True
-        limpio = resto + bytes(b for b in pendiente if b not in b" \t\r\n")
+        # `translate` quita los blancos en C sobre el bloque entero (un generador byte a
+        # byte tardaba minutos con paquetes de cientos de MB).
+        limpio = resto + pendiente.translate(None, BLANCOS)
         usable = len(limpio) - len(limpio) % 4
         if usable:
             datos = base64.b64decode(limpio[:usable], validate=False)

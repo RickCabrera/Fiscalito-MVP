@@ -20,14 +20,14 @@ const { default: CumplimientoCliente } = await import('./CumplimientoCliente');
 function doc(extra: Partial<DocumentoCumplimiento> = {}): DocumentoCumplimiento {
   return {
     id: 4, tipo: 'opinion', fecha: '2026-10-03', resultado: 'positiva', folio: '26NA1',
-    origen: 'falso', lectura: 'pdf', tamano: 900, creado_en: null, aviso: null, ...extra,
+    origen: 'portal_sat', lectura: 'pdf', tamano: 900, creado_en: null, aviso: null, ...extra,
   };
 }
 
 function historial(extra: Partial<HistorialCumplimiento> = {}): HistorialCumplimiento {
   return {
-    exito: true, tipo: 'opinion', ultimo: doc(), semaforo: 'verde', historial: [doc()],
-    via: 'falso', dias_vigencia: 30,
+    exito: true, tipo: 'opinion', ultimo: doc(), semaforo: 'verde', origen: 'portal_sat', marca: null,
+    historial: [doc()], via: 'falso', dias_vigencia: 30,
     config: { automatico: true, dia_del_mes: 1, constancia: true }, ...extra,
   };
 }
@@ -41,7 +41,7 @@ function servidor(opinion: HistorialCumplimiento, riesgos: unknown = { riesgos: 
     llamadas.push({ url, method, body: init.body });
     let cuerpo: unknown = { exito: true };
     if (url.endsWith('/opinion') && method === 'GET') cuerpo = opinion;
-    else if (url.endsWith('/constancia')) cuerpo = historial({ tipo: 'constancia', ultimo: null, semaforo: 'gris', historial: [], via: opinion.via });
+    else if (url.endsWith('/constancia')) cuerpo = historial({ tipo: 'constancia', ultimo: null, semaforo: 'gris', origen: null, historial: [], via: opinion.via });
     else if (url.endsWith('/riesgos-69b')) cuerpo = riesgos;
     else if (url.includes('/opinion/obtener')) cuerpo = { exito: true, trabajo: { id: 1, tipo: 'sat.cumplimiento_obtener', estado: 'pendiente' } };
     else if (url.includes('/trabajos')) cuerpo = { trabajos: [] };
@@ -64,6 +64,30 @@ describe('CumplimientoCliente', () => {
     expect(screen.getByLabelText('Historial de Opinión de cumplimiento (32-D)').textContent).toMatch(/Positiva/);
     expect(llamadas.some((l) => l.url.endsWith('/api/v1/sat/clientes/taller/opinion'))).toBe(true);
     expect(llamadas.some((l) => l.url.endsWith('/api/v1/sat/clientes/taller/constancia'))).toBe(true);
+  });
+
+  it('una opinión simulada (adaptador falso) se pinta gris "Simulado", nunca verde', async () => {
+    servidor(historial({
+      semaforo: 'gris', origen: 'falso', marca: 'Simulado: la opinión salió del adaptador falso, no del SAT.',
+      ultimo: doc({ origen: 'falso' }), historial: [doc({ origen: 'falso' })],
+    }));
+    render(<CumplimientoCliente clave="taller" />);
+    const opinion = await screen.findByLabelText('Opinión de cumplimiento (32-D)');
+    await waitFor(() => expect(opinion.querySelector('[data-semaforo="gris"]')?.textContent).toMatch(/Simulado/));
+    expect(opinion.querySelector('[data-semaforo="verde"]')).toBeNull();
+    expect(opinion.textContent).toMatch(/no del SAT/);
+  });
+
+  it('una opinión subida a mano dice que no está verificada', async () => {
+    servidor(historial({
+      origen: 'manual', marca: 'Según PDF subido, no verificado.',
+      ultimo: doc({ origen: 'manual' }), historial: [doc({ origen: 'manual' })],
+    }));
+    render(<CumplimientoCliente clave="taller" />);
+    const opinion = await screen.findByLabelText('Opinión de cumplimiento (32-D)');
+    await waitFor(() => expect(opinion.querySelector('[data-semaforo="verde"]')?.textContent)
+      .toMatch(/Positiva \(según PDF subido, no verificado\)/));
+    expect(opinion.querySelector('[role="note"]')?.textContent).toMatch(/no verificado/);
   });
 
   it('semáforo rojo con una opinión negativa', async () => {
@@ -106,7 +130,7 @@ describe('CumplimientoCliente', () => {
   });
 
   it('con la vía manual no ofrece "Obtener ahora"', async () => {
-    servidor(historial({ via: 'manual', ultimo: null, semaforo: 'gris', historial: [] }));
+    servidor(historial({ via: 'manual', ultimo: null, semaforo: 'gris', origen: null, historial: [] }));
     render(<CumplimientoCliente clave="taller" />);
     const opinion = await screen.findByLabelText('Opinión de cumplimiento (32-D)');
     await waitFor(() => expect(opinion.textContent).toMatch(/vía configurada es manual/));

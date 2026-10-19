@@ -152,9 +152,57 @@ def balanza(db: Session, cliente: Cliente, desde: date, hasta: date, *, nivel: i
     """
     if desde > hasta:
         raise FiscalAgentError("'desde' no puede ser posterior a 'hasta'.", 422)
-    cuentas = catalogo.cuentas(db, cliente)
-    por_id = {c.id: c for c in cuentas}
     hojas = totales_por_cuenta(db, cliente, desde, hasta, incluir_cierre=incluir_cierre)
+    salida = _armar(catalogo.cuentas(db, cliente), hojas, nivel, solo)
+    return {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "nivel": nivel,
+            "incluir_cierre": incluir_cierre, **salida}
+
+
+CLAVE_CIERRE_RESULTADOS = "cierre:{anio}:resultados"
+
+
+def balanza_cierre(db: Session, cliente: Cliente, anio: int, *,
+                   solo: str = "con_saldo_o_movimiento") -> dict[str, Any]:
+    """
+    Balanza de cierre del ejercicio ("mes 13" del Anexo 24), con las pólizas de P2-08.
+
+    Saldo inicial = saldo al 31 de diciembre ANTES del cierre; movimientos = la póliza de
+    cierre de resultados (`cierre:<año>:resultados`, que salda ingresos, costos y gastos
+    contra el resultado del ejercicio); saldo final = después del cierre: resultados en cero
+    y el resultado del ejercicio en capital.
+
+    La póliza `cierre:<año>:balance` NO entra: es el artificio con que el sistema salda las
+    cuentas de balance para reabrirlas el 1 de enero; meterla dejaría TODA la balanza en
+    cero y no es un ajuste de cierre del ejercicio. Sin cierre anual hecho → 409.
+    """
+    clave = CLAVE_CIERRE_RESULTADOS.format(anio=anio)
+    poliza = db.scalar(select(Poliza).where(Poliza.cliente_id == cliente.id,
+                                            Poliza.clave_origen == clave,
+                                            Poliza.estado == "activa"))
+    if poliza is None:
+        raise FiscalAgentError(
+            f"El ejercicio {anio} no tiene cierre anual: haz el cierre (Periodos) antes de "
+            "generar la balanza de cierre (mes 13).", 409)
+    inicio, fin = date(anio, 1, 1), date(anio, 12, 31)
+    previas = totales_por_cuenta(db, cliente, inicio, fin, incluir_cierre=False)
+    hojas = {cid: Totales(inicial=t.final) for cid, t in previas.items()}
+    for cid, cargo, abono in db.execute(
+            select(MovimientoPoliza.cuenta_id, func.sum(MovimientoPoliza.cargo),
+                   func.sum(MovimientoPoliza.abono))
+            .where(MovimientoPoliza.poliza_id == poliza.id)
+            .group_by(MovimientoPoliza.cuenta_id)):
+        t = hojas.setdefault(cid, Totales())
+        t.cargos += _dec(cargo)
+        t.abonos += _dec(abono)
+    salida = _armar(catalogo.cuentas(db, cliente), hojas, None, solo)
+    return {"desde": fin.isoformat(), "hasta": fin.isoformat(), "nivel": None,
+            "incluir_cierre": True, "mes": 13, **salida}
+
+
+def _armar(cuentas: list[CuentaContable], hojas: dict[int, Totales], nivel: int | None,
+           solo: str) -> dict[str, Any]:
+    """Sube las hojas a sus ancestros, filtra y totaliza (común a toda balanza)."""
+    por_id = {c.id: c for c in cuentas}
     acumulado: dict[int, Totales] = {c.id: Totales() for c in cuentas}
     total = Totales()
     deudor_ini = acreedor_ini = deudor_fin = acreedor_fin = CERO
@@ -184,8 +232,7 @@ def balanza(db: Session, cliente: Cliente, desde: date, hasta: date, *, nivel: i
         renglones.append(_renglon(c, t))
     cuadra = total.inicial == 0 and total.cargos == total.abonos and total.final == 0
     return {
-        "desde": desde.isoformat(), "hasta": hasta.isoformat(), "nivel": nivel,
-        "incluir_cierre": incluir_cierre, "renglones": renglones,
+        "renglones": renglones,
         "totales": {
             "inicial_deudor": f"{deudor_ini:.2f}", "inicial_acreedor": f"{acreedor_ini:.2f}",
             "cargos": f"{total.cargos:.2f}", "abonos": f"{total.abonos:.2f}",

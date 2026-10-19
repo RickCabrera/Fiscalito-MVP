@@ -19,7 +19,7 @@ import { mensaje } from './comun';
 import { labelStyle } from '../../utils/styles';
 
 type Interruptor = 'automatica_ingresos' | 'automatica_egresos' | 'automatica_pagos' | 'automatica_nomina'
-  | 'pue_registra_cobro' | 'uso_s01_no_deducible' | 'efectivo_no_deducible';
+  | 'pue_registra_cobro' | 'uso_s01_no_deducible' | 'efectivo_no_deducible' | 'retenciones_al_pago';
 
 const AUTOMATIZACION: [Interruptor, string][] = [
   ['automatica_ingresos', 'Contabilidad automática de ingresos (facturas y notas emitidas)'],
@@ -32,6 +32,7 @@ const ESPECIALES: [Interruptor, string][] = [
   ['pue_registra_cobro', 'Facturas PUE: registrar el cobro/pago en la misma póliza'],
   ['uso_s01_no_deducible', 'UsoCFDI S01 (sin efectos fiscales) va a gastos no deducibles'],
   ['efectivo_no_deducible', 'Pagos en efectivo de más de $2,000 van a no deducibles (Art. 27-III LISR)'],
+  ['retenciones_al_pago', 'Retenciones de facturas PPD: quedan pendientes y se reconocen al pago (la obligación de retener nace con el pago)'],
 ];
 
 interface Props {
@@ -79,7 +80,8 @@ export default function ConfigPolizas({ clave }: Props) {
         automatica_ingresos: config.automatica_ingresos, automatica_egresos: config.automatica_egresos,
         automatica_pagos: config.automatica_pagos, automatica_nomina: config.automatica_nomina,
         pue_registra_cobro: config.pue_registra_cobro, uso_s01_no_deducible: config.uso_s01_no_deducible,
-        efectivo_no_deducible: config.efectivo_no_deducible, tope_activo: config.tope_activo || '0',
+        efectivo_no_deducible: config.efectivo_no_deducible,
+        retenciones_al_pago: config.retenciones_al_pago, tope_activo: config.tope_activo || '0',
         plantilla_concepto: config.plantilla_concepto, cuentas: config.cuentas_personalizadas,
       });
       setConfig(r.config);

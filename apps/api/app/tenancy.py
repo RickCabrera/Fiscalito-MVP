@@ -103,6 +103,12 @@ def cliente_o_404(ctx: Contexto, clave: str) -> Cliente:
     return cliente
 
 
+# Roles que escriben en la contabilidad (config, catálogo, reglas, pólizas manuales, cierres,
+# conciliación manual, Anexo 24). El auxiliar sólo lee, genera las pólizas automáticas e
+# importa estados de cuenta (revisión P2, punto 11).
+ROLES_CONTABLES = ("dueno", "contador")
+
+
 def exigir_rol(ctx: Contexto, *roles: str) -> None:
     """403 si el rol del usuario no está entre `roles`."""
     if ctx.rol not in roles:

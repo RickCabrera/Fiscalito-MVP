@@ -6,9 +6,9 @@
  */
 
 import { apiArchivo, apiFetch } from './api';
-import type { ResultadoOpinion, Semaforo, SemaforoCliente } from './semaforoSat';
+import type { OrigenOpinion, ResultadoOpinion, Semaforo, SemaforoCliente } from './semaforoSat';
 
-export type { ResultadoOpinion, Semaforo, SemaforoCliente } from './semaforoSat';
+export type { OrigenOpinion, ResultadoOpinion, Semaforo, SemaforoCliente } from './semaforoSat';
 export { COLOR_SEMAFORO, ETIQUETA_SEMAFORO } from './semaforoSat';
 export type TipoDocumento = 'opinion' | 'constancia';
 
@@ -24,7 +24,7 @@ export interface DocumentoCumplimiento {
   fecha: string;
   resultado: ResultadoOpinion;
   folio: string;
-  origen: 'falso' | 'portal_sat' | 'proveedor' | 'manual';
+  origen: OrigenOpinion;
   lectura: string;
   tamano: number;
   creado_en: string | null;
@@ -36,6 +36,9 @@ export interface HistorialCumplimiento {
   tipo: TipoDocumento;
   ultimo: DocumentoCumplimiento | null;
   semaforo: Semaforo;
+  /** Origen de la última (`falso` = simulada) y su advertencia; null sin documento. */
+  origen: OrigenOpinion | null;
+  marca: string | null;
   historial: DocumentoCumplimiento[];
   via: string | null;
   dias_vigencia: number;
@@ -116,7 +119,7 @@ export function obtenerAhora(
 
 export function subirPdfCumplimiento(
   clave: string, tipo: TipoDocumento, archivo: File, resultado?: ResultadoOpinion,
-): Promise<{ exito: boolean; documento: DocumentoCumplimiento; semaforo: Semaforo | null }> {
+): Promise<{ exito: boolean; documento: DocumentoCumplimiento; semaforo: Semaforo | null; marca: string | null }> {
   const datos = new FormData();
   datos.append('archivo', archivo, archivo.name);
   datos.append('tipo', tipo);

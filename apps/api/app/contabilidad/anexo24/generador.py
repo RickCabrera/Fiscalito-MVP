@@ -11,7 +11,9 @@ DOCUMENTOS
   nivel, naturaleza (D/A) y `SubCtaDe` = número de la cuenta padre.
 - `balanza` (BalanzaComprobacion): las cuentas con saldo o movimiento del mes (todos los
   niveles, como la balanza de P2-04). `TipoEnvio` N (normal) o C (complementaria, exige
-  `FechaModBal`).
+  `FechaModBal`). **Mes 13** = balanza de cierre del ejercicio: saldos al 31 de diciembre
+  antes del cierre más la póliza de cierre de resultados de P2-08
+  (`balanza.balanza_cierre`); exige el cierre anual hecho (409 si no).
 - `polizas` (PolizasPeriodo): las pólizas activas del mes con sus transacciones y, en cada
   transacción con UUID, el nodo `CompNal` (UUID, RFC de la contraparte, monto total del CFDI).
   Sólo se entrega a solicitud del SAT: `TipoSolicitud` AF (acto de fiscalización) o FC
@@ -117,12 +119,16 @@ def _natural(c: CuentaContable, saldo: Decimal) -> Decimal:
     return saldo if c.naturaleza == "deudora" else -saldo
 
 
-def _periodo(anio: int, mes: int) -> tuple[date, date]:
-    if not 1 <= mes <= 12:
-        raise FiscalAgentError("El mes va de 1 a 12. # POR CONFIRMAR: la balanza de cierre "
-                               "(mes 13) depende del cierre de ejercicio (P2-08).", 422)
+def _periodo(anio: int, mes: int, documento: str = "balanza") -> tuple[date, date]:
     if not 2015 <= anio <= 2100:
         raise FiscalAgentError("El año debe ser 2015 o posterior (XSD del Anexo 24).", 422)
+    if mes == 13:
+        if documento != "balanza":
+            raise FiscalAgentError("El mes 13 (cierre del ejercicio) sólo existe para la "
+                                   "balanza de comprobación.", 422)
+        return date(anio, 12, 31), date(anio, 12, 31)
+    if not 1 <= mes <= 12:
+        raise FiscalAgentError("El mes va de 1 a 12 (13 = balanza de cierre).", 422)
     fin = date(anio + (mes == 12), mes % 12 + 1, 1)
     return date(anio, mes, 1), date.fromordinal(fin.toordinal() - 1)
 
@@ -199,7 +205,12 @@ def _catalogo(db: Session, cliente: Cliente, raiz: etree._Element, ns: str,
 
 def _balanza(db: Session, cliente: Cliente, raiz: etree._Element, ns: str, desde: date,
              hasta: date, adv: list[str]) -> None:
-    b = balanza.balanza(db, cliente, desde, hasta, solo="con_saldo_o_movimiento")
+    if raiz.get("Mes") == "13":
+        # Balanza de cierre: saldos al 31-dic antes del cierre + la póliza de cierre de
+        # resultados de P2-08 (ver `balanza.balanza_cierre`).
+        b = balanza.balanza_cierre(db, cliente, desde.year)
+    else:
+        b = balanza.balanza(db, cliente, desde, hasta, solo="con_saldo_o_movimiento")
     if not b["cuadra"]:
         adv.append(f"La balanza no cuadra: {b['diferencias']}.")
     por_id = {c.id: c for c in catalogo.cuentas(db, cliente)}
@@ -347,7 +358,7 @@ def generar(db: Session, cliente: Cliente, s: Solicitud, *, firmante: Any = None
     if not RE_RFC.match(rfc):
         raise FiscalAgentError("Captura un RFC válido del cliente antes de generar la "
                                "contabilidad electrónica.", 422)
-    desde, hasta = _periodo(s.anio, s.mes)
+    desde, hasta = _periodo(s.anio, s.mes, s.documento)
     _validar_solicitud(s)
     raiz = _raiz(s, rfc)
     adv: list[str] = []

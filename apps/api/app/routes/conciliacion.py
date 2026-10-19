@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from app.auditoria import registrar
 from app.contabilidad.conciliacion import lectores, reporte, servicio
 from app.exceptions import FiscalAgentError
-from app.tenancy import Contexto, cliente_o_404, contexto_actual
+from app.tenancy import ROLES_CONTABLES, Contexto, cliente_o_404, contexto_actual, exigir_rol
 
 router = APIRouter(prefix="/conciliacion", tags=["conciliacion"])
 
@@ -97,6 +97,7 @@ def listar_cuentas(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict
 def crear_cuenta(clave: str, entrada: CuentaBancariaEntrada,
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cb = servicio.crear_cuenta(ctx.db, cliente, entrada.model_dump())
     registrar(ctx, "conciliacion.crear_cuenta", "cuenta_bancaria", cb.id, None, cliente)
     return {"exito": True, "cuenta": servicio.cuenta_dict(ctx.db, cb)}
@@ -106,6 +107,7 @@ def crear_cuenta(clave: str, entrada: CuentaBancariaEntrada,
 def cambiar_cuenta(clave: str, cuenta_id: int, cambio: CuentaBancariaCambio,
                    ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cb = servicio.actualizar_cuenta(ctx.db, cliente, cuenta_id, cambio.model_dump())
     return {"exito": True, "cuenta": servicio.cuenta_dict(ctx.db, cb)}
 
@@ -114,6 +116,7 @@ def cambiar_cuenta(clave: str, cuenta_id: int, cambio: CuentaBancariaCambio,
 def borrar_cuenta(clave: str, cuenta_id: int,
                   ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     servicio.borrar_cuenta(ctx.db, cliente, cuenta_id)
     registrar(ctx, "conciliacion.borrar_cuenta", "cuenta_bancaria", cuenta_id, None, cliente)
     return {"exito": True}
@@ -134,6 +137,7 @@ def guardar_plantilla(clave: str, entrada: PlantillaEntrada,
                       ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     """Crea o reemplaza (por nombre) una plantilla de columnas."""
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     p = servicio.guardar_plantilla(ctx.db, cliente, entrada.nombre, entrada.banco,
                                    entrada.formato, entrada.mapeo)
     return {"exito": True, "plantilla": servicio.plantilla_dict(p)}
@@ -143,6 +147,7 @@ def guardar_plantilla(clave: str, entrada: PlantillaEntrada,
 def borrar_plantilla(clave: str, plantilla_id: int,
                      ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     ctx.db.delete(servicio.plantilla_o_404(ctx.db, cliente, plantilla_id))
     return {"exito": True}
 
@@ -216,6 +221,7 @@ def conciliar(clave: str, cuenta_id: int, rango: Rango,
     """Emparejamiento automático de lo pendiente en el rango."""
     _rango(rango.desde, rango.hasta)
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cb = servicio.cuenta_o_404(ctx.db, cliente, cuenta_id)
     r = servicio.conciliar_automatico(ctx.db, cliente, cb, rango.desde, rango.hasta,
                                       incluir_cfdi=rango.incluir_cfdi, uid=ctx.uid)
@@ -228,6 +234,7 @@ def conciliar(clave: str, cuenta_id: int, rango: Rango,
 def conciliar_manual(clave: str, cuenta_id: int, entrada: ConciliacionManual,
                      ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cb = servicio.cuenta_o_404(ctx.db, cliente, cuenta_id)
     c = servicio.conciliar_manual(ctx.db, cliente, cb, entrada.banco, entrada.libros,
                                   entrada.motivo, ctx.uid)
@@ -239,6 +246,7 @@ def conciliar_manual(clave: str, cuenta_id: int, entrada: ConciliacionManual,
 def deshacer(clave: str, cuenta_id: int, conciliacion_id: int,
              ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cb = servicio.cuenta_o_404(ctx.db, cliente, cuenta_id)
     servicio.deshacer(ctx.db, cliente, cb, conciliacion_id)
     registrar(ctx, "conciliacion.deshacer", "conciliacion", conciliacion_id, None, cliente)
@@ -265,8 +273,9 @@ def poliza_desde_banco(clave: str, cuenta_id: int, movimiento_id: int,
                        entrada: PolizaDesdeBanco,
                        ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # póliza manual: auxiliar no
     cb = servicio.cuenta_o_404(ctx.db, cliente, cuenta_id)
-    p, c = servicio.crear_poliza(ctx.db, cliente, cb, movimiento_id,
+    p, c =servicio.crear_poliza(ctx.db, cliente, cb, movimiento_id,
                                  [(x.cuenta_id, x.importe) for x in entrada.contrapartidas],
                                  entrada.concepto, ctx.uid)
     registrar(ctx, "conciliacion.poliza_desde_banco", "poliza", p.id, None, cliente)

@@ -168,6 +168,60 @@ def test_worker_que_muere_a_media_descarga_retoma_sin_duplicar(db_sesion, client
     assert sat.contar("Descargar") == 2
 
 
+def test_zip_guardado_antes_de_importar_y_retomado_sin_volver_a_descargar(
+        db_sesion, cliente, ctx, sat, monkeypatch):
+    """Revisión P1: si el proceso muere AL IMPORTAR, el paquete no se vuelve a pedir."""
+    from app.boveda_cfdi import servicio as boveda
+
+    sat.paquetes_por_solicitud = [[zip_de(_mes(10))]]
+    s, _ = servicio.crear_o_reusar(db_sesion, cliente, MARZO)
+    original = boveda.importar
+
+    def importar_y_morir(*a, **k):
+        raise RuntimeError("se cayó el worker importando")
+
+    monkeypatch.setattr(boveda, "importar", importar_y_morir)
+    with pytest.raises(RuntimeError):
+        _hasta_terminar(db_sesion, s, ctx, sat)
+    db_sesion.rollback()
+    db_sesion.refresh(s)
+    assert not s.paquetes_procesados and _en_boveda(db_sesion, cliente) == 0
+    zips = [k for k in ctx.almacen.archivos if k.startswith(
+        f"sat/paquetes/{cliente.despacho_id}/{cliente.id}/{s.id}/")]
+    assert len(zips) == 1  # el ZIP quedó guardado ANTES de importar
+    assert sat.contar("Descargar") == 1
+
+    monkeypatch.setattr(boveda, "importar", original)
+    _hasta_terminar(db_sesion, s, ctx, sat)
+    assert s.estado == "terminada" and _en_boveda(db_sesion, cliente) == 10
+    assert sat.contar("Descargar") == 1  # se retomó del almacén
+
+
+def test_bloqueo_de_fila_for_update_skip_locked():
+    """Revisión P1: dos workers no avanzan la misma solicitud (Postgres)."""
+    from sqlalchemy.dialects import postgresql, sqlite
+
+    sql_pg = str(servicio.consulta_bloqueo(7).compile(dialect=postgresql.dialect()))
+    assert "FOR UPDATE SKIP LOCKED" in sql_pg
+    sql_lite = str(servicio.consulta_bloqueo(7).compile(dialect=sqlite.dialect()))
+    assert "FOR UPDATE" not in sql_lite  # SQLite: sin bloqueo de fila, sigue igual
+
+
+def test_solicitud_tomada_por_otro_worker_se_omite(db_sesion, cliente, monkeypatch):
+    from app.modelos.trabajos import Trabajo
+    from app.sat_descarga import trabajos as sat_trabajos
+
+    s, _ = servicio.crear_o_reusar(db_sesion, cliente, MARZO)
+    monkeypatch.setattr(servicio, "bloquear", lambda db, sid: None)  # otro la tiene
+    t = Trabajo(tipo="sat.descarga.avanzar", carga={"solicitud_id": s.id})
+    assert sat_trabajos.avanzar_solicitud(db_sesion, t) == {
+        "omitido": "otro worker la está procesando"}
+    assert s.estado == "pendiente"
+    monkeypatch.setattr(servicio, "bloquear", lambda db, sid: None)
+    t2 = Trabajo(tipo="sat.descarga.avanzar", carga={"solicitud_id": 999_999})
+    assert sat_trabajos.avanzar_solicitud(db_sesion, t2) == {"omitido": "solicitud borrada"}
+
+
 def test_token_expirado_se_renueva(db_sesion, cliente, ctx, sat):
     sat.paquetes_por_solicitud = [[zip_de(_mes(3))]]
     sat.en_proceso = 1

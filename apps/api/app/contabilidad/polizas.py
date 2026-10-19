@@ -18,6 +18,7 @@ periodo cerrado.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -32,6 +33,9 @@ from app.exceptions import FiscalAgentError
 from app.modelos.cfdi import Comprobante
 from app.modelos.contabilidad import CuentaContable, MovimientoPoliza, PeriodoCerrado, Poliza
 from app.modelos.nucleo import Cliente
+from app.modelos.sat_verificacion import AlertaRiesgo
+
+logger = logging.getLogger(__name__)
 
 TIPOS = ("ingreso", "egreso", "diario")
 LETRA = {"ingreso": "I", "egreso": "E", "diario": "D"}
@@ -252,11 +256,24 @@ def cancelar_por_cfdi(db: Session, comp: Comprobante, cuando: date | None = None
     El CFDI se canceló ante el SAT: su póliza automática deja de contar.
 
     Devuelve qué pasó: `sin_poliza`, `ya_cancelada`, `cancelada` o `reversa`. Idempotente.
+    Un complemento de pago partido por fecha de pago tiene varias pólizas
+    (`cfdi:<UUID>@AAAA-MM-DD`): se cancelan (o revierten) todas; manda `reversa` si alguna
+    se revirtió.
     """
-    p = db.scalar(select(Poliza).where(Poliza.cliente_id == comp.cliente_id,
-                                       Poliza.clave_origen == f"cfdi:{comp.uuid}"))
-    if p is None:
+    lista = list(db.scalars(select(Poliza).where(
+        Poliza.cliente_id == comp.cliente_id,
+        (Poliza.clave_origen == f"cfdi:{comp.uuid}")
+        | Poliza.clave_origen.like(f"cfdi:{comp.uuid}@%")).order_by(Poliza.id)))
+    if not lista:
         return "sin_poliza"
+    resultados = [_cancelar_una(db, comp, p, cuando) for p in lista]
+    for r in ("reversa", "cancelada"):
+        if r in resultados:
+            return r
+    return "ya_cancelada"
+
+
+def _cancelar_una(db: Session, comp: Comprobante, p: Poliza, cuando: date | None) -> str:
     if p.estado == "cancelada":
         return "ya_cancelada"
     if not periodo_cerrado(db, comp.cliente_id, p.fecha):
@@ -264,7 +281,7 @@ def cancelar_por_cfdi(db: Session, comp: Comprobante, cuando: date | None = None
         p.motivo_cancelacion = "CFDI cancelado ante el SAT."
         db.flush()
         return "cancelada"
-    clave = f"reversa:{comp.uuid}"
+    clave = "reversa:" + (p.clave_origen or f"cfdi:{comp.uuid}")[len("cfdi:"):]
     if db.scalar(select(Poliza.id).where(Poliza.cliente_id == comp.cliente_id,
                                          Poliza.clave_origen == clave)):
         return "reversa"
@@ -283,6 +300,46 @@ def cancelar_por_cfdi(db: Session, comp: Comprobante, cuando: date | None = None
                              rfc_tercero=m.rfc_tercero) for m in originales]
     guardar(db, reversa, movs)
     return "reversa"
+
+
+TIPO_ALERTA_REVERSA = "reversa_fallida"
+
+
+def cancelar_por_cfdi_o_alertar(db: Session, comp: Comprobante,
+                                cuando: date | None = None) -> str:
+    """
+    `cancelar_por_cfdi` que nunca se traga un error: si no se pudo cancelar ni revertir
+    (p. ej. el mes de la reversa también está cerrado), deja una alerta consultable en
+    `alertas_riesgo` (tipo `reversa_fallida`, una por CFDI) y devuelve `"alerta"`. El
+    estatus del CFDI se guarda igual; el generador lo reintenta en su siguiente corrida.
+    """
+    try:
+        with db.begin_nested():
+            return cancelar_por_cfdi(db, comp, cuando)
+    except FiscalAgentError as e:
+        error = e.message
+    cliente = db.get(Cliente, comp.cliente_id)
+    if cliente is None:
+        return "alerta"
+    clave = f"reversa:{comp.uuid}"
+    alerta = db.scalar(select(AlertaRiesgo).where(AlertaRiesgo.cliente_id == cliente.id,
+                                                  AlertaRiesgo.clave == clave))
+    detalle = {"uuid": comp.uuid, "error": error,
+               "mensaje": "El CFDI se canceló ante el SAT pero su póliza no se pudo cancelar "
+                          "ni revertir. Abre el periodo o captura la reversa a mano."}
+    if alerta is None:
+        rfc = comp.rfc_receptor if comp.direccion == "emitido" else comp.rfc_emisor
+        db.add(AlertaRiesgo(
+            despacho_id=cliente.despacho_id, cliente_id=cliente.id, tipo=TIPO_ALERTA_REVERSA,
+            clave=clave, rfc=(rfc or "")[:13], nombre=f"Póliza del CFDI {comp.uuid}"[:400],
+            lista="contabilidad", situacion="reversa pendiente", relacion="propio",
+            nivel="medio", detalle=detalle))
+    else:
+        alerta.detalle, alerta.atendida = detalle, False
+    db.flush()
+    logger.warning("Reversa de póliza fallida cliente_id=%s uuid=%s: %s", cliente.id,
+                   comp.uuid, error)
+    return "alerta"
 
 
 # ── consulta ──

@@ -28,7 +28,6 @@ estado más antiguo (o 0) y se advierte.
 
 from __future__ import annotations
 
-import io
 from datetime import date
 from decimal import Decimal
 from typing import Any
@@ -42,6 +41,7 @@ from app.contabilidad.conciliacion.servicio import (
     movimientos_banco,
     movimientos_libros,
 )
+from app.exportar.excel_seguro import libro_a_bytes
 from app.modelos.cfdi import Comprobante
 from app.modelos.conciliacion import (
     Conciliacion,
@@ -216,9 +216,7 @@ def a_excel(r: dict[str, Any], nombre_cliente: str) -> bytes:
     for fila in hoja.iter_rows(min_col=4, max_col=4):
         for celda in fila:
             celda.number_format = "#,##0.00"
-    salida = io.BytesIO()
-    libro.save(salida)
-    return salida.getvalue()
+    return libro_a_bytes(libro)  # conceptos y referencias del banco: sin fórmulas
 
 
 def _seccion(hoja: Any, titulo: str, filas: list[dict[str, Any]], total: str,

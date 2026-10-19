@@ -21,6 +21,11 @@ IDEMPOTENCIA
 - Cada paquete importado queda en `paquetes_procesados` y se confirma (commit) al terminarlo:
   un worker que muere a media descarga retoma en el siguiente paquete. La bóveda además
   deduplica por UUID, así que repetir un paquete sólo cuenta duplicados.
+- El ZIP de cada paquete se guarda en el almacenamiento (`ruta_paquete`) ANTES de importarlo:
+  si el proceso muere durante la importación, la siguiente corrida lo lee de ahí y no lo
+  vuelve a pedir al SAT (que sólo entrega cada paquete dos veces).
+- Dos workers no avanzan la misma solicitud: `bloquear` toma la fila con
+  `FOR UPDATE SKIP LOCKED` (Postgres); el que no la obtiene se retira.
 """
 
 from __future__ import annotations
@@ -265,6 +270,24 @@ def alertar(db: Session, cliente_id: int, tipo: str, mensaje: str,
     return alerta
 
 
+# ── concurrencia ──
+
+
+def consulta_bloqueo(solicitud_id: int) -> Any:
+    """
+    SELECT … FOR UPDATE SKIP LOCKED de una solicitud. En Postgres, dos workers que toman la
+    misma solicitud no la pisan: el segundo no la obtiene y se retira (no espera). SQLite no
+    tiene bloqueo de fila y SQLAlchemy omite la cláusula: ahí sigue igual (un solo worker).
+    """
+    return (select(SolicitudDescargaSat).where(SolicitudDescargaSat.id == solicitud_id)
+            .with_for_update(skip_locked=True))
+
+
+def bloquear(db: Session, solicitud_id: int) -> SolicitudDescargaSat | None:
+    """La solicitud con su fila bloqueada hasta el siguiente commit; None si otro la tiene."""
+    return db.scalar(consulta_bloqueo(solicitud_id).execution_options(populate_existing=True))
+
+
 # ── el paso ──
 
 
@@ -430,23 +453,39 @@ def _paso_verificar(db: Session, cliente: Cliente, s: SolicitudDescargaSat,
                       f"({ESTADOS_SAT.get(r.estado, r.estado)}).", momento)
 
 
+def ruta_paquete(cliente: Cliente, s: SolicitudDescargaSat, paquete: str) -> str:
+    """Dónde queda el ZIP de un paquete en el almacén (por despacho, cliente y solicitud)."""
+    limpio = "".join(ch for ch in paquete if ch.isalnum() or ch in "-_") or "paquete"
+    return f"sat/paquetes/{cliente.despacho_id}/{cliente.id}/{s.id}/{limpio}.zip"
+
+
 def _paso_descargar(db: Session, cliente: Cliente, s: SolicitudDescargaSat,
                     c: Contexto, momento: datetime) -> None:
     hechos = list(s.paquetes_procesados or [])
     for paquete in list(s.paquetes or []):
         if paquete in hechos:
             continue
+        ruta = ruta_paquete(cliente, s, paquete)
         with tempfile.TemporaryFile() as zipf:
-            r = c.sat.descargar(c.firmante, paquete, zipf)
-            if r.codigo != "5000":
-                msg = mensaje_de(r.codigo, r.mensaje)
-                if r.codigo in ("5007", "5008"):
-                    _re_solicitar(db, s, r.codigo, msg, momento)
-                elif r.codigo in DEFINITIVOS:
-                    _fallar(db, s, r.codigo, msg)
-                else:
-                    _reintentar_despues(db, s, r.codigo, msg, momento)
-                return
+            if c.almacen.existe(ruta):
+                # Ya se había descargado y guardado (el proceso murió al importarlo): se
+                # retoma desde el almacén; el SAT sólo entrega cada paquete dos veces.
+                zipf.write(c.almacen.leer(ruta))
+            else:
+                r = c.sat.descargar(c.firmante, paquete, zipf)
+                if r.codigo != "5000":
+                    msg = mensaje_de(r.codigo, r.mensaje)
+                    if r.codigo in ("5007", "5008"):
+                        _re_solicitar(db, s, r.codigo, msg, momento)
+                    elif r.codigo in DEFINITIVOS:
+                        _fallar(db, s, r.codigo, msg)
+                    else:
+                        _reintentar_despues(db, s, r.codigo, msg, momento)
+                    return
+                # Se guarda ANTES de importar: si el proceso muere a media importación, la
+                # siguiente corrida no vuelve a pedir el paquete al SAT.
+                zipf.seek(0)
+                c.almacen.guardar(zipf.read(), ruta)
             zipf.seek(0)
             if s.tipo == "metadata":
                 s.metadata_registros += metadata.guardar(db, cliente, zipf, c.firmante.rfc)
@@ -462,6 +501,10 @@ def _paso_descargar(db: Session, cliente: Cliente, s: SolicitudDescargaSat,
         # Cada paquete se confirma al terminarlo: si el proceso muere, se retoma en el
         # siguiente y no se vuelve a pedir uno ya importado (el SAT sólo da dos descargas).
         db.commit()
+        # El commit soltó el bloqueo de la fila: se vuelve a tomar antes del siguiente
+        # paquete. Si otro worker la tomó en ese instante, él sigue y éste se retira.
+        if bloquear(db, s.id) is None:
+            return
     s.estado, s.terminada_en, s.proxima_verificacion = "terminada", momento, None
     s.codigo = "5000"
     if s.tipo == "metadata":

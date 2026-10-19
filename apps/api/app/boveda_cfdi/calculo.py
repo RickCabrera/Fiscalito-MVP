@@ -22,8 +22,11 @@ REGLAS (las mismas que ya aplicaba el front con `facturasFiscales`)
 - **Moneda**: los importes se pasan a pesos con el `TipoCambio` del propio CFDI (Anexo 20:
   el tipo de cambio "conforme a la moneda registrada", contra MXN). Un CFDI en moneda
   extranjera sin `TipoCambio` va tal cual y se reporta en `advertencias`.
-- `fecha` es la del comprobante (también la del filtro del periodo), igual que el parser del
-  navegador. Para un pago, `FechaPago` queda en el XML y en `datos`.
+- `fecha` es la del comprobante (también la del filtro del periodo) para I/E/T. **Para un
+  pago es la `FechaPago` de cada pago del complemento** (§D-C1, revisión P2): el ingreso y el
+  IVA se causan al cobrar (arts. 1-B LIVA y 102 LISR), así que un cobro del 31 de octubre
+  timbrado el 3 de noviembre es de octubre, y un complemento con pagos de fechas distintas
+  reparte cada documento en el periodo de su pago.
 """
 
 from __future__ import annotations
@@ -38,6 +41,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.boveda_cfdi.fechas_pago import (
+    VENTANA_ANTES,
+    VENTANA_DESPUES,
+    fecha_de_pago,
+    pagos_por_fecha,
+)
 from app.boveda_cfdi.servicio import comprobantes_vigentes
 from app.modelos.cfdi import Comprobante
 from app.modelos.nucleo import Cliente
@@ -133,24 +142,39 @@ def a_cfdi(c: Comprobante, advertencias: list[str]) -> CFDI:
 
 
 def pagos_a_cfdi(
-    c: Comprobante, originales: dict[str, Comprobante], advertencias: list[str]
+    c: Comprobante, originales: dict[str, Comprobante], advertencias: list[str],
+    desde: date | None = None, hasta: date | None = None,
 ) -> list[CFDI]:
-    """Un complemento de pago → un CFDI tipo P por cada documento que paga."""
+    """
+    Un complemento de pago → un CFDI tipo P por cada documento que paga, con la fecha de SU
+    pago (`FechaPago`). Con `desde`/`hasta` sólo los documentos cuyo pago cae en el rango.
+    """
     complemento = (c.datos or {}).get("pagos") or {}
     documentos: list[tuple[dict[str, Any], dict[str, Any]]] = [
         (p, d) for p in complemento.get("pagos", []) for d in p.get("documentos", [])
     ]
+
+    def en_rango(f: date) -> bool:
+        return (desde is None or f >= desde) and (hasta is None or f <= hasta)
+
     base = {
-        "fecha": c.fecha.date(), "tipo": "P", "rfc_emisor": c.rfc_emisor,
+        "tipo": "P", "rfc_emisor": c.rfc_emisor,
         "rfc_receptor": c.rfc_receptor, "subtotal": 0.0, "total": 0.0,
         "uso_cfdi": c.uso_cfdi or "CP01", "metodo_pago": "PUE",
     }
     if not documentos:
-        return [CFDI(uuid=c.uuid, monto_pago=float(_dec(complemento.get("monto_total"))),
-                     **base)]
+        pagos = complemento.get("pagos") or []
+        fecha = fecha_de_pago(pagos[0], c.fecha.date()) if pagos else c.fecha.date()
+        if not en_rango(fecha):
+            return []
+        return [CFDI(uuid=c.uuid, fecha=fecha,
+                     monto_pago=float(_dec(complemento.get("monto_total"))), **base)]
 
     salida = []
     for n, (pago, doc) in enumerate(documentos, start=1):
+        fecha = fecha_de_pago(pago, c.fecha.date())
+        if not en_rango(fecha):
+            continue
         relacionado = str(doc.get("IdDocumento", "")).upper() or None
         monto = _dec(doc.get("ImpPagado"))
         if monto == 0 and len(documentos) == 1:
@@ -168,7 +192,7 @@ def pagos_a_cfdi(
                     "en la bóveda; el monto va sin convertir."
                 )
         uuid = c.uuid if len(documentos) == 1 else f"{c.uuid}#{n}"
-        salida.append(CFDI(uuid=uuid, uuid_relacionado=relacionado,
+        salida.append(CFDI(uuid=uuid, uuid_relacionado=relacionado, fecha=fecha,
                            monto_pago=_pesos(monto, tc), **base))
     return salida
 
@@ -193,9 +217,22 @@ def facturas_para_calculo(
         Comprobante.fecha < datetime.combine(hasta + timedelta(days=1), time.min),
     ]
     vigentes = list(db.scalars(
-        comprobantes_vigentes(select(Comprobante).where(*cond))
+        comprobantes_vigentes(select(Comprobante).where(*cond, Comprobante.tipo != "P"))
         .order_by(Comprobante.fecha, Comprobante.id)
     ))
+    # Los P entran por su FechaPago (§D-C1): ventana amplia por fecha de emisión y filtro
+    # por pago. Uno emitido en el rango con todos sus pagos fuera no cuenta en el periodo.
+    if "P" in tipos:
+        candidatos = db.scalars(comprobantes_vigentes(select(Comprobante).where(
+            Comprobante.cliente_id == cliente.id, Comprobante.tipo == "P",
+            Comprobante.fecha >= datetime.combine(desde - VENTANA_ANTES, time.min),
+            Comprobante.fecha < datetime.combine(hasta + VENTANA_DESPUES, time.min),
+        )).order_by(Comprobante.fecha, Comprobante.id))
+        vigentes.extend(
+            p for p in candidatos
+            if any(desde <= f <= hasta for f in pagos_por_fecha(p))
+            or (not pagos_por_fecha(p) and desde <= p.fecha.date() <= hasta))
+        vigentes.sort(key=lambda c: (c.fecha, c.id))
     cancelados = db.scalar(
         select(func.count(Comprobante.id)).where(*cond, Comprobante.estatus_sat == "cancelado")
     ) or 0
@@ -220,7 +257,8 @@ def facturas_para_calculo(
     resultado = FacturasCalculo()
     for c in usados:
         if c.tipo == "P":
-            resultado.facturas.extend(pagos_a_cfdi(c, originales, resultado.advertencias))
+            resultado.facturas.extend(pagos_a_cfdi(c, originales, resultado.advertencias,
+                                                   desde, hasta))
         else:
             resultado.facturas.append(a_cfdi(c, resultado.advertencias))
     resultado.relacionados = [a_cfdi(c, resultado.advertencias) for c in externos]

@@ -321,6 +321,29 @@ AGENTE = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
           "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
 
 
+# Hosts a los que se permite mandar un formulario (y, sobre todo, el token firmado con la
+# e.firma): el dominio del SAT y sus subdominios, sólo por https. La `action` de un
+# formulario la decide el HTML que llega; si una página alterada (o un cambio del portal)
+# apuntara fuera, el token de login con la e.firma del cliente se iría a un tercero.
+DOMINIO_SAT = "sat.gob.mx"
+
+
+def host_permitido(url: str) -> bool:
+    """https y host `sat.gob.mx` o `*.sat.gob.mx` (p. ej. loginda.siat.sat.gob.mx)."""
+    partes = urlparse(url)
+    host = (partes.hostname or "").lower().rstrip(".")
+    return partes.scheme == "https" and (host == DOMINIO_SAT or host.endswith("." + DOMINIO_SAT))
+
+
+def exigir_host_sat(url: str, paso: str) -> None:
+    if not host_permitido(url):
+        destino = urlparse(url).hostname or url
+        raise FiscalAgentError(
+            f"Portal del SAT, paso '{paso}': el formulario apunta a '{destino}', que no es un "
+            "dominio del SAT (*.sat.gob.mx por https). No se envía nada; revisa la "
+            "automatización o sube el PDF a mano.", status_code=502)
+
+
 class OpinionPortalSat:
     """Portal del SAT con la e.firma del cliente. Ver el docstring del módulo."""
 
@@ -340,6 +363,7 @@ class OpinionPortalSat:
     @staticmethod
     def _post_form(http: httpx.Client, accion: str, referer: str, datos: dict[str, str],
                    paso: str) -> httpx.Response:
+        exigir_host_sat(accion, paso)
         partes = urlparse(referer)
         try:
             r = http.post(accion, data=datos, follow_redirects=True, headers={
@@ -358,6 +382,7 @@ class OpinionPortalSat:
         accion, datos = formulario(r.text, str(r.url), "certform")
         if not accion or "guid" not in datos:
             raise PortalCambio("login e.firma", "no está el formulario 'certform' con 'guid'")
+        exigir_host_sat(accion, "login e.firma")  # antes de firmar nada
         datos = {**datos, "token": token_fiel(firmante, datos["guid"]),
                  "fert": fert_de(firmante)}
         respuesta = self._post_form(http, accion, str(r.url), datos, "login e.firma")
@@ -372,8 +397,10 @@ class OpinionPortalSat:
         # POR CONFIRMAR CON E.FIRMA REAL: SAML/OAuth del SAT se encadena con formularios que
         # se auto-envían y un `location.href` en JS; se siguen hasta 10.
         for m in re.finditer(r"location\.href\s*=\s*['\"]([^'\"]+)['\"]", r.text):
+            destino = urljoin(str(r.url), m.group(1))
+            exigir_host_sat(destino, paso)
             try:
-                r = http.get(urljoin(str(r.url), m.group(1)), follow_redirects=True)
+                r = http.get(destino, follow_redirects=True)
             except httpx.HTTPError as e:
                 raise ErrorServicioExterno(f"Portal del SAT, paso '{paso}': {e}") from e
             break

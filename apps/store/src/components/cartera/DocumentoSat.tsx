@@ -10,10 +10,11 @@ import { Download, Loader, RefreshCw, Upload } from 'lucide-react';
 import ErrorAlert from '../common/ErrorAlert';
 import EstadoTrabajos from '../common/EstadoTrabajos';
 import {
-  COLOR_SEMAFORO, ETIQUETA_SEMAFORO, descargarPdfCumplimiento, historialCumplimiento,
+  COLOR_SEMAFORO, descargarPdfCumplimiento, historialCumplimiento,
   obtenerAhora, subirPdfCumplimiento,
   type HistorialCumplimiento, type ResultadoOpinion, type TipoDocumento,
 } from '../../services/satVerificacionApi';
+import { etiquetaSemaforo } from '../../services/semaforoSat';
 
 const TITULO: Record<TipoDocumento, string> = {
   opinion: 'Opinión de cumplimiento (32-D)',
@@ -85,13 +86,17 @@ export default function DocumentoSat({ clave, tipo }: { clave: string; tipo: Tip
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: '0.92rem' }}>{TITULO[tipo]}</strong>
         {datos && esOpinion && (
-          <span data-semaforo={datos.semaforo} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem',
-            fontWeight: 600, color: COLOR_SEMAFORO[datos.semaforo],
-          }}>
+          <span data-semaforo={datos.semaforo} data-origen={datos.origen ?? undefined}
+            title={datos.marca ?? undefined} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem',
+              fontWeight: 600, color: COLOR_SEMAFORO[datos.semaforo],
+            }}>
             <span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: COLOR_SEMAFORO[datos.semaforo] }} />
-            {ETIQUETA_SEMAFORO[datos.semaforo]}
+            {etiquetaSemaforo(datos.semaforo, datos.origen)}
           </span>
+        )}
+        {datos && esOpinion && datos.marca && (
+          <span role="note" style={{ fontSize: '0.75rem', color: 'var(--warning)' }}>{datos.marca}</span>
         )}
         {datos?.ultimo && (
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
