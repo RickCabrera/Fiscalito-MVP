@@ -32,6 +32,8 @@ export interface RenglonResumen {
   nota: string;
   factor: string;
   meses_recargo: number;
+  /** O12: la actualización o los recargos usan un INPC o una tasa de fuente secundaria. */
+  por_confirmar?: boolean;
 }
 
 export interface ResumenImpuestos {
@@ -44,6 +46,8 @@ export interface ResumenImpuestos {
   totales: Record<string, string>;
   total_a_pagar_ajustado: string;
   notas: string[];
+  por_confirmar?: boolean;
+  fuentes_por_confirmar?: string[];
 }
 
 export interface PeticionResumen {

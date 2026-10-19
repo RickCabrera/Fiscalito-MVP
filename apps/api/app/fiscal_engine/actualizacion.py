@@ -29,36 +29,62 @@ $25,275.27 para $25,000 con 145.169/143.588, que sólo sale con el cociente comp
 1.0110 truncado da $25,275.00). Por eso `ModoFactor` es configurable por cliente y el default
 es `truncar` — la lectura más extendida del último párrafo del Art. 17-A —, marcado
 `# FUENTE POR CONFIRMAR` hasta que la contadora lo confirme (DP-3).
+
+FUENTES POR CONFIRMAR EN LA RESPUESTA (O12)
+-------------------------------------------
+Si el factor usa un INPC que no se cotejó contra el boletín del INEGI, o un mes de mora cae en
+un año cuya tasa de la LIF viene de fuente secundaria, el resultado lo dice:
+`fuentes_por_confirmar` (una línea por índice o tasa) y `por_confirmar` = True. La marca sale
+de la columna `verificacion` de `datos/inpc.csv` y `datos/recargos.csv`.
+
+MÓDULOS (O11): los recargos viven en `recargos.py` y la fecha límite en `fecha_limite.py`;
+aquí se reexportan para no romper a quien los importaba de este módulo.
 """
 
 from __future__ import annotations
 
-import csv
-from calendar import monthrange
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
-from functools import lru_cache
-from pathlib import Path
 from typing import Literal
 
 from app.exceptions import FiscalValidationError
+from app.fiscal_engine.fecha_limite import (
+    dias_inhabiles_cff,
+    fecha_limite_mensual,
+    siguiente_dia_habil,
+)
 from app.fiscal_engine.inpc import inpc_para_actualizar, mes_anterior
+from app.fiscal_engine.recargos import (
+    INCREMENTO_MORA,
+    TOPE_MESES_RECARGOS_DEFAULT,
+    MesDeRecargo,
+    TasasRecargoAnio,
+    TipoRecargo,
+    avisos_tasas,
+    calcular_recargos,
+    meses_de_mora,
+    sumar_meses,
+    tasa_mensual,
+    tasas_recargos,
+)
 from app.redondeo import redondear
 
-ModoFactor = Literal["truncar", "redondear", "sin_redondeo"]
-TipoRecargo = Literal[
-    "mora", "prorroga", "parcialidades_12", "parcialidades_24", "parcialidades_mas_24"
+# Reexportados: la API pública de este módulo antes de partirlo (O11).
+__all__ = [
+    "DIEZMILESIMO", "INCREMENTO_MORA", "MODO_FACTOR_DEFAULT", "TOPE_MESES_RECARGOS_DEFAULT",
+    "FactorActualizacion", "MesDeRecargo", "ModoFactor", "ResultadoActualizacion",
+    "TasasRecargoAnio", "TipoRecargo", "ajustar_a_pesos", "calcular_actualizacion_recargos",
+    "calcular_recargos", "cortar_diezmilesimo", "dias_inhabiles_cff", "factor_actualizacion",
+    "fecha_limite_mensual", "meses_de_mora", "resultado_como_dict", "siguiente_dia_habil",
+    "sumar_meses", "tasa_mensual", "tasas_recargos",
 ]
+
+ModoFactor = Literal["truncar", "redondear", "sin_redondeo"]
 
 # FUENTE POR CONFIRMAR: truncar vs redondear el factor al diezmilésimo (DP-3). Ver docstring.
 MODO_FACTOR_DEFAULT: ModoFactor = "truncar"
-# Art. 21 CFF: "Los recargos se causarán hasta por cinco años". Diez en los casos del Art. 67.
-TOPE_MESES_RECARGOS_DEFAULT = 60
-INCREMENTO_MORA = Decimal("1.5")  # Art. 21 CFF: la de prórroga incrementada en 50 %.
 DIEZMILESIMO = Decimal("0.0001")
-
-ARCHIVO_RECARGOS = Path(__file__).parent / "datos" / "recargos.csv"
 
 
 # ── factor ──
@@ -84,6 +110,7 @@ class FactorActualizacion:
     mes_inpc_antiguo: str
     se_uso_ultimo_publicado: bool
     factor_menor_a_uno: bool
+    fuentes_por_confirmar: tuple[str, ...] = ()
 
 
 def factor_actualizacion(
@@ -114,162 +141,10 @@ def factor_actualizacion(
         mes_inpc_antiguo=f"{antiguo.anio}-{antiguo.mes:02d}",
         se_uso_ultimo_publicado=uso_ultimo_r or uso_ultimo_a,
         factor_menor_a_uno=menor,
+        fuentes_por_confirmar=tuple(
+            a for a in (reciente.aviso_por_confirmar, antiguo.aviso_por_confirmar) if a
+        ),
     )
-
-
-# ── recargos ──
-
-
-@dataclass(frozen=True)
-class TasasRecargoAnio:
-    """Tasas mensuales de un año de la LIF (fracciones, no porcentajes)."""
-
-    anio: int
-    prorroga: Decimal
-    parcialidades_12: Decimal | None
-    parcialidades_24: Decimal | None
-    parcialidades_mas_24: Decimal | None
-    verificacion: str
-    fuente: str
-
-
-def _dec(v: str) -> Decimal | None:
-    return Decimal(v) if v.strip() else None
-
-
-@lru_cache(maxsize=1)
-def tasas_recargos() -> dict[int, TasasRecargoAnio]:
-    """Tasas de la LIF por año, leídas de `datos/recargos.csv`."""
-    salida: dict[int, TasasRecargoAnio] = {}
-    with ARCHIVO_RECARGOS.open(encoding="utf-8") as f:
-        for fila in csv.DictReader(f):
-            anio = int(fila["anio"])
-            salida[anio] = TasasRecargoAnio(
-                anio=anio,
-                prorroga=Decimal(fila["prorroga"]),
-                parcialidades_12=_dec(fila["parcialidades_12"]),
-                parcialidades_24=_dec(fila["parcialidades_24"]),
-                parcialidades_mas_24=_dec(fila["parcialidades_mas_24"]),
-                verificacion=fila["verificacion"],
-                fuente=fila["fuente"],
-            )
-    return salida
-
-
-def tasa_mensual(anio: int, tipo: TipoRecargo) -> Decimal:
-    """Tasa mensual de recargos de un año. Mora = prórroga × 1.5 (Art. 21 CFF)."""
-    tasas = tasas_recargos().get(anio)
-    if tasas is None:
-        disponibles = ", ".join(str(a) for a in sorted(tasas_recargos()))
-        raise FiscalValidationError(
-            f"No hay tasa de recargos cargada para {anio}. Años: {disponibles}. Para agregar uno "
-            f"hay que citar la Ley de Ingresos de la Federación de ese año."
-        )
-    if tipo == "mora":
-        return tasas.prorroga * INCREMENTO_MORA
-    if tipo == "prorroga":
-        return tasas.prorroga
-    valor = getattr(tasas, tipo)
-    if valor is None:
-        raise FiscalValidationError(
-            f"No hay tasa de {tipo.replace('_', ' ')} cargada para {anio} (FUENTE POR CONFIRMAR)."
-        )
-    return valor
-
-
-def sumar_meses(fecha: date, meses: int) -> date:
-    """La misma fecha `meses` después; el día se recorta al último del mes si no existe."""
-    total = fecha.month - 1 + meses
-    anio, mes = fecha.year + total // 12, total % 12 + 1
-    return date(anio, mes, min(fecha.day, monthrange(anio, mes)[1]))
-
-
-def meses_de_mora(fecha_debio_pagarse: date, fecha_pago: date) -> int:
-    """
-    Meses o fracción transcurridos desde el día en que debió pagarse (Art. 21 CFF).
-
-    Pagar el mismo día del vencimiento = 0. Un día después = 1. Exactamente un mes después
-    (17-feb → 17-mar) = 1; un día más = 2.
-    """
-    if fecha_pago <= fecha_debio_pagarse:
-        return 0
-    completos = 0
-    while sumar_meses(fecha_debio_pagarse, completos + 1) <= fecha_pago:
-        completos += 1
-    return completos + (1 if sumar_meses(fecha_debio_pagarse, completos) < fecha_pago else 0)
-
-
-@dataclass(frozen=True)
-class MesDeRecargo:
-    """Un mes de mora con la tasa que le tocó."""
-
-    numero: int
-    inicia: date
-    tasa: Decimal
-
-
-def calcular_recargos(
-    monto_actualizado: Decimal, fecha_debio_pagarse: date, meses: int, tipo: TipoRecargo
-) -> tuple[tuple[MesDeRecargo, ...], Decimal, Decimal]:
-    """
-    Recargos de `meses` meses sobre el monto ya actualizado (Art. 21 CFF).
-
-    Cada mes de mora toma la tasa de la LIF del año en que ese mes empieza a correr, así un
-    adeudo que cruza el 1 de enero paga cada tramo con su tasa. La tasa acumulada es la suma
-    exacta de las mensuales; los recargos se redondean a centavos (ROUND_HALF_UP).
-    """
-    detalle = []
-    for n in range(1, meses + 1):
-        inicia = sumar_meses(fecha_debio_pagarse, n - 1) + timedelta(days=1)
-        detalle.append(MesDeRecargo(n, inicia, tasa_mensual(inicia.year, tipo)))
-    tasa_acumulada = sum((m.tasa for m in detalle), Decimal("0"))
-    return tuple(detalle), tasa_acumulada, redondear(monto_actualizado * tasa_acumulada)
-
-
-# ── fecha límite del pago mensual ──
-
-
-def _n_esimo_lunes(anio: int, mes: int, n: int) -> date:
-    primero = date(anio, mes, 1)
-    return primero + timedelta(days=(-primero.weekday()) % 7 + 7 * (n - 1))
-
-
-def dias_inhabiles_cff(anio: int) -> frozenset[date]:
-    """
-    Días inhábiles del Art. 12 CFF (primer párrafo), además de sábados y domingos.
-
-    1o. de enero; primer lunes de febrero; tercer lunes de marzo; 1o. y 5 de mayo; 16 de
-    septiembre; tercer lunes de noviembre; 25 de diciembre. El 1o. de diciembre "de cada 6
-    años, cuando corresponda a la transmisión del Poder Ejecutivo" no se incluye: la próxima
-    ocurrencia es 2030 y la fecha de transmisión cambió por reforma constitucional (FUENTE
-    POR CONFIRMAR). Los periodos vacacionales que el SAT declara inhábiles por regla de la RMF
-    tampoco se incluyen: dependen de cada año.
-    """
-    return frozenset({
-        date(anio, 1, 1), _n_esimo_lunes(anio, 2, 1), _n_esimo_lunes(anio, 3, 3),
-        date(anio, 5, 1), date(anio, 5, 5), date(anio, 9, 16), _n_esimo_lunes(anio, 11, 3),
-        date(anio, 12, 25),
-    })
-
-
-def siguiente_dia_habil(dia: date) -> date:
-    """El mismo día si es hábil; si no, el siguiente hábil (Art. 12 CFF, cuarto párrafo)."""
-    while dia.weekday() >= 5 or dia in dias_inhabiles_cff(dia.year):
-        dia += timedelta(days=1)
-    return dia
-
-
-def fecha_limite_mensual(anio: int, mes: int) -> date:
-    """
-    Día en que debió pagarse una contribución mensual del periodo (anio, mes).
-
-    El día 17 del mes inmediato posterior (Arts. 96 y 106 LISR, 5-D LIVA), corrido al
-    siguiente día hábil si es inhábil (Art. 12 CFF). La prórroga por el sexto dígito del RFC
-    NO se aplica aquí: es un beneficio de decreto que P3-10 incorpora al calendario; hasta
-    entonces la fecha límite se puede capturar a mano en el resumen.
-    """
-    siguiente = (anio + 1, 1) if mes == 12 else (anio, mes + 1)
-    return siguiente_dia_habil(date(siguiente[0], siguiente[1], 17))
 
 
 @dataclass(frozen=True)
@@ -292,6 +167,12 @@ class ResultadoActualizacion:
     modo_factor: ModoFactor
     detalle_meses: tuple[MesDeRecargo, ...] = field(default_factory=tuple)
     notas: tuple[str, ...] = field(default_factory=tuple)
+    fuentes_por_confirmar: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def por_confirmar(self) -> bool:
+        """True si algún INPC o tasa de recargos usado viene de fuente secundaria."""
+        return bool(self.fuentes_por_confirmar)
 
 
 def ajustar_a_pesos(monto: Decimal) -> Decimal:
@@ -355,13 +236,17 @@ def calcular_actualizacion_recargos(
             "tabla de amortización del Art. 66-A CFF (FUENTE POR CONFIRMAR)."
         )
     total = actualizado + recargos
+    fuentes = factor.fuentes_por_confirmar + avisos_tasas(detalle)
+    if fuentes:
+        notas.append("Hay índices o tasas de fuente secundaria (FUENTE POR CONFIRMAR): ver "
+                     "fuentes_por_confirmar.")
     return ResultadoActualizacion(
         monto=monto, fecha_debio_pagarse=fecha_debio_pagarse, fecha_pago=fecha_pago,
         factor=factor, monto_actualizado=actualizado, actualizacion=actualizado - monto,
         meses=meses, meses_topados=topados, tasa_acumulada=tasa_acumulada,
         recargos=recargos, total=total, total_a_pagar_ajustado=ajustar_a_pesos(total),
         tipo_recargo=tipo_recargo, modo_factor=modo_factor, detalle_meses=tuple(detalle),
-        notas=tuple(notas),
+        notas=tuple(notas), fuentes_por_confirmar=fuentes,
     )
 
 
@@ -379,6 +264,7 @@ def resultado_como_dict(r: ResultadoActualizacion) -> dict[str, object]:
             "inpc_antiguo": str(f.inpc_antiguo), "mes_inpc_antiguo": f.mes_inpc_antiguo,
             "se_uso_ultimo_publicado": f.se_uso_ultimo_publicado,
             "factor_menor_a_uno": f.factor_menor_a_uno,
+            "fuentes_por_confirmar": list(f.fuentes_por_confirmar),
         },
         "monto_actualizado": f"{r.monto_actualizado:.2f}",
         "actualizacion": f"{r.actualizacion:.2f}",
@@ -395,5 +281,7 @@ def resultado_como_dict(r: ResultadoActualizacion) -> dict[str, object]:
             for m in r.detalle_meses
         ],
         "notas": list(r.notas),
+        "por_confirmar": r.por_confirmar,
+        "fuentes_por_confirmar": list(r.fuentes_por_confirmar),
         "fundamento": "Arts. 17-A, 20 y 21 CFF; Art. 44 RCFF; LIF del año de cada mes de mora.",
     }

@@ -28,7 +28,8 @@ Código Financiero para el Estado de Veracruz de Ignacio de la Llave:
 - Art. 101: "Este impuesto se causará, liquidará y pagará aplicando la tasa del 3% sobre la
   base que señala el artículo anterior." (Congreso de Veracruz: se mantiene en 3 % para 2026.)
 - Art. 103: exenciones (despensa, indemnizaciones por separación, PTU, horas extra dentro de
-  límites, aportaciones de seguridad social, premios de asistencia y puntualidad, etc.).
+  límites, aportaciones de seguridad social, premios de asistencia y puntualidad ANUALES
+  —inciso n)—, etc.). Los premios por periodo (lo usual) gravan.
 - Arts. 134-135: impuesto adicional para el fomento de la educación, "a razón del 15% sobre
   su base", que es "el importe de los pagos por concepto de impuestos y derechos estatales";
   se liquida junto con el impuesto sobre el que recae. Por eso el ISN de Veracruz se presenta
@@ -69,8 +70,6 @@ EXCLUSIONES_DOCUMENTADAS: dict[str, dict[str, str]] = {
         "039": "Jubilaciones, pensiones o haberes de retiro — art. 103 fr. I inciso d)",
         "044": "Jubilaciones en parcialidades — art. 103 fr. I inciso d)",
         "029": "Vales de despensa — art. 103 fr. I incisos a) y m)",
-        "010": "Premios por puntualidad — art. 103 fr. I inciso n)",
-        "049": "Premios por asistencia — art. 103 fr. I inciso n)",
         "026": "Reembolso por funeral — art. 103 fr. I inciso k)",
         "037": "Ayuda para gastos de funeral — art. 103 fr. I inciso k)",
     },
@@ -79,6 +78,11 @@ EXCLUSIONES_DOCUMENTADAS: dict[str, dict[str, str]] = {
 # comprobar baja el impuesto): fondo de ahorro (inciso l, con requisitos), alimentación y
 # habitación (inciso j, sólo si son gratuitas), cuotas de seguridad social (inciso h, sólo
 # las aportaciones patronales). El despacho las excluye por cliente si le constan.
+# Premios de puntualidad (010) y asistencia (049) en Veracruz: el art. 103 fr. I inciso n)
+# sólo exenta los premios de asistencia y puntualidad que se paguen en forma ANUAL. El CFDI de
+# nómina no dice si el premio es anual (casi siempre se paga por periodo) → se GRAVAN. Si al
+# despacho le consta que el cliente los paga una vez al año, los excluye por cliente con
+# `claves_excluidas_extra` = {"010", "049"} (`isn_claves_excluidas` en la configuración).
 # Horas extra (019) en Veracruz: exentas sólo dentro de 3 horas diarias y 3 veces por semana
 # (art. 103 fr. I inciso i). El CFDI no trae las horas → se GRAVAN (conservador) salvo que
 # el despacho las excluya por cliente.

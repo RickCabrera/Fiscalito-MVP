@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Download, FileCheck, Loader, RefreshCw } from 'lucide-react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { calcularAnual, papelesAnual, type ResultadoAnual } from '../../services/anualApi';
+import AvisoPorConfirmar from './AvisoPorConfirmar';
 import TablaMeses from './TablaMeses';
 import { CELDA, type ColumnaMes } from './tablaMesesUtil';
 
@@ -128,6 +129,7 @@ export default function AnualClienteTab() {
               </p>
             )}
           </div>
+          <AvisoPorConfirmar fuentes={resultado.fuentes_por_confirmar ?? []} />
           <TablaMeses etiqueta="Mes a mes" columnas={resultado.tipo === 'pf' ? COLUMNAS_PF : COLUMNAS_PM}
             filas={resultado.meses} />
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.78rem', color: 'var(--text-muted)' }}>

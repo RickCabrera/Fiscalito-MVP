@@ -107,6 +107,7 @@ class RenglonResumen:
     nota: str = ""
     factor: str = ""
     meses_recargo: int = 0
+    fuentes_por_confirmar: tuple[str, ...] = ()
 
 
 @dataclass
@@ -121,6 +122,7 @@ class ResumenImpuestos:
     totales: dict[str, Decimal] = field(default_factory=dict)
     total_a_pagar_ajustado: Decimal = CERO
     notas: list[str] = field(default_factory=list)
+    fuentes_por_confirmar: list[str] = field(default_factory=list)
 
 
 def armar_resumen(
@@ -165,7 +167,7 @@ def armar_resumen(
             recargos=acc.recargos, subsidio=subsidio, compensaciones=comp,
             total=acc.total, nota=sistema.nota,
             factor=str(acc.factor.factor) if acc.factor else "",
-            meses_recargo=acc.meses,
+            meses_recargo=acc.meses, fuentes_por_confirmar=acc.fuentes_por_confirmar,
         ))
     totales = {
         k: sum((getattr(r, k) for r in renglones), CERO)
@@ -176,10 +178,16 @@ def armar_resumen(
     if fecha_pago > fecha_limite:
         notas.append(f"Pago posterior a la fecha límite ({fecha_limite.isoformat()}): se "
                      f"calculan actualización (Art. 17-A CFF) y recargos (Art. 21 CFF).")
+    # O12: el INPC o la tasa de recargos de fuente secundaria se dice en la respuesta.
+    fuentes = list(dict.fromkeys(f for r in renglones for f in r.fuentes_por_confirmar))
+    if fuentes:
+        notas.append("La actualización o los recargos usan índices o tasas de fuente "
+                     "secundaria (FUENTE POR CONFIRMAR): " + "; ".join(fuentes) + ".")
     return ResumenImpuestos(
         anio=anio, mes=mes, fecha_limite=fecha_limite, fecha_pago=fecha_pago,
         renglones=renglones, totales=totales,
         total_a_pagar_ajustado=ajustar_a_pesos(totales["total"]), notas=notas,
+        fuentes_por_confirmar=fuentes,
     )
 
 
@@ -193,6 +201,7 @@ def resumen_dict(r: ResumenImpuestos) -> dict[str, object]:
                 "subsidio", "compensaciones", "total")},
             "capturado": x.capturado, "nota": x.nota, "factor": x.factor,
             "meses_recargo": x.meses_recargo,
+            "por_confirmar": bool(x.fuentes_por_confirmar),
         }
     return {
         "anio": r.anio, "mes": r.mes, "fecha_limite": r.fecha_limite.isoformat(),
@@ -201,4 +210,6 @@ def resumen_dict(r: ResumenImpuestos) -> dict[str, object]:
         "totales": {k: f"{v:.2f}" for k, v in r.totales.items()},
         "total_a_pagar_ajustado": f"{r.total_a_pagar_ajustado:.2f}",
         "notas": r.notas,
+        "por_confirmar": bool(r.fuentes_por_confirmar),
+        "fuentes_por_confirmar": r.fuentes_por_confirmar,
     }

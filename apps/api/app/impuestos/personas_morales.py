@@ -21,6 +21,11 @@ DE DÓNDE SALE CADA IMPORTE
   - `auto` (default): contabilidad si el cliente tiene pólizas activas en el ejercicio.
 - **RESICO PM** — flujo de efectivo (Arts. 207 y 210): los mismos CFDI por `flujo_del_mes`
   (PUE en su fecha, PPD por complemento de pago) y la nómina por fecha de pago.
+- **No deducibles del Art. 28 fr. XXX para la renta gravable de PTU** (Art. 9 cuarto párrafo)
+  — capturado (`no_deducibles_art28_xxx`); si no, con contabilidad, la suma de las cuentas
+  `cuentas_art28_xxx` del despacho (el código agrupador del SAT no tiene una cuenta propia
+  para esto); con bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina emitida. Con
+  contabilidad y sin cuentas designadas: cero y nota (no se baja la PTU sin dato).
 - **Ajuste anual por inflación** — saldos de fin de mes de la contabilidad en las cuentas de
   créditos y deudas (`CREDITOS_DEFAULT`, `DEUDAS_DEFAULT`, por código agrupador; criterio del
   despacho configurable) o los 12 saldos capturados.
@@ -156,6 +161,20 @@ def _deducible_nomina(c: Comprobante, factor: Decimal) -> Decimal:
     return _dec(p.get("TotalGravado")) + factor * _dec(p.get("TotalExento"))
 
 
+def _no_deducible_nomina(c: Comprobante, factor: Decimal) -> Decimal:
+    """Art. 28 fr. XXX: la parte del exento que NO se dedujo (1 − factor)."""
+    p = (c.datos or {}).get("nomina", {}).get("percepciones", {})
+    return (1 - factor) * _dec(p.get("TotalExento"))
+
+
+def art28_xxx_boveda(db: Session, cliente: Cliente, anio: int, d: DatosAnualesPMSchema
+                     ) -> Decimal:
+    """No deducible del Art. 28 fr. XXX de la nómina emitida del ejercicio (bóveda)."""
+    total = sum((_no_deducible_nomina(n, d.factor_exentos_nomina)
+                 for m in MESES for n in nominas_del_mes(db, cliente, anio, m)), CERO)
+    return redondear(total)
+
+
 def _es_deduccion(c: Comprobante) -> bool:
     uso = (c.uso_cfdi or "").upper()
     return uso not in USOS_NO_ACREDITABLES and uso not in USOS_INVERSION
@@ -256,7 +275,8 @@ def contabilidad_por_mes(
     for m in MESES:
         for cid, t in totales_por_cuenta(db, cliente, date(anio, m, 1), _fin(anio, m)).items():
             c = cuentas.get(cid)
-            clase = clase_cuenta(c, d.cuentas_no_deducibles) if c else None
+            clase = clase_cuenta(c, [*d.cuentas_no_deducibles, *d.cuentas_art28_xxx]
+                                 ) if c else None
             if clase is None:
                 continue
             importe = t.abonos - t.cargos if clase == "ingreso" else t.cargos - t.abonos
@@ -306,6 +326,29 @@ class BaseAnual:
     aai: motor.ResultadoAAI | None
     origen_saldos: str
     notas: list[str]
+    no_deducibles_art28_xxx: Decimal = CERO
+    origen_art28_xxx: str = "sin dato"
+
+
+def _es_cuenta_art28(c: CuentaFiscal, d: DatosAnualesPMSchema) -> bool:
+    """Cuenta de gasto designada por el despacho para el no deducible del Art. 28 fr. XXX."""
+    designada = c.numero in d.cuentas_art28_xxx or _prefijo(c.codigo or "", d.cuentas_art28_xxx)
+    return designada and c.clase == "no_deducible"
+
+
+def art28_xxx(db: Session, cliente: Cliente, anio: int, d: DatosAnualesPMSchema, fuente: str,
+              cuentas: list[CuentaFiscal]) -> tuple[Decimal, str, str | None]:
+    """(importe, origen, nota) del no deducible del Art. 28 fr. XXX para la PTU."""
+    if d.no_deducibles_art28_xxx is not None:
+        return redondear(d.no_deducibles_art28_xxx), "capturado", None
+    if fuente == "contabilidad":
+        if not d.cuentas_art28_xxx:
+            return CERO, "sin dato", (
+                "Renta gravable de PTU sin restar los no deducibles del Art. 28 fr. XXX (Art. 9 "
+                "cuarto párrafo): captura el importe o las cuentas donde los registras.")
+        total = sum((c.total for c in cuentas if _es_cuenta_art28(c, d)), CERO)
+        return redondear(total), "contabilidad", None
+    return art28_xxx_boveda(db, cliente, anio, d), "boveda", None
 
 
 def fuente_de(db: Session, cliente: Cliente, anio: int, d: DatosAnualesPMSchema) -> str:
@@ -352,18 +395,27 @@ def base_anual(db: Session, cliente: Cliente, anio: int, d: DatosAnualesPMSchema
         if origen == "contabilidad":
             notas.append("Ajuste anual por inflación con los saldos de fin de mes de la "
                          "contabilidad (cuentas de créditos y deudas del despacho).")
-    return BaseAnual(tipo, fuente, ing, ded, nd, cuentas, aai, origen, notas)
+    xxx, origen_xxx, nota_xxx = art28_xxx(db, cliente, anio, d, fuente, cuentas)
+    if nota_xxx:
+        notas.append(nota_xxx)
+    return BaseAnual(tipo, fuente, ing, ded, nd, cuentas, aai, origen, notas, xxx, origen_xxx)
+
+
+def entrada_anual(b: BaseAnual, d: DatosAnualesPMSchema, anio: int, modo: Any,
+                  pagos: Decimal = CERO, retenciones: Decimal = CERO) -> motor.EntradaAnual:
+    """La entrada del motor anual con la base, los datos capturados y los pagos."""
+    return motor.EntradaAnual(
+        anio, sum(b.ingresos_mes.values(), CERO) + d.ingresos_adicionales,
+        sum(b.deducciones_mes.values(), CERO) + d.deduccion_inversiones
+        + d.deducciones_adicionales - d.no_deducibles_adicionales,
+        b.aai, d.ptu_pagada, perdidas_de(d), estimulos_de(d), pagos, retenciones,
+        d.anticipos_miembros_base, modo, b.no_deducibles_art28_xxx)
 
 
 def utilidad_de_base(b: BaseAnual, d: DatosAnualesPMSchema, anio: int, modo: Any
                      ) -> motor.ResultadoAnualPM:
     """La anual sin pagos ni retenciones (para el coeficiente y para la anual completa)."""
-    return motor.anual_pm(motor.EntradaAnual(
-        anio, sum(b.ingresos_mes.values(), CERO) + d.ingresos_adicionales,
-        sum(b.deducciones_mes.values(), CERO) + d.deduccion_inversiones
-        + d.deducciones_adicionales - d.no_deducibles_adicionales,
-        b.aai, d.ptu_pagada, perdidas_de(d), estimulos_de(d), CERO, CERO,
-        d.anticipos_miembros_base, modo), resico=b.tipo == "resico")
+    return motor.anual_pm(entrada_anual(b, d, anio, modo), resico=b.tipo == "resico")
 
 
 def coeficiente_para(db: Session, cliente: Cliente, anio: int, d: DatosAnualesPMSchema

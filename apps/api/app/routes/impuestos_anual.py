@@ -71,6 +71,7 @@ def pagos_provisionales_pm(clave: str, req: PagosProvisionalesPMRequest,
     cliente = cliente_o_404(ctx, clave)
     tipo = _tipo_o_422(cliente)
     pagos, coef, origen, b = pm.pagos_provisionales(ctx.db, cliente, req.anio, req.mes, tipo)
+    fuentes = list(dict.fromkeys(x for p in pagos for x in p.fuentes_por_confirmar))
     return {
         "exito": True, "anio": req.anio, "mes": req.mes,
         "tipo": "pm" if tipo == "general" else "resico_pm", "fuente": b.fuente,
@@ -79,6 +80,8 @@ def pagos_provisionales_pm(clave: str, req: PagosProvisionalesPMRequest,
         "fecha_limite": fecha_limite_mensual(req.anio, req.mes).isoformat(),
         "pagos": [motor.pago_dict(p) for p in pagos],
         "notas": b.notas + pm.notas_provisionales(tipo, coef, origen, req.mes),
+        "por_confirmar": bool(fuentes),
+        "fuentes_por_confirmar": fuentes,
     }
 
 

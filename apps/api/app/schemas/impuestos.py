@@ -30,8 +30,12 @@ class ConfigImpuestosSchema(BaseModel):
       Art. 67).
     - `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.
     - `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`
-      con `proporcion_iva_fija` (Art. 5o.-C, proporción del ejercicio anterior).
+      con `proporcion_iva_fija` (Art. 5o.-B, proporción del ejercicio anterior).
     - `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).
+    - `iva_no_objeto_excluidos` (default vacío): UUID de CFDI emitidos cuyo valor no objeto NO
+      entra al denominador de la proporción (no es acto del Art. 4o.-A o es concepto del Art.
+      5o.-C LIVA, p. ej. dividendos). Por default todo el no objeto cobrado entra (Art. 5o.
+      fr. V c), reforma 2022).
     - `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).
     - `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.
     - `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda.
@@ -50,11 +54,17 @@ class ConfigImpuestosSchema(BaseModel):
     isn_claves_excluidas: list[str] = Field(default_factory=list)
     isn_claves_incluidas: list[str] = Field(default_factory=list)
     saldo_favor_iva_inicial: Decimal = Field(default=Decimal("0"), ge=0)
+    iva_no_objeto_excluidos: list[str] = Field(default_factory=list)
 
     @field_validator("asignacion_iva")
     @classmethod
     def _uuid_mayusculas(cls, v: dict[str, str]) -> dict[str, str]:
         return {k.strip().upper(): val for k, val in v.items()}
+
+    @field_validator("iva_no_objeto_excluidos")
+    @classmethod
+    def _uuids_mayusculas(cls, v: list[str]) -> list[str]:
+        return [u.strip().upper() for u in v if u.strip()]
 
 
 class CapturaRenglon(BaseModel):
