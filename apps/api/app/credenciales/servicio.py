@@ -43,13 +43,21 @@ class Firmante:
         self.numero_certificado = numero
         self.tipo = tipo
 
-    def firmar(self, datos: bytes) -> bytes:
-        """Firma SHA256withRSA (PKCS#1 v1.5), como pide el SAT para sello y WS."""
-        return self._llave.sign(datos, padding.PKCS1v15(), hashes.SHA256())
+    def firmar(self, datos: bytes, algoritmo: str = "sha256") -> bytes:
+        """
+        Firma RSA PKCS#1 v1.5. SHA-256 (sello del CFDI 4.0) por default.
 
-    def firmar_base64(self, datos: bytes) -> str:
+        `algoritmo="sha1"` existe SÓLO para el web service de Descarga Masiva del SAT, cuyo
+        SignatureMethod documentado (v1.5) es `xmldsig#rsa-sha1`.
+        """
+        if algoritmo not in ("sha256", "sha1"):
+            raise ValueError("Algoritmo de firma no soportado: usa 'sha256' o 'sha1'.")
+        digesto = hashes.SHA256() if algoritmo == "sha256" else hashes.SHA1()  # noqa: S303
+        return self._llave.sign(datos, padding.PKCS1v15(), digesto)
+
+    def firmar_base64(self, datos: bytes, algoritmo: str = "sha256") -> str:
         """La firma en base64 (formato del atributo `Sello` y del SignatureValue)."""
-        return base64.b64encode(self.firmar(datos)).decode("ascii")
+        return base64.b64encode(self.firmar(datos, algoritmo)).decode("ascii")
 
     @property
     def certificado_der(self) -> bytes:

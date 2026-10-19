@@ -30,7 +30,7 @@ import { MARCA_CORTA } from './marca';
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
-  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'calendario';
+  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario';
 
 export interface SidebarLink {
   id: NavId;
@@ -56,6 +56,9 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // P0-03: la bóveda de CFDI del cliente activo. Va antes de Nómina porque es
   // de donde todo lo demás leerá sus comprobantes (P1-06).
   { id: 'boveda', to: '/app/boveda', label: 'Bóveda' },
+  // P1-02: la descarga masiva del SAT llena la bóveda del cliente activo; va
+  // justo después de ella porque es de donde salen sus comprobantes.
+  { id: 'sat', to: '/app/sat', label: 'Descarga SAT' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   // T1: el despacho recupera el servicio fiscal, pero **el del CLIENTE ACTIVO**,
@@ -185,6 +188,9 @@ const RUTAS_CON_CLIENTE = [
   // P0-03: CUMPLE la regla — `BovedaPage` lee `useClienteActivo` y pide la
   // bóveda de ESE cliente (`/boveda/clientes/{clave}/cfdi`).
   '/app/boveda',
+  // P1-02: CUMPLE la regla — `DescargaSatPage` lee `useClienteActivo` y pide
+  // config, bitácora y solicitudes de ESE cliente (`/sat/clientes/{clave}/...`).
+  '/app/sat',
   // K: `/app/nomina` sin cliente activo pinta "Elige un cliente primero"; con el
   // selector encima se elige ahí mismo y `NominaDelClienteActivo` redirige a la
   // nómina de ese cliente. Con cliente, la nómina vive en

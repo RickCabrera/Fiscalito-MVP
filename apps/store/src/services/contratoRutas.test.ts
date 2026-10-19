@@ -69,6 +69,7 @@ import * as carteraBackend from './carteraBackend';
 import * as cfdiNominaApi from './cfdiNominaApi';
 // P0-03: la bóveda de CFDI. Se registra el día que nace.
 import * as bovedaApi from './bovedaApi';
+import * as satDescargaApi from './satDescargaApi';
 // P0-05: bóveda de e.firma y CSD. Se registra el día que nace.
 import * as credencialesApi from './credencialesApi';
 // P0-04 / P0-07: trabajos en segundo plano y bitácora de auditoría.
@@ -195,6 +196,14 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     borrarCfdi: () => bovedaApi.borrarCfdi('taller', 'AAAA-BBBB'),
     resumenBoveda: () => bovedaApi.resumenBoveda('taller'),
   },
+  'satDescargaApi.ts': {
+    obtenerConfigSat: () => satDescargaApi.obtenerConfigSat('taller'),
+    guardarConfigSat: () => satDescargaApi.guardarConfigSat('taller', { activa: true }),
+    descargarAhora: () => satDescargaApi.descargarAhora('taller', '2026-09-01', '2026-09-02'),
+    descargaHistorica: () => satDescargaApi.descargaHistorica('taller', '2026-01-01'),
+    listarSolicitudesSat: () => satDescargaApi.listarSolicitudesSat('taller', 2),
+    obtenerBitacoraSat: () => satDescargaApi.obtenerBitacoraSat('taller', 2026, 9),
+  },
   'credencialesApi.ts': {
     listarCredenciales: () => credencialesApi.listarCredenciales('taller'),
     subirCredencial: () =>
@@ -245,6 +254,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'carteraBackend.ts': carteraBackend,
   'cfdiNominaApi.ts': cfdiNominaApi,
   'bovedaApi.ts': bovedaApi,
+  'satDescargaApi.ts': satDescargaApi,
   'credencialesApi.ts': credencialesApi,
   'trabajosApi.ts': trabajosApi,
 };

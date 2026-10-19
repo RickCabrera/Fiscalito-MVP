@@ -188,11 +188,19 @@ def importar(
     archivos: Iterable[tuple[str, IO[bytes]]],
     almacen: Almacenamiento | None = None,
     origen: str = "manual",
+    rfc: str | None = None,
+    detalle: bool = True,
 ) -> Reporte:
-    """Importa XML y ZIP a la bóveda del cliente. Ver el docstring del módulo."""
+    """
+    Importa XML y ZIP a la bóveda del cliente. Ver el docstring del módulo.
+
+    `rfc` fuerza el RFC con el que se clasifica (la descarga del SAT usa el de la e.firma,
+    que es el que el SAT respondió). `detalle=False` no guarda un renglón por XML en el
+    reporte: un paquete del SAT trae hasta 200,000 y sólo interesan los conteos.
+    """
     almacen = almacen or obtener_almacenamiento()
     archivos = list(archivos)
-    reporte = Reporte(rfc_cliente=rfc_del_cliente(cliente))
+    reporte = Reporte(rfc_cliente=(rfc or rfc_del_cliente(cliente)).strip().upper())
     if not reporte.rfc_cliente:
         reporte.rfc_cliente = deducir_rfc(archivos)
         reporte.rfc_deducido = bool(reporte.rfc_cliente)
@@ -211,9 +219,10 @@ def importar(
 
         if cfdi.uuid in vistos or _existe(db, cliente.id, cfdi.uuid):
             reporte.duplicados += 1
-            reporte.duplicados_detalle.append(
-                {"archivo": nombre, "uuid": cfdi.uuid, "razon": "ya existía"}
-            )
+            if detalle:
+                reporte.duplicados_detalle.append(
+                    {"archivo": nombre, "uuid": cfdi.uuid, "razon": "ya existía"}
+                )
             continue
 
         direccion = _direccion(cfdi, reporte.rfc_cliente) if reporte.rfc_cliente else None
@@ -229,9 +238,10 @@ def importar(
         db.add(_comprobante(cliente, cfdi, direccion, origen, ruta, datos))
         vistos.add(cfdi.uuid)
         reporte.importados += 1
-        reporte.importados_detalle.append(
-            {"archivo": nombre, "uuid": cfdi.uuid, "direccion": direccion, "tipo": cfdi.tipo}
-        )
+        if detalle:
+            reporte.importados_detalle.append(
+                {"archivo": nombre, "uuid": cfdi.uuid, "direccion": direccion, "tipo": cfdi.tipo}
+            )
         pendientes += 1
         if pendientes >= LOTE_FLUSH:
             db.flush()

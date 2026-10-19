@@ -1219,3 +1219,72 @@ incluye clientes ya borrados), `accion` (exacta, o prefijo con `*`: `trabajo.*`)
                  "accion": "trabajo.reintentar", "entidad": "trabajo", "entidad_id": "7",
                  "detalle": {"tipo": "diagnostico.cliente"}, "ip": "201.0.0.1" } ] }
 ```
+
+---
+
+## Descarga masiva del SAT (P1-01, P1-02)
+
+Todas bajo `/api/v1/sat/clientes/{clave}/...`, autenticadas, con `contexto_actual` +
+`cliente_o_404` (**cliente de otro despacho = 404**). Leer: cualquier rol que vea al cliente.
+Escribir (`PUT config`, `POST descargar`, `POST historica`): sólo `dueno` y `contador`
+(auxiliar → 403). Las descargas **encolan**: el SAT puede tardar de minutos a días y el avance
+se ve en la bitácora y en la lista de solicitudes. Detalle del servicio y sus códigos en
+`docs/servicios-externos.md` §"Descarga masiva del SAT".
+
+### `GET /config` · `PUT /config`
+```json
+{ "exito": true,
+  "config": { "activa": false, "emitidos": true, "recibidos": true, "metadata": true,
+              "cancelados": true, "desde": null, "hora": "02:00", "pausada_por": null,
+              "ultimo_dia_encolado": null },
+  "efirma": { "vigente": true, "valido_hasta": "2030-01-01T00:00:00+00:00", "mensaje": "" },
+  "alertas": [ { "id": 1, "tipo": "atorada", "mensaje": "…", "solicitud_id": 7, "creado_en": "…" } ] }
+```
+`PUT` acepta cualquiera de `activa`, `emitidos`, `recibidos`, `metadata`, `cancelados`, `desde`
+(AAAA-MM-DD), `hora` (`HH:MM`, Ciudad de México; inválida → 422) y devuelve lo mismo. Sin
+configuración guardada, todo encendido salvo `activa`. Activarla sin e.firma vigente la deja
+`pausada_por: "efirma"` con alerta `sin_efirma`; se reanuda sola al subir una e.firma.
+Tipos de alerta: `sin_efirma`, `atorada`, `error_sat`, `agotada`.
+
+### `POST /descargar`
+`{"desde": "2026-09-01", "hasta": "2026-09-30", "seleccion"?: {"emitidos", "recibidos",
+"metadata", "cancelados"}}` (sin `seleccion` usa la de la config). Un trabajo por mes del rango
+(clave única: pedirlo dos veces no duplica). `desde > hasta`, más de 366 días o un día futuro →
+422. Sin e.firma vigente → **409** con el motivo.
+```json
+{ "exito": true, "encolados": [ {"trabajo_id": 12, "inicio": "2026-09-01", "fin": "2026-09-30"} ] }
+```
+
+### `POST /historica`
+`{"desde": "2024-01-01", "hasta"?: "…", "seleccion"?: {…}}` — `hasta` default ayer. Un trabajo
+por mes; más de 72 meses → 422 (el SAT guarda seis años). Misma respuesta que `/descargar`.
+
+### `GET /solicitudes?estado&pagina&por_pagina`
+Paginado (`por_pagina` 1–100, default 20), más reciente primero.
+```json
+{ "exito": true, "total": 16, "pagina": 1, "por_pagina": 20,
+  "solicitudes": [ { "id": 7, "direccion": "emitidos", "tipo": "cfdi", "estado_comprobante": "todos",
+    "fecha_inicial": "2026-09-01T00:00:00", "fecha_final": "2026-09-30T23:59:59",
+    "rfc_contraparte": "", "tipo_comprobante": "", "origen": "diaria|manual|historica|division",
+    "padre_id": null, "id_solicitud": "4e80…", "estado": "terminada", "codigo": "5000",
+    "mensaje": "Terminada: 120 XML nuevos en la bóveda, 3 ya existían.", "numero_cfdis": 1,
+    "paquetes": 1, "paquetes_procesados": 1, "xml_importados": 120, "duplicados": 3,
+    "rechazados": 0, "metadata_registros": 0, "veces_solicitada": 1, "verificaciones": 3,
+    "intentos": 0, "proxima_verificacion": null, "solicitada_en": "…", "terminada_en": "…",
+    "creado_en": "…" } ] }
+```
+`estado`: `pendiente` · `solicitada` · `en_proceso` · `descargando` · `terminada` · `sin_datos`
+(el SAT respondió 5004) · `fallida` · `dividida` (rebasó el tope 5003 y se partió en hijas con
+`padre_id`). `mensaje` siempre en español.
+
+### `GET /bitacora?anio=2026&mes=9`
+Un renglón por día del mes, para el calendario:
+```json
+{ "exito": true, "anio": 2026, "mes": 9, "dias": [
+  { "fecha": "2026-09-01", "estado": "completo", "solicitudes": 2, "emitidos": 14,
+    "recibidos": 0, "metadata": 14, "cancelados": 1, "mensaje": "" } ] }
+```
+`estado`: `completo` · `en_proceso` · `sin_movimientos` · `fallido` · `no_solicitado`. Manda el
+peor de las solicitudes que cubren el día (las `dividida` no cuentan: las cubren sus hijas).
+`emitidos`/`recibidos` cuentan la bóveda por `Fecha` del CFDI; `metadata`/`cancelados`, la
+metadata del SAT por `FechaEmision`.
