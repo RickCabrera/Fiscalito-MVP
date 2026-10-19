@@ -47,9 +47,26 @@ def documento() -> dict[str, Any]:
     from app.main import app
 
     esquema = app.openapi()
+    _normalizar_frases_http(esquema)
     if not esquema.get("paths") or not esquema.get("components", {}).get("schemas"):
         raise RuntimeError("El OpenAPI salió vacío: el exportador está roto, no la API.")
     return esquema
+
+
+# La frase del 422 cambió de nombre en Python 3.13 (RFC 9110): "Unprocessable Entity" →
+# "Unprocessable Content". FastAPI la toma de `http.HTTPStatus`, así que el contrato salía
+# distinto según la versión de Python (local 3.13, CI 3.12). Se fija la frase moderna.
+_FRASES_HTTP = {"Unprocessable Entity": "Unprocessable Content"}
+
+
+def _normalizar_frases_http(esquema: dict[str, Any]) -> None:
+    """Uniforma las descripciones de respuesta que dependen de la versión de Python."""
+    for operaciones in esquema.get("paths", {}).values():
+        for operacion in operaciones.values():
+            for respuesta in (operacion.get("responses") or {}).values():
+                desc = respuesta.get("description")
+                if desc in _FRASES_HTTP:
+                    respuesta["description"] = _FRASES_HTTP[desc]
 
 
 def serializar_openapi(esquema: dict[str, Any]) -> str:
