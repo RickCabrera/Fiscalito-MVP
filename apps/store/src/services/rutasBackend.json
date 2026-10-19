@@ -23,6 +23,31 @@
       ]
     },
     {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/resumen",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
@@ -164,6 +189,12 @@
     },
     {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

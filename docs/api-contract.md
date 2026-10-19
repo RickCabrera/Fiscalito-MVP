@@ -1028,3 +1028,78 @@ desarrollo"}`.
   **su declaración anual sale al 30 de abril y una persona moral la presenta en marzo**
   (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, que T6 tenía prohibido
   tocar. Queda como deuda escrita, no como sorpresa.
+
+---
+
+## Bóveda de CFDI (plan P, P0-03)
+
+Comprobantes (I, E, P, N, T) **por cliente**, deduplicados por UUID, con el XML original en el
+adaptador de almacenamiento (`FISCALITO_ALMACENAMIENTO`, ver `docs/servicios-externos.md`).
+Todas las rutas exigen `Authorization: Bearer <ID token>` y resuelven el cliente con
+`contexto_actual` + `cliente_o_404`: **un cliente de otro despacho es 404**, igual que uno que no
+existe. `{clave}` es la clave pública del cliente (`taller`). El UUID se acepta en cualquier
+capitalización y se guarda en mayúsculas. Importes como texto con 2 decimales.
+
+### `POST /api/v1/boveda/clientes/{clave}/cfdi`
+
+`multipart/form-data`, campo `archivos` repetible (máx. 200 por carga): XML sueltos (`.xml` o
+`.XML`) y/o ZIP. Del ZIP se lee un miembro a la vez; un ZIP dentro de otro **no** se abre. Cada
+XML pasa de 10 MB → rechazado. Respuesta 200:
+
+```json
+{ "exito": true, "rfc_cliente": "XEXX010101AB1", "rfc_deducido": false,
+  "importados": 498, "duplicados": 1,
+  "rechazados": [{"archivo": "lote.zip/notas.txt", "razon": "No es XML."}],
+  "importados_detalle": [{"archivo": "lote.zip/a.xml", "uuid": "…", "direccion": "emitido", "tipo": "I"}],
+  "duplicados_detalle": [{"archivo": "lote.zip/b.xml", "uuid": "…", "razon": "ya existía"}] }
+```
+
+- **Duplicado** = el UUID ya está en la bóveda de ESE cliente o salió antes en el mismo lote.
+  No se sobrescribe nada. El mismo UUID sí puede vivir en dos clientes (emisor y receptor).
+- **Dirección**: `emitido` si el RFC del cliente es el emisor, `recibido` si es el receptor; si
+  no es ninguno, el XML se **rechaza** ("no es emisor ni receptor").
+- **Cliente sin RFC**: se toma el RFC más frecuente del lote (`rfc_deducido: true`). La ficha
+  del cliente **no** se modifica.
+- Rechazos con razón: no es XML ni ZIP, XML ilegible, con DOCTYPE, versión distinta de 3.3/4.0,
+  sin timbre, `TipoDeComprobante` inválido, ZIP dañado o anidado.
+
+### `GET /api/v1/boveda/clientes/{clave}/cfdi`
+
+Query (todo opcional): `desde`, `hasta` (AAAA-MM-DD, inclusivos, sobre `Fecha` del CFDI),
+`tipo` (`I|E|P|N|T`), `direccion` (`emitido|recibido`), `rfc` (la **contraparte**: receptor de
+lo emitido, emisor de lo recibido), `estatus` (`vigente|cancelado|desconocido`), `pagina`
+(≥1, default 1), `por_pagina` (1–200, default 50). `desde > hasta` → 422. Orden: fecha
+descendente.
+
+```json
+{ "exito": true, "total": 500, "pagina": 1, "por_pagina": 50,
+  "comprobantes": [{ "uuid": "…", "version": "4.0", "tipo": "I", "fecha": "2026-03-10T10:00:00",
+    "serie": "A", "folio": "1", "rfc_emisor": "…", "nombre_emisor": "…", "rfc_receptor": "…",
+    "nombre_receptor": "…", "direccion": "emitido", "subtotal": "1000.00", "descuento": "0.00",
+    "total": "1160.00", "moneda": "MXN", "metodo_pago": "PUE", "forma_pago": "03",
+    "uso_cfdi": "G03", "iva_trasladado": "160.00", "iva_retenido": "0.00",
+    "isr_retenido": "0.00", "ieps": "0.00", "estatus_sat": "desconocido", "origen": "manual" }] }
+```
+
+`estatus_sat` nace `desconocido`; lo llenará P1-03. `origen` es `manual` (subido) o `sat`
+(descarga masiva, P1-01).
+
+### `GET /api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml`
+
+El XML **byte por byte** como se subió (`application/xml`, `Content-Disposition: attachment`).
+Antes de entregarlo se verifica su SHA-256 contra el guardado: si no coincide, 500 y no se
+entrega. 404 si el UUID no está en la bóveda de ese cliente.
+
+### `DELETE /api/v1/boveda/clientes/{clave}/cfdi/{uuid}`
+
+Quita el renglón y el XML del almacenamiento. `{"exito": true, "uuid": "…"}`; 404 si no existe.
+
+### `GET /api/v1/boveda/clientes/{clave}/resumen`
+
+Acepta los mismos filtros que la lista (sin paginar). Conteo y suma de `total` por mes, tipo y
+dirección:
+
+```json
+{ "exito": true, "renglones": [
+  {"periodo": "2026-03", "tipo": "I", "direccion": "emitido", "cantidad": 42, "total": "48720.00"} ] }
+```

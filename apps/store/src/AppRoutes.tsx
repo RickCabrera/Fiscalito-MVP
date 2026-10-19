@@ -37,6 +37,8 @@ import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
 // R-05: empleados y dispositivos del cliente activo, entradas propias del sidebar.
 import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
+// P0-03: bóveda de CFDI del cliente activo.
+import BovedaPage from './pages/BovedaPage';
 // DEMO E-07: calendario patronal de la cartera. Se borra en F2.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
 
@@ -75,6 +77,7 @@ export default function AppRoutes() {
             piden en vez de caer en un default silencioso. */}
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="dispositivos" element={<DispositivosPage />} />
+        <Route path="boveda" element={<BovedaPage />} />
         {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
         <Route path="store" element={<MarketplacePage />} />

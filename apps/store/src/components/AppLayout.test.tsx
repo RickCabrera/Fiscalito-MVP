@@ -186,7 +186,7 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
 });
 
 describe('sidebar de AppLayout', () => {
-  it('el contador ve exactamente sus ocho enlaces', () => {
+  it('el contador ve exactamente sus nueve enlaces', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     const { container } = montar();
 
@@ -195,9 +195,9 @@ describe('sidebar de AppLayout', () => {
     // T1 sumó el servicio fiscal, que abre el del CLIENTE ACTIVO —no el del
     // despacho, que es lo que E-07 quitó y sigue sin existir. Contabilito entró
     // después: la portada ya lo anunciaba en BETA y su pantalla (T7) sólo se
-    // alcanzaba tecleando la URL.
+    // alcanzaba tecleando la URL. P0-03 sumó la Bóveda de CFDI del cliente activo.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario',
+      'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Nómina', 'Calendario',
       MARCA_CORTA, 'Contabilito', 'Perfil',
     ]);
   });

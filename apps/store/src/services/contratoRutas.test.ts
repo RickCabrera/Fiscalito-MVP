@@ -67,6 +67,8 @@ import * as carteraBackend from './carteraBackend';
 // que no repita lo de `carteraBackend` — un módulo entero que pegaba al backend
 // y entró por debajo del test que existe para impedirlo.
 import * as cfdiNominaApi from './cfdiNominaApi';
+// P0-03: la bóveda de CFDI. Se registra el día que nace.
+import * as bovedaApi from './bovedaApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -182,6 +184,13 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
   'cfdiNominaApi.ts': {
     generarCFDINomina: () => cfdiNominaApi.generarCFDINomina({} as never),
   },
+  'bovedaApi.ts': {
+    importarCfdi: () => bovedaApi.importarCfdi('taller', []),
+    listarCfdi: () => bovedaApi.listarCfdi('taller', { tipo: 'I', pagina: 2 }),
+    descargarXml: () => bovedaApi.descargarXml('taller', 'AAAA-BBBB'),
+    borrarCfdi: () => bovedaApi.borrarCfdi('taller', 'AAAA-BBBB'),
+    resumenBoveda: () => bovedaApi.resumenBoveda('taller'),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -215,6 +224,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'carteraApi.ts': carteraApi,
   'carteraBackend.ts': carteraBackend,
   'cfdiNominaApi.ts': cfdiNominaApi,
+  'bovedaApi.ts': bovedaApi,
 };
 
 /**
@@ -242,6 +252,8 @@ const HELPERS_PUROS = new Set([
   'contarNomina',
   'faltantesParaCFDI',
   'reciboParaCFDI',
+  // P0-03: arma el query string de los filtros de la bóveda. No pega al backend.
+  'consultaDeFiltros',
 ]);
 
 /**

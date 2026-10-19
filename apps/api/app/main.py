@@ -20,6 +20,7 @@ from app.logging_config import setup_logging
 from app.routes import (
     agente,
     asistencia,
+    boveda,
     calendario,
     cartera,
     comparador,
@@ -107,6 +108,8 @@ app.include_router(despacho.router, prefix="/api/v1")
 # R-07: el único router del repo que EXIGE autenticación. El resto de /api/v1
 # sigue abierto (S-00b) y eso no cambia aquí.
 app.include_router(cartera.router, prefix="/api/v1")
+# Plan P, P0-03: bóveda de CFDI por cliente (contexto_actual + cliente_o_404).
+app.include_router(boveda.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":
