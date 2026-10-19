@@ -5,8 +5,9 @@ POST /api/v1/pre-declaracion          → Pre-declaracion mensual o bimestral
 POST /api/v1/pre-declaracion-anual    → Pre-declaracion anual
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES, NOMBRES_REGIMEN
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.deducciones_personales import calcular_deducciones_personales
@@ -50,7 +51,9 @@ def _rechazar_si_no_hay_motor(regimen: str) -> None:
     description="Recibe perfil del contribuyente y facturas del periodo. "
     "Calcula ISR/IVA y devuelve desglose con explicacion en lenguaje natural.",
 )
-async def pre_declaracion(req: PreDeclaracionRequest):
+async def pre_declaracion(
+    req: PreDeclaracionRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     # Validaciones
     # El regimen se revisa PRIMERO: un 601 sin facturas tiene que enterarse de
     # que el motor no existe, no de que le falta un XML.
@@ -105,6 +108,7 @@ async def pre_declaracion(req: PreDeclaracionRequest):
     explicacion = None
     if req.incluir_explicacion:
         contributor_type = getattr(req.contribuyente, 'contributor_type', None)
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion(
             desglose=desglose,
             regimen=regimen_nombre,
@@ -136,7 +140,9 @@ async def pre_declaracion(req: PreDeclaracionRequest):
     description="Recibe perfil del contribuyente y TODAS las facturas del ejercicio fiscal. "
     "Calcula ISR/IVA anual con deducciones personales.",
 )
-async def pre_declaracion_anual(req: PreDeclaracionRequest):
+async def pre_declaracion_anual(
+    req: PreDeclaracionRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     _rechazar_si_no_hay_motor(req.contribuyente.regimen)
 
     if not req.facturas:
@@ -158,6 +164,7 @@ async def pre_declaracion_anual(req: PreDeclaracionRequest):
     explicacion = None
     if req.incluir_explicacion:
         contributor_type = getattr(req.contribuyente, 'contributor_type', None)
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion(
             desglose=desglose,
             regimen=regimen_nombre,
@@ -292,7 +299,9 @@ def _generar_recomendaciones(req: PreDeclaracionRequest, desglose) -> list[str]:
     description="Calcula deducciones personales aplicando topes individuales y globales. "
     "Estima saldo a favor de ISR.",
 )
-async def deducciones_personales(req: DeduccionesPersonalesRequest):
+async def deducciones_personales(
+    req: DeduccionesPersonalesRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if req.ingresos_anuales <= 0:
         raise HTTPException(
             status_code=400,
@@ -331,6 +340,7 @@ async def deducciones_personales(req: DeduccionesPersonalesRequest):
 
     explicacion = None
     if req.incluir_explicacion:
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_deducciones(
             resultado=resultado,
             saldo_a_favor=saldo_a_favor,

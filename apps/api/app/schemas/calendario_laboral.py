@@ -1,7 +1,7 @@
 """
 Schemas del calendario de obligaciones patronales (E-07 / F1-06).
 
-**Demo — datos estáticos, sin autenticación, no desplegar**, igual que el resto
+**Demo — datos estáticos, no desplegar**, igual que el resto
 de la cartera del despacho: la persistencia y el alta de clientes son F1-09.
 """
 

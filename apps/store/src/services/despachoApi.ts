@@ -8,10 +8,13 @@
  * es quien tiene el fundamento legal y los tests que lo verifican.
  */
 
+import { V1, encabezadoAuth } from './api';
 import { cuerpoDeError, detalleDelError } from './errorApi';
 
-const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
-const V1 = `${BASE_URL}/api/v1`;
+/** GET con la sesión (P0-02: todo `/api/v1` la exige). */
+async function obtener(url: string): Promise<Response> {
+  return fetch(url, { headers: await encabezadoAuth() });
+}
 
 /** Empleado tal como lo devuelve la ficha del cliente. */
 export interface EmpleadoCliente {
@@ -80,13 +83,13 @@ async function leer<T>(res: Response, queFallo: string): Promise<T> {
 }
 
 export async function obtenerClientes(): Promise<ClienteResumen[]> {
-  const res = await fetch(`${V1}/despacho/clientes`);
+  const res = await obtener(`${V1}/despacho/clientes`);
   const cuerpo = await leer<{ clientes: ClienteResumen[] }>(res, 'No se pudo cargar la cartera');
   return cuerpo.clientes;
 }
 
 export async function obtenerCliente(clienteId: string): Promise<ClienteDetalle> {
-  const res = await fetch(`${V1}/despacho/clientes/${encodeURIComponent(clienteId)}`);
+  const res = await obtener(`${V1}/despacho/clientes/${encodeURIComponent(clienteId)}`);
   return leer<ClienteDetalle>(res, `No se pudo cargar el cliente ${clienteId}`);
 }
 
@@ -142,7 +145,7 @@ export interface CalendarioPatronal {
  */
 /** El calendario patronal de toda la cartera del despacho. */
 export async function obtenerCalendarioPatronal(anio: number): Promise<CalendarioPatronal> {
-  const res = await fetch(`${V1}/despacho/calendario?anio_de_las_cuotas=${anio}`);
+  const res = await obtener(`${V1}/despacho/calendario?anio_de_las_cuotas=${anio}`);
   return leer<CalendarioPatronal>(res, 'No se pudo cargar el calendario patronal');
 }
 
@@ -186,7 +189,7 @@ export interface PeriodoSugerido {
 export async function obtenerPeriodoSugerido(
   clavePeriodicidad: string,
 ): Promise<PeriodoSugerido> {
-  const res = await fetch(
+  const res = await obtener(
     `${V1}/nomina/periodo-sugerido?clave_periodicidad=${encodeURIComponent(clavePeriodicidad)}`,
   );
   return leer<PeriodoSugerido>(res, 'No se pudo obtener el periodo sugerido');

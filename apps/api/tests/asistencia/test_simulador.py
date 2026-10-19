@@ -465,3 +465,37 @@ class TestQuincena:
     def test_bordes(self, hoy, inicio, fin):
         periodo = quincena(hoy)
         assert (periodo.inicio, periodo.fin) == (inicio, fin)
+
+
+class TestCredencial:
+    """P0-02: la API ya no acepta checadas anónimas; el simulador manda credencial."""
+
+    def test_con_token_de_dispositivo_siembra_sin_sesion(self, api, eventos):
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        token = api("uid-a").post(
+            "/api/v1/asistencia/tokens", json={"cliente": CLIENTE_DEMO}
+        ).json()["token"]
+        anonimo = TestClient(app)
+        registro = []
+
+        def poster(url, params, payload):
+            registro.append(params)
+            return anonimo.post(url, params=params, json=payload)
+
+        recibidos, _ = sim.enviar(
+            [eventos], EVENTOS, CLIENTE_DEMO, "simulado", poster=poster, token=token
+        )
+        assert recibidos == TOTAL_EVENTOS
+        # Viaja como lo manda el aparato: en la URL.
+        assert registro[0]["token"] == token
+        listado = api("uid-a").get(EVENTOS, params={"cliente": CLIENTE_DEMO}).json()
+        assert len(listado["eventos"]) == TOTAL_EVENTOS
+
+    def test_sin_credencial_el_cli_no_arranca(self, capsys, monkeypatch):
+        monkeypatch.delenv("FISCALITO_TOKEN_DISPOSITIVO", raising=False)
+        monkeypatch.delenv("FISCALITO_ID_TOKEN", raising=False)
+        assert sim.main(["--inicio", "2026-08-16", "--fin", "2026-08-31"]) == 2
+        assert "Falta credencial" in capsys.readouterr().err

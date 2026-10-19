@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import sys
 import time as espera_modulo
 from collections.abc import Callable, Sequence
@@ -89,8 +90,11 @@ ventana_entrada_normal = _gen.ventana_entrada_normal
 RUTA_EVENTOS = "/api/v1/asistencia/eventos"
 
 
-def _poster_httpx(url: str, params: dict, payload: dict):
-    return httpx.post(url, params=params, json=payload, timeout=10.0)
+def _poster_httpx(url: str, params: dict, payload: dict, id_token: str | None = None):
+    # P0-02: con sesión de Firebase el token va en `Authorization`; el de dispositivo ya
+    # viaja en `params` (`?token=`), igual que en la URL que se configura en el aparato.
+    encabezados = {"Authorization": f"Bearer {id_token}"} if id_token else None
+    return httpx.post(url, params=params, json=payload, headers=encabezados, timeout=10.0)
 
 
 def enviar(
@@ -100,6 +104,7 @@ def enviar(
     fuente: str,
     intervalo: float = 0.0,
     poster: Callable[[str, dict, dict], object] | None = None,
+    token: str | None = None,
 ) -> tuple[int, int]:
     """
     Postea cada lote y acumula `(recibidos, duplicados)`.
@@ -107,13 +112,20 @@ def enviar(
     `poster` es inyectable para que los tests manejen el camino *push* con un
     `TestClient` y sin esperar: es el mismo camino que ejercera el aparato real
     en D-08, y es donde mas facil se rompe la forma del payload.
+
+    `token` (P0-02) es el token del dispositivo: viaja como `?token=`, que es como lo
+    manda el aparato real, y fija el cliente. Sin el, la autenticacion la pone el
+    `poster` (sesion de Firebase).
     """
     enviar_uno = poster or _poster_httpx
     recibidos = duplicados = 0
     for numero, lote in enumerate(lotes):
         if numero and intervalo > 0:
             espera_modulo.sleep(intervalo)
-        respuesta = enviar_uno(url, {"cliente": cliente, "fuente": fuente}, envolver(lote))
+        params = {"cliente": cliente, "fuente": fuente}
+        if token:
+            params["token"] = token
+        respuesta = enviar_uno(url, params, envolver(lote))
         # El status ANTES del cuerpo: un 500 o un 502 de un proxy contesta HTML,
         # y `.json()` levantaria un JSONDecodeError que no es httpx.HTTPError y
         # no lo atrapa nadie. El error util es el codigo, no el parseo.
@@ -148,6 +160,20 @@ def _argumentos(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--intervalo", type=float, default=5.0)
     parser.add_argument("--limite", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
+    # P0-02: la API exige credencial. El checador real usa su token de dispositivo
+    # (`POST /api/v1/asistencia/tokens` lo emite); el simulador acepta ese mismo token o un
+    # ID token de Firebase del despacho. Por variable de entorno para no dejarlo en el
+    # historial de la consola.
+    parser.add_argument(
+        "--token",
+        default=os.environ.get("FISCALITO_TOKEN_DISPOSITIVO"),
+        help="Token del dispositivo (o FISCALITO_TOKEN_DISPOSITIVO).",
+    )
+    parser.add_argument(
+        "--id-token",
+        default=os.environ.get("FISCALITO_ID_TOKEN"),
+        help="ID token de Firebase del despacho (o FISCALITO_ID_TOKEN).",
+    )
     return parser.parse_args(argv)
 
 
@@ -216,10 +242,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     lotes += [[evento] for evento in vivos]
     if vivos:
         print(f"{len(vivos)} checadas en vivo, una cada {args.intervalo} s.")
+    if not (args.token or args.id_token):
+        print(
+            "Falta credencial: --token (token del dispositivo) o --id-token (sesion de "
+            "Firebase). La API ya no acepta checadas anonimas (P0-02).",
+            file=sys.stderr,
+        )
+        return 2
     url = f"{args.api}{RUTA_EVENTOS}"
+
+    def _poster(destino: str, params: dict, payload: dict):
+        return _poster_httpx(destino, params, payload, args.id_token)
+
     try:
         recibidos, duplicados = enviar(
-            lotes, url, args.cliente, args.fuente, args.intervalo if vivos else 0.0
+            lotes,
+            url,
+            args.cliente,
+            args.fuente,
+            args.intervalo if vivos else 0.0,
+            poster=_poster,
+            token=args.token,
         )
     except httpx.HTTPError as exc:
         print(f"No se pudo hablar con la API en {url}: {exc}", file=sys.stderr)

@@ -158,6 +158,34 @@ def db_sesion(sesionador: sessionmaker) -> Iterator[Session]:
         sesion.close()
 
 
+UID_PRUEBA = "uid-prueba"
+
+
+@pytest.fixture(autouse=True)
+def _limitador_limpio() -> Iterator[None]:
+    """
+    P0-02: el limitador es memoria del proceso y su ventana dura 60 s, así que sin
+    vaciarlo entre tests el resultado dependería del orden (y de la velocidad de la suite).
+    """
+    from app.acceso.limitador import reiniciar_limitador
+
+    reiniciar_limitador()
+    yield
+    reiniciar_limitador()
+
+
+@pytest.fixture
+def cliente_http(api) -> object:
+    """
+    TestClient autenticado como `UID_PRUEBA` sobre el SQLite en memoria del test.
+
+    P0-02: todo `/api/v1` exige sesión, así que los tests de ruta que antes usaban
+    `TestClient(app)` pelado usan éste. Un test que quiera medir el 401 crea su propio
+    `TestClient(app)` sin encabezado.
+    """
+    return api(UID_PRUEBA)
+
+
 @pytest.fixture
 def api(sesionador: sessionmaker) -> Iterator[Callable[[str], object]]:
     """`api("uid")` → TestClient autenticado como ese uid, sobre el SQLite del test."""

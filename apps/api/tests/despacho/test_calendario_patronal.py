@@ -18,15 +18,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.despacho_demo import CLIENTES
-from app.main import app
 from app.nomina_engine.calendario_laboral import calendario_patronal
 
 RUTA = "/api/v1/despacho/calendario"
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 def pedir(cliente_http: TestClient, anio: int = 2026) -> dict:

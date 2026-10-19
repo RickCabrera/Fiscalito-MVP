@@ -23,6 +23,19 @@
       ]
     },
     {
+      "path": "/api/v1/asistencia/tokens",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/tokens/{token_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
       "path": "/api/v1/auditoria",
       "metodos": [
         "GET"

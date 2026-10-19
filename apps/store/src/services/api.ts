@@ -14,7 +14,13 @@ export const V1 = `${API_URL}/api/v1`;
 
 const TIMEOUT_MS = 30000;
 
-/** Encabezado de autorización con la sesión actual. */
+/**
+ * Encabezado de autorización con la sesión actual (P0-02: todo `/api/v1` lo exige).
+ *
+ * Todo módulo que habla con el backend pasa por aquí, así que importa `./firebase`, que
+ * sin llaves LANZA al importarse (ver `sinLlavesDeFirebase.test.ts`). En tests lo dobla
+ * `src/test/setup.ts` para toda la suite.
+ */
 export async function encabezadoAuth(): Promise<Record<string, string>> {
   const usuario = auth.currentUser;
   if (!usuario) throw new Error('Hace falta iniciar sesión.');

@@ -9,20 +9,20 @@ errores, forma de la respuesta— y **no** la aritmética, que ya mide
 import json
 from datetime import date, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.asistencia.almacen import almacen
 from app.constants import CLIENTE_DEMO
 from app.demo_nomina import PLANTILLA_DEMO
-from app.main import app
 from app.routes.agente import (
     SYSTEM_PROMPT_ANTHROPIC,
     SYSTEM_PROMPT_OPENAI,
 )
 from app.services.agent_tools import TOOLS_ANTHROPIC, TOOLS_OPENAI, ejecutar_tool
 from app.services.agent_tools_nomina import calcular_nomina_periodo
+from tests.conftest import UID_PRUEBA
 
 CALCULAR = "/api/v1/nomina/calcular-periodo"
 EVENTOS = "/api/v1/asistencia/eventos"
@@ -38,9 +38,7 @@ def _almacen_limpio():
     almacen.reset()
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 def _incidencias(faltas_de=(), dias=16):
@@ -357,10 +355,11 @@ class TestToolDelAgente:
     def test_el_despachador_la_encuentra(self, cliente_http):
         dias = [date(2026, 8, 17) + timedelta(days=n) for n in range(5)]
         self._sembrar(cliente_http, dias)
+        # P0-02: la tool lee las checadas del despacho del request (el de la sesión).
         salida, desglose = ejecutar_tool(
             "calcular_nomina_periodo",
             {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"},
-            ctx=None,
+            ctx=SimpleNamespace(despacho_id=UID_PRUEBA),
         )
         datos = json.loads(salida)
         assert desglose is None
@@ -392,10 +391,21 @@ class TestToolDelAgente:
         self._sembrar(cliente_http, [date(2026, 8, 24)], empleados=["E-99"])
         datos = json.loads(
             calcular_nomina_periodo(
-                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}
+                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}, UID_PRUEBA
             )
         )
         assert any("E-99" in a for a in datos["advertencias"])
+
+    def test_no_ve_las_checadas_de_otro_despacho(self, cliente_http):
+        """P0-02: las checadas sembradas por un despacho no alimentan la nómina de otro."""
+        dias = [date(2026, 8, 17) + timedelta(days=n) for n in range(5)]
+        self._sembrar(cliente_http, dias)
+        datos = json.loads(
+            calcular_nomina_periodo(
+                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}, "otro-despacho"
+            )
+        )
+        assert "error" in datos
 
     def test_una_fecha_invalida_devuelve_error_y_no_revienta_el_turno(self):
         salida = json.loads(
