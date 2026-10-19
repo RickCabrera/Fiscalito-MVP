@@ -1,10 +1,330 @@
-# BACKLOG — Fiscalito (prioridad: Nómina)
+# BACKLOG — Fiscalito (prioridad: plan P, paridad con Contadigital)
 
 Reglas: una tarea = una rama = un PR. `[x]` solo tras merge a main confirmado por
 Ricardo. Cada tarea tiene su "Listo cuando" — el plan y el revisor se miden contra eso.
 El detalle de dominio (valores 2026, fórmulas, fuentes) está en `docs/PLAN_NOMINA.md`.
 
-## Cola nocturna
+## P — Plan de paridad con Contadigital (2026-10-19) · ORDEN VIGENTE DE CONSTRUCCIÓN
+
+**El porqué.** Contadigital (contadigitalmx) ofrece en un solo producto lo que Fiscalito quiere
+ser: contabilidad automática, descarga diaria del SAT, conciliación bancaria, balanza dinámica,
+nómina IMSS y asimilados, ISR/IVA de todos los regímenes, verificación de CFDI y EFOS/EDOS,
+DIOT batch, papeles de trabajo de morales, envío por WhatsApp con IA, calendario de
+vencimientos y cuentas por cobrar. Este plan lleva Fiscalito a esa paridad **de punta a punta**.
+
+**La regla del plan.** Las fases P0–P6 son **sólo código** y se construyen completas. Cada
+servicio externo se programa detrás de un **adaptador** (una interfaz con una implementación
+falsa para desarrollo y tests, y la real que se enciende con variables de entorno). Al terminar
+P6 la app está terminada y lo único pendiente es la fase **EXT**: contratar, dar de alta y
+pegar credenciales. Ninguna tarea de P0–P6 puede depender de una cuenta externa para cerrar.
+
+**Orden.** Se construye en el orden de este documento. Esta sección **sustituye a la Cola
+nocturna** de abajo, que queda como historia. El régimen de construcción (plan, revisor, una
+rama por tarea o corrida) lo decide Ricardo al autorizar.
+
+**Siguen en pie, sin excepción:** el motor no usa el LLM para calcular; ninguna tabla
+ISR/IMSS/UMA/SM/INPC cambia sin fuente oficial; todo cálculo nuevo de motor pasa por **revisor
+de motor**; nada de datos personales reales en el repo.
+
+### Decisiones que hay que tomar antes o durante (no son código)
+
+- **DP-1 · Dónde vive el dato de volumen.** Recomendación: **Postgres** (en Railway al
+  publicar; local con Docker o SQLite en desarrollo) para CFDI, pólizas, nóminas e historial,
+  y **Firebase sólo para el login**. Firestore gratis aguanta ~50 mil lecturas al día: una
+  bóveda con miles de XML por cliente y una balanza que suma miles de movimientos lo rebasa el
+  primer día. P0-01 se construye con esta decisión salvo que Ricardo diga otra cosa.
+- **DP-2 · Opinión de cumplimiento y constancia de situación fiscal.** El SAT no tiene API
+  oficial. Opciones: proveedor de terceros, automatizar el portal con la e.firma del cliente
+  (zona gris), o que el despacho suba el PDF. El código (P1-05) queda con adaptador para las
+  tres; la elección es de Ricardo.
+- **DP-3 · Preguntas para la contadora** que ya estaban abiertas y bloquean partes de P4:
+  §D26 (ISR de periodos parciales), §D27 (febrero), §D28 (piso de prestaciones), §D25 (NSS),
+  §D30 (DIOT/Retenciones por régimen), y la regla de redondeo de actualización y recargos.
+- **DP-4 · Qué PAC.** Se elige al llegar a EXT; el código de P0-07 no depende de cuál.
+
+### Absorbidas por este plan
+
+Estas tareas viejas quedan **cubiertas por una tarea P** y se cierran cuando cierre la P que
+las absorbe: R-07, R-08, R-09 → P0-01 / P4-01 · R-10 → P0-01 · S-00 → P5-07 · S-00b → P0-02 ·
+S-03 → P0-08 · S-02, S-01b, R-11, B-01, S-07 → P6-05 · O-04 → P4-12 · F1-06 → P3-10 ·
+F1-07, F1-08 → P0-08 / P5-07 · F2, F3, F4 → todo P · D-08 → EXT-15.
+
+---
+
+### P0 · Cimientos (todo lo demás se apoya aquí)
+
+- [ ] **P0-01 · Base de datos y backend dueño del dato** — Postgres con SQLAlchemy + Alembic
+  (migraciones), con modelos de despacho, usuario, cliente, empleado, dispositivo y
+  credenciales. Todo el CRUD de cartera pasa por la API; el front deja de escribir Firestore
+  directo. Migración única de lo que hoy hay en Firestore (clientes, empleados, dispositivos,
+  historial) con script idempotente. Los `ilegibles` llegan a la pantalla (R-10).
+  *Listo cuando:* alta/edición/baja de cliente, empleado y dispositivo pasan por la API,
+  sobreviven reinicio, y el script migra una cuenta de prueba sin perder nada.
+- [ ] **P0-02 · Auth en toda la API + multi-tenant** — verificación del token de Firebase en
+  todo `/api/v1` (salvo `/health`); cada consulta filtrada por despacho; rate limit por usuario
+  y tope de gasto de LLM configurable (S-00b).
+  *Listo cuando:* tests de 401 sin token, 403 al pedir un cliente de otro despacho, y 429 al
+  exceder el límite.
+- [ ] **P0-03 · Bóveda de CFDI** — tabla única de comprobantes (I, E, P, N, T) por cliente,
+  deduplicada por UUID, con el XML guardado vía adaptador de almacenamiento (disco local en
+  dev, S3/R2 en producción). Parser en el backend. Carga manual de XML, carpetas y ZIP con
+  reporte de rechazados.
+  *Listo cuando:* subir un ZIP con 500 XML los guarda una sola vez, los clasifica emitido/
+  recibido por el RFC del cliente y vuelve a descargarse el XML original byte por byte.
+- [ ] **P0-04 · Trabajos en segundo plano** — worker + programador (cola con Redis o
+  equivalente; en dev, en proceso), con reintentos, bitácora y estado visible en pantalla.
+  *Listo cuando:* un trabajo programado corre a la hora, reintenta al fallar y su resultado se
+  ve en la app.
+- [ ] **P0-05 · Bóveda de credenciales del cliente** — carga de e.firma (FIEL) y CSD (.cer,
+  .key, contraseña) cifrados con una llave maestra de entorno; validación de RFC y vigencia;
+  aviso de vencimiento; el front nunca vuelve a ver la llave privada.
+  *Listo cuando:* se sube una e.firma de prueba del SAT, se valida, se guarda cifrada y un test
+  prueba que sin la llave maestra no se puede leer.
+- [ ] **P0-06 · Adaptadores de servicios externos** — interfaces y versión falsa de:
+  descarga masiva SAT, estatus CFDI, listas 69-B, opinión de cumplimiento, PAC (timbrar y
+  cancelar), WhatsApp, correo, pagos de suscripción, almacenamiento, monitoreo y LLM. Cada uno
+  se elige por variable de entorno. `docs/servicios-externos.md` lista cada variable.
+  *Listo cuando:* toda la suite corre sin red usando los falsos, y cambiar una variable cambia
+  de implementación sin tocar código.
+- [ ] **P0-07 · Bitácora de auditoría** — quién hizo qué y cuándo (altas, cálculos, timbrados,
+  envíos, descargas), consultable por el despacho.
+  *Listo cuando:* cada acción que escribe deja un renglón con usuario, cliente y fecha.
+- [ ] **P0-08 · Contrato único de la API** — OpenAPI exportado a `docs/api-contract.md` y tipos
+  de TypeScript generados para el front (S-03); las rutas de nómina ordenadas en
+  `routes/nomina/` (F1-07).
+  *Listo cuando:* un test falla si el contrato y el código divergen.
+
+### P1 · SAT: bóveda que se llena sola
+
+- [ ] **P1-01 · Cliente de descarga masiva del SAT** — implementación propia del web service
+  oficial (autenticación con e.firma, solicitud, verificación y descarga de paquetes; XML y
+  metadata; emitidos y recibidos). Tolera que el SAT tarde días en responder una solicitud.
+  Probado contra respuestas grabadas, sin red.
+  *Listo cuando:* con respuestas del SAT grabadas, una solicitud de un mes termina con los XML
+  en la bóveda, y una solicitud atorada se reintenta sin duplicar.
+- [ ] **P1-02 · Sincronización diaria y bitácora de descarga** — por cliente: qué bajar
+  (emitidos, recibidos, pagos, nóminas, cancelados) y cada cuándo; pantalla tipo calendario con
+  el estado de cada día (como la de Contadigital) y botón de "descargar ahora".
+  *Listo cuando:* el programador lanza la descarga diaria de cada cliente con e.firma y el
+  calendario marca cada día como completo, en proceso o fallido.
+- [ ] **P1-03 · Verificación de estatus de CFDI** — consulta masiva al servicio público del SAT
+  (vigente, cancelado, en proceso de cancelación); los cancelados se marcan en la bóveda y
+  revierten su póliza.
+  *Listo cuando:* un CFDI cancelado aparece marcado y deja de contar en cálculos y balanza.
+- [ ] **P1-04 · Listas 69-B (EFOS/EDOS)** — descarga periódica del listado público, cruce con
+  emisores de los recibidos de cada cliente, alerta y columna "Art. 69" en la bóveda.
+  *Listo cuando:* un proveedor que está en la lista se marca en rojo y genera alerta.
+- [ ] **P1-05 · Opinión de cumplimiento y constancia de situación fiscal** — vía adaptador
+  (DP-2), con carga manual de PDF como respaldo; historial por cliente y fecha.
+  *Listo cuando:* con el adaptador falso, se obtiene y guarda la opinión de un cliente y se ve
+  su semáforo (positiva/negativa) en la cartera.
+- [ ] **P1-06 · Los módulos leen la bóveda** — Fiscalito, Contabilito y la anual toman los CFDI
+  del periodo desde la bóveda; ya no se suben XML en cada pantalla (subir sigue disponible).
+  *Listo cuando:* con la bóveda cargada, la pre-declaración del mes sale sin subir un archivo.
+
+### P2 · Contabilito real
+
+- [ ] **P2-01 · Catálogo de cuentas** — código agrupador del Anexo 24 completo y contrastado
+  (quita el `PORVALIDAR`), catálogo por cliente editable con subcuentas y niveles.
+  *Listo cuando:* cada cuenta del agrupador cita su fuente y un cliente puede agregar
+  subcuentas.
+- [ ] **P2-02 · Reglas de pólizas automáticas** — configuración por cliente: contabilidad
+  automática de ingresos y egresos, cuenta por tipo de gasto, asignación por proveedor o
+  ClaveProdServ, tope para considerar gasto, cuentas no deducibles.
+  *Listo cuando:* cambiar una regla cambia la cuenta de las pólizas nuevas, con test.
+- [ ] **P2-03 · Pólizas persistentes** — generación masiva desde la bóveda (ingreso, egreso,
+  diario, pagos, nómina), folios, edición y pólizas manuales, cancelación ligada al CFDI.
+  *Listo cuando:* un mes de la bóveda genera sus pólizas una sola vez, Σ cargos = Σ abonos, y
+  una póliza manual se guarda y aparece en la balanza.
+- [ ] **P2-04 · Balanza dinámica, mayor y auxiliares** — saldos iniciales, cargos, abonos y
+  saldo final por periodo y nivel; clic en una cuenta baja a sus pólizas y al XML.
+  *Listo cuando:* el saldo final de un mes es el inicial del siguiente y el detalle cuadra con
+  la balanza.
+- [ ] **P2-05 · Reportes contables** — estado de resultados, balance general, auxiliares,
+  filtros por ejercicio, periodo, cuentas, nivel y moneda; exporta Excel y PDF.
+  *Listo cuando:* los reportes cuadran con la balanza del mismo periodo.
+- [ ] **P2-06 · Conciliación bancaria** — importar estado de cuenta (CSV, XLSX, OFX y PDF de
+  los bancos principales), emparejar automático contra pagos y pólizas, pendientes y
+  conciliación manual, reporte de partidas en conciliación.
+  *Listo cuando:* un estado de cuenta de prueba concilia solo los movimientos que coinciden y
+  deja los demás como pendientes.
+- [ ] **P2-07 · Contabilidad electrónica (Anexo 24)** — XML de catálogo, balanza y pólizas
+  (por solicitud), validados contra el XSD oficial versionado offline.
+  *Listo cuando:* los tres XML de un mes validan contra el XSD.
+- [ ] **P2-08 · Cierre de periodo y de ejercicio** — bloqueo de periodos cerrados, póliza de
+  cierre anual y apertura.
+  *Listo cuando:* un periodo cerrado no acepta pólizas nuevas y el cierre anual deja en cero
+  las cuentas de resultados.
+
+### P3 · Fiscalito completo
+
+- [ ] **P3-01 · Motor de personas morales (601)** — pagos provisionales (coeficiente de
+  utilidad, PTU pagada, pérdidas), anual con ajuste anual por inflación y papeles de trabajo en
+  Excel; corrige la anual de morales a marzo. REVISOR DE MOTOR.
+  *Listo cuando:* un caso de prueba con fuente cuadra al peso y genera su archivo de papeles.
+- [ ] **P3-02 · Resumen y actualización de impuestos** — tabla de todos los impuestos del
+  cliente en el periodo (ISR por régimen, retenciones de salarios, asimilados, honorarios,
+  RESICO y arrendamiento; IVA), con actualización por INPC, recargos, subsidio y
+  compensaciones. Tablas INPC y tasa de recargos con fuente. REVISOR DE MOTOR.
+  *Listo cuando:* un impuesto pagado tarde calcula actualización y recargos como el ejemplo
+  oficial.
+- [ ] **P3-03 · IVA completo** — acreditamiento proporcional, saldo a favor que se arrastra,
+  IVA retenido por enterar. REVISOR DE MOTOR.
+  *Listo cuando:* un saldo a favor de un mes se acredita en el siguiente.
+- [ ] **P3-04 · Retenciones a terceros y CFDI de retenciones** — cálculo completo y emisión del
+  CFDI de retenciones por el adaptador de PAC.
+  *Listo cuando:* sale el XML de retenciones válido contra su XSD, timbrado con el PAC falso.
+- [ ] **P3-05 · DIOT vigente** — layout contrastado contra el instructivo vigente del SAT (quita
+  el `PORVALIDAR`) y cortes por tasa reales, no deducidos.
+  *Listo cuando:* el `.txt` se valida contra el layout oficial con un caso de prueba.
+- [ ] **P3-06 · Papeles de trabajo de la anual** — personas físicas y morales, exportables a
+  Excel con el detalle mes a mes.
+  *Listo cuando:* el Excel de la anual cuadra con la pantalla.
+- [ ] **P3-07 · Impuesto sobre nómina (ISN) por estado** — catálogo de tasas estatales con
+  fuente y cálculo en la nómina y el calendario.
+  *Listo cuando:* un cliente en Veracruz calcula su ISN con la tasa citada.
+- [ ] **P3-08 · Calculadoras fiscales** — ISR de sueldos, RESICO, finiquito, aguinaldo, PTU,
+  actualización y recargos, como herramientas sueltas del despacho.
+  *Listo cuando:* cada calculadora usa el mismo motor que el módulo que la respalda.
+- [ ] **P3-09 · Alertas fiscales** — tope RESICO, proveedores EFOS, CFDI cancelados, e.firma o
+  CSD por vencer, vencimientos próximos, diferencias entre lo facturado y lo declarado.
+  *Listo cuando:* cada alerta aparece en el dashboard del despacho y en la ficha del cliente.
+- [ ] **P3-10 · Calendario de vencimientos de toda la cartera y agenda semanal** — fiscal y
+  patronal de todos los clientes en una vista, con el ajuste por sexto dígito del RFC y el día
+  17 inhábil corregido; agenda semanal del despacho con tareas asignables (absorbe F1-06).
+  *Listo cuando:* la semana muestra cada vencimiento de cada cliente con su fecha correcta.
+
+### P4 · Nómina completa
+
+- [ ] **P4-01 · El cálculo lee la plantilla del backend** — `POST /nomina/calcular-periodo` ya no
+  recibe empleados del navegador (R-08).
+  *Listo cuando:* mandar una plantilla ajena no cambia el resultado.
+- [ ] **P4-02 · Historial de nóminas** — cada periodo calculado se guarda con sus recibos;
+  consulta, recálculo y comparación.
+  *Listo cuando:* una nómina de hace tres meses se abre igual a como se calculó.
+- [ ] **P4-03 · Periodicidades y periodos parciales** — semanal, catorcenal, quincenal y mensual
+  con su tarifa; altas y bajas a mitad de periodo según la respuesta de la contadora (§D26).
+  REVISOR DE MOTOR.
+  *Listo cuando:* cada periodicidad calcula con su tarifa y la guarda de duración sigue en pie.
+- [ ] **P4-04 · Asimilados a salarios** — cálculo de ISR sin IMSS y su CFDI con el régimen
+  correspondiente. REVISOR DE MOTOR.
+  *Listo cuando:* un asimilado sale con ISR correcto y sin cuotas.
+- [ ] **P4-05 · Percepciones y deducciones variables** — horas extra con exención, prima
+  dominical, vacaciones, incapacidades, faltas, crédito Infonavit, Fonacot, préstamos y pensión
+  alimenticia. REVISOR DE MOTOR.
+  *Listo cuando:* cada concepto tiene su exención y su efecto en SBC probados.
+- [ ] **P4-06 · Finiquitos y liquidaciones** — cálculo con exenciones y su CFDI. REVISOR DE
+  MOTOR.
+  *Listo cuando:* un finiquito de prueba con fuente cuadra al centavo.
+- [ ] **P4-07 · PTU** — reparto por días y salarios con tope y exención. REVISOR DE MOTOR.
+  *Listo cuando:* un caso de prueba reparte la PTU completa y respeta el tope.
+- [ ] **P4-08 · Aguinaldo y ajuste anual de ISR de sueldos** — REVISOR DE MOTOR.
+  *Listo cuando:* el ajuste anual de un trabajador cuadra con el cálculo manual.
+- [ ] **P4-09 · Movimientos afiliatorios completos** — el modelo guarda fecha y causa de baja e
+  historial de SBC; TXT de bajas (02) y modificaciones (07) para IDSE y archivo para SUA.
+  *Listo cuando:* una baja y un cambio de salario salen en los layouts oficiales.
+- [ ] **P4-10 · Cuotas bimestrales y cédulas** — RCV/Infonavit bimestral y conciliación contra
+  la cédula EMA/EBA importada.
+  *Listo cuando:* una cédula importada marca las diferencias por trabajador.
+- [ ] **P4-11 · CFDI de nómina listo para timbrar** — RFC, CURP y CP del trabajador en la ficha;
+  `FormaPago` correcto; timbrado y cancelación por el adaptador de PAC; PDF con QR.
+  REVISOR DE MOTOR para el generador.
+  *Listo cuando:* la nómina de un periodo se timbra completa con el PAC falso y cada recibo
+  tiene su PDF.
+- [ ] **P4-12 · Dispersión bancaria** — CLABE en la ficha; layouts BBVA, Banamex y Banorte
+  contrastados contra su manual (cierra O-04).
+  *Listo cuando:* el archivo de dispersión cuadra al centavo con la nómina.
+- [ ] **P4-13 · Envío de recibos al trabajador** — por correo y WhatsApp, vía adaptadores.
+  *Listo cuando:* con los adaptadores falsos, cada trabajador recibe su XML y PDF.
+
+### P5 · Despacho, comunicación e IA
+
+- [ ] **P5-01 · Varios usuarios por despacho** — invitar, roles (dueño, contador, auxiliar),
+  asignar clientes; se hace cumplir el límite de usuarios del plan.
+  *Listo cuando:* un auxiliar sólo ve los clientes que le asignaron.
+- [ ] **P5-02 · Dashboard del despacho** — vencimientos de la semana, alertas, estado de
+  descarga SAT y de opinión de cumplimiento por cliente, pendientes.
+  *Listo cuando:* es la pantalla de entrada y cada tarjeta lleva a su detalle.
+- [ ] **P5-03 · Cuentas por cobrar del despacho** — honorarios por cliente, facturas emitidas al
+  cliente, saldos, recordatorios de cobro.
+  *Listo cuando:* el despacho ve qué le debe cada cliente y desde cuándo.
+- [ ] **P5-04 · Facturación (emisión de CFDI 4.0)** — ingreso, egreso y complemento de pago,
+  para los clientes del despacho y para el propio despacho, vía adaptador de PAC.
+  *Listo cuando:* sale una factura válida contra el XSD, timbrada con el PAC falso, y se puede
+  cancelar.
+- [ ] **P5-05 · Envío de documentos al cliente** — CFDIs, constancias, opinión de cumplimiento,
+  declaraciones y recibos, por correo y WhatsApp.
+  *Listo cuando:* desde la ficha del cliente se envía cualquier documento por los dos canales.
+- [ ] **P5-06 · Bot de WhatsApp con IA** — el cliente del despacho pide por WhatsApp "mándame mi
+  opinión de cumplimiento" o "¿cuánto pago este mes?" y recibe el documento o la respuesta del
+  motor (el LLM sólo interpreta y explica). Webhook, identificación por número, bitácora.
+  *Listo cuando:* con el adaptador falso, una conversación de prueba entrega el PDF correcto al
+  cliente correcto y rechaza números no registrados.
+- [ ] **P5-07 · Asistente IA del despacho** — la voz pasa al backend sin llave en el navegador
+  (S-00); herramientas nuevas para consultar bóveda, balanza, nómina y vencimientos (F1-08).
+  *Listo cuando:* no hay llave de LLM en el bundle y el asistente responde con datos del motor.
+- [ ] **P5-08 · Suscripciones y cobro de planes** — alta, cambio y cancelación de plan vía
+  adaptador de pagos; la app restringe por plan.
+  *Listo cuando:* con el adaptador falso, un despacho se suscribe, cambia de plan y se le
+  bloquea lo que rebasa su plan.
+
+### P6 · Listo para producción
+
+- [ ] **P6-01 · Seguridad y privacidad** — aviso de privacidad y términos (LFPDPPP), cifrado de
+  datos sensibles, respaldos programados, borrado de cuenta.
+  *Listo cuando:* hay página de aviso de privacidad y un despacho puede exportar y borrar sus
+  datos.
+- [ ] **P6-02 · Observabilidad** — logs estructurados, errores al adaptador de monitoreo, salud
+  de worker y programador.
+  *Listo cuando:* un error en un trabajo de fondo aparece en el monitoreo con su contexto.
+- [ ] **P6-03 · Empaquetado para Railway** — Dockerfile de API y worker, `railway.json`,
+  migraciones al arrancar, build del front con la URL de la API, `.env.example` completo.
+  *Listo cuando:* `docker compose up` levanta API, worker, Postgres y Redis en local idéntico a
+  producción.
+- [ ] **P6-04 · Pruebas de punta a punta** — Playwright: alta de despacho → cliente → e.firma →
+  descarga (falsa) → pólizas → balanza → declaración → nómina → timbrado (falso) → envío.
+  *Listo cuando:* el recorrido completo corre en CI.
+- [ ] **P6-05 · Limpieza final** — lint a cero (S-02), ruff alineado (S-01b), emulador en CI o
+  decisión escrita (R-11), demo-xmls anonimizadas (S-07), bug de egresos demo (B-01), fuera las
+  rutas y catálogos de demostración.
+  *Listo cuando:* lint, tests y build en verde y ningún dato demo real en `public/` ni `dist/`.
+- [ ] **P6-06 · Runbook de conexión** — `docs/conexion-servicios.md`: por cada servicio de EXT,
+  qué cuenta crear, qué variable llenar, cómo probar que quedó. Es la guía que seguirá Claude
+  en Chrome.
+  *Listo cuando:* cada variable de `.env.example` tiene su paso en el runbook.
+
+### EXT · Conexiones externas (al final; sin código, sólo cuentas y configuración)
+
+- [ ] **EXT-01 · Railway** — proyecto con API, worker, programador, Postgres y Redis; variables
+  de entorno; dominio.
+- [ ] **EXT-02 · Firebase** — se queda para el login; restringir la llave por dominio; Hosting
+  o mover el front a Railway.
+- [ ] **EXT-03 · Descarga masiva del SAT** — **sin contrato**: es un servicio público del SAT
+  que se usa con la e.firma de cada cliente, que el despacho carga en la app. Sólo se prueba
+  con una e.firma real.
+- [ ] **EXT-04 · PAC** — contratar uno (timbrado de nómina, retenciones, facturación y
+  cancelación); credenciales de pruebas y luego de producción; CSD de cada cliente cargado en
+  la app.
+- [ ] **EXT-05 · Estatus de CFDI y listas 69-B** — servicios públicos del SAT, sin contrato;
+  sólo confirmar URLs vigentes.
+- [ ] **EXT-06 · Opinión de cumplimiento** — según DP-2: contratar proveedor o dejar carga
+  manual.
+- [ ] **EXT-07 · WhatsApp Business** — cuenta de Meta verificada (o Twilio/360dialog), número,
+  plantillas aprobadas, webhook apuntando a la API.
+- [ ] **EXT-08 · Correo transaccional** — Resend, SendGrid o SES; dominio con SPF y DKIM.
+- [ ] **EXT-09 · LLM** — llave de OpenAI o Anthropic sólo en el servidor, con tope de gasto.
+- [ ] **EXT-10 · Almacenamiento de archivos** — Cloudflare R2, S3 o equivalente para XML y PDF.
+- [ ] **EXT-11 · Pagos de suscripción** — Stripe, Conekta o Mercado Pago.
+- [ ] **EXT-12 · Monitoreo** — Sentry o equivalente.
+- [ ] **EXT-13 · Dominio y DNS** — dominio propio para app, API y correo.
+- [ ] **EXT-14 · IDSE y SUA** — no tienen API: el despacho sube el TXT que genera la app con su
+  propio certificado del IMSS. Sólo se documenta.
+- [ ] **EXT-15 · Checador Hikvision** — configurar el aparato en sitio para que mande checadas
+  a la API publicada (D-08).
+- [ ] **EXT-16 · Bancos (opcional, después)** — agregador bancario para bajar estados de cuenta
+  sin subirlos a mano; la v1 concilia con archivos.
+
+## Cola nocturna (HISTORIA — sustituida por el plan P)
 
 Orden exacto que toma el **modo autonomo** (ver `CLAUDE.md`): la primera que no este
 `[x]` ni marcada SALTADA en `docs/nocturno-log.md`. Una tarea por sesion. **Si no queda
