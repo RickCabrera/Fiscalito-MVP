@@ -76,6 +76,7 @@ import * as credencialesApi from './credencialesApi';
 import * as trabajosApi from './trabajosApi';
 // P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
 import * as satVerificacionApi from './satVerificacionApi';
+import * as contabilidadApi from './contabilidadApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -245,6 +246,32 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
       satVerificacionApi.guardarConfigCumplimiento('taller', { automatico: true, dia_del_mes: 1, constancia: true }),
     semaforoCartera: () => satVerificacionApi.semaforoCartera(),
   },
+  'contabilidadApi.ts': {
+    listarCuentas: () => contabilidadApi.listarCuentas('taller'),
+    sembrarCatalogo: () => contabilidadApi.sembrarCatalogo('taller'),
+    crearCuenta: () => contabilidadApi.crearCuenta('taller', { numero: '1', nombre: 'x', codigo_agrupador: '101' }),
+    editarCuenta: () => contabilidadApi.editarCuenta('taller', 3, { nombre: 'x' }),
+    borrarCuenta: () => contabilidadApi.borrarCuenta('taller', 3),
+    obtenerAgrupador: () => contabilidadApi.obtenerAgrupador(),
+    obtenerConfigContable: () => contabilidadApi.obtenerConfigContable('taller'),
+    guardarConfigContable: () => contabilidadApi.guardarConfigContable('taller', { tope_activo: '0' }),
+    crearRegla: () => contabilidadApi.crearRegla('taller', { criterio: 'rfc', valor: 'X', cuenta_numero: '601.84', prioridad: 1, activa: true }),
+    editarRegla: () => contabilidadApi.editarRegla('taller', 4, { activa: false }),
+    borrarRegla: () => contabilidadApi.borrarRegla('taller', 4),
+    generarPolizas: () => contabilidadApi.generarPolizas('taller', '2026-03-01', '2026-03-31'),
+    listarPolizas: () => contabilidadApi.listarPolizas('taller', { tipo: 'diario', pagina: 2 }),
+    obtenerPoliza: () => contabilidadApi.obtenerPoliza('taller', 5),
+    crearPoliza: () => contabilidadApi.crearPoliza('taller', { tipo: 'diario', fecha: '2026-03-01', concepto: '', movimientos: [] }),
+    editarPoliza: () => contabilidadApi.editarPoliza('taller', 5, { concepto: 'x' }),
+    cancelarPoliza: () => contabilidadApi.cancelarPoliza('taller', 5, 'x'),
+    listarPeriodosCerrados: () => contabilidadApi.listarPeriodosCerrados('taller'),
+    cerrarPeriodo: () => contabilidadApi.cerrarPeriodo('taller', 2026, 3),
+    abrirPeriodo: () => contabilidadApi.abrirPeriodo('taller', 2026, 3),
+    obtenerBalanza: () => contabilidadApi.obtenerBalanza('taller', '2026-03-01', '2026-03-31', 1, 'todas'),
+    obtenerAuxiliar: () => contabilidadApi.obtenerAuxiliar('taller', 6, '2026-03-01', '2026-03-31'),
+    listarSaldosIniciales: () => contabilidadApi.listarSaldosIniciales('taller'),
+    guardarSaldosIniciales: () => contabilidadApi.guardarSaldosIniciales('taller', []),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -285,6 +312,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'credencialesApi.ts': credencialesApi,
   'trabajosApi.ts': trabajosApi,
   'satVerificacionApi.ts': satVerificacionApi,
+  'contabilidadApi.ts': contabilidadApi,
 };
 
 /**

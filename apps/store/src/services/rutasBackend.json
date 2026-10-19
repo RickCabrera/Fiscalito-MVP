@@ -119,6 +119,110 @@
       ]
     },
     {
+      "path": "/api/v1/contabilidad/clientes/{clave}/balanza",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/sembrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/generar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}",
+      "metodos": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reglas",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/codigo-agrupador",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/deducciones-personales",
       "metodos": [
         "POST"

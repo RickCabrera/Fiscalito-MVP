@@ -26,6 +26,7 @@ from app.routes import (
     calendario,
     cartera,
     comparador,
+    contabilidad,
     credenciales,
     declaraciones,
     despacho,
@@ -127,6 +128,8 @@ app.include_router(auditoria.router, prefix="/api/v1")
 app.include_router(sat_descarga.router, prefix="/api/v1")
 # P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
 app.include_router(sat_verificacion.router, prefix="/api/v1")
+# P2-01/02/03/04: catálogo, reglas de pólizas, pólizas y balanza por cliente.
+app.include_router(contabilidad.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":
