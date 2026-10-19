@@ -1,13 +1,15 @@
 # 16 · Personas morales (601) y RESICO PM — pagos provisionales y anual (P3-01, P3-06)
 
-Motor: `app/fiscal_engine/personas_morales.py`. Armado desde bóveda/contabilidad:
+Motor: `app/fiscal_engine/personas_morales.py` (reexporta `pm_perdidas.py`,
+`pm_provisionales.py` y `pm_anual.py`). Armado desde bóveda/contabilidad:
 `app/impuestos/personas_morales.py`. Anual y papeles: `app/impuestos/anual.py`, `papeles.py`.
 
 ## Fuentes legales (texto vigente, Cámara de Diputados: diputados.gob.mx/LeyesBiblio/pdf/LISR.pdf)
 
 | Tema | Artículo | Lo que usa el motor |
 |---|---|---|
-| Tasa y utilidad fiscal | LISR Art. 9 | 30 % sobre el resultado fiscal; utilidad fiscal = ingresos acumulables − deducciones autorizadas − PTU pagada en el ejercicio (fr. I); menos pérdidas pendientes (fr. II); renta gravable de PTU sin disminuir PTU pagada ni pérdidas; anual dentro de los tres meses siguientes al cierre |
+| Tasa y utilidad fiscal | LISR Art. 9 | 30 % sobre el resultado fiscal; utilidad fiscal = ingresos acumulables − deducciones autorizadas − PTU pagada en el ejercicio (fr. I); menos pérdidas pendientes (fr. II); renta gravable de PTU sin disminuir PTU pagada ni pérdidas y **disminuyendo de los ingresos los no deducibles del Art. 28 fr. XXX** (cuarto párrafo); anual dentro de los tres meses siguientes al cierre |
+| PTU a repartir | Resolución de la Sexta Comisión Nacional para la PTU | 10 % de la renta gravable (ver abajo) |
 | Pagos provisionales | LISR Art. 14 | fr. I: coeficiente = utilidad fiscal del último ejercicio de 12 meses (+ anticipos Art. 94 fr. II) ÷ ingresos nominales del mismo ejercicio; si no hay, el último que lo tenga, no más de 5 años atrás. fr. II: coeficiente × ingresos nominales acumulados; PTU pagada en partes iguales de mayo a diciembre, sin exceder la utilidad; pérdidas. Ingresos nominales = acumulables sin el ajuste anual por inflación acumulable. fr. III: tasa Art. 9, menos pagos anteriores y retenciones del Art. 54 |
 | Ajuste anual por inflación | LISR Arts. 44, 45, 46 | Saldo promedio = suma de saldos al último día de cada mes ÷ meses; deudas > créditos → acumulable; créditos > deudas → deducible; factor = INPC último mes del ejercicio ÷ INPC último mes del anterior − 1 |
 | Pérdidas | LISR Art. 57 | 10 ejercicios; 1a actualización jul→dic del ejercicio de la pérdida; siguientes desde la última hasta junio del ejercicio en que se aplica; la pérdida se aumenta con la PTU pagada |
@@ -38,9 +40,15 @@ Páginas consultadas (secundarias, para los casos de prueba):
    las exclusiones exactas del texto vigente (caja, socios, empleados, anticipos, ISR propio).
 4. **RESICO PM sin ajuste anual por inflación** salvo `aai_en_resico`: los Arts. 206-215 no
    remiten al Art. 44. FUENTE POR CONFIRMAR.
-5. **PTU a repartir 10 %**: Resolución de la Comisión Nacional para la PTU (DOF 03/02/2009).
-   FUENTE POR CONFIRMAR contra la resolución vigente. El tope individual (LFT Art. 127 fr. VIII)
-   es de P4.
+5. **PTU a repartir 10 %** (O6, cita única en `pm_anual.FUNDAMENTO_PTU`): Resolución del H.
+   Consejo de Representantes de la **Sexta** Comisión Nacional para la Participación de los
+   Trabajadores en las Utilidades de las Empresas, emitida el 9-sep-2020 y publicada en el DOF
+   el 18-sep-2020, resolutivo primero: el porcentaje "deberá mantenerse en el 10% aplicable
+   sobre la renta gravable". Ratifica el de la Quinta Comisión (DOF 3-feb-2009). Consultado:
+   texto de la resolución en sidof.segob.gob.mx/notas/docFuente/5600763; fecha DOF según
+   idconline.mx ("Marco legal del reparto de PTU", 2023). La página del DOF
+   (dof.gob.mx/nota_detalle.php?codigo=5600763) no se pudo abrir: cotejar la fecha ahí. El tope
+   individual (LFT Art. 127 fr. VIII) es de P4.
 6. **Bóveda como fuente sin contabilidad**: ingresos por fecha de emisión (Art. 17), notas de
    crédito restan, nómina deducible = gravado + 47 % del exento (Art. 28 fr. XXX, configurable
    a 53 %), UsoCFDI D01-D10/S01/CN01 no deducible, I01-I08 a la deducción de inversiones
@@ -52,3 +60,9 @@ Páginas consultadas (secundarias, para los casos de prueba):
    el Art. 14 fr. I; no se actualiza (el artículo no lo prevé).
 9. Primer ejercicio sin coeficiente: no hay pagos provisionales (Art. 14 fr. I); el primer
    pago del segundo ejercicio (enero-marzo) no se modela aparte.
+10. **No deducibles del Art. 28 fr. XXX para la renta gravable de PTU** (B3): capturado
+   (`no_deducibles_art28_xxx`); si no, con contabilidad, la suma de las cuentas que el despacho
+   designa (`cuentas_art28_xxx`; el código agrupador del SAT no tiene una cuenta propia) —que
+   además dejan de deducirse—; con bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina
+   emitida. Con contabilidad y sin cuentas designadas queda en cero con nota: bajar la PTU sin
+   dato perjudica a los trabajadores. Sólo afecta la PTU, no la utilidad fiscal.

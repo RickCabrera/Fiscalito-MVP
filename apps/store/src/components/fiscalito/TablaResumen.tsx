@@ -5,6 +5,7 @@
  */
 
 import type { CapturaRenglon, ResumenImpuestos } from '../../services/impuestosApi';
+import AvisoPorConfirmar from './AvisoPorConfirmar';
 
 interface Props {
   resumen: ResumenImpuestos;
@@ -49,7 +50,13 @@ export default function TablaResumen({ resumen, capturas, onCapturar }: Props) {
           {resumen.renglones.map((r) => (
             <tr key={r.clave} style={{ opacity: r.aplica ? 1 : 0.55 }}>
               <td style={{ ...CELDA, textAlign: 'left', fontFamily: 'inherit' }} title={r.nota}>
-                <div>{r.concepto}</div>
+                <div>
+                  {r.concepto}
+                  {r.por_confirmar && (
+                    <span data-testid={`por-confirmar-${r.clave}`} title="Índice o tasa de fuente secundaria"
+                      style={{ marginLeft: 6, fontSize: '0.68rem', color: 'var(--warning)' }}>por confirmar</span>
+                  )}
+                </div>
                 {r.nota && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'normal' }}>{r.nota}</div>}
               </td>
               <td style={CELDA}>{r.importe_sistema}</td>
@@ -79,6 +86,7 @@ export default function TablaResumen({ resumen, capturas, onCapturar }: Props) {
       <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
         Lo capturado se aplica al volver a calcular. Actualización y recargos: Arts. 17-A y 21 CFF.
       </p>
+      <div style={{ marginTop: 8 }}><AvisoPorConfirmar fuentes={resumen.fuentes_por_confirmar ?? []} /></div>
       {resumen.notas.length > 0 && (
         <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: '0.75rem', color: 'var(--warning)' }}>
           {resumen.notas.map((n) => <li key={n}>{n}</li>)}

@@ -351,6 +351,7 @@ export interface ConfigImpuestosSchema {
   isn_claves_excluidas?: string[];
   isn_claves_incluidas?: string[];
   saldo_favor_iva_inicial?: number | string;
+  iva_no_objeto_excluidos?: string[];
 }
 
 /** Clasificación de un proveedor en la DIOT. `None` = se deduce de los CFDI. */
@@ -493,6 +494,8 @@ export interface DatosAnualesPMSchema {
   fuente?: "auto" | "contabilidad" | "boveda";
   factor_exentos_nomina?: number | string;
   aai_en_resico?: boolean;
+  no_deducibles_art28_xxx?: number | string | null;
+  cuentas_art28_xxx?: string[];
 }
 
 /** El emisor. Ver `24_cfdi_nomina_12.md` §2. */

@@ -56,7 +56,11 @@ export default function DatosPMForm({ clave, anio, onGuardado }: Props) {
     setGuardando(true);
     setError(null);
     try {
-      const limpio = { ...datos, coeficiente_utilidad: datos.coeficiente_utilidad || null };
+      const limpio = {
+        ...datos,
+        coeficiente_utilidad: datos.coeficiente_utilidad || null,
+        no_deducibles_art28_xxx: datos.no_deducibles_art28_xxx || null,
+      };
       setDatos((await guardarDatosPM(clave, anio, limpio)).datos);
       onGuardado();
     } catch (e) {
@@ -87,6 +91,8 @@ export default function DatosPMForm({ clave, anio, onGuardado }: Props) {
           (v) => poner('mes_pago_ptu', Number(v) || 5), '1')}
         {campo('pm-inv', 'Deducción fiscal de inversiones (anual)', String(datos.deduccion_inversiones ?? ''),
           (v) => poner('deduccion_inversiones', v || '0'))}
+        {campo('pm-xxx', 'No deducibles Art. 28 fr. XXX para PTU (vacío = derivarlo)',
+          String(datos.no_deducibles_art28_xxx ?? ''), (v) => poner('no_deducibles_art28_xxx', v))}
         <div>
           <label style={labelStyle} htmlFor="pm-fuente">Ingresos y deducciones de</label>
           <select id="pm-fuente" className="input-field" value={datos.fuente ?? 'auto'}

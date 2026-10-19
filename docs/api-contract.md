@@ -1743,13 +1743,23 @@ lectura de la bóveda en `app/impuestos/`. Todo autenticado (`contexto_actual`);
 `{clave}` usan `cliente_o_404` (otro despacho = 404). Importes en las respuestas como texto con
 dos decimales. Fuentes y `FUENTE POR CONFIRMAR` en los docstrings y en `fiscal_engine/datos/*.csv`.
 
+**`por_confirmar` (O12).** Toda respuesta que usa un INPC sin cotejar con el boletín del INEGI,
+una tasa de recargos de fuente secundaria (LIF 2020-2025) o una tasa de ISN no verificada trae
+`por_confirmar: true` y, donde aplica, `fuentes_por_confirmar: [texto]` (una línea por índice o
+tasa). La marca sale de la columna `verificacion` de cada CSV (`boletin_inegi`, `ley`,
+`ley_citada` = verificado).
+
 ### `GET|PUT /api/v1/impuestos/clientes/{clave}/config`
 
 Criterio del despacho por cliente (DP-3): `modo_factor` (`truncar`|`redondear`|`sin_redondeo`,
 default `truncar`), `tipo_recargo` (default `mora`), `tope_meses_recargos` (60),
 `region_fronteriza` (false), `proporcion_iva_modo` (`calculada`|`fija`) + `proporcion_iva_fija`,
 `asignacion_iva` (UUID → `gravado`|`exento`|`indistinto`), `isn_aplicar_adicional` (true),
-`isn_claves_excluidas`, `isn_claves_incluidas`, `saldo_favor_iva_inicial`.
+`isn_claves_excluidas`, `isn_claves_incluidas`, `saldo_favor_iva_inicial`,
+`iva_no_objeto_excluidos` (UUID de CFDI emitidos cuyo valor no objeto no entra a la proporción
+del IVA: no es acto del Art. 4o.-A o es concepto del Art. 5o.-C, p. ej. dividendos; default
+vacío = todo el no objeto entra). Veracruz: los premios de puntualidad (010) y asistencia (049)
+gravan salvo que sean anuales; si lo son, se excluyen con `isn_claves_excluidas`.
 
 ### `POST /api/v1/impuestos/clientes/{clave}/resumen`
 
@@ -1758,7 +1768,8 @@ Body `{"anio", "mes", "fecha_pago", "fecha_limite"?, "capturas": {<clave>: {"imp
 del mes siguiente corrido a hábil (Art. 12 CFF; sin prórroga por sexto dígito). Respuesta JSON:
 `{"renglones": [{"clave", "grupo", "concepto", "aplica", "importe_sistema", "importe_a_pagar",
 "actualizacion", "recargos", "subsidio", "compensaciones", "total", "capturado", "nota",
-"factor", "meses_recargo"}], "totales", "total_a_pagar_ajustado", "fecha_limite", "notas"}`.
+"factor", "meses_recargo", "por_confirmar"}], "totales", "total_a_pagar_ajustado",
+"fecha_limite", "notas", "por_confirmar", "fuentes_por_confirmar"}`.
 Claves: `isr_pm`, `isr_pf_empresarial`, `isr_arrendamiento`, `isr_plataformas`,
 `isr_resico_pf`, `isr_resico_pm`, `ret_isr_salarios`, `ret_isr_asimilados`,
 `ret_isr_honorarios`, `ret_isr_arrendamiento`, `ret_isr_resico`, `iva_a_cargo`, `iva_retenido`.
@@ -1769,7 +1780,8 @@ Claves: `isr_pm`, `isr_pf_empresarial`, `isr_arrendamiento`, `isr_plataformas`,
 Body `{"anio", "meses": [1..12], "saldo_favor_inicial"?, "opciones_saldo": {mes:
 "acreditar"|"devolucion"|"compensacion"}}`. Lee `comprobantes_vigentes` por flujo de efectivo
 (PUE en su mes, PPD por complemento de pago). Devuelve `{"meses": [ResultadoIVAMes]}` con
-valor de actos por tasa, proporción (Art. 5o. fr. V c), acreditable, saldo a favor anterior /
+valor de actos por tasa, `valor_no_objeto` y `valor_no_objeto_en_proporcion` (actos del Art.
+4o.-A que entran al denominador), proporción (Art. 5o. fr. V c), acreditable, saldo a favor anterior /
 aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`.
 
 ### `GET /api/v1/impuestos/clientes/{clave}/isn?anio&mes`
@@ -1796,7 +1808,10 @@ mes si no hay contabilidad), `cuentas_creditos`/`cuentas_deudas`/`cuentas_no_ded
 (prefijos de código agrupador), `deduccion_inversiones`, `deducciones_adicionales`,
 `no_deducibles_adicionales`, `ingresos_adicionales`, `estimulos` `[{concepto, importe,
 fundamento, desde_mes, en_provisionales}]`, `fuente` (`auto`|`contabilidad`|`boveda`),
-`factor_exentos_nomina` (0.47), `aai_en_resico` (false). Respuesta `{"anio", "datos"}`.
+`factor_exentos_nomina` (0.47), `aai_en_resico` (false), `no_deducibles_art28_xxx` (null =
+derivarlo: de `cuentas_art28_xxx` con contabilidad, de la nómina de la bóveda sin ella),
+`cuentas_art28_xxx` (cuentas donde el despacho registra el no deducible del Art. 28 fr. XXX;
+también dejan de deducirse). Respuesta `{"anio", "datos"}`.
 
 ### `POST /api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales`
 
@@ -1807,8 +1822,8 @@ pérdidas). Respuesta `{"tipo": "pm"|"resico_pm", "fuente", "coeficiente",
 "origen_coeficiente", "tasa", "fecha_limite", "pagos": [{"mes", "ingresos_mes",
 "ingresos_acumulados", "deducciones_acumuladas", "coeficiente", "utilidad_estimada",
 "ptu_disminuida", "estimulos", "perdidas", "base", "isr_causado", "pagos_anteriores",
-"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado", "a_pagar_pesos"}],
-"notas"}`.
+"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado", "a_pagar_pesos",
+"por_confirmar"}], "notas", "por_confirmar", "fuentes_por_confirmar"}`.
 
 ### `POST /api/v1/impuestos/clientes/{clave}/anual` · `POST .../anual/papeles`
 
@@ -1820,8 +1835,11 @@ RESICO PM → `{"tipo": "pm"|"resico_pm", "fuente", "renglones", "meses": [{"mes
 "deducciones", "no_deducibles", "retenciones", "pago_provisional"}], "ajustes", "cuentas",
 "pagos_provisionales", "coeficiente": {"aplicado", "origen", "siguiente", "utilidad_fiscal",
 "ingresos_nominales", "anticipos_miembros"}, "aai": {saldos, promedios, factor, acumulable,
-deducible}|null, "origen_saldos", "ptu": {"renta_gravable", "porcentaje", "a_repartir",
-"pagada_en_el_ejercicio"}, "perdidas", "notas"}`. Cada renglón: `{"clave", "concepto",
+deducible}|null, "origen_saldos", "ptu": {"utilidad_antes_ptu", "no_deducibles_art28_xxx",
+"origen_art28_xxx": "capturado"|"contabilidad"|"boveda"|"sin dato", "renta_gravable"
+(Art. 9 cuarto párrafo), "porcentaje", "fundamento", "a_repartir", "pagada_en_el_ejercicio"},
+"perdidas", "notas", "por_confirmar", "fuentes_por_confirmar"}`. Los factores INPC (`aai.factor`,
+`perdidas[].factores[]`) traen `por_confirmar` y `fuentes_por_confirmar`. Cada renglón: `{"clave", "concepto",
 "importe", "fundamento"}`. Otro régimen → 422. `/anual/papeles` devuelve el `.xlsx` (hojas PF:
 Cálculo ISR, Mes a mes, Notas; PM: Cálculo ISR, Ingresos, Deducciones, Ajuste por inflación,
 Coeficiente [601], PTU, Pérdidas, Pagos provisionales, Notas) armado del MISMO diccionario.
@@ -1831,7 +1849,8 @@ Coeficiente [601], PTU, Pérdidas, Pagos provisionales, Notas) armado del MISMO 
 Body `{"monto", "fecha_limite", "fecha_pago", "tipo_recargo"?, "modo_factor"?, "tope_meses"?}`.
 Respuesta: `factor` (INPC usados, cortado y sin cortar), `monto_actualizado`, `actualizacion`,
 `meses`, `tasa_acumulada`, `recargos`, `total`, `total_a_pagar_ajustado` (Art. 20 CFF),
-`detalle_meses`, `notas`, `inpc_ultimo_publicado`.
+`detalle_meses`, `notas`, `inpc_ultimo_publicado`, `por_confirmar`, `fuentes_por_confirmar`
+(también dentro de `factor`).
 
 ### `GET /api/v1/calculadoras/fecha-limite?anio&mes`
 

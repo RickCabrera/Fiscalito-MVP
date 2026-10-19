@@ -34,6 +34,8 @@ export interface PagoProvisionalPM {
   pago_efectuado: string;
   pago_capturado: boolean;
   a_pagar_pesos: string;
+  /** O12: el pago usa un INPC de fuente secundaria (pérdidas actualizadas). */
+  por_confirmar?: boolean;
 }
 
 export interface ResultadoPagosPM {
@@ -48,6 +50,8 @@ export interface ResultadoPagosPM {
   fecha_limite: string;
   pagos: PagoProvisionalPM[];
   notas: string[];
+  por_confirmar?: boolean;
+  fuentes_por_confirmar?: string[];
 }
 
 export interface PerdidaPM {
@@ -66,6 +70,8 @@ export interface DatosAnualesPM {
   pagos_efectuados?: Record<string, string>;
   deduccion_inversiones?: string;
   fuente?: 'auto' | 'contabilidad' | 'boveda';
+  /** Art. 28 fr. XXX para la renta gravable de PTU (Art. 9). Vacío = derivarlo. */
+  no_deducibles_art28_xxx?: string | null;
   [otro: string]: unknown;
 }
 
@@ -83,6 +89,8 @@ export interface ResultadoAnual {
   notas: string[];
   coeficiente?: Record<string, string>;
   ptu?: Record<string, string>;
+  por_confirmar?: boolean;
+  fuentes_por_confirmar?: string[];
 }
 
 const enc = encodeURIComponent;

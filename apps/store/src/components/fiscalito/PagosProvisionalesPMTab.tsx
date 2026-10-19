@@ -14,6 +14,7 @@ import { Building2, Loader, RefreshCw } from 'lucide-react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { pagosProvisionalesPM, type ResultadoPagosPM } from '../../services/anualApi';
 import DatosPMForm from './DatosPMForm';
+import AvisoPorConfirmar from './AvisoPorConfirmar';
 import TablaMeses from './TablaMeses';
 import { nombreMes, type ColumnaMes } from './tablaMesesUtil';
 
@@ -111,6 +112,7 @@ export default function PagosProvisionalesPMTab() {
               Ingresos y deducciones: {resultado.fuente === 'contabilidad' ? 'contabilidad' : 'bóveda de CFDI'}
             </p>
           </div>
+          <AvisoPorConfirmar fuentes={resultado.fuentes_por_confirmar ?? []} />
           <TablaMeses etiqueta="Pagos provisionales"
             columnas={resultado.tipo === 'pm' ? COLUMNAS_PM : COLUMNAS_RESICO}
             filas={resultado.pagos as unknown as Record<string, unknown>[]} />
