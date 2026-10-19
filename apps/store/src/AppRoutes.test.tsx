@@ -178,14 +178,19 @@ describe('rutas registradas', () => {
     );
   });
 
-  it('/app/calendario pinta el calendario patronal (E-07)', async () => {
+  it('/app/calendario pinta el calendario de la cartera (E-07 → P3-10)', async () => {
     /**
      * El enlace "Calendario" del sidebar del contador apunta aquí desde E-07.
      * Sin `<Route>` no hay catch-all bajo `/app`: el sidebar navegaría y el
      * área de contenido quedaría en blanco, sin error en consola.
      */
     montar('/app/calendario');
-    expect(await screen.findByRole('heading', { name: 'Calendario patronal' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Calendario de la cartera/ })).toBeTruthy();
+  });
+
+  it('/app/alertas pinta las alertas fiscales (P3-09)', async () => {
+    montar('/app/alertas');
+    expect(await screen.findByRole('heading', { name: /Alertas fiscales/ })).toBeTruthy();
   });
 
   it('/login es pública y no pasa por el layout', () => {

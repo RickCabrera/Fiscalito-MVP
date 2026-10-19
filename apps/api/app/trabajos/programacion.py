@@ -90,6 +90,12 @@ def _sat(nombre: str) -> Callable[[Session, datetime], object]:
     return encolar_sat
 
 
+def _encolar_alertas(db: Session, ranura: datetime) -> object:
+    from app.alertas.trabajos import encolar_diario
+
+    return encolar_diario(db, ranura)
+
+
 # La lista que revisa el worker. Cada dominio agrega aquí las suyas.
 TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("purgar_trabajos", _encolar_purga, hora=time(3, 0)),
@@ -100,6 +106,8 @@ TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("sat_listas", _sat("encolar_listas"), hora=time(6, 30)),
     # P1-05: opinión/constancia mensual; la revisión es diaria y cada cliente decide su día.
     TareaRecurrente("sat_cumplimiento", _sat("encolar_cumplimiento_diario"), hora=time(7, 0)),
+    # P3-09: alertas fiscales, después de listas (6:30) y opinión (7:00) para integrarlas.
+    TareaRecurrente("alertas_fiscales", _encolar_alertas, hora=time(7, 30)),
 ]
 
 

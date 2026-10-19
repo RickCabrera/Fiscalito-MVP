@@ -575,6 +575,30 @@ cliente, `SinClienteActivo`; al cambiar de cliente se remonta (`key`).
   backend (lista de CFDI sin póliza; forzar con motivo), reabrir con motivo, cierre anual
   (`CierreAnual`) y bitácora.
 
+### CFDI de retenciones, DIOT 2025, alertas y calendario (P3-04/05/09/10)
+
+> Manda sobre la sección T5 de abajo, que queda como historia.
+
+- **Retenciones** (`RetencionesCfdiPanel` en `RetencionesTab`, `services/retencionesCfdiApi.ts`):
+  por tercero del mes, "Generar CFDI" → el backend arma el CFDI de Retenciones 2.0, lo sella
+  con el CSD del cliente, lo valida contra el XSD y lo timbra con el PAC (`FISCALITO_PAC`).
+  Descarga XML/PDF (con QR) y cancela (motivo 02, con confirmación). Con el PAC `falso` la
+  pantalla dice que NO es fiscal. La constancia PDF simple sigue en la tabla ("Constancia
+  simple") como alternativa.
+- **DIOT** (`DiotOficialPanel` en `DIOTTab`, `services/diotApi.ts`): el `.txt` de 54 campos
+  (layout 2025 del SAT) y los cortes por tasa los arma y valida el backend
+  (`/clientes/{clave}/diot/{anio}/{mes}`). `services/exportadores/diot.ts` (el que salía
+  `PORVALIDAR`) se borró. Tipo de tercero y de operación se corrigen por proveedor y se guardan.
+- **Alertas** (P3-09): `CampanaAlertas` en la cabecera del sidebar (fuera del `<nav>`, con el
+  conteo), página `/app/alertas` (`AlertasPage`, no está en el sidebar) y sección en la ficha
+  del cliente (`AlertasCliente`). `services/alertasApi.ts`.
+- **Calendario** (P3-10): `/app/calendario` (`CalendarioPatronalPage`, el nombre se conserva)
+  ya es el calendario unificado de la cartera — fiscal (prórroga por sexto dígito y día 17
+  inhábil, calculados en el backend), patronal y vencimientos de e.firma/CSD— con vistas
+  semana/mes/agenda, filtros (cliente, tipo, responsable), marcar presentada y tareas del
+  despacho (`components/calendario/*`, `services/agendaApi.ts`). Las funciones puras de E-07
+  (`services/calendarioPatronal.ts`) siguen con sus pruebas en `calendarioPatronal.test.ts`.
+
 ### Constancias de retencion y DIOT .txt (T5)
 
 Dos entregables por RFC que salen de lo que el backend ya calcula. **Ninguno toca el API.**

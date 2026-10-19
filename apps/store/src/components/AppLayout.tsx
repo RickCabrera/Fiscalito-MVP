@@ -8,6 +8,8 @@ import { useClienteActivo } from '../context/clienteActivoStore';
 import SelectorCliente from './SelectorCliente';
 import FiscalitoVoiceChat from './FiscalitoVoiceChat';
 import ThemeToggle from './ThemeToggle';
+// P3-09: campana con el conteo de alertas fiscales abiertas de la cartera.
+import CampanaAlertas from './alertas/CampanaAlertas';
 import { MARCA_INICIAL, MARCA_LOGO } from '../services/marca';
 
 /** Icono de cada entrada del sidebar. La lista de entradas y su orden viven en
@@ -81,10 +83,11 @@ export default function AppLayout() {
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar — full (desktop) */}
       <aside className="sidebar-full" style={{ ...sidebarBase, width: 240, padding: '24px 0' }}>
-        <div style={{ padding: '0 20px', marginBottom: 40 }}>
+        <div style={{ padding: '0 20px', marginBottom: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 700, letterSpacing: -0.5 }}>
             <span className="gradient-text">{MARCA_LOGO}</span>
           </div>
+          <CampanaAlertas />
         </div>
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {links.map((link) => {
@@ -175,6 +178,7 @@ export default function AppLayout() {
           })}
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+          <CampanaAlertas mini />
           <ThemeToggle mini />
           <button onClick={handleSignOut} title="Cerrar sesión"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 'var(--radius-sm)', transition: 'all 0.2s' }}

@@ -17,6 +17,7 @@ import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
+import RetencionesCfdiPanel from './RetencionesCfdiPanel';
 import { Loader, Download, RefreshCw, MessageSquare, FileText } from 'lucide-react';
 
 export default function RetencionesTab() {
@@ -108,6 +109,10 @@ export default function RetencionesTab() {
           </div>
         </div>
 
+        {/* P3-04: el CFDI de retenciones timbrado es la salida principal; la constancia
+            simple (PDF no fiscal) sigue abajo, por renglón, como alternativa. */}
+        {perfil.clienteId && <RetencionesCfdiPanel clave={perfil.clienteId} anio={year} mes={month} />}
+
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
@@ -130,7 +135,7 @@ export default function RetencionesTab() {
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
                       <button className="btn-secondary" onClick={() => exportConstanciaRetencion(r, retenedor, resultado.periodo)}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', fontSize: '0.75rem' }}>
-                        <FileText size={13} /> Constancia
+                        <FileText size={13} /> Constancia simple
                       </button>
                     </td>
                   </tr>

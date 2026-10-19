@@ -20,7 +20,9 @@ from app.config import settings
 from app.exceptions import FiscalAgentError, LimiteExcedido
 from app.logging_config import setup_logging
 from app.routes import (
+    agenda,
     agente,
+    alertas,
     asistencia,
     auditoria,
     boveda,
@@ -37,12 +39,14 @@ from app.routes import (
     declaraciones,
     despacho,
     diot,
+    diot_cliente,
     estado_cuenta,
     health,
     impuestos,
     multi_periodo,
     nomina,
     retenciones,
+    retenciones_cfdi,
     sat_descarga,
     sat_verificacion,
     trabajos,
@@ -151,6 +155,11 @@ ROUTERS_PROTEGIDOS = (
     # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).
     conciliacion.router,
     contabilidad_electronica.router,
+    # P3-04 CFDI de retenciones, P3-05 DIOT 2025, P3-09 alertas, P3-10 calendario y agenda.
+    retenciones_cfdi.router,
+    diot_cliente.router,
+    alertas.router,
+    agenda.router,
 )
 
 app.include_router(health.router)
