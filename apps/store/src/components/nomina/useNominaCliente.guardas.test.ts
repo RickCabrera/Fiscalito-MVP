@@ -23,6 +23,14 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// P4-01: el cálculo va por `apiFetch` (adjunta el ID token). Sin este doble,
+// `services/firebase` lanza al importarse sin llaves (ver sinLlavesDeFirebase.test.ts).
+vi.mock('../../services/firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
+
 const CLIENTE_ID = 'taller';
 
 const estadoCartera = { loading: false, tieneAlCliente: true };

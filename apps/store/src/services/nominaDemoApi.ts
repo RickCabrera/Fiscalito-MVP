@@ -14,8 +14,6 @@
  * diverjan de `app/demo_nomina.py`.
  */
 
-import type { ClienteDetalle } from './despachoApi';
-
 import { cuerpoDeError, detalleDelError } from './errorApi';
 import type { HorarioLaboral } from './carteraApi';
 
@@ -229,44 +227,4 @@ export function cerrarPeriodo(
   });
 }
 
-/**
- * Calcula la nómina del periodo.
- *
- * `incidencias` se pasan **verbatim** desde el cierre: `dias_periodo`, `faltas`
- * y `dias_ausentismo` alimentan `DiasDelPeriodo` y los días pagados, o sea las
- * cuotas del IMSS y el ISR. Recomponerlas aquí sería mover números fiscales
- * desde la UI.
- */
-export function calcularNomina(
-  cliente: string,
-  periodo: PeriodoNomina,
-  incidencias: IncidenciasEmpleado[],
-  ficha: ClienteDetalle,
-  /** La plantilla que entra al cálculo. Explícita desde G-01: puede venir de la
-   *  cartera del despacho y no de la ficha del backend. */
-  empleados: EmpleadoNominaRequest[],
-): Promise<NominaPeriodo> {
-  return pedir('/nomina/calcular-periodo', {
-    method: 'POST',
-    body: JSON.stringify({
-      cliente,
-      periodo,
-      incidencias: incidencias.map((i) => ({
-        empleado_no: i.empleado_no,
-        dias_periodo: i.dias_periodo,
-        faltas: i.faltas,
-        dias_ausentismo: i.dias_ausentismo,
-      })),
-      parametros: {
-        prima_riesgo: ficha.prima_riesgo,
-        clave_periodicidad: ficha.clave_periodicidad,
-      },
-      // E-03: la plantilla viaja SIEMPRE. Omitirla sólo es válido para el
-      // cliente `demo` (`routes/nomina.py`), así que sin esto los sintéticos no
-      // se pueden calcular. Los campos salen tal cual de la ficha: son un
-      // superconjunto compatible de `EmpleadoNominaSchema` y remapearlos aquí
-      // sería mover datos fiscales desde la UI.
-      empleados,
-    }),
-  });
-}
+// P4-01: `calcularNomina` se mudó a `nominaApi.ts` — autenticada y SIN plantilla.

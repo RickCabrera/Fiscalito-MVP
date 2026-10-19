@@ -119,16 +119,38 @@ def _derivar_tarifa(
 TARIFA_DIARIA_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 1)
 TARIFA_SEMANAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 7)
 TARIFA_QUINCENAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 15)
+# P4-03. La decenal SI la publica el Anexo 8 (rubro B: "pagos que correspondan a
+# un periodo de 10 dias"); sus 11 renglones estan transcritos como literales en
+# `tests/nomina/test_tablas_p4.py` y la regla los reproduce al centavo.
+TARIFA_DECENAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 10)
+# P4-03. La catorcenal NO la publica nadie (§D10). Se DERIVA con la misma regla
+# que reproduce al centavo las publicadas de 7, 10 y 15 dias (diaria x 14). Va
+# marcada en `TARIFAS_DERIVADAS` y la respuesta del endpoint lo advierte.
+# FUENTE POR CONFIRMAR: ni el Anexo 8 ni el RLISR publican tarifa de 14 dias.
+TARIFA_CATORCENAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 14)
 
 # Tarifas por ejercicio y por clave de c_PeriodicidadPago (catalogo del SAT).
-# 01 diaria, 02 semanal, 04 quincenal, 05 mensual.
+# 01 diaria, 02 semanal, 03 catorcenal (DERIVADA), 04 quincenal, 05 mensual,
+# 10 decenal.
 TARIFAS_POR_EJERCICIO: dict[int, dict[str, tuple[RenglonTarifa, ...]]] = {
     2026: {
         "01": TARIFA_DIARIA_2026,
         "02": TARIFA_SEMANAL_2026,
+        "03": TARIFA_CATORCENAL_2026,
         "04": TARIFA_QUINCENAL_2026,
         "05": TARIFA_MENSUAL_2026,
+        "10": TARIFA_DECENAL_2026,
     },
+}
+
+# Claves cuya tarifa NO esta publicada y se deriva. Quien la use tiene que
+# decirlo en la respuesta: un ISR derivado no es un ISR publicado.
+TARIFAS_DERIVADAS: dict[str, str] = {
+    "03": (
+        "catorcenal: el Anexo 8 no publica tarifa de 14 días. Se deriva con la regla "
+        "que reproduce al centavo las publicadas de 7, 10 y 15 días (tarifa diaria = "
+        "mensual / 30.4 redondeada, x 14). FUENTE POR CONFIRMAR con la contadora (§D10)"
+    ),
 }
 
 # Claves de c_PeriodicidadPago que existen en el catalogo pero para las que
@@ -136,16 +158,6 @@ TARIFAS_POR_EJERCICIO: dict[int, dict[str, tuple[RenglonTarifa, ...]]] = {
 # explicito: publicar una tarifa que ninguna autoridad publico seria peor que
 # fallar. Ver docs/decisiones-nomina.md D10.
 PERIODICIDADES_SIN_TARIFA: dict[str, str] = {
-    "03": (
-        "catorcenal: el Anexo 8 no publica tarifa de 14 dias. La via (semanal x 2, "
-        "diaria x 14, o el procedimiento del RLISR) esta pendiente de definir con la "
-        "contadora; ver docs/decisiones-nomina.md D10"
-    ),
-    "10": (
-        "decenal: el Anexo 8 si la publica, pero sus valores no se pudieron verificar "
-        "contra una fuente publicada al construir este modulo. Agregarla es una linea "
-        "en cuanto se transcriban sus 11 renglones con su cita; ver D10"
-    ),
     "06": "bimestral: no es una periodicidad de pago de nomina con tarifa de retencion",
     "07": "unidad de obra: no es un periodo, no tiene tarifa",
     "08": "comision: no es un periodo, no tiene tarifa",
@@ -191,6 +203,42 @@ def tarifa_por_periodicidad(
     return tarifa
 
 
+def es_tarifa_derivada(clave: str) -> bool:
+    """`True` si la tarifa de la clave no esta publicada y se deriva (§D10)."""
+    return clave in TARIFAS_DERIVADAS
+
+
+def tarifa_por_dias(dias: int, fecha: date) -> tuple[RenglonTarifa, ...]:
+    """
+    Tarifa de `dias` dias, derivada de la mensual del ejercicio. (P4-03, §D26)
+
+    Es la tarifa "proporcional a los dias" de un periodo PARCIAL. Usa la misma
+    regla que reproduce las publicadas (ver el docstring del modulo), asi que
+    para 1, 7, 10 y 15 dias coincide con el Anexo 8; para otros es DERIVADA.
+    """
+    if dias <= 0:
+        raise FiscalValidationError(f"Los días de la tarifa deben ser positivos: {dias}.")
+    return _derivar_tarifa(tarifa_por_periodicidad("05", fecha), dias)
+
+
+def isr_con_tarifa(base_gravable: Decimal, tarifa: tuple[RenglonTarifa, ...]) -> Decimal:
+    """ISR = cuota fija + (base - limite inferior) x tasa, con la tarifa dada."""
+    if base_gravable < 0:
+        raise FiscalValidationError(
+            f"La base gravable no puede ser negativa: {base_gravable}."
+        )
+    for renglon in tarifa:
+        if base_gravable <= renglon.limite_superior:
+            excedente = base_gravable - renglon.limite_inferior
+            if excedente < 0:  # base por debajo del primer limite inferior ($0.00)
+                excedente = Decimal("0")
+            return _redondear(renglon.cuota_fija + excedente * renglon.tasa_excedente)
+    # Inalcanzable: el ultimo renglon tiene limite superior infinito.
+    raise FiscalValidationError(
+        f"No se encontró renglón de tarifa para la base {base_gravable}."
+    )
+
+
 def isr_periodo(base_gravable: Decimal, clave_periodicidad: str, fecha: date) -> Decimal:
     """
     ISR causado del periodo, por la tarifa del Art. 96 LISR que corresponda.
@@ -207,14 +255,4 @@ def isr_periodo(base_gravable: Decimal, clave_periodicidad: str, fecha: date) ->
         raise FiscalValidationError(
             f"La base gravable no puede ser negativa: {base_gravable}."
         )
-    tarifa = tarifa_por_periodicidad(clave_periodicidad, fecha)
-    for renglon in tarifa:
-        if base_gravable <= renglon.limite_superior:
-            excedente = base_gravable - renglon.limite_inferior
-            if excedente < 0:  # base por debajo del primer limite inferior ($0.00)
-                excedente = Decimal("0")
-            return _redondear(renglon.cuota_fija + excedente * renglon.tasa_excedente)
-    # Inalcanzable: el ultimo renglon tiene limite superior infinito.
-    raise FiscalValidationError(
-        f"No se encontró renglón de tarifa para la base {base_gravable}."
-    )
+    return isr_con_tarifa(base_gravable, tarifa_por_periodicidad(clave_periodicidad, fecha))

@@ -34,6 +34,10 @@ from app.routes import (
     health,
     multi_periodo,
     nomina,
+    nomina_anual,
+    nomina_calculos,
+    nomina_historial,
+    nomina_periodo,
     retenciones,
     sat_descarga,
     sat_verificacion,
@@ -112,6 +116,12 @@ app.include_router(estado_cuenta.router, prefix="/api/v1")
 app.include_router(agente.router, prefix="/api/v1")
 app.include_router(asistencia.router, prefix="/api/v1")
 app.include_router(nomina.router, prefix="/api/v1")
+# P4: nómina autenticada (contexto_actual + cliente_o_404 en cada ruta): cálculo con
+# plantilla de la cartera, historial y nóminas extraordinarias.
+app.include_router(nomina_periodo.router, prefix="/api/v1")
+app.include_router(nomina_historial.router, prefix="/api/v1")
+app.include_router(nomina_calculos.router, prefix="/api/v1")
+app.include_router(nomina_anual.router, prefix="/api/v1")
 app.include_router(despacho.router, prefix="/api/v1")
 # R-07: el único router del repo que EXIGE autenticación. El resto de /api/v1
 # sigue abierto (S-00b) y eso no cambia aquí.

@@ -738,6 +738,30 @@ después no se puede hacer.
 
 ### `POST /api/v1/nomina/calcular-periodo`
 
+> **P4 — CAMBIA EL CONTRATO (2026-10-19).** Lo que sigue en esta sección describe el
+> endpoint de D-06; el resumen de lo que cambió en P4 está aquí y manda sobre lo de abajo:
+>
+> - **Exige autenticación** (`contexto_actual`); el cliente se resuelve con `cliente_o_404`
+>   (otro despacho = **404**). Vive en `app/routes/nomina_periodo.py`.
+> - **La plantilla sale de la cartera SQL del cliente (P4-01).** `empleados` del cuerpo se
+>   **ignora** (no 422, para no romper a un front viejo) y la respuesta lo advierte;
+>   `origen_plantilla` vale siempre `"cartera"`. Ya no hay plantilla por omisión para `demo`.
+> - `parametros.prima_riesgo` y `parametros.clave_periodicidad` son **opcionales**: sin ellos se
+>   toman de la ficha del cliente.
+> - Campos nuevos del request: `tipo` (`ordinaria` | `extraordinaria` | `asimilados`),
+>   `variables[]` (horas extra, domingos, vacaciones, incapacidades, faltas adicionales, bonos,
+>   Infonavit, Fonacot, préstamo, pensión, viáticos; ver `VariablesEmpleadoSchema`) y `guardar`
+>   (default `true`, guarda en el historial).
+> - Campos nuevos de la respuesta: `tipo`, `periodo_id`, `criterios`, `clave_periodicidad` y,
+>   por recibo, `tipo_regimen`, `dias_en_periodo`, `dias_incapacidad`, `parcial`, `tarifa`,
+>   `isr_causado`, `subsidio_causado`, `sbc_variable_integrable`.
+> - Empleados sin incidencias del cierre **no entran** y se nombran en `advertencias` (antes los
+>   excluía el front). Asimilados no necesitan cierre: se les toma el periodo completo.
+> - Periodos parciales (alta/baja a mitad de periodo) **ya no se bloquean**: se calculan con el
+>   criterio §D26 del cliente. Febrero y meses de 31 siguen §D27. Catorcenal (03) y decenal (10)
+>   calculan; la catorcenal advierte que su tarifa es **derivada** (§D10).
+> - Un periodo `cerrada` responde **409** al recalcularlo.
+
 Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo.
 **Es un orquestador, no un motor**: llama a `armado.py`, `cuotas.py` e
 `isr_nomina.py` y no reimplementa ninguna fórmula. Los endpoints granulares
@@ -1028,6 +1052,73 @@ ninguna prueba pega a uno.
 - La descripción de la tool le dice al modelo que **reporte los importes tal cual y no
   sume, promedie ni derive nada**: la regla de oro del repo es que el LLM explica y
   nunca calcula.
+
+---
+
+## Nómina completa (plan P, P4-01 a P4-08)
+
+Todas autenticadas (`contexto_actual` + `cliente_o_404`; otro despacho = 404). Rutas en
+`app/routes/nomina_periodo.py`, `nomina_historial.py`, `nomina_calculos.py` y
+`nomina_anual.py`; motor en `app/nomina_engine/` (funciones puras: `aguinaldo.py`, `ptu.py`,
+`finiquito.py`, `ajuste_anual.py`, `isr_extraordinario.py`, `variables.py`,
+`periodo_completo.py`, `criterios.py`).
+
+### Criterios de nómina del cliente (DP-3)
+
+Viven en la ficha: `ClienteCarteraSchema.criterios_nomina` (`PUT /cartera/clientes/{id}`), con
+default completo. Los empleados ganan `fecha_baja` y `tipo_regimen` (`02` sueldos; `05`-`11`
+asimilados).
+
+| Criterio | Opciones (default primero) |
+|---|---|
+| `parcial` (§D26) | `tarifa_proporcional` · `tarifa_periodo` |
+| `febrero` (§D27) | `quince_siempre` · `dias_calendario` |
+| `prestaciones` (§D28) | `mayor` · `ficha` |
+| `isr_extraordinario` | `art_96` · `art_174` (RLISR) |
+| `ptu_remanente` | `no_se_reparte` · `redistribuir` |
+
+### `GET /api/v1/nomina/criterios`
+`{defaults, opciones}`: cada opción con su explicación, para el bloque "Criterios de nómina".
+
+### `GET /api/v1/nomina/clientes/{cliente_id}/historial?tipo=`
+Periodos guardados del cliente, más recientes primero: `{periodos: [{id, tipo, periodicidad,
+inicio, fin, fecha_pago, estado, empleados, total_percepciones, total_deducciones, total_isr,
+total_neto}]}`. `tipo`: ordinaria | extraordinaria | asimilados | finiquito | aguinaldo | ptu.
+
+### `GET /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}`
+`{periodo, criterios, parametros, resultado}`. `resultado` es la respuesta del cálculo **tal
+como salió** —no se recalcula—; `parametros` guarda UMA, salario mínimo, subsidio, tarifa y
+versión del motor con que se calculó. Periodo de otro cliente = 404.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar`
+Estado `cerrada`: recalcular ese periodo responde **409**.
+
+### `GET /api/v1/nomina/clientes/{cliente_id}/comparar?a=&b=`
+Diferencias b − a de neto, ISR y percepciones, totales y por empleado.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/aguinaldo`
+`{ejercicio, fecha_pago, empleados?: [], exento_ya_aplicado?: {no: monto}, guardar}` →
+aguinaldo proporcional (Art. 87 LFT), 30 UMA exentas (Art. 93 fr. XIV), ISR por el criterio
+`isr_extraordinario`. Días de aguinaldo según §D28.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/ptu`
+`{ejercicio, renta_gravable, fecha_pago, trabajadores: [{empleado_no, dias_trabajados,
+salarios_devengados, tipo: planta|eventual|confianza|director, promedio_ptu_3_anios}], guardar}`
+→ 10 % repartible, 50 % días / 50 % salarios (Art. 123), tope del Art. 127 (90 días de cuota
+diaria o promedio de 3 años, el mayor), 15 UMA exentas, `remanente`.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/finiquito`
+`{empleado_no, fecha_baja, causa: renuncia|despido_justificado|despido_injustificado|muerte|
+termino_contrato, dias_salario_pendientes, dias_vacaciones_pendientes, aguinaldo_ya_pagado,
+incluir_20_dias, guardar}` → conceptos con exento/gravado y fundamento, ISR ordinario (Art. 96)
+e ISR de separación (Arts. 95 y 96), neto. Requiere `fecha_alta` en la ficha.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/ajuste-anual`
+`{ejercicio, trabajadores?: [{empleado_no, ingresos_gravados, ingresos_exentos, isr_retenido,
+subsidio_correspondido, comunico_que_declara}]}`. Sin `trabajadores`, suma el historial
+guardado del ejercicio. Por trabajador: `procede`, `motivo` (causales del Art. 97),
+`impuesto_anual` (Art. 152 − subsidio), `saldo_a_cargo` / `saldo_a_favor` y su tratamiento.
+No se guarda en el historial.
 
 ---
 

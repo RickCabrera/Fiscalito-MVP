@@ -26,6 +26,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// P4-01: el cálculo va por `apiFetch` (adjunta el ID token). Sin este doble,
+// `services/firebase` lanza al importarse sin llaves (ver sinLlavesDeFirebase.test.ts).
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { hayLlavesDistintas } from '../components/nomina/llavesDelCierre';
@@ -264,9 +272,8 @@ describe('el cierre usa la llave del CHECADOR y la nómina la del CÁLCULO', () 
     expect(cuerpo.incidencias.map((i: { empleado_no: string }) => i.empleado_no)).toEqual([
       'E-07', 'E-08',
     ]);
-    expect(cuerpo.empleados.map((e: { empleado_no: string }) => e.empleado_no)).toEqual([
-      'E-07', 'E-08',
-    ]);
+    // P4-01: la plantilla ya NO viaja; el backend la lee de la cartera.
+    expect(cuerpo.empleados).toBeUndefined();
   });
 
   it('la tabla de incidencias pinta el nombre, no el número del aparato', async () => {

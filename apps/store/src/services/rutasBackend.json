@@ -185,6 +185,60 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/aguinaldo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/ajuste-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/comparar",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/finiquito",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/historial",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/ptu",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/criterios",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/demo/plantilla",
       "metodos": [
         "GET"

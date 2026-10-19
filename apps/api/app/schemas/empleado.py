@@ -194,6 +194,19 @@ class EmpleadoCarteraSchema(BaseModel):
         description="`null` cuando no se conoce, y NO se inventa (§D9).",
     )
 
+    fecha_baja: date | None = Field(
+        default=None,
+        description="P4-03: fecha de baja. Un periodo que la contiene se calcula PARCIAL "
+        "con el criterio §D26 del cliente; los periodos posteriores ya no lo incluyen.",
+    )
+    tipo_regimen: str = Field(
+        default="02",
+        pattern=r"^(02|05|06|07|08|09|10|11)$",
+        description="P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a "
+        "salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 "
+        "acciones, 11 otros.",
+    )
+
     tipo_contrato: TipoContrato = TipoContrato.INDETERMINADO
     prestaciones: PrestacionesSchema = Field(default_factory=PrestacionesSchema)
 

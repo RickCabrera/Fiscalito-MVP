@@ -41,6 +41,7 @@ import {
 import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import IdentidadEmpleado from './IdentidadEmpleado';
+import CamposNominaEmpleado from './CamposNominaEmpleado';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
@@ -340,6 +341,8 @@ export default function ModalEmpleado({
             </select>
           </Campo>
         </div>
+        {/* P4-03/P4-04: régimen (sueldos o asimilado) y fecha de baja. */}
+        <CamposNominaEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
 
         {/* R-03. Opcional a propósito, y el placeholder lo dice: es la salida
             para quien no tiene el número, y es lo que hace seguro rechazar por

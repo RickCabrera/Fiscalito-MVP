@@ -151,18 +151,20 @@ class TestReglaDeConstruccion:
 
 class TestSelectorDeTarifa:
     def test_claves_soportadas(self):
-        for clave in ("01", "02", "04", "05"):
+        for clave in ("01", "02", "03", "04", "05", "10"):
             assert tarifa_por_periodicidad(clave, date(2026, 6, 1))
 
-    def test_catorcenal_no_tiene_tarifa_publicada(self):
-        with pytest.raises(FiscalValidationError) as exc:
-            tarifa_por_periodicidad("03", date(2026, 6, 1))
-        assert "catorcenal" in str(exc.value)
+    def test_catorcenal_se_entrega_DERIVADA_y_marcada(self):
+        """P4-03 (§D10): no la publica nadie; se deriva y se marca como derivada."""
+        from app.nomina_engine.tablas_isr_periodicas import es_tarifa_derivada
 
-    def test_decenal_no_se_entrega_sin_verificar(self):
-        with pytest.raises(FiscalValidationError) as exc:
-            tarifa_por_periodicidad("10", date(2026, 6, 1))
-        assert "decenal" in str(exc.value)
+        assert tarifa_por_periodicidad("03", date(2026, 6, 1))
+        assert es_tarifa_derivada("03")
+        assert not es_tarifa_derivada("10")
+
+    def test_decenal_ya_se_entrega(self):
+        """P4-03: verificada contra el Anexo 8 (literales en test_tablas_p4.py)."""
+        assert len(tarifa_por_periodicidad("10", date(2026, 6, 1))) == 11
 
     @pytest.mark.parametrize("clave", ["06", "07", "08", "09", "99"])
     def test_claves_que_no_son_periodos(self, clave):

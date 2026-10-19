@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.constants import ZonaSalarioMinimo
 from app.nomina_engine.tablas_imss import PRIMA_RT_MAXIMA, PRIMA_RT_MINIMA
+from app.schemas.nomina_p4 import VariablesEmpleadoSchema
 
 
 class PeriodoNomina(BaseModel):
@@ -137,9 +139,12 @@ class IncidenciasEmpleadoSchema(BaseModel):
 
 
 class ParametrosPatron(BaseModel):
-    """Parámetros de la empresa que el motor necesita y no puede adivinar."""
+    """
+    Parámetros de la empresa. P4-01: si no vienen, se toman de la ficha del cliente.
+    """
 
-    prima_riesgo: Decimal = Field(
+    prima_riesgo: Decimal | None = Field(
+        default=None,
         ge=PRIMA_RT_MINIMA,
         le=PRIMA_RT_MAXIMA,
         description=f"Prima de RT autodeterminada (Art. 72 LSS): entre "
@@ -147,11 +152,11 @@ class ParametrosPatron(BaseModel):
         f"El motor también la valida; aquí se acota para responder 422 en la frontera "
         f"en vez de 500 desde el motor.",
     )
-    clave_periodicidad: str = Field(
-        default="04",
-        description="Clave de c_PeriodicidadPago. 01 diaria, 02 semanal, 04 quincenal, "
-        "05 mensual. Catorcenal (03) y decenal (10) responden 422: nadie publica su "
-        "tarifa verificada (§D10).",
+    clave_periodicidad: str | None = Field(
+        default=None,
+        description="Clave de c_PeriodicidadPago. 01 diaria, 02 semanal, 03 catorcenal "
+        "(tarifa DERIVADA, §D10), 04 quincenal, 05 mensual, 10 decenal. Sin ella, la de "
+        "la ficha del cliente.",
     )
     dias_pagados: int | None = Field(
         default=None,
@@ -165,18 +170,27 @@ class CalcularPeriodoRequest(BaseModel):
     cliente: str
     periodo: PeriodoNomina
     incidencias: tuple[IncidenciasEmpleadoSchema, ...]
-    parametros: ParametrosPatron
+    parametros: ParametrosPatron = Field(default_factory=ParametrosPatron)
     empleados: tuple[EmpleadoNominaSchema, ...] | None = Field(
         default=None,
-        description="Omitirlo usa la plantilla de la demo, y SÓLO es válido para el "
-        "cliente `demo`: calcularle a un cliente real la nómina de otras 9 personas "
-        "sería peor que fallar.",
+        description="P4-01: SE IGNORA. La plantilla sale de la cartera del cliente en el "
+        "backend; si viene, la respuesta lo advierte y no cambia nada.",
     )
+    tipo: Literal["ordinaria", "extraordinaria", "asimilados"] = Field(
+        default="ordinaria",
+        description="`asimilados` calcula sólo a los empleados con régimen 05-11 (Art. 94 "
+        "LISR); `ordinaria` y `extraordinaria`, a los de sueldos (02).",
+    )
+    variables: tuple[VariablesEmpleadoSchema, ...] = Field(
+        default=(), description="Variables e incidencias capturadas por empleado (P4-05)."
+    )
+    guardar: bool = Field(default=True, description="Guarda el periodo en el historial (P4-02).")
     incluir_explicacion: bool = False
 
     @model_validator(mode="after")
     def _incidencias_no_vacias(self) -> CalcularPeriodoRequest:
-        if not self.incidencias:
+        # P4-04: los asimilados no checan; sin incidencias se toma el periodo completo.
+        if not self.incidencias and self.tipo != "asimilados":
             raise ValueError(
                 "Se requieren incidencias del periodo. Cierra el periodo en "
                 "`/asistencia/cerrar-periodo` antes de calcular."
@@ -226,6 +240,19 @@ class ReciboSchema(BaseModel):
     cuota_patronal: Decimal
     absorbio_cuota_obrera: bool
     ramos: tuple[CuotaRamoSchema, ...]
+    # P4: rastro de cómo se calculó este recibo.
+    tipo_regimen: str = "02"
+    dias_en_periodo: int | None = None
+    dias_incapacidad: int = 0
+    parcial: bool = False
+    tarifa: str = ""
+    isr_causado: Decimal | None = None
+    subsidio_causado: Decimal = Decimal("0.00")
+    sbc_variable_integrable: Decimal = Field(
+        default=Decimal("0.00"),
+        description="Lo que este periodo aporta al SBC variable del bimestre siguiente "
+        "(Art. 30 fr. II LSS). No cambia el SBC de este periodo.",
+    )
 
 
 class PorcionConsolidada(BaseModel):
@@ -294,6 +321,10 @@ class CalcularPeriodoResponse(BaseModel):
 
     advertencias: tuple[str, ...] = ()
     explicacion: str | None = None
+    tipo: str = "ordinaria"
+    periodo_id: int | None = Field(default=None, description="Id en el historial (P4-02).")
+    criterios: dict[str, str] = Field(default_factory=dict)
+    clave_periodicidad: str = ""
 
 
 class SBCRequest(BaseModel):
