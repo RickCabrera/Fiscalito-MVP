@@ -130,7 +130,17 @@ function arbol(
   );
 }
 
+/**
+ * P1-06: con cliente activo la fuente por defecto es su bóveda; estos casos prueban
+ * el camino de archivos sueltos, que sigue disponible con un clic.
+ */
+function usarArchivosSueltos() {
+  const opcion = screen.queryByRole('radio', { name: /Usar archivos sueltos/ });
+  if (opcion) fireEvent.click(opcion);
+}
+
 async function subirYCalcular() {
+  usarArchivosSueltos();
   const input = document.querySelector('input[type="file"]') as HTMLInputElement;
   fireEvent.change(input, { target: { files: demoXmls() } });
   await screen.findByText(/DEMO0001|ingreso-001|15,000/i, undefined, { timeout: 3000 }).catch(() => null);
@@ -200,6 +210,7 @@ describe('C-02 · contador con cliente activo', () => {
     vista.rerender(arbol(activo(OTRO), <FiscalitoServicePage />));
     // Ni el resultado ni las facturas del Taller sobreviven al cambio.
     expect(screen.queryByRole('button', { name: /Descargar PDF/ })).toBeNull();
+    usarArchivosSueltos();
     fireEvent.click(screen.getByRole('button', { name: /Calcular pre-declaración/ }));
     expect(screen.getByText('Sube al menos una factura XML.')).toBeTruthy();
     expect(api.calcularPreDeclaracion).toHaveBeenCalledTimes(1);

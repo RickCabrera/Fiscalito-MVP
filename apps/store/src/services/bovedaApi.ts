@@ -6,6 +6,7 @@
  */
 
 import { apiArchivo, apiFetch } from './api';
+import type { CFDIFiscal } from './fiscalAgentApi';
 
 export type TipoCfdi = 'I' | 'E' | 'P' | 'N' | 'T';
 export type DireccionCfdi = 'emitido' | 'recibido';
@@ -124,4 +125,63 @@ export function resumenBoveda(
   filtros: Pick<FiltrosBoveda, 'desde' | 'hasta'> = {},
 ): Promise<{ exito: boolean; renglones: RenglonResumen[] }> {
   return apiFetch(`${base(clave)}/resumen${consultaDeFiltros(filtros)}`);
+}
+
+// ── P1-06: los módulos leen la bóveda ──
+
+/** Qué se tomó de la bóveda para un cálculo y qué se dejó fuera. */
+export interface ResumenFacturasCalculo {
+  comprobantes: number;
+  emitidos: number;
+  recibidos: number;
+  por_tipo: Partial<Record<TipoCfdi, number>>;
+  cancelados_excluidos: number;
+  nomina_excluidos: number;
+  relacionados_fuera_del_periodo: number;
+}
+
+export interface FacturasDeBoveda {
+  /** Los CFDI vigentes del periodo, sin nómina, en la forma que piden los cálculos. */
+  facturas: CFDIFiscal[];
+  /** Originales PPD de OTROS periodos que los pagos del periodo liquidan (sólo para el motor). */
+  relacionados: CFDIFiscal[];
+  resumen: ResumenFacturasCalculo;
+  advertencias: string[];
+}
+
+type CfdiCrudo = Omit<CFDIFiscal, 'uuid_relacionado' | 'monto_pago'> & {
+  uuid_relacionado?: string | null;
+  monto_pago?: number | null;
+};
+
+/** El backend manda `null` donde el tipo del front usa "ausente". */
+function aCfdi({ uuid_relacionado, monto_pago, ...resto }: CfdiCrudo): CFDIFiscal {
+  return {
+    ...resto,
+    ...(uuid_relacionado ? { uuid_relacionado } : {}),
+    ...(monto_pago !== null && monto_pago !== undefined ? { monto_pago } : {}),
+  };
+}
+
+/**
+ * Los CFDI del periodo listos para los endpoints de cálculo
+ * (`GET /boveda/clientes/{clave}/facturas-calculo`). El backend ya quitó
+ * cancelados y nómina; el tipo `CFDIFiscal` lo dice también aquí.
+ */
+export async function facturasParaCalculo(
+  clave: string,
+  periodo: { desde: string; hasta: string; tipos?: TipoCfdi[] },
+): Promise<FacturasDeBoveda> {
+  const q = new URLSearchParams({ desde: periodo.desde, hasta: periodo.hasta });
+  if (periodo.tipos?.length) q.set('tipos', periodo.tipos.join(','));
+  const r = await apiFetch<{
+    facturas: CfdiCrudo[]; relacionados: CfdiCrudo[];
+    resumen: ResumenFacturasCalculo; advertencias?: string[];
+  }>(`${base(clave)}/facturas-calculo?${q.toString()}`);
+  return {
+    facturas: r.facturas.map(aCfdi),
+    relacionados: (r.relacionados ?? []).map(aCfdi),
+    resumen: r.resumen,
+    advertencias: r.advertencias ?? [],
+  };
 }

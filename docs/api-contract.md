@@ -1176,6 +1176,68 @@ dirección:
 { "exito": true, "renglones": [
   {"periodo": "2026-03", "tipo": "I", "direccion": "emitido", "cantidad": 42, "total": "48720.00"} ] }
 ```
+
+### `GET /api/v1/boveda/clientes/{clave}/facturas-calculo` (P1-06)
+
+Los CFDI del periodo **ya en la forma del esquema `CFDI`** de `app/schemas/fiscal.py` (lo que
+reciben todos los endpoints de cálculo). Query: `desde`, `hasta` (obligatorios, AAAA-MM-DD,
+inclusivos, sobre `Fecha` del CFDI), `tipos` (opcional, `I,E,P,T` separados por coma; `N` → 422).
+`desde > hasta` → 422. Lógica en `app/boveda_cfdi/calculo.py`; no calcula impuestos.
+
+```json
+{ "exito": true, "desde": "2026-03-01", "hasta": "2026-03-31",
+  "facturas": [{ "uuid": "…", "fecha": "2026-03-05", "tipo": "I", "rfc_emisor": "…",
+    "rfc_receptor": "…", "subtotal": 1000.0, "total": 1160.0, "iva_trasladado": 160.0,
+    "iva_retenido": 0.0, "isr_retenido": 0.0, "descuento": 0.0, "uso_cfdi": "G03",
+    "descripcion": "Servicio", "clave_prod_serv": "84111506", "metodo_pago": "PUE",
+    "uuid_relacionado": null, "monto_pago": null }],
+  "relacionados": [ /* originales PPD de OTROS periodos que los pagos del periodo liquidan */ ],
+  "resumen": { "comprobantes": 4, "emitidos": 3, "recibidos": 1, "por_tipo": {"I": 3, "P": 1},
+    "cancelados_excluidos": 1, "nomina_excluidos": 1, "relacionados_fuera_del_periodo": 1 },
+  "advertencias": [] }
+```
+
+- **Cancelados fuera** (`estatus_sat = cancelado`, P1-03); los `desconocido` sí cuentan.
+- **Nómina (`N`) fuera**: no es ingreso ni gasto del contribuyente en estos cálculos (mismo
+  criterio que `facturasFiscales` del front); se cuenta en `nomina_excluidos`.
+- **Pagos (`P`)**: uno por `DoctoRelacionado`, con `uuid_relacionado = IdDocumento` y
+  `monto_pago = ImpPagado` (o `Monto` del pago si es el único documento y no trae `ImpPagado`).
+  Si un pago liquida varias facturas, cada documento sale como `<UUID>#1`, `<UUID>#2`…
+- **`relacionados`**: si el original PPD de un pago es de otro periodo, va aquí para que el motor
+  lo cruce. **No** se cuenta en `resumen.comprobantes`; DIOT y retenciones no lo reciben.
+- **Moneda**: importes a pesos con el `TipoCambio` del CFDI; sin `TipoCambio` en moneda
+  extranjera se manda tal cual y se dice en `advertencias`.
+- `descripcion` y `clave_prod_serv` son los del primer concepto (como el parser del navegador).
+
+## Cálculos por cliente desde la bóveda (P1-06)
+
+`POST /api/v1/clientes/{clave}/calculos/<calculo>` — el mismo cálculo que el endpoint de siempre,
+pero **sin `contribuyente` ni `facturas` en el body**: el RFC y el régimen salen de la ficha del
+cliente (`datos.regimen`) y los CFDI de `facturas-calculo` del periodo. Se llama al **mismo
+handler** que el endpoint original (no hay motor duplicado). Autenticado; cliente de otro despacho
+= 404. La respuesta es la del endpoint original más `boveda` (el `resumen` de arriba +
+`advertencias`).
+
+| `<calculo>` | Body | Periodo que lee | Igual que |
+|---|---|---|---|
+| `pre-declaracion` | `periodo_year`, `periodo_month` **o** `periodo_bimestre`, `pagos_provisionales_anteriores`, `ingresos_acumulados_anteriores`, `deducciones_acumuladas_anteriores`, `predial_pagado`, `incluir_explicacion` | el mes/bimestre (+ `relacionados`) | `POST /pre-declaracion` |
+| `pre-declaracion-anual` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /pre-declaracion-anual` |
+| `diot` | `periodo_year`, `periodo_month`, `incluir_explicacion` | el mes | `POST /diot` |
+| `retenciones-terceros` | `periodo_year`, `periodo_month`/`periodo_bimestre` (opcionales), `incluir_explicacion` | el mes/bimestre/ejercicio | `POST /retenciones-terceros` |
+| `multi-periodo` | `periodo_year`, `periodos` (meses 1–12), `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /multi-periodo` |
+| `estado-cuenta` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /estado-cuenta` |
+
+Errores: cliente sin RFC → 422 `"Captura el RFC de este cliente."`; sin régimen → 422 `"Captura
+el régimen de este cliente."`; régimen 601 → 400 (como el original, antes de leer la bóveda);
+bóveda sin CFDI vigentes del periodo → 400 `"La bóveda de este cliente no tiene CFDI vigentes de
+<periodo>. …"`; pre-declaración sin mes ni bimestre → 422.
+
+**Front (P1-06):** los tabs de Fiscalito y Contabilito usan por defecto
+`facturas-calculo` (hook `useFuenteFacturas` / `useFacturasDeBoveda` en
+`apps/store/src/components/fiscalito/`) y siguen llamando a los endpoints de siempre con
+`facturas`; así el Art. 106 de la pre-declaración, que el front arma desde el historial, no
+cambia. Los cálculos por cliente quedan disponibles para integraciones y el agente.
+
 ## Credenciales del cliente — e.firma y CSD (P0-05)
 
 Autenticadas (`Authorization: Bearer <ID token>`), multi-despacho (cliente de otro despacho =

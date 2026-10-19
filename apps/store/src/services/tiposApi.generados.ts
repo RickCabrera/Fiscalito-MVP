@@ -253,6 +253,12 @@ export interface CuotaRamoSchema {
   fundamento: string;
 }
 
+export interface DIOTCliente {
+  periodo_year: number;
+  incluir_explicacion?: boolean;
+  periodo_month: number;
+}
+
 /** Request para generar DIOT. */
 export interface DIOTRequest {
   contribuyente: PerfilContribuyente;
@@ -659,6 +665,12 @@ export interface ListaTrabajos {
   trabajos: TrabajoSalida[];
 }
 
+export interface MultiPeriodoCliente {
+  periodo_year: number;
+  incluir_explicacion?: boolean;
+  periodos: number[];
+}
+
 /** Request para calcular multiples periodos a la vez. */
 export interface MultiPeriodoRequest {
   contribuyente: PerfilContribuyente;
@@ -815,6 +827,17 @@ export interface PorcionConsolidada {
   empleados: number;
 }
 
+export interface PreDeclaracionCliente {
+  periodo_year: number;
+  incluir_explicacion?: boolean;
+  periodo_month?: number | null;
+  periodo_bimestre?: number | null;
+  pagos_provisionales_anteriores?: number;
+  ingresos_acumulados_anteriores?: number;
+  deducciones_acumuladas_anteriores?: number;
+  predial_pagado?: number;
+}
+
 /** Request para generar una pre-declaracion (mensual, bimestral o anual). */
 export interface PreDeclaracionRequest {
   contribuyente: PerfilContribuyente;
@@ -927,6 +950,13 @@ export interface ResultadoRegimen {
   isr_mensual: number;
   disponible: boolean;
   notas?: string[];
+}
+
+export interface RetencionesCliente {
+  periodo_year: number;
+  incluir_explicacion?: boolean;
+  periodo_month?: number | null;
+  periodo_bimestre?: number | null;
 }
 
 /** Request para generar resumen de retenciones. */
@@ -1058,6 +1088,11 @@ export interface ValidationError {
 /** Zona geografica que determina el salario minimo aplicable. */
 export type ZonaSalarioMinimo = "general" | "zlfn";
 
+export interface _ConExplicacion {
+  periodo_year: number;
+  incluir_explicacion?: boolean;
+}
+
 export interface app__routes__sat_descarga__ConfigEntrada {
   activa?: boolean | null;
   emitidos?: boolean | null;
@@ -1085,6 +1120,7 @@ export type RutaApi =
   | "/api/v1/boveda/clientes/{clave}/cfdi"
   | "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}"
   | "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml"
+  | "/api/v1/boveda/clientes/{clave}/facturas-calculo"
   | "/api/v1/boveda/clientes/{clave}/resumen"
   | "/api/v1/calendario"
   | "/api/v1/cartera/clientes"
@@ -1093,6 +1129,12 @@ export type RutaApi =
   | "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}"
   | "/api/v1/cartera/clientes/{cliente_id}/empleados"
   | "/api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}"
+  | "/api/v1/clientes/{clave}/calculos/diot"
+  | "/api/v1/clientes/{clave}/calculos/estado-cuenta"
+  | "/api/v1/clientes/{clave}/calculos/multi-periodo"
+  | "/api/v1/clientes/{clave}/calculos/pre-declaracion"
+  | "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual"
+  | "/api/v1/clientes/{clave}/calculos/retenciones-terceros"
   | "/api/v1/clientes/{clave}/credenciales"
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
   | "/api/v1/comparar-regimenes"
@@ -1187,6 +1229,10 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: unknown;
   };
+  "GET /api/v1/boveda/clientes/{clave}/facturas-calculo": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/boveda/clientes/{clave}/resumen": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -1234,6 +1280,30 @@ export interface OperacionesApi {
   "PUT /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}": {
     cuerpo: EmpleadoCarteraSchemaInput;
     respuesta: OperacionResponse;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/diot": {
+    cuerpo: DIOTCliente;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/estado-cuenta": {
+    cuerpo: _ConExplicacion;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/multi-periodo": {
+    cuerpo: MultiPeriodoCliente;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/pre-declaracion": {
+    cuerpo: PreDeclaracionCliente;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/pre-declaracion-anual": {
+    cuerpo: _ConExplicacion;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/calculos/retenciones-terceros": {
+    cuerpo: RetencionesCliente;
+    respuesta: Record<string, unknown>;
   };
   "GET /api/v1/clientes/{clave}/credenciales": {
     cuerpo: never;

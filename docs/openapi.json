@@ -3063,6 +3063,110 @@
         }
       }
     },
+    "/api/v1/boveda/clientes/{clave}/facturas-calculo": {
+      "get": {
+        "tags": [
+          "boveda"
+        ],
+        "summary": "Facturas Calculo",
+        "description": "Los CFDI vigentes del periodo en la forma del esquema `CFDI` de los cálculos (P1-06).\n\nSin cancelados ni nómina; los pagos salen uno por documento relacionado. Ver\n`app/boveda_cfdi/calculo.py`.",
+        "operationId": "facturas_calculo_api_v1_boveda_clientes__clave__facturas_calculo_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha inicial (inclusive), AAAA-MM-DD",
+              "title": "Desde"
+            },
+            "description": "Fecha inicial (inclusive), AAAA-MM-DD"
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha final (inclusive), AAAA-MM-DD",
+              "title": "Hasta"
+            },
+            "description": "Fecha final (inclusive), AAAA-MM-DD"
+          },
+          {
+            "name": "tipos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tipos separados por coma (I,E,P,T). Default: todos.",
+              "title": "Tipos"
+            },
+            "description": "Tipos separados por coma (I,E,P,T). Default: todos."
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Facturas Calculo Api V1 Boveda Clientes  Clave  Facturas Calculo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/boveda/clientes/{clave}/resumen": {
       "get": {
         "tags": [
@@ -5157,6 +5261,432 @@
           }
         }
       }
+    },
+    "/api/v1/clientes/{clave}/calculos/pre-declaracion": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Pre Declaracion",
+        "description": "Pre-declaración mensual o bimestral con los CFDI del periodo en la bóveda.",
+        "operationId": "pre_declaracion_api_v1_clientes__clave__calculos_pre_declaracion_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreDeclaracionCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pre Declaracion Api V1 Clientes  Clave  Calculos Pre Declaracion Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Pre Declaracion Anual",
+        "description": "Pre-declaración anual con los CFDI del ejercicio en la bóveda.",
+        "operationId": "pre_declaracion_anual_api_v1_clientes__clave__calculos_pre_declaracion_anual_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ConExplicacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pre Declaracion Anual Api V1 Clientes  Clave  Calculos Pre Declaracion Anual Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/calculos/diot": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Diot Cliente",
+        "description": "DIOT del mes. Sólo los CFDI del periodo: el motor de DIOT no distingue PPD.",
+        "operationId": "diot_cliente_api_v1_clientes__clave__calculos_diot_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DIOTCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Diot Cliente Api V1 Clientes  Clave  Calculos Diot Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/calculos/retenciones-terceros": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Retenciones Cliente",
+        "description": "Retenciones a terceros del mes, bimestre o ejercicio.",
+        "operationId": "retenciones_cliente_api_v1_clientes__clave__calculos_retenciones_terceros_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetencionesCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Retenciones Cliente Api V1 Clientes  Clave  Calculos Retenciones Terceros Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/calculos/multi-periodo": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Multi Periodo Cliente",
+        "description": "Varios meses del ejercicio con los CFDI del año en la bóveda.",
+        "operationId": "multi_periodo_cliente_api_v1_clientes__clave__calculos_multi_periodo_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultiPeriodoCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Multi Periodo Cliente Api V1 Clientes  Clave  Calculos Multi Periodo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/calculos/estado-cuenta": {
+      "post": {
+        "tags": [
+          "calculos-cliente"
+        ],
+        "summary": "Estado Cuenta Cliente",
+        "description": "Estado de cuenta fiscal del ejercicio con los CFDI del año en la bóveda.",
+        "operationId": "estado_cuenta_cliente_api_v1_clientes__clave__calculos_estado_cuenta_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_ConExplicacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Cuenta Cliente Api V1 Clientes  Clave  Calculos Estado Cuenta Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6393,6 +6923,33 @@
         ],
         "title": "CuotaRamoSchema",
         "description": "Un ramo calculado, con lo necesario para conciliarlo contra la EMA."
+      },
+      "DIOTCliente": {
+        "properties": {
+          "periodo_year": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Periodo Year"
+          },
+          "incluir_explicacion": {
+            "type": "boolean",
+            "title": "Incluir Explicacion",
+            "default": true
+          },
+          "periodo_month": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Periodo Month"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_year",
+          "periodo_month"
+        ],
+        "title": "DIOTCliente"
       },
       "DIOTRequest": {
         "properties": {
@@ -8421,6 +8978,35 @@
         ],
         "title": "ListaTrabajos"
       },
+      "MultiPeriodoCliente": {
+        "properties": {
+          "periodo_year": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Periodo Year"
+          },
+          "incluir_explicacion": {
+            "type": "boolean",
+            "title": "Incluir Explicacion",
+            "default": true
+          },
+          "periodos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Periodos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_year",
+          "periodos"
+        ],
+        "title": "MultiPeriodoCliente"
+      },
       "MultiPeriodoRequest": {
         "properties": {
           "contribuyente": {
@@ -9176,6 +9762,74 @@
         "title": "PorcionConsolidada",
         "description": "Lo devengado en ESTE periodo por los ramos de una periodicidad de entero.\n\n**No es el entero del Art. 39 LSS.** Una quincena trae media mensualidad de\nEyM/IyV y un doceavo de bimestre de Retiro/CEAV/Infonavit. Para enterar hay\nque sumar los periodos que caen en el mes o en el bimestre."
       },
+      "PreDeclaracionCliente": {
+        "properties": {
+          "periodo_year": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Periodo Year"
+          },
+          "incluir_explicacion": {
+            "type": "boolean",
+            "title": "Incluir Explicacion",
+            "default": true
+          },
+          "periodo_month": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 12.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Month"
+          },
+          "periodo_bimestre": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 6.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Bimestre"
+          },
+          "pagos_provisionales_anteriores": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Pagos Provisionales Anteriores",
+            "default": 0.0
+          },
+          "ingresos_acumulados_anteriores": {
+            "type": "number",
+            "title": "Ingresos Acumulados Anteriores",
+            "default": 0.0
+          },
+          "deducciones_acumuladas_anteriores": {
+            "type": "number",
+            "title": "Deducciones Acumuladas Anteriores",
+            "default": 0.0
+          },
+          "predial_pagado": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Predial Pagado",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_year"
+        ],
+        "title": "PreDeclaracionCliente"
+      },
       "PreDeclaracionRequest": {
         "properties": {
           "contribuyente": {
@@ -9734,6 +10388,52 @@
         ],
         "title": "ResultadoRegimen",
         "description": "Resultado ISR estimado para un regimen fiscal especifico."
+      },
+      "RetencionesCliente": {
+        "properties": {
+          "periodo_year": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Periodo Year"
+          },
+          "incluir_explicacion": {
+            "type": "boolean",
+            "title": "Incluir Explicacion",
+            "default": true
+          },
+          "periodo_month": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 12.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Month"
+          },
+          "periodo_bimestre": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 6.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Bimestre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_year"
+        ],
+        "title": "RetencionesCliente"
       },
       "RetencionesRequest": {
         "properties": {
@@ -10374,6 +11074,26 @@
         ],
         "title": "ZonaSalarioMinimo",
         "description": "Zona geografica que determina el salario minimo aplicable."
+      },
+      "_ConExplicacion": {
+        "properties": {
+          "periodo_year": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Periodo Year"
+          },
+          "incluir_explicacion": {
+            "type": "boolean",
+            "title": "Incluir Explicacion",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_year"
+        ],
+        "title": "_ConExplicacion"
       },
       "app__routes__sat_descarga__ConfigEntrada": {
         "properties": {

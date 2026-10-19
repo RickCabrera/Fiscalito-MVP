@@ -10,6 +10,8 @@ import { Upload, Trash2, FileText, Receipt } from 'lucide-react';
 interface Props {
   facturas: CFDI[];
   onChange: (facturas: CFDI[]) => void;
+  /** P1-06: los XML tal cual se soltaron, para poder mandarlos a la bóveda. */
+  onArchivos?: (archivos: File[]) => void;
 }
 
 /**
@@ -26,7 +28,7 @@ interface Props {
  * o va a creer que se perdieron. La exclusión de verdad la garantiza el TIPO
  * (`CFDIFiscal` en `fiscalAgentApi.ts`), no este contador, que es informativo.
  */
-export default function XMLUploader({ facturas, onChange }: Props) {
+export default function XMLUploader({ facturas, onChange, onArchivos }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [parseErrors, setParseErrors] = useState<{ fileName: string; error: string }[]>([]);
@@ -41,6 +43,7 @@ export default function XMLUploader({ facturas, onChange }: Props) {
     const { xml: xmlFiles, rechazados } = separarXml(files);
     if (rechazados.length > 0) setParseErrors((prev) => [...prev, ...rechazados]);
     if (xmlFiles.length === 0) return;
+    onArchivos?.(xmlFiles);
     const result = await parseMultipleCFDI(xmlFiles);
     const existingUuids = new Set(facturas.map((f) => f.uuid));
     const nuevas = result.success.filter((f) => !existingUuids.has(f.uuid));
@@ -50,7 +53,7 @@ export default function XMLUploader({ facturas, onChange }: Props) {
     if (result.errors.length > 0) {
       setParseErrors((prev) => [...prev, ...result.errors]);
     }
-  }, [facturas, onChange]);
+  }, [facturas, onChange, onArchivos]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

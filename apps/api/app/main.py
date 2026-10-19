@@ -24,6 +24,7 @@ from app.routes import (
     asistencia,
     auditoria,
     boveda,
+    calculos_cliente,
     calendario,
     cartera,
     comparador,
@@ -135,6 +136,7 @@ ROUTERS_PROTEGIDOS = (
     # P1: descarga masiva del SAT (P1-01/02) y verificaciones SAT (P1-03/04/05).
     sat_descarga.router,
     sat_verificacion.router,
+    calculos_cliente.router,
 )
 
 app.include_router(health.router)

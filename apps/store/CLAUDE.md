@@ -546,6 +546,13 @@ suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` 
 
 ### Contabilito — contabilidad electronica (T7, CASCARON)
 
+> **P1-06:** Contabilito y los tabs de Fiscalito toman por defecto los CFDI del periodo de la
+> **bóveda del cliente activo** (`GET /boveda/clientes/{clave}/facturas-calculo`, vía
+> `components/fiscalito/useFuenteFacturas.ts` + `FuenteFacturasPanel.tsx`; sin cancelados ni
+> nómina). Subir XML sigue como "Usar archivos sueltos", con "Guardar en la bóveda". Lo de
+> "sin una sola llamada al API" de abajo es historia: las pólizas se arman en el front, pero
+> los comprobantes ya vienen de la API.
+
 `/app/store/contabilito/use`. **100% front y sin una sola llamada al API**, y puede serlo
 porque aqui no se calcula ningun impuesto: los importes (subtotal, descuento, IVA trasladado,
 retenciones) ya vienen leidos del XML por `cfdiParser.ts` y solo se acomodan en los dos lados
