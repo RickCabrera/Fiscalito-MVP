@@ -128,3 +128,15 @@ class AlmacenChecadas:
 
 # Instancia unica del proceso. Es el unico estado mutable del servicio.
 almacen = AlmacenChecadas()
+
+
+def llave_almacen(despacho_id: str, cliente: str) -> str:
+    """
+    La llave del almacén para un cliente DE UN DESPACHO (P0-02).
+
+    Los clientes de la demo (`demo`, `cafeteria`, `taller`) son un catálogo compartido, así
+    que el id del cliente solo no separa a dos despachos: las checadas del `taller` de uno
+    se verían en el panel del otro. Toda ruta y toda tool arman la llave con esto; el
+    despacho sale del token (de Firebase o del dispositivo), nunca del request.
+    """
+    return f"{despacho_id}::{cliente}"

@@ -7,8 +7,8 @@ lo serializa. La única derivación que hace es `periodo_sugerido`, y la delega 
 `GET /nomina/demo/plantilla`—: dos reglas de quincena distintas darían periodos
 distintos según el cliente.
 
-DEMO — ver `docs/D-DEMO-CHECADOR.md`: sin autenticación (la del resto de
-`/api/v1` está en S-00b), datos estáticos, y no se despliega.
+DEMO — ver `docs/D-DEMO-CHECADOR.md`: datos estáticos, y no se despliega. La sesión la
+exige `app/main.py` para todo `/api/v1` (P0-02).
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ from app.schemas.nomina import PeriodoNomina
 
 router = APIRouter(tags=["Despacho (demo)"])
 
-_AVISO = "DEMO — sin autenticación, datos estáticos, no desplegar. "
+_AVISO = "DEMO — datos estáticos, no desplegar. "
 
 
 def _resumen(cliente: ClienteDespacho) -> ClienteResumen:

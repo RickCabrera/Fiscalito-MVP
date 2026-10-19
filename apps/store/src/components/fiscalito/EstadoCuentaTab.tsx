@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse, facturasFiscales } from '../../services/fiscalAgentApi';
+import { obtenerEstadoCuenta, type CFDI, type EstadoCuentaResponse } from '../../services/fiscalAgentApi';
 import { guardarEstadoCuenta } from '../../services/declaracionesHistory';
 import { exportarEstadoCuentaPDF } from '../../services/pdfExportEstado';
 import { fmtMoney } from '../../utils/format';
 import { labelStyle } from '../../utils/styles';
-import XMLUploader from './XMLUploader';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import { useFuenteFacturas } from './useFuenteFacturas';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
@@ -30,9 +31,16 @@ export default function EstadoCuentaTab() {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<EstadoCuentaResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
+  // P1-06: los CFDI del ejercicio salen de la bóveda del cliente; subir XML sigue disponible.
+  const fuente = useFuenteFacturas({
+    clave: perfil.clienteId, anio: year, manual: facturas, conRelacionados: true,
+  });
 
   const handleGenerar = async () => {
-    if (facturas.length === 0) { setError('Sube las facturas del año completo.'); return; }
+    if (fuente.paraCalcular.length === 0) {
+      setError(fuente.modo === 'archivos' ? 'Sube las facturas del año completo.' : fuente.motivoVacio);
+      return;
+    }
     if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
@@ -40,7 +48,7 @@ export default function EstadoCuentaTab() {
     try {
       const res = await obtenerEstadoCuenta({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(facturas), periodo_year: year, incluir_explicacion: true,
+        facturas: fuente.paraCalcular, periodo_year: year, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
@@ -170,7 +178,7 @@ export default function EstadoCuentaTab() {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
           Sube todas las facturas del año para ver tu panorama fiscal completo.
         </p>
-        <XMLUploader facturas={facturas} onChange={setFacturas} />
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={setFacturas} />
       </div>
       <div className="card" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div>

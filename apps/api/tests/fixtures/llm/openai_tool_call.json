@@ -1,0 +1,31 @@
+{
+  "id": "chatcmpl-PRUEBA",
+  "object": "chat.completion",
+  "created": 1760880000,
+  "model": "gpt-4o-mini-2024-07-18",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_PRUEBA",
+            "type": "function",
+            "function": {
+              "name": "buscar_cliente",
+              "arguments": "{\"rfc\": \"XAXX010101AB1\"}"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 50,
+    "completion_tokens": 12,
+    "total_tokens": 62
+  }
+}

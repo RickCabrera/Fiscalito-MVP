@@ -1,7 +1,8 @@
 """Endpoint DIOT — Declaracion Informativa de Operaciones con Terceros."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.constants import NOMBRES_MESES
 from app.fiscal_engine.diot import generar_diot
 from app.schemas.diot import DIOTRequest, DIOTResponse
@@ -17,7 +18,9 @@ router = APIRouter(tags=["PYME"])
     description="Genera la Declaracion Informativa de Operaciones con Terceros "
     "agrupando egresos por proveedor.",
 )
-async def diot(req: DIOTRequest):
+async def diot(
+    req: DIOTRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if not req.facturas:
         raise HTTPException(status_code=400, detail="Se requiere al menos una factura.")
 
@@ -48,6 +51,7 @@ async def diot(req: DIOTRequest):
                 for p in proveedores
             ],
         }
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_diot(resultado_diot)
 
     return DIOTResponse(
