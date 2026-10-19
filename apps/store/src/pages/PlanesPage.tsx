@@ -1,7 +1,7 @@
 /**
  * Planes de la cuenta — `/app/planes`. (T8)
  *
- * Tres tarjetas y un botón que guarda `users/{uid}.plan`. **No cobra nada**: no
+ * Una tarjeta por plan y un botón que guarda `users/{uid}.plan`. **No cobra nada**: no
  * hay pasarela, ni suscripción, ni precio publicado. Lo que el botón cambia es
  * el límite de clientes que `ClientesPage` hace cumplir, y eso es todo lo que
  * la pantalla promete. El porqué de cada número vive en `services/planes.ts`.
@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, Loader } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useCartera } from '../context/carteraStore';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { PLANES, planDelPerfil, usoDeClientes, type IdPlan, type Plan } from '../services/planes';
 
 function TarjetaDePlan({
@@ -105,7 +104,6 @@ export default function PlanesPage() {
 
   const plan = planDelPerfil(profile.plan);
   const uso = usoDeClientes(plan, cartera.clientes.length);
-  const conCartera = !modoEmpresaUnica();
 
   const elegir = async (id: IdPlan) => {
     setGuardando(id);
@@ -135,19 +133,9 @@ export default function PlanesPage() {
 
       <div className="page-header animate-in">
         <h1>Planes</h1>
-        {/* En modo empresa única no hay cartera, y "1 / 1 clientes" sería el
-            mismo lenguaje de despacho que `TarjetaPlan` evita. Lo señaló el
-            revisor de T8: esta pantalla SÍ es alcanzable en ese modo, desde la
-            tarjeta del Perfil. */}
         <p>
-          {conCartera ? (
-            <>
-              Tu plan decide cuántos clientes puedes llevar. Hoy llevas{' '}
-              <strong>{uso.texto}</strong>.
-            </>
-          ) : (
-            'Esta instalación lleva la nómina de una sola empresa. El plan describe su alcance.'
-          )}
+          Tu plan decide cuántos clientes puedes llevar. Hoy llevas{' '}
+          <strong>{uso.texto}</strong>.
         </p>
       </div>
 
@@ -182,7 +170,7 @@ export default function PlanesPage() {
             key={p.id}
             plan={p}
             actual={p.id === plan.id}
-            clientes={conCartera ? cartera.clientes.length : 0}
+            clientes={cartera.clientes.length}
             guardando={guardando === p.id}
             onElegir={() => void elegir(p.id)}
           />

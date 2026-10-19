@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { LayoutDashboard, History, Scale, BookOpen, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint } from 'lucide-react';
+import { Scale, BookOpen, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint } from 'lucide-react';
 import { esContador, getSidebarLinks, navActivo, type NavId } from '../services/navigation';
 import { useClienteActivo } from '../context/clienteActivoStore';
 // DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
@@ -13,12 +13,10 @@ import { MARCA_INICIAL, MARCA_LOGO } from '../services/marca';
 /** Icono de cada entrada del sidebar. La lista de entradas y su orden viven en
  *  `services/navigation.ts` (modulo puro); aqui solo se les pone cara. */
 const ICONOS: Record<NavId, React.ReactNode> = {
-  dashboard: <LayoutDashboard size={20} />,
   fiscalito: <Scale size={20} />,
   // El libro contable. `Scale` ya es Fiscalito y `FileStack` se parece
   // demasiado a `Contact` al tamano del sidebar.
   contabilito: <BookOpen size={20} />,
-  historial: <History size={20} />,
   nomina: <Radio size={20} />,
   clientes: <Users size={20} />,
   // R-05. `Users` ya lo usa Clientes: repetirlo haria el sidebar ilegible
@@ -60,7 +58,7 @@ export default function AppLayout() {
     navigate('/');
   };
 
-  const links = getSidebarLinks(profile.contributorType);
+  const links = getSidebarLinks();
   const esDespacho = esContador(profile.contributorType);
   /** Nombre del cliente bajo la entrada "Nómina": es de quién es esa nómina. */
   const subEtiqueta = (id: NavId): string | null =>

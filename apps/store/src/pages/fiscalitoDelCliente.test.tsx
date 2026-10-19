@@ -24,20 +24,12 @@ import type { ClienteResumen } from '../services/despachoApi';
 import type { ClienteCartera } from '../services/carteraApi';
 import { ClienteActivoContext, type ClienteActivoContextType } from '../context/clienteActivoStore';
 import { CarteraContext, type CarteraContextType } from '../context/carteraStore';
-import { modoDespacho } from '../test/modoDespacho';
 
-modoDespacho();
 
 const CONTADOR: UserProfile = {
   contributorType: 'contador', rfc: '', regimen: '', nombre: 'Contadora Demo',
   actividad: '', cp: '', telefono: '', nombreNegocio: '', numEmpleados: '',
   nombreDespacho: 'Despacho Demo', onboardingComplete: true,
-};
-
-/** Contribuyente con el RFC de pruebas del SAT: sintético. */
-const CONTRIBUYENTE: UserProfile = {
-  ...CONTADOR, contributorType: 'independiente', rfc: 'XIQB891116QE4', regimen: '612',
-  nombre: 'Contribuyente Demo', nombreDespacho: '',
 };
 
 const perfilMock = { actual: CONTADOR };
@@ -264,19 +256,6 @@ describe('C-02 · calendario del cliente activo', () => {
     render(arbol(activo({ ...TALLER, rfc: undefined }), <FiscalitoServicePage />, undefined, '/app/store/fiscalito/use?tab=calendario'));
     expect(screen.getByText('Captura el RFC de este cliente.')).toBeTruthy();
     expect(api.obtenerCalendario).not.toHaveBeenCalled();
-  });
-});
-
-describe('C-02 · el contribuyente calcula exactamente igual que antes', () => {
-  it('manda su RFC, su régimen y su tipo, y guarda sin cliente', async () => {
-    perfilMock.actual = CONTRIBUYENTE;
-    render(arbol(null, <FiscalitoServicePage />));
-    await subirYCalcular();
-
-    expect(api.calcularPreDeclaracion.mock.calls[0][0].contribuyente)
-      .toEqual({ rfc: 'XIQB891116QE4', regimen: '612', contributor_type: 'independiente' });
-    await waitFor(() => expect(historial.guardarDeclaracion).toHaveBeenCalled());
-    expect((historial.guardarDeclaracion.mock.calls[0] as unknown[])[3]).toBeNull();
   });
 });
 

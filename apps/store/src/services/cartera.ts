@@ -45,10 +45,8 @@ import { flagEncendido } from './flagEncendido';
  *
  * **Es una `const`, no una función, y eso NO es un descuido**: el dueño del dato
  * se decide una vez por proceso, porque dos pantallas leyendo dueños distintos
- * en la misma sesión sería peor que cualquiera de los dos. Comparte la lectura
- * con `modoEmpresaUnica()` desde T2, pero no la forma: aquél se consulta en
- * cada render y sí es función. La consecuencia práctica es que `vi.stubEnv` no
- * puede voltear este flag dentro de un test —se congela al importar el módulo—,
+ * en la misma sesión sería peor que cualquiera de los dos. La consecuencia
+ * práctica es que `vi.stubEnv` no puede voltear este flag dentro de un test —se congela al importar el módulo—,
  * así que `cartera.test.ts` sólo puede pinnear el default.
  */
 export const BACKEND_ES_DUENO = flagEncendido(import.meta.env.VITE_CARTERA_BACKEND);

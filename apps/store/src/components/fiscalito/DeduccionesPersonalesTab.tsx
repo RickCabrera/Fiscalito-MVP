@@ -1,7 +1,13 @@
-/** Tab de deducciones personales para asalariados */
+/**
+ * Tab de deducciones personales del CLIENTE ACTIVO (régimen 605).
+ *
+ * K: lee el RFC del cliente (`usePerfilFiscal`), no el del despacho, y guarda el
+ * cálculo con su `cliente_id`, igual que el resto de los tabs desde C-02.
+ */
 
 import { useState, useRef } from 'react';
-import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
+import { mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
 import {
   calcularDeduccionesPersonales,
@@ -20,7 +26,7 @@ import ErroresDeCarga from './ErroresDeCarga';
 import { Calculator, Loader, Upload } from 'lucide-react';
 
 export default function DeduccionesPersonalesTab() {
-  const { profile } = useProfile();
+  const perfilFiscal = usePerfilFiscal();
   const { user } = useAuth();
   const xmlInputRef = useRef<HTMLInputElement>(null);
   const [ingresos, setIngresos] = useState('');
@@ -50,7 +56,7 @@ export default function DeduccionesPersonalesTab() {
       if (campo) { nuevosValues[campo] = (nuevosValues[campo] || 0) + (cfdi.subtotal - (cfdi.descuento || 0)); }
       else { ignoradas++; }
     }
-    const rfc = profile.rfc?.toUpperCase() || '';
+    const rfc = perfilFiscal.rfc.toUpperCase();
     const nominas = result.success.filter(f => f.rfc_receptor?.toUpperCase() === rfc && (f.clave_prod_serv === '84111505' || f.clave_prod_serv?.startsWith('8411')));
     if (nominas.length > 0) {
       const totalNominas = nominas.reduce((sum, f) => sum + (f.subtotal || 0), 0);
@@ -72,8 +78,8 @@ export default function DeduccionesPersonalesTab() {
 
   const handleCalc = async () => {
     const ingresosNum = parseFloat(ingresos);
-    if (!ingresosNum || ingresosNum <= 0) { setError('Ingresa tus ingresos anuales.'); return; }
-    if (!profile.rfc) { setError('Completa tu RFC en tu perfil.'); return; }
+    if (!ingresosNum || ingresosNum <= 0) { setError('Ingresa los ingresos anuales del cliente.'); return; }
+    if (!perfilFiscal.rfc) { setError(mensajeFalta(perfilFiscal.falta ?? 'rfc')); return; }
     if (parseFloat(values['colegiaturas'] || '0') > 0 && !nivelEducativo) {
       setError('Selecciona el nivel educativo para calcular el tope de colegiaturas.'); return;
     }
@@ -106,7 +112,7 @@ export default function DeduccionesPersonalesTab() {
           },
           explicacion: res.explicacion ?? null, advertencias: [], recomendaciones: [],
           facturas_count: 0,
-        }, 'deducciones').then(() => setGuardado(true)).catch(() => { /* silent */ });
+        }, 'deducciones', perfilFiscal.clienteId ?? undefined).then(() => setGuardado(true)).catch(() => { /* silent */ });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error inesperado');

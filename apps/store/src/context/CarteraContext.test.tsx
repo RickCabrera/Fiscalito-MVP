@@ -27,20 +27,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { UserProfile } from './ProfileContext';
 import type { ClienteCartera } from '../services/carteraApi';
-import { modoDespacho } from '../test/modoDespacho';
-
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 const perfilBase: UserProfile = {
   contributorType: 'contador', rfc: '', regimen: '612', nombre: 'Contadora',
@@ -123,19 +109,9 @@ function Alta() {
 }
 
 /**
- * La limpieza de env vars vive ahora en `src/test/setup.ts` (O-01).
- *
- * Este archivo tenía la suya —`beforeEach` + `afterEach` con
- * `vi.unstubAllEnvs()`— para que el `DEV=false` de un test no se filtrara al
- * siguiente. Sigue haciendo falta y sigue pasando, pero **desde el `afterEach`
- * global**, que cubre a todos los archivos y no sólo a éste.
- *
- * Tuvo que salir de aquí: el `beforeEach` local corría DESPUÉS del de
- * `modoDespacho()` —el orden es el de registro— y le borraba la declaración de
- * modo, así que este archivo volvía a medirse en modo empresa única y sus cinco
- * casos fallaban. Dejarlo y mover la declaración más abajo habría "funcionado"
- * por orden de líneas, que es la clase de arreglo que se rompe al reordenar
- * imports.
+ * La limpieza de env vars (`vi.unstubAllEnvs()`, para que el `DEV=false` de un
+ * test no se filtre al siguiente) vive en el `afterEach` global de
+ * `src/test/setup.ts`.
  */
 afterEach(cleanup);
 

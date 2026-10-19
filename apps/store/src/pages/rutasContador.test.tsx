@@ -13,22 +13,9 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, Navigate } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
-import { modoDespacho } from '../test/modoDespacho';
 
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 // G-03: las pantallas piden la cartera. El doble viene vacío, así que
 // `useNominaCliente` cae a los empleados de la ficha del backend — el mismo
@@ -117,7 +104,6 @@ vi.mock('../services/declaracionesHistory', () => ({
   obtenerHistorial: vi.fn(async () => []),
 }));
 
-const { default: DashboardPage } = await import('./DashboardPage');
 const { default: ClientesPage } = await import('./ClientesPage');
 // R-05: las dos entradas nuevas del sidebar. Se montan aquí porque el modo de
 // falla que importa es el mismo que el punto 1 del encabezado —una entrada del
@@ -129,7 +115,8 @@ function montar(ruta: string) {
   return render(
     <MemoryRouter initialEntries={[ruta]}>
       <Routes>
-        <Route path="/app" element={<DashboardPage />} />
+        {/* K: `/app` redirige a la cartera, igual que en `AppRoutes`. */}
+        <Route path="/app" element={<Navigate to="/app/clientes" replace />} />
         <Route path="/app/clientes" element={<ClientesPage />} />
         <Route path="/app/empleados" element={<EmpleadosPage />} />
       </Routes>
@@ -148,8 +135,6 @@ describe('rutas del contador', () => {
     montar('/app');
 
     expect(screen.getByRole('heading', { name: 'Clientes' })).toBeTruthy();
-    // Y no aparece el saludo del dashboard de contribuyente.
-    expect(screen.queryByText(/Bienvenido/)).toBeNull();
   });
 
   it('/app/clientes resuelve y pinta la pantalla, no un hueco en blanco', () => {
@@ -173,10 +158,4 @@ describe('rutas del contador', () => {
     expect(screen.getByText(/Cliente Demo/)).toBeTruthy();
   });
 
-  it('el contribuyente sigue viendo su dashboard en /app', () => {
-    perfilMock.actual = { ...perfilBase, contributorType: 'independiente' };
-    montar('/app');
-
-    expect(screen.getByText(/Bienvenido/)).toBeTruthy();
-  });
 });

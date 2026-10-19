@@ -36,10 +36,10 @@ export default function LandingPage() {
         {/* Hero */}
         <section style={{ padding: '120px 0 80px', textAlign: 'center' }}>
           <h1 className="animate-in" style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, letterSpacing: -2, lineHeight: 1.1, marginBottom: 20 }}>
-            Servicios inteligentes<br />para <span className="gradient-text">PYMEs mexicanas</span>
+            La suite fiscal y de nómina<br />para <span className="gradient-text">despachos contables</span>
           </h1>
           <p className="animate-in" style={{ animationDelay: '0.15s', fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: 580, margin: '0 auto 40px', lineHeight: 1.7 }}>
-            Marketplace de microservicios que automatizan tus obligaciones fiscales, laborales y contables. Cada servicio calcula como contador y explica como maestro.
+            Lleva las declaraciones, la nómina y la contabilidad de todas las empresas que atiendes desde un solo lugar. Cada cálculo sale como de contador y se explica como maestro.
           </p>
           <div className="animate-in" style={{ animationDelay: '0.3s', display: 'flex', gap: 12, justifyContent: 'center' }}>
             <Link to="/login"><button className="btn-primary" style={{ fontSize: '1rem', padding: '14px 32px' }}>Comenzar gratis <ArrowRight size={18} style={{ marginLeft: 6, verticalAlign: 'middle' }} /></button></Link>
@@ -65,7 +65,7 @@ export default function LandingPage() {
           {[
             { icon: <Cpu size={24} />, title: 'Motor deterministico', desc: 'Los calculos fiscales usan tablas ISR oficiales codificadas. No dependemos del LLM para los numeros.' },
             { icon: <Layers size={24} />, title: 'Modular y escalable', desc: 'Cada servicio es un microservicio independiente. Activa solo lo que necesitas, paga solo lo que usas.' },
-            { icon: <Shield size={24} />, title: 'Privacidad por diseno', desc: 'El Fiscal Agent es stateless: no almacena tus datos. Todo se procesa en el request y se devuelve.' },
+            { icon: <Shield size={24} />, title: 'Privacidad por diseno', desc: 'El motor fiscal es stateless: no almacena los datos de tus clientes. Todo se procesa en el request y se devuelve.' },
           ].map((v, i) => (
             <div key={i} className="card" style={{ textAlign: 'center', padding: 32 }}>
               <div style={{ color: 'var(--teal-light)', marginBottom: 16, display: 'flex', justifyContent: 'center' }}>{v.icon}</div>

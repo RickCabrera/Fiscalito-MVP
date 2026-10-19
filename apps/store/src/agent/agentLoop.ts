@@ -15,7 +15,7 @@ import type { UserProfile } from '../context/ProfileContext';
 import { sendMessageWithTools, type ChatMessage } from '../services/voiceChatService';
 import { getAgentActions } from './AgentContext';
 import { isRegisteredTool, TOOL_EXECUTORS, toolsOpenAI, type ToolDeps } from './tools';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
+import type { PerfilFiscal } from '../context/perfilFiscal';
 import type { ToolCallLogEntry, ToolResult } from './types';
 import { ASISTENTE, MARCA } from '../services/marca';
 
@@ -25,6 +25,8 @@ export interface AgentLoopOptions {
   history: ChatMessage[];
   userMessage: string;
   profile: UserProfile;
+  /** K: el cliente activo del despacho, resuelto por `usePerfilFiscal`. */
+  perfilFiscal: PerfilFiscal;
   historialResumen: string;
   navigate: NavigateFunction;
   uid: string | null;
@@ -37,60 +39,36 @@ export interface AgentLoopResult {
 }
 
 /**
- * Quién es el usuario, para el prompt.
+ * Quién es el usuario y sobre qué cliente trabaja, para el prompt.
  *
- * Un DESPACHO no tiene RFC ni régimen desde E-05, y no es un olvido del
- * usuario: la app dejó de pedírselos porque no se le calcula nada propio. Con
- * el bloque de contribuyente, el prompt decía "RFC: No proporcionado" y el LLM
- * le pedía al contador que completara su perfil — un callejón, porque ya no hay
- * dónde capturarlo.
- *
- * EL MODO EMPRESA ÚNICA TIENE SU PROPIO BLOQUE (O-cierre)
- * -------------------------------------------------------
- * Y no es cosmético. El perfil sigue siendo `contador` —`StepTipo` sólo ofrece
- * esa opción en este modo— así que el asistente, que flota sobre TODAS las
- * pantallas, le hablaba al operador de Orca de "tu despacho" y de "tus
- * clientes", sobre su propia nómina.
- *
- * Peor: la última línea del bloque de despacho es una **instrucción falsa** en
- * este modo. Dice "nunca le pidas su RFC ni su régimen" porque no hay dónde
- * capturarlo — pero en empresa única el RFC **sí** se captura, en Configuración
- * de empresa, y es dato obligatorio para el IMSS. El asistente tenía prohibido
- * mencionar justo el campo que al operador le falta llenar. Lo cazó el revisor
- * de cierre de la corrida O.
+ * K: el sistema es solo para despachos. El despacho no tiene RFC ni régimen
+ * propios (E-05); los datos fiscales que importan son los del CLIENTE ACTIVO.
  */
-function describirUsuario(profile: UserProfile): string {
-  if (profile.contributorType === 'contador' && modoEmpresaUnica()) {
-    return `Datos de la cuenta actual: lleva la NÓMINA DE UNA SOLA EMPRESA. No es un
-despacho y no tiene cartera de clientes — no existe ese concepto en esta app.
-- Responsable: ${profile.nombre || 'No proporcionado'}
-La app NO calcula las declaraciones propias de la empresa (ISR, IVA): calcula su NÓMINA y
-sus obligaciones patronales. Los datos fiscales de la empresa —razón social, RFC, registro
-patronal, prima de riesgo— se capturan en Perfil → Configuración de empresa, así que si
-falta alguno, ahí se llena. Nunca hables de "clientes" ni de "cartera".`;
-  }
-  if (profile.contributorType === 'contador') {
-    return `Datos de la cuenta actual: es un DESPACHO CONTABLE, no un contribuyente.
+export function describirUsuario(profile: UserProfile, perfilFiscal: PerfilFiscal): string {
+  const cliente = perfilFiscal.clienteId
+    ? `Cliente activo (sobre él se calcula todo):
+- Nombre: ${perfilFiscal.nombre || 'Sin nombre'}
+- RFC: ${perfilFiscal.rfc || 'SIN CAPTURAR — se captura editando el cliente en Clientes'}
+- Régimen: ${perfilFiscal.regimen || 'SIN CAPTURAR — se captura editando el cliente en Clientes'}`
+    : 'No hay cliente activo: para calcular algo, el contador debe elegir un cliente en Clientes.';
+  return `Datos de la cuenta actual: es un DESPACHO CONTABLE, no un contribuyente.
 - Contador: ${profile.nombre || 'No proporcionado'}
 - Despacho: ${profile.nombreDespacho || 'No proporcionado'}
-El despacho NO tiene RFC ni régimen capturados en la app, y eso es correcto: la app no
-calcula sus declaraciones propias, sino la nómina y las obligaciones patronales de sus
-CLIENTES. Nunca le pidas su RFC ni su régimen.`;
-  }
-  return `Datos del contribuyente actual:
-- Nombre: ${profile.nombre || 'No proporcionado'}
-- RFC: ${profile.rfc || 'No proporcionado'}
-- Tipo: ${profile.contributorType || 'No definido'}
-- Régimen: ${profile.regimen || 'No definido'}
-- Actividad: ${profile.actividad || 'No proporcionada'}`;
+El despacho NO tiene RFC ni régimen propios en la app, y eso es correcto: nunca se los pidas.
+La app calcula las declaraciones, la nómina y las obligaciones patronales de sus CLIENTES.
+${cliente}`;
 }
 
-function buildAgentSystemPrompt(profile: UserProfile, historialResumen: string): string {
+function buildAgentSystemPrompt(
+  profile: UserProfile,
+  perfilFiscal: PerfilFiscal,
+  historialResumen: string,
+): string {
   return `Eres ${ASISTENTE}, un asistente de nómina y fiscal mexicano amigable con voz propia.
 Hablas de forma conversacional, clara y concisa (máximo 3 oraciones para voz).
 
-${describirUsuario(profile)}
-Historial reciente de declaraciones: ${historialResumen || 'Sin historial aún.'}
+${describirUsuario(profile, perfilFiscal)}
+Historial reciente de declaraciones del cliente activo: ${historialResumen || 'Sin historial aún.'}
 
 PUEDES OPERAR LA APLICACIÓN POR TU CUENTA usando las herramientas (tools) disponibles.
 NO describas lo que vas a hacer en texto: simplemente llama la tool. Después de que
@@ -109,12 +87,12 @@ Cuando presentes ${MARCA}, hazlo con entusiasmo.`;
 }
 
 export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopResult> {
-  const { history, userMessage, profile, historialResumen, navigate, uid } = opts;
+  const { history, userMessage, profile, perfilFiscal, historialResumen, navigate, uid } = opts;
   const { pushToolCall, updateToolCall } = getAgentActions();
 
   const systemMsg: ChatMessage = {
     role: 'system',
-    content: buildAgentSystemPrompt(profile, historialResumen),
+    content: buildAgentSystemPrompt(profile, perfilFiscal, historialResumen),
   };
 
   // El historial visible al usuario crece con texto plano. El historial al LLM
@@ -126,7 +104,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopRes
     { role: 'user', content: userMessage },
   ];
 
-  const deps: ToolDeps = { navigate, profile, uid };
+  const deps: ToolDeps = { navigate, profile, perfilFiscal, uid };
   const executedTools: ToolCallLogEntry[] = [];
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {

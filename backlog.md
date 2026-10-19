@@ -57,6 +57,27 @@ D-04…D-07 ya están cerradas; S-03 y lo que sigue quedan en pausa hasta que E-
 **D-08 no está en la cola**, igual que S-00: necesita el checador físico enfrente, así que es
 diurna. F0-01, F0-02, F1-01…F1-05 y D-04…D-07 ya están cerradas.
 
+## K — Solo despachos y contadores (2026-10-19, directo, sin cola)
+
+Pedida por Ricardo: el sistema deja de ser para gente común y queda SOLO para despachos que
+manejan empresas. Hecha de un jalón en una rama y un PR, **sin plan, sin revisor y sin cola
+nocturna**, por instrucción directa. Las K **no entran a la Cola nocturna**.
+
+- [ ] **K-01 · Onboarding solo de despacho** — sin paso de tipo; pide contador, despacho y teléfono.
+- [ ] **K-02 · Cuentas viejas de contribuyente** — al entrar caen al wizard y salen convertidas en
+  despacho (sin borrar nada; su RFC propio se vacía).
+- [ ] **K-03 · Fuera Dashboard, Historial y sidebar de contribuyente** — `/app` y `/app/historial`
+  redirigen a Clientes.
+- [ ] **K-04 · Deducciones personales sobre el cliente activo** — RFC del cliente y `cliente_id`.
+- [ ] **K-05 · Chat de voz sobre el cliente activo** — el prompt y la pre-declaración usan el
+  cliente activo y guardan con su `cliente_id`. **Falta probarlo con micrófono.**
+- [ ] **K-06 · Selector de cliente en Nómina** — también en `/app/nomina` sin cliente.
+- [ ] **K-07 · Textos** — landing, marketplace y perfil le hablan al despacho.
+- [ ] **K-08 · Fuera el modo empresa única (Orca)** — flag, pantallas de Configuración de empresa y
+  sus tests retirados.
+- [ ] **K-09 · Registros viejos sin `cliente_id`** — se ignoran (ya no aparecen en ninguna vista);
+  no se borra nada.
+
 ## C — El cliente es el contribuyente (2026-09-29)
 
 **El porqué.** Salió de una auditoría del código pedida por Ricardo. Para un contador,

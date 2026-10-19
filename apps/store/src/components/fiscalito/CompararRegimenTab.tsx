@@ -211,7 +211,7 @@ export default function CompararRegimenTab() {
           <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Comparar todos los regímenes</h3>
         </div>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>
-          Simula cuánto pagarías de ISR en los 5 regímenes de personas físicas (626, 612, 606, 625, 605) con los mismos ingresos.
+          Simula cuánto pagaría el cliente de ISR en los 5 regímenes de personas físicas (626, 612, 606, 625, 605) con los mismos ingresos.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>

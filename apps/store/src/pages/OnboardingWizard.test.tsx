@@ -1,28 +1,17 @@
 /**
- * Alta de una cuenta de despacho (E-01).
+ * Alta de una cuenta de despacho.
  *
- * Datos sintéticos a propósito: `XAXX010101000` es el RFC genérico del SAT y
- * "Despacho Demo" no es de nadie. Ningún dato real entra a una fixture.
+ * K (2026-10-19): el sistema es solo para despachos. El wizard no ofrece tipo de
+ * cuenta: toda cuenta queda como `contador`, y una cuenta vieja de contribuyente
+ * que cae aquí sale convertida.
+ *
+ * Datos sintéticos a propósito: "Despacho Demo" no es de nadie.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
-import { modoDespacho } from '../test/modoDespacho';
-
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 const perfilVacio: UserProfile = {
   contributorType: null,
@@ -38,6 +27,8 @@ const perfilVacio: UserProfile = {
   onboardingComplete: false,
 };
 
+const perfilMock: { actual: UserProfile } = { actual: perfilVacio };
+
 // Tipada para que `mock.calls[0][0]` sea el perfil que se guarda, no `never`.
 const setProfile = vi.fn<(data: Partial<UserProfile>) => Promise<void>>(async () => {});
 const navigate = vi.fn();
@@ -48,7 +39,7 @@ vi.mock('../context/AuthContext', () => ({
 
 vi.mock('../context/ProfileContext', () => ({
   useProfile: () => ({
-    profile: perfilVacio,
+    profile: perfilMock.actual,
     loading: false,
     setProfile,
     isOnboardingComplete: () => false,
@@ -70,140 +61,84 @@ function botonSiguiente() {
   return screen.getByRole('button', { name: /Siguiente/ }) as HTMLButtonElement;
 }
 
-/** Paso 0 → paso 1 eligiendo "Despacho / Contador". */
-function elegirContador() {
-  fireEvent.click(screen.getByText('Despacho / Contador'));
-  fireEvent.click(botonSiguiente());
+function llenarDespacho() {
+  fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Ana Pérez' } });
+  fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), { target: { value: 'Despacho Demo' } });
 }
 
 afterEach(() => {
+  perfilMock.actual = perfilVacio;
   setProfile.mockClear();
   navigate.mockClear();
   cleanup();
 });
 
-describe('OnboardingWizard — perfil de despacho', () => {
-  it('ofrece el tipo Despacho / Contador', () => {
+describe('OnboardingWizard (solo despacho)', () => {
+  it('abre directo en los datos del despacho, sin ofrecer tipos de contribuyente', () => {
     montar();
-    expect(screen.getByText('Despacho / Contador')).toBeTruthy();
-  });
 
-  it('pide el nombre del despacho, no el del negocio', () => {
-    montar();
-    elegirContador();
-
-    expect(screen.getByText('Nombre del despacho')).toBeTruthy();
-    expect(screen.queryByText('Nombre del negocio')).toBeNull();
-    expect(screen.queryByText('Numero de empleados')).toBeNull();
-  });
-
-  /**
-   * E-05: SOLO tres campos. Un despacho no declara por sí mismo en esta app,
-   * así que pedirle RFC, régimen, actividad o CP era pedirle datos que nada usa
-   * — y hacerle creer que la app le calcularía su propia declaración.
-   */
-  it('no le pide RFC, régimen, actividad ni código postal', () => {
-    montar();
-    elegirContador();
-
+    expect(screen.getByRole('heading', { name: 'Datos del despacho' })).toBeTruthy();
+    for (const tipo of ['Asalariado', 'Independiente / Freelancer', 'Arrendamiento', 'Plataformas digitales', 'Negocio / PYME']) {
+      expect(screen.queryByText(tipo)).toBeNull();
+    }
+    // Ni RFC, ni régimen, ni código postal: son de cada cliente.
     expect(screen.queryByPlaceholderText('XAXX010101000')).toBeNull();
-    expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.queryByText('Actividad economica')).toBeNull();
-    expect(screen.queryByText(/Codigo postal/)).toBeNull();
-
-    expect(screen.getByText('Nombre del despacho')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Tu nombre completo')).toBeTruthy();
-    expect(screen.getByPlaceholderText('10 digitos')).toBeTruthy();
+    expect(screen.queryByText(/Regimen fiscal/i)).toBeNull();
   });
 
-  it('su wizard tiene TRES pasos, no cuatro', () => {
+  it('no avanza sin nombre del contador y nombre del despacho', () => {
     montar();
-    elegirContador();
-
-    // La barra de progreso no puede anunciar un paso que nadie va a recorrer.
-    // "Datos del despacho" sale dos veces —barra y encabezado del paso—, así
-    // que se cuenta en vez de exigir uno solo.
-    expect(screen.getAllByText('Datos del despacho').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Datos fiscales')).toBeNull();
-    expect(screen.queryByText('Datos personales')).toBeNull();
-  });
-
-  /**
-   * LA TRANSICIÓN, no el estado. Asertar sólo "deshabilitado con todo vacío"
-   * pasaría por la razón equivocada: el test exige que falte exactamente el
-   * nombre del despacho, y que llenarlo habilite el botón.
-   */
-  it('el nombre del contador y el del despacho son obligatorios; el teléfono no', () => {
-    montar();
-    elegirContador();
-
-    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), {
-      target: { value: 'Contadora Demo' },
-    });
     expect(botonSiguiente().disabled).toBe(true);
 
-    fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), {
-      target: { value: 'Despacho Demo' },
-    });
+    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Ana Pérez' } });
+    expect(botonSiguiente().disabled).toBe(true);
+
+    fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), { target: { value: 'Despacho Demo' } });
     expect(botonSiguiente().disabled).toBe(false);
   });
 
-  it('llega al botón de terminar y CREA la cuenta', async () => {
-    /**
-     * LA REGRESIÓN QUE VALE ESTE TEST. El wizard tenía `step < 3` cableado para
-     * decidir si pintaba "Siguiente" o "Comenzar". Con tres pasos el último
-     * índice es 2, así que el contador se quedaba en "Confirmar" viendo
-     * "Siguiente" y `handleFinish` NUNCA se ejecutaba: no se creaba la cuenta y
-     * nada fallaba visiblemente.
-     */
+  it('al terminar guarda la cuenta como contador y entra a la cartera', async () => {
     montar();
-    elegirContador();
-
-    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Contadora Demo' } });
-    fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), {
-      target: { value: 'Despacho Demo' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('10 digitos'), { target: { value: '5551234567' } });
+    llenarDespacho();
     fireEvent.click(botonSiguiente());
 
-    // Paso 3: el resumen enseña el despacho y NO inventa un RFC en blanco.
-    expect(screen.getByText('Despacho')).toBeTruthy();
     expect(screen.getByText('Despacho Demo')).toBeTruthy();
-    expect(screen.queryByText('RFC')).toBeNull();
-    expect(screen.queryByText('Regimen')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Comenzar a usar/ }));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/clientes'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Comenzar/ }));
-
-    await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
-    expect(setProfile.mock.calls[0][0]).toMatchObject({
+    const guardado = setProfile.mock.calls[0][0];
+    expect(guardado).toMatchObject({
       contributorType: 'contador',
-      nombre: 'Contadora Demo',
+      nombre: 'Ana Pérez',
       nombreDespacho: 'Despacho Demo',
-      telefono: '5551234567',
-      // Vacíos y presentes: el perfil tiene forma fija y `setProfile` mergea.
-      rfc: '',
-      regimen: '',
       onboardingComplete: true,
     });
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/clientes'));
   });
 
-  it('un contribuyente no ve el campo del despacho y sigue entrando al dashboard', async () => {
+  it('una cuenta vieja de contribuyente ve el aviso y sale convertida, sin su RFC propio', async () => {
+    perfilMock.actual = {
+      ...perfilVacio,
+      contributorType: 'pyme', rfc: 'XAXX010101000', regimen: '612',
+      nombre: 'Ana Pérez', onboardingComplete: true,
+    };
     montar();
-    fireEvent.click(screen.getByText('Independiente / Freelancer'));
+
+    expect(screen.getByText(/ahora es solo para despachos y contadores/i)).toBeTruthy();
+    // Lo que ya se sabía se precarga.
+    expect((screen.getByPlaceholderText('Tu nombre completo') as HTMLInputElement).value).toBe('Ana Pérez');
+
+    fireEvent.change(screen.getByPlaceholderText('Despacho Contable Ejemplo'), { target: { value: 'Despacho Demo' } });
     fireEvent.click(botonSiguiente());
+    fireEvent.click(screen.getByRole('button', { name: /Comenzar a usar/ }));
+    await vi.waitFor(() => expect(setProfile).toHaveBeenCalled());
 
-    expect(screen.queryByPlaceholderText('Despacho Contable Ejemplo')).toBeNull();
+    expect(setProfile.mock.calls[0][0]).toMatchObject({
+      contributorType: 'contador', rfc: '', regimen: '',
+    });
+  });
 
-    fireEvent.change(screen.getByPlaceholderText('XAXX010101000'), { target: { value: 'XAXX010101000' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '626' } });
-    expect(botonSiguiente().disabled).toBe(false);
-
-    fireEvent.click(botonSiguiente());
-    fireEvent.change(screen.getByPlaceholderText('Tu nombre completo'), { target: { value: 'Persona Demo' } });
-    fireEvent.click(botonSiguiente());
-    fireEvent.click(screen.getByRole('button', { name: /Comenzar/ }));
-
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app'));
+  it('una cuenta nueva no ve el aviso de conversión', () => {
+    montar();
+    expect(screen.queryByText(/ahora es solo para despachos/i)).toBeNull();
   });
 });

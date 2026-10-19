@@ -1,6 +1,5 @@
 /**
- * Nómina: del cliente en modo despacho (E-03), de la empresa en modo empresa
- * única (O-01). Era la pantalla de D-07.
+ * Nómina del cliente del despacho (E-03). Era la pantalla de D-07.
  *
  * CUATRO PASOS NUMERADOS (E-06)
  * -----------------------------
@@ -32,7 +31,6 @@ import { useParams } from 'react-router-dom';
 import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
 import SelectorExportacion from '../components/nomina/SelectorExportacion';
 import PanelCFDINomina from '../components/nomina/PanelCFDINomina';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { labelStyle } from '../utils/styles';
 
 /** Botón de acción: el icono y el texto en una línea, sin saltos. */
@@ -47,15 +45,10 @@ const FILA_ACCION: React.CSSProperties = {
 
 interface Props {
   /**
-   * De quién es esta nómina. Se pasa explícito en **modo empresa única**, donde
-   * la pantalla se monta en `/app/nomina` y no hay `:id` en la ruta.
-   *
-   * Sin prop, manda `useParams` — que es lo que E-03 dejó escrito: *"la ruta es
-   * la fuente de verdad del cliente"*, para que entrar por
-   * `/app/clientes/demo/nomina` con otro cliente guardado en `localStorage` no
-   * deje el header diciendo uno y la pantalla calculando otro. Ese invariante
-   * sigue intacto en modo despacho; en empresa única no hay dos candidatos que
-   * puedan discrepar.
+   * De quién es esta nómina, si se fija desde fuera. Sin prop, manda
+   * `useParams` — E-03: *"la ruta es la fuente de verdad del cliente"*, para
+   * que entrar por `/app/clientes/demo/nomina` con otro cliente guardado en
+   * `localStorage` no deje el header diciendo uno y la pantalla calculando otro.
    */
   clienteId?: string;
 }
@@ -86,17 +79,14 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
    * el bug de G-02 entrando por la puerta del tiempo.
    */
   /**
-   * Los motivos por los que el paso 2 puede estar bloqueado —cinco desde
-   * O-01— y su redacción por modo viven en `motivoDelPaso2`. Aquí sólo se
+   * Los motivos por los que el paso 2 puede estar bloqueado y su redacción
+   * viven en `motivoDelPaso2`. Aquí sólo se
    * decide SI está bloqueado; el porqué se dice allá.
    */
   const sinPeriodo = Boolean(cliente) && (!n.inicio || !n.fin);
-  // O-01: la empresa sin configurar es un quinto motivo de bloqueo, en vez de
-  // dejar que llegue un 422 de pydantic sobre un campo que nadie ha visto.
-  const faltaEmpresa = n.faltaDeLaEmpresa.length > 0;
   const estadoPaso2: EstadoPaso = cierre
     ? 'listo'
-    : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo && !faltaEmpresa
+    : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo
       ? 'disponible'
       : 'bloqueado';
   const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
@@ -132,7 +122,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
           </strong>{' '}
           Sin <code>employeeNo</code> no hay forma de atribuirle sus checadas, así que{' '}
           {n.sinVincular === 1 ? 'no entra' : 'no entran'} en este cálculo. Captura su número
-          del aparato en {modoEmpresaUnica() ? 'Empleados' : 'la ficha del cliente, pestaña Empleados'}.
+          del aparato en la ficha del cliente, pestaña Empleados.
         </AvisoNomina>
       )}
 
@@ -151,7 +141,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
         titulo="Cerrar quincena"
         descripcion="Convierte las checadas en días trabajados, faltas y retardos."
         estado={estadoPaso2}
-        motivoBloqueo={motivoDelPaso2(n, { faltaEmpresa, sinPeriodo })}
+        motivoBloqueo={motivoDelPaso2(n, { sinPeriodo })}
       >
         <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
           <label style={{ flex: '0 1 190px' }}>
@@ -195,7 +185,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
             // líneas de distancia. El handler ya lo bloquea; esto es que se vea.
             disabled={
               n.ocupado || !cliente || !n.inicio || !n.fin ||
-              n.carteraCargando || n.ajenoALaCartera || faltaEmpresa
+              n.carteraCargando || n.ajenoALaCartera
             }
             style={ACCION}
           >

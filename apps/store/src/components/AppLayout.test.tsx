@@ -13,21 +13,8 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { ClienteResumen } from '../services/despachoApi';
-import { modoDespacho } from '../test/modoDespacho';
 import { MARCA_CORTA } from '../services/marca';
 
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 const perfilBase: UserProfile = {
   contributorType: null,
@@ -196,13 +183,6 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
     expect(enlace(container, 'Nómina').textContent?.trim()).toBe('Nómina');
   });
 
-  it('un contribuyente no ve nombre de cliente en su sidebar', () => {
-    /** No tiene cartera; imprimirle un cliente sería inventarle uno. */
-    perfilMock.actual = { ...perfilBase, contributorType: 'independiente' };
-    const { container } = montar('/app/clientes/demo/nomina');
-
-    expect(enlace(container, 'Nómina (demo)').textContent).not.toContain('Taller');
-  });
 });
 
 describe('sidebar de AppLayout', () => {
@@ -261,35 +241,4 @@ describe('sidebar de AppLayout', () => {
       .toBe('/app/store/fiscalito/use');
   });
 
-  it('el contribuyente conserva sus cinco enlaces de siempre', () => {
-    perfilMock.actual = { ...perfilBase, contributorType: 'independiente' };
-    const { container } = montar();
-
-    expect(enlacesDelSidebar(container)).toEqual([
-      'Dashboard', MARCA_CORTA, 'Historial', 'Nómina (demo)', 'Perfil',
-    ]);
-    expect(screen.queryByRole('link', { name: 'Clientes' })).toBeNull();
-  });
-
-  it('un perfil sin tipo ve el sidebar de contribuyente', () => {
-    const { container } = montar();
-    expect(enlacesDelSidebar(container)).toHaveLength(5);
-  });
-
-  /**
-   * `end: true` del enlace Dashboard es fácil de perder al mover los links a
-   * `navigation.ts`, y sin él "/app" queda marcado como activo en TODAS las
-   * subrutas: el sidebar señalaría dos secciones a la vez en la demo.
-   */
-  it('Dashboard no queda marcado activo estando en otra sección', () => {
-    perfilMock.actual = { ...perfilBase, contributorType: 'independiente' };
-    const { container } = montar('/app/historial');
-    const aside = container.querySelector('.sidebar-full') as HTMLElement;
-
-    const dashboard = within(aside).getByRole('link', { name: 'Dashboard' });
-    const historial = within(aside).getByRole('link', { name: 'Historial' });
-
-    expect(dashboard.className).not.toContain('nav-item-active');
-    expect(historial.className).toContain('nav-item-active');
-  });
 });

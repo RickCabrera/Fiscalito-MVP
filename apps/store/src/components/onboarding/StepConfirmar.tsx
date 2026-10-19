@@ -1,49 +1,22 @@
-/** Step 4: Confirmacion — resumen del perfil antes de guardar */
-
 interface StepConfirmarProps {
-  tipoLabel: string;
-  tipoIcon: string;
-  allowedRegimens: { code: string; name: string }[];
-  /** E-05: un despacho no captura RFC ni régimen; imprimirlos daría un renglón vacío. */
-  esContador: boolean;
-  rfc: string;
-  regimen: string;
   nombre: string;
-  telefono: string;
-  actividad: string;
-  cp: string;
-  nombreNegocio: string;
-  numEmpleados: string;
   nombreDespacho: string;
+  telefono: string;
 }
 
-export default function StepConfirmar({
-  tipoLabel, tipoIcon, allowedRegimens, esContador,
-  rfc, regimen, nombre, telefono, actividad, cp, nombreNegocio, numEmpleados, nombreDespacho,
-}: StepConfirmarProps) {
-  const regimenName = allowedRegimens.find((r) => r.code === regimen)?.name || regimen;
-
+/** Resumen del alta del despacho antes de guardar. */
+export default function StepConfirmar({ nombre, nombreDespacho, telefono }: StepConfirmarProps) {
   const rows: { label: string; value: string }[] = [
-    { label: 'Tipo', value: `${tipoIcon} ${tipoLabel}` },
-    { label: 'Nombre', value: nombre },
+    { label: 'Tipo', value: '🧾 Despacho / Contador' },
+    { label: 'Contador', value: nombre },
+    { label: 'Despacho', value: nombreDespacho },
   ];
-  // Sin la guarda, el resumen de un despacho mostraba "RFC:" en blanco y un
-  // "Regimen: —" suelto, que es peor que no mostrar el renglón.
-  if (!esContador) {
-    rows.push({ label: 'RFC', value: rfc });
-    rows.push({ label: 'Regimen', value: `${regimen} — ${regimenName}` });
-  }
-  if (actividad) rows.push({ label: 'Actividad', value: actividad });
-  if (cp) rows.push({ label: 'Codigo postal', value: cp });
   if (telefono) rows.push({ label: 'Telefono', value: telefono });
-  if (nombreDespacho) rows.push({ label: 'Despacho', value: nombreDespacho });
-  if (nombreNegocio) rows.push({ label: 'Negocio', value: nombreNegocio });
-  if (numEmpleados) rows.push({ label: 'Empleados', value: numEmpleados });
 
   return (
     <div>
       <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>
-        Confirma tu perfil
+        Confirma los datos del despacho
       </h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 32 }}>
         Verifica que todo este correcto. Podras editarlo despues en tu perfil.
@@ -62,7 +35,6 @@ export default function StepConfirmar({
             <span style={{
               fontSize: '0.95rem',
               fontWeight: 600,
-              fontFamily: row.label === 'RFC' || row.label === 'Codigo postal' ? "'JetBrains Mono', monospace" : 'inherit',
             }}>
               {row.value}
             </span>

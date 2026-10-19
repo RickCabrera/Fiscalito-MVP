@@ -12,12 +12,11 @@
  */
 
 import { useContext, useEffect, useMemo } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
 import { REGIMEN_CLIENTE_POR_DEFECTO } from '../services/carteraApi';
 import { usePerfilFiscal } from '../context/usePerfilFiscal';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
 import { getTabsForProfile, esContador, type TabFiscalito } from '../services/navigation';
 import PreDeclaracionTab from '../components/fiscalito/PreDeclaracionTab';
 import DeclaracionAnualTab from '../components/fiscalito/DeclaracionAnualTab';
@@ -109,8 +108,8 @@ export default function FiscalitoServicePage() {
   // Memoize so the array reference is stable across renders — otherwise the
   // sync effect below would fire on every render and clobber manual tab clicks.
   const allowedTabIds = useMemo(
-    () => getTabsForProfile(profile.contributorType, regimenEnUso ?? null),
-    [profile.contributorType, regimenEnUso],
+    () => (esContadorActual ? getTabsForProfile(regimenEnUso ?? null) : []),
+    [esContadorActual, regimenEnUso],
   );
   const tabs = ALL_TABS.filter(t => allowedTabIds.includes(t.id));
   // `Tab | undefined`, no `Tab`: la lista puede venir vacía —un despacho sin
@@ -143,19 +142,6 @@ export default function FiscalitoServicePage() {
       setSearchParams({}, { replace: true });
     }
   }, [esContadorActual, cliente, tabParam, allowedTabIds, setSearchParams]);
-
-  // MODO EMPRESA ÚNICA: el redirect de E-07 se queda exactamente como estaba.
-  //
-  // Ahí el perfil operador no lleva clientes, lleva UNA empresa: no hay cartera,
-  // no hay cliente activo y no hay régimen de cliente que leer, así que T1 no
-  // tiene sujeto que ofrecerle. Dejarlo caer al estado vacío de abajo sería
-  // mandarlo a elegir un cliente en una app que no tiene clientes.
-  //
-  // Va DESPUÉS de los hooks (no antes) para no romper su orden entre renders —
-  // mismo patrón que `DashboardPage`.
-  if (esContadorActual && modoEmpresaUnica()) {
-    return <Navigate to="/app/calendario" replace />;
-  }
 
   // T1: despacho sin cliente elegido. El selector vive en la barra de arriba
   // (`SelectorCliente`, que se pinta aquí desde que esta ruta entró a

@@ -7,7 +7,7 @@
  * clientes cabe llevar en cada plan, para que un despacho vea en pantalla en
  * qué tamaño está parado. **No hay billing**: ni pasarela de pago, ni
  * suscripción, ni fecha de corte, ni factura. Por eso el precio es
- * `'Consultar'` en los tres y no un número: publicar "$499/mes" en una pantalla
+ * `'Consultar'` en todos y no un número: publicar "$499/mes" en una pantalla
  * que no cobra nada es una promesa comercial que el producto no puede cumplir,
  * y se lee igual de real que las que sí.
  *
@@ -32,9 +32,7 @@
  * usuario, y luego nadie sabe si lo eligió él.
  */
 
-import { modoEmpresaUnica } from './modoEmpresa';
-
-export type IdPlan = 'contador' | 'despacho' | 'empresa';
+export type IdPlan = 'contador' | 'despacho';
 
 export interface Plan {
   id: IdPlan;
@@ -54,7 +52,7 @@ export interface Plan {
 }
 
 /**
- * Los tres planes, congelados y devueltos por referencia de lectura.
+ * Los planes, congelados y devueltos por referencia de lectura.
  *
  * `readonly` no es adorno: `PlanesPage` los recorre y cualquier `.sort()` de un
  * consumidor futuro reordenaría el catálogo para todas las pantallas a la vez.
@@ -89,20 +87,6 @@ export const PLANES: readonly Plan[] = Object.freeze<Plan[]>([
       'Exportadores IMSS y dispersión bancaria',
     ],
   },
-  {
-    id: 'empresa',
-    nombre: 'Empresa',
-    descripcion: 'Una sola empresa que lleva su nómina en casa.',
-    maxUsuarios: 1,
-    maxClientes: 1,
-    precio: 'Consultar',
-    incluye: [
-      'Una empresa',
-      '1 usuario',
-      'Nómina, IMSS y calendario patronal',
-      'Checador y dispositivos',
-    ],
-  },
 ]);
 
 export function planPorId(id: string): Plan | undefined {
@@ -112,14 +96,11 @@ export function planPorId(id: string): Plan | undefined {
 /**
  * El plan de una cuenta que nunca eligió uno.
  *
- * Depende del MODO, no del perfil: en modo empresa única no hay cartera que
- * llevar, así que ofrecer 25 clientes sería describir un producto que esa
- * instalación no tiene. En modo despacho se elige el MÁS CHICO de los dos de
- * cartera — un default generoso regala capacidad que nadie contrató, y además
- * haría que el bloqueo del alta no se viera nunca.
+ * Se elige el MÁS CHICO — un default generoso regala capacidad que nadie
+ * contrató, y además haría que el bloqueo del alta no se viera nunca.
  */
 export function planPorDefecto(): Plan {
-  return planPorId(modoEmpresaUnica() ? 'empresa' : 'contador')!;
+  return planPorId('contador')!;
 }
 
 /**

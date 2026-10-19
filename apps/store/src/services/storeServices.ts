@@ -32,7 +32,7 @@ export const SERVICES: StoreService[] = [
     name: MARCA_CORTA,
     tagline: 'Asistente fiscal',
     description:
-      'Calcula tus declaraciones ISR/IVA automaticamente, clasifica facturas CFDI, detecta saldos a favor y te explica cada calculo en lenguaje natural. Compatible con RESICO, Actividad Empresarial, Honorarios y mas.',
+      'Calcula las declaraciones ISR/IVA de cada cliente del despacho, clasifica facturas CFDI, detecta saldos a favor y explica cada calculo en lenguaje natural. Compatible con RESICO, Actividad Empresarial, Honorarios y mas.',
     icon: '⚖',
     status: 'active',
     category: 'fiscal',
@@ -92,7 +92,7 @@ export const SERVICES: StoreService[] = [
     name: 'Contabilito',
     tagline: 'Contabilidad electronica automatizada',
     description:
-      'Convierte los CFDI que ya tienes en polizas de partida doble contra el codigo agrupador del SAT y saca la balanza de comprobacion. El envio al buzon tributario necesita e.firma y todavia no: el catalogo de cuentas esta por contrastar contra el Anexo 24.',
+      'Convierte los CFDI de cada cliente en polizas de partida doble contra el codigo agrupador del SAT y saca la balanza de comprobacion. El envio al buzon tributario necesita e.firma y todavia no: el catalogo de cuentas esta por contrastar contra el Anexo 24.',
     icon: '📊',
     status: 'beta',
     category: 'contable',

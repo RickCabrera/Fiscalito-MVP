@@ -16,18 +16,11 @@ import { ArrowRight, Layers } from 'lucide-react';
 import { planDelPerfil, usoDeClientes } from '../../services/planes';
 
 export default function TarjetaPlan({
-  plan, clientes, conCartera,
+  plan, clientes,
 }: {
   /** `users/{uid}.plan`. `undefined` = nunca eligió, y manda el default. */
   plan: string | undefined;
   clientes: number;
-  /**
-   * Si esta instalación lleva cartera de clientes.
-   *
-   * En modo empresa única no hay clientes que contar —hay una empresa
-   * implícita— y "1 / 1 clientes" describiría una cartera que no existe.
-   */
-  conCartera: boolean;
 }) {
   const elPlan = planDelPerfil(plan);
   const uso = usoDeClientes(elPlan, clientes);
@@ -55,8 +48,7 @@ export default function TarjetaPlan({
           Plan
         </div>
         <div style={{ fontWeight: 600, fontSize: '1.02rem' }}>{elPlan.nombre}</div>
-        {conCartera && (
-          <div
+        <div
             style={{
               fontSize: '0.85rem', marginTop: 2,
               color: uso.alLimite ? 'var(--warning)' : 'var(--text-secondary)',
@@ -66,7 +58,6 @@ export default function TarjetaPlan({
             {uso.texto}
             {uso.alLimite ? ' · al límite' : ''}
           </div>
-        )}
       </div>
 
       <Link to="/app/planes">

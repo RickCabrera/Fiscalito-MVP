@@ -30,20 +30,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { hayLlavesDistintas } from '../components/nomina/llavesDelCierre';
 import type { EmpleadoCartera } from '../services/carteraApi';
-import { modoDespacho } from '../test/modoDespacho';
-
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 const CLIENTE = 'taller';
 
@@ -314,7 +300,6 @@ describe('el cierre usa la llave del CHECADOR y la nómina la del CÁLCULO', () 
   });
 });
 
-
 describe('el error de carga se descarta; el de las operaciones no', () => {
   /**
    * Los dos lados de la separación que hizo falta para BL-3. Antes compartían
@@ -382,7 +367,6 @@ describe('el error de carga se descarta; el de las operaciones no', () => {
   });
 });
 
-
 describe('el cierre NO se dispara mientras la cartera carga', () => {
   /**
    * El gate estaba en el badge del paso, y `PasoNomina` es presentacional: pinta
@@ -425,7 +409,6 @@ describe('el cierre NO se dispara mientras la cartera carga', () => {
     expect(screen.getByRole('button', { name: /Cerrar quincena/ })).toHaveProperty('disabled', false);
   });
 });
-
 
 describe('las dos rebabas de la derivación del error', () => {
   /**
@@ -504,7 +487,6 @@ describe('las dos rebabas de la derivación del error', () => {
     expect(screen.queryByText(/se estaba reiniciando/)).toBeNull();
   });
 });
-
 
 describe('una periodicidad que no cuadra con el periodo no se calcula', () => {
   /**

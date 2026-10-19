@@ -1,53 +1,30 @@
 /**
- * Navegación por perfil (E-01).
+ * Navegación del despacho.
  *
- * Los dos invariantes que protege este archivo:
+ * K (2026-10-19): el sistema es solo para despachos. Lo que protege este archivo:
  *
- * 1. Un CONTADOR ve una lista EXACTA y ninguna entrada de contribuyente. La
- *    aserción es sobre la lista COMPLETA, no sobre presencia: si alguien agrega
- *    "Historial" al sidebar del despacho, esto se cae. La lista lleva **siete**
- *    entradas: las cuatro de E-01, más Empleados y Dispositivos (R-05), más
- *    Fiscalito —el del cliente activo— que sumó T1. "Historial" y "Dashboard"
- *    siguen siendo las que no pueden aparecer, porque ésas sí serían suyas.
- * 2. Los cinco tipos de contribuyente y el perfil sin tipo siguen viendo lo
- *    mismo que antes de E-01. La tarea es aditiva o no es.
+ * 1. El sidebar es una lista EXACTA, sin Dashboard ni Historial de contribuyente.
+ * 2. El resaltado del sidebar (E-06) y el alcance del selector de cliente.
+ * 3. Los tabs de Fiscalito salen del régimen del CLIENTE ACTIVO.
  */
 
 import { describe, expect, it } from 'vitest';
 import {
+  cuentaLista,
   esContador,
   esRutaDeNomina,
   getSidebarLinks,
   getTabsForProfile,
   navActivo,
   rutaInicial,
+  rutaTieneAlcanceDeCliente,
   type SidebarLink,
-  type TabFiscalito,
 } from './navigation';
-import type { ContributorType } from './contributorProfiles';
-import { modoDespacho } from '../test/modoDespacho';
 import { MARCA_CORTA } from './marca';
-
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
-
-const CONTRIBUYENTES: (ContributorType | null)[] = [
-  'asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme', null,
-];
 
 describe('getSidebarLinks', () => {
   it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Fiscalito / Contabilito / Perfil, en ese orden', () => {
-    expect(getSidebarLinks('contador')).toEqual([
+    expect(getSidebarLinks()).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
       // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
       // a la ficha del cliente y cambiando de pestaña, y los dispositivos no
@@ -77,60 +54,40 @@ describe('getSidebarLinks', () => {
     ]);
   });
 
-  it('el contador NO ve Dashboard ni Historial: ésos sí serían suyos', () => {
-    // La otra mitad del invariante 1. Fiscalito entró en T1 porque lo que abre
-    // es de su cliente; un dashboard de contribuyente y un historial de
-    // declaraciones propias no tienen sujeto en una cuenta de despacho.
-    const ids = getSidebarLinks('contador').map((l) => l.id);
+  it('no hay Dashboard ni Historial de contribuyente', () => {
+    const ids: string[] = getSidebarLinks().map((l) => l.id);
     expect(ids).not.toContain('dashboard');
     expect(ids).not.toContain('historial');
   });
 
-  it('ningún contribuyente ve las entradas del despacho', () => {
-    // La simétrica de la de arriba, extendida a lo que R-05 agrega: las tres
-    // pantallas del despacho leen la CARTERA, que un contribuyente no tiene.
-    for (const tipo of CONTRIBUYENTES) {
-      const ids = getSidebarLinks(tipo).map((l) => l.id);
-      expect(ids).not.toContain('empleados');
-      expect(ids).not.toContain('dispositivos');
-    }
-  });
-
-  it.each(CONTRIBUYENTES)('el perfil %s conserva el sidebar de siempre', (tipo) => {
-    expect(getSidebarLinks(tipo)).toEqual([
-      { id: 'dashboard', to: '/app', label: 'Dashboard', end: true },
-      // O-02: la ruta es interna y no cambia; la etiqueta sale de la marca.
-      { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
-      { id: 'historial', to: '/app/historial', label: 'Historial' },
-      { id: 'nomina', to: '/app/nomina-demo', label: 'Nómina (demo)' },
-      { id: 'perfil', to: '/app/profile', label: 'Perfil' },
-    ]);
-  });
-
-  it('ningún contribuyente ve la pantalla de clientes del despacho', () => {
-    for (const tipo of CONTRIBUYENTES) {
-      expect(getSidebarLinks(tipo).map((l) => l.id)).not.toContain('clientes');
-    }
-  });
-
-  it('rutaInicial manda al contador a sus clientes y al resto al dashboard', () => {
-    expect(rutaInicial('contador')).toBe('/app/clientes');
-    for (const tipo of CONTRIBUYENTES) {
-      expect(rutaInicial(tipo)).toBe('/app');
-    }
+  it('rutaInicial manda a la cartera', () => {
+    expect(rutaInicial()).toBe('/app/clientes');
   });
 
   it('esContador solo es cierto para el contador', () => {
     expect(esContador('contador')).toBe(true);
-    for (const tipo of CONTRIBUYENTES) {
+    for (const tipo of ['asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme', null] as const) {
       expect(esContador(tipo)).toBe(false);
+    }
+  });
+});
+
+describe('cuentaLista (K)', () => {
+  it('sólo una cuenta de despacho con onboarding terminado entra a la app', () => {
+    expect(cuentaLista({ onboardingComplete: true, contributorType: 'contador' })).toBe(true);
+    expect(cuentaLista({ onboardingComplete: false, contributorType: 'contador' })).toBe(false);
+  });
+
+  it('una cuenta vieja de contribuyente vuelve al wizard para convertirse', () => {
+    for (const tipo of ['asalariado', 'independiente', 'arrendamiento', 'plataformas', 'pyme', null] as const) {
+      expect(cuentaLista({ onboardingComplete: true, contributorType: tipo }), String(tipo)).toBe(false);
     }
   });
 });
 
 describe('navActivo (E-06)', () => {
   const del = (id: string): SidebarLink =>
-    getSidebarLinks('contador').find((l) => l.id === id)!;
+    getSidebarLinks().find((l) => l.id === id)!;
 
   /**
    * EL CASO QUE VALE EL BLOQUE. La nómina cuelga de `/app/clientes/{id}/nomina`
@@ -159,7 +116,7 @@ describe('navActivo (E-06)', () => {
     const rutas = ['/app/clientes', '/app/clientes/demo', '/app/clientes/demo/nomina',
       '/app/nomina', '/app/calendario', '/app/profile'];
     for (const ruta of rutas) {
-      const encendidas = getSidebarLinks('contador').filter((l) => navActivo(l, ruta));
+      const encendidas = getSidebarLinks().filter((l) => navActivo(l, ruta));
       expect(encendidas.length, `ruta ${ruta}`).toBeLessThanOrEqual(1);
     }
   });
@@ -177,9 +134,9 @@ describe('navActivo (E-06)', () => {
   });
 
   it('`end` sigue significando coincidencia exacta', () => {
-    const dashboard = getSidebarLinks(null).find((l) => l.id === 'dashboard')!;
-    expect(navActivo(dashboard, '/app')).toBe(true);
-    expect(navActivo(dashboard, '/app/historial')).toBe(false);
+    const exacto: SidebarLink = { id: 'perfil', to: '/app/x', label: 'X', end: true };
+    expect(navActivo(exacto, '/app/x')).toBe(true);
+    expect(navActivo(exacto, '/app/x/y')).toBe(false);
   });
 
   it('esRutaDeNomina reconoce las dos formas y nada más', () => {
@@ -192,68 +149,43 @@ describe('navActivo (E-06)', () => {
   });
 });
 
-describe('getTabsForProfile', () => {
-  /**
-   * EL CASO QUE VALE EL ARCHIVO, REESCRITO EN T1.
-   *
-   * Lo que se mide sigue siendo lo mismo —qué ve un despacho en Fiscalito— pero
-   * cambió el SUJETO: hasta E-07 el `regimen` que llegaba aquí con
-   * `contributorType: 'contador'` era el del despacho (y desde E-05 venía
-   * vacío, así que el tab que le quedaba estaba muerto). Desde T1 es el del
-   * CLIENTE ACTIVO, que sí existe y sí se captura en el alta.
-   *
-   * El caso que decide la tarea es el par 612 / 626, con el corte que E-01 ya
-   * traía y que §D30 deja pendiente de confirmar con la contadora. Lo que se
-   * fija aquí no es la regla fiscal —esa puede moverse— sino que el régimen del
-   * cliente **se aplique**: si alguien colapsara las dos ramas al set completo,
-   * los dos clientes verían lo mismo y la pantalla se vería perfectamente bien.
-   */
-  it('el contador con un cliente 612 ve el set completo', () => {
-    expect(getTabsForProfile('contador', '612')).toEqual([
+describe('rutaTieneAlcanceDeCliente', () => {
+  it('muestra el selector en las pantallas que leen el cliente activo', () => {
+    for (const ruta of ['/app/clientes', '/app/clientes/taller', '/app/clientes/taller/nomina',
+      '/app/nomina', '/app/empleados', '/app/dispositivos',
+      '/app/store/fiscalito/use', '/app/store/contabilito/use']) {
+      expect(rutaTieneAlcanceDeCliente(ruta), ruta).toBe(true);
+    }
+  });
+
+  it('no lo muestra en Calendario (toda la cartera) ni en Perfil (del despacho)', () => {
+    for (const ruta of ['/app/calendario', '/app/profile', '/app/store/fiscalito']) {
+      expect(rutaTieneAlcanceDeCliente(ruta), ruta).toBe(false);
+    }
+  });
+});
+
+describe('getTabsForProfile (régimen del cliente activo)', () => {
+  it('un cliente 612 ve el set completo', () => {
+    expect(getTabsForProfile('612')).toEqual([
       'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
     ]);
   });
 
-  it('el contador con un cliente 626 NO ve DIOT ni Retenciones', () => {
-    const tabs = getTabsForProfile('contador', '626');
-    expect(tabs).toEqual(['declaracion', 'anual', 'calendario', 'comparar', 'estado']);
-    expect(tabs).not.toContain('diot');
-    expect(tabs).not.toContain('retenciones');
+  it('un cliente 626 NO ve DIOT ni Retenciones', () => {
+    expect(getTabsForProfile('626')).toEqual(['declaracion', 'anual', 'calendario', 'comparar', 'estado']);
   });
 
-  it('el contador con un cliente 612 y uno 626 no ve lo mismo', () => {
-    // La aserción que no se puede satisfacer por accidente: dos listas iguales
-    // pasarían los dos tests de arriba sólo si además fueran las esperadas,
-    // pero ésta se cae en cuanto el filtro por régimen deje de aplicarse.
-    expect(getTabsForProfile('contador', '612')).not.toEqual(getTabsForProfile('contador', '626'));
+  it('un cliente 612 y uno 626 no ven lo mismo', () => {
+    expect(getTabsForProfile('612')).not.toEqual(getTabsForProfile('626'));
   });
 
-  it('el contador SIN cliente elegido no ve ningún tab', () => {
-    // No es el caso de E-07 con otro nombre: aquí el vacío significa "falta el
-    // dato", y `FiscalitoServicePage` pinta el estado con el selector en vez de
-    // una tira de tabs sobre un cliente inexistente.
-    expect(getTabsForProfile('contador', null)).toEqual([]);
-    expect(getTabsForProfile('contador', '')).toEqual([]);
+  it('un cliente persona moral (601) abre en pagos provisionales PM', () => {
+    expect(getTabsForProfile('601')).toEqual(['pagospm', 'calendario', 'declaracion']);
   });
 
-  // Regresión: esta función sirve a FiscalitoServicePage y a DashboardPage a la
-  // vez desde E-01. Un cambio aquí mueve las dos pantallas.
-  //
-  // T3 movió estas listas a propósito: 'anual' entra para TODOS menos el
-  // asalariado (605), cuya declaración anual ya es el tab 'deducciones'. El
-  // orden importa porque `allowedTabIds[0]` es el tab por defecto de la
-  // pantalla, y 'declaracion' sigue siendo el primero.
-  const CASOS: [string | null, string | null, TabFiscalito[]][] = [
-    ['asalariado', '605', ['deducciones', 'calendario']],
-    ['pyme', '612', ['declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
-    ['independiente', '626', ['declaracion', 'anual', 'calendario', 'comparar', 'estado']],
-    ['independiente', '612', ['declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado']],
-    ['arrendamiento', '606', ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado']],
-    ['plataformas', '625', ['declaracion', 'anual', 'calendario', 'estado']],
-    [null, null, ['declaracion', 'anual', 'calendario', 'estado']],
-  ];
-
-  it.each(CASOS)('tipo=%s regimen=%s sale como lo dejaron E-01 y T3', (tipo, regimen, esperado) => {
-    expect(getTabsForProfile(tipo, regimen)).toEqual(esperado);
+  it('sin cliente elegido no hay tabs', () => {
+    expect(getTabsForProfile(null)).toEqual([]);
+    expect(getTabsForProfile('')).toEqual([]);
   });
 });

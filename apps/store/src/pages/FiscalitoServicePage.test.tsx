@@ -29,7 +29,6 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { ClienteResumen } from '../services/despachoApi';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
-import { modoDespacho } from '../test/modoDespacho';
 
 /**
  * MODO DESPACHO. T1 lo dejó como default de la app, pero este archivo lo
@@ -37,7 +36,6 @@ import { modoDespacho } from '../test/modoDespacho';
  * redirect de E-07 se conserva— y heredarlo del ambiente es justo lo que O-01
  * vino a quitar.
  */
-modoDespacho();
 
 const perfilBase: UserProfile = {
   contributorType: 'contador',
@@ -234,42 +232,4 @@ describe('FiscalitoServicePage — cuenta de despacho (T1)', () => {
     expect(screen.getByTestId('query').textContent).toBe('');
   });
 
-  it('el contribuyente conserva sus tabs y su back-link', () => {
-    perfilMock.actual = { ...perfilBase, contributorType: 'independiente', regimen: '626' };
-    montar();
-
-    expect(screen.getByText('Pre-declaración')).toBeTruthy();
-    expect(screen.getByText('Calcula tus pre-declaraciones ISR/IVA')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Información/ }).getAttribute('href')).toBe('/app/store/fiscalito');
-  });
-
-  it('el contribuyente NO necesita el proveedor de cliente activo', () => {
-    /**
-     * Esta pantalla es suya desde antes de que el despacho existiera, y en su
-     * árbol no hay cartera. Si T1 hubiera usado `useClienteActivo()` —que lanza
-     * cuando no encuentra el proveedor— la pantalla del contribuyente reventaría
-     * en cualquier montaje sin `CarteraProvider`. Por eso lee el contexto de
-     * frente y aguanta el `null`; `montar()` sin wrapper es ese caso.
-     */
-    perfilMock.actual = { ...perfilBase, contributorType: 'asalariado', regimen: '605' };
-    montar();
-
-    // Aparece dos veces —el botón del tab y el encabezado de su contenido—, y
-    // lo que se afirma aquí es que la pantalla MONTÓ sin proveedor, no cuántas.
-    expect(screen.getAllByText('Deducciones personales').length).toBeGreaterThan(0);
-  });
-});
-
-describe('FiscalitoServicePage — modo empresa única', () => {
-  it('conserva el redirect de E-07: ahí no hay cliente que elegir', () => {
-    /**
-     * T1 cambia el modo DESPACHO. En modo empresa única no hay cartera, así que
-     * el estado vacío mandaría a elegir un cliente en una app que no tiene
-     * clientes: el redirect de E-07 sigue siendo la respuesta correcta.
-     */
-    vi.stubEnv('VITE_MODO_EMPRESA_UNICA', '1');
-    montar('/app/store/fiscalito/use', conCliente(null, []));
-
-    expect(screen.getByText('calendario patronal')).toBeTruthy();
-  });
 });

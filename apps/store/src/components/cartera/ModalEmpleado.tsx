@@ -42,7 +42,6 @@ import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import IdentidadEmpleado from './IdentidadEmpleado';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
-import { modoEmpresaUnica } from '../../services/modoEmpresa';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
   { valor: 'indeterminado', etiqueta: 'Indeterminado' },
@@ -76,7 +75,7 @@ function vacio(parametros?: ParametrosSalariales): EmpleadoCartera {
     tipo_contrato: 'indeterminado',
     // O-03: el alta arranca con las prestaciones del PATRÓN, no con el mínimo
     // de ley. Se pueden pisar para un caso particular; el default es la
-    // política de la empresa, que es lo que aplica a casi todos.
+    // política del patrón, que es lo que aplica a casi todos.
     prestaciones: {
       dias_aguinaldo: parametros?.dias_aguinaldo ?? 15,
       dias_vacaciones: 0,
@@ -108,9 +107,7 @@ export default function ModalEmpleado({
    * Los parámetros del PATRÓN (O-03): sus prestaciones son el default de cada
    * empleado, y su escala de vacaciones viaja al SBC.
    *
-   * Opcional para no romper a los dos llamadores del modo despacho, donde no
-   * hay una empresa única de la que sacarlos: sin ellos manda el mínimo de ley,
-   * que es lo que la app aplicaba antes de O-03.
+   * Opcional: sin ellos manda el mínimo de ley.
    */
   parametros?: ParametrosSalariales;
 }) {
@@ -139,7 +136,7 @@ export default function ModalEmpleado({
    * O-03: la escala de vacaciones es del PATRÓN, no del empleado.
    *
    * No se copia a `datos.prestaciones` a propósito: si se guardara con cada
-   * empleado, cambiarla en Configuración de empresa dejaría a los ya dados de
+   * empleado, cambiarla en los parámetros del patrón dejaría a los ya dados de
    * alta con la escala vieja, y nadie sabría por qué dos personas con la misma
    * antigüedad integran distinto.
    */
@@ -307,8 +304,8 @@ export default function ModalEmpleado({
 
         {llaveRepetida && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
-            Ya hay un empleado con el número <strong>{datos.empleado_no}</strong>
-            {modoEmpresaUnica() ? '' : ' en este cliente'}. El número es la llave del
+            Ya hay un empleado con el número <strong>{datos.empleado_no}</strong> en
+            este cliente. El número es la llave del
             cálculo: repetirlo haría que uno se comiera las incidencias del otro.
           </p>
         )}

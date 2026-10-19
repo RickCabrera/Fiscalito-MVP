@@ -1,23 +1,6 @@
 /**
- * El gemelo de despacho: **el exportador de O-04 con el flag apagado.**
- *
- * QUÉ DEFECTO EXISTE PORQUE ESTE ARCHIVO NO EXISTÍA
- * -------------------------------------------------
- * O-04 montó `SelectorExportacion` en el paso 4 sin guarda de modo, y lo
- * alimentó con `cartera.empresa.registroPatronal` y `.guiaSubdelegacion`. En
- * modo despacho ese objeto se proyecta del documento con id `'empresa'`, que en
- * una cuenta de despacho **no existe**: los dos campos salían vacíos siempre.
- *
- * La cadena completa, que es lo que la hacía fea: el contador pulsaba Exportar,
- * el generador levantaba —correctamente— diciendo *"captúralo en Perfil →
- * Configuración de empresa"*, el contador iba a Perfil, y esa tarjeta **no se
- * renderiza con el flag apagado** (`ProfilePage` la condiciona a
- * `empresaUnica && esDespacho`). Un callejón sin salida, nuevo de esta corrida,
- * en el modo que Ricardo pidió conservar entero.
- *
- * Y no lo medía nada: `SelectorExportacion.test.tsx` no declara modo y
- * `cuadre.test.ts` inyecta el registro patronal a mano, así que ninguno de los
- * dos ve nunca la cadena vacía. Lo encontró el revisor de cierre.
+ * El exportador del IMSS en el despacho: el registro patronal y la guía de la
+ * subdelegación salen de la ficha DEL CLIENTE activo.
  *
  * EL ARREGLO ES DE DÓNDE SE LEE, NO UNA GUARDA
  * ---------------------------------------------
@@ -32,9 +15,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { ClienteCartera, EmpleadoCartera } from '../services/carteraApi';
-import { modoDespacho } from '../test/modoDespacho';
-
-modoDespacho();
 
 const perfil: UserProfile = {
   contributorType: 'contador',

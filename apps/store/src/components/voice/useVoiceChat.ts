@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../../context/ProfileContext';
+import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { useAuth } from '../../context/AuthContext';
 import { obtenerHistorial } from '../../services/declaracionesHistory';
 import {
@@ -43,9 +44,11 @@ function isNoiseTranscription(text: string): boolean {
   return WHISPER_NOISE_PHRASES.has(trimmed.toLowerCase());
 }
 
-async function buildHistorialResumen(uid: string): Promise<string> {
+/** K: el historial del CLIENTE ACTIVO; sin cliente no hay de quién hablar. */
+async function buildHistorialResumen(uid: string, clienteId: string | null): Promise<string> {
+  if (!clienteId) return 'Sin cliente activo.';
   try {
-    const records = await obtenerHistorial(uid, 3, 'predeclaracion');
+    const records = await obtenerHistorial(uid, 3, 'predeclaracion', clienteId);
     if (records.length === 0) return 'Sin historial aun.';
     return records
       .map((r) => {
@@ -63,6 +66,7 @@ async function buildHistorialResumen(uid: string): Promise<string> {
 
 export function useVoiceChat() {
   const { profile } = useProfile();
+  const perfilFiscal = usePerfilFiscal();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -80,6 +84,7 @@ export function useVoiceChat() {
   const openRef = useRef(false);
   const chatHistoryRef = useRef<ChatMessage[]>([]);
   const profileRef = useRef(profile);
+  const perfilFiscalRef = useRef(perfilFiscal);
   const historialRef = useRef('');
   const uidRef = useRef<string | null>(user?.uid ?? null);
   const vadCleanupRef = useRef<(() => void) | null>(null);
@@ -87,6 +92,7 @@ export function useVoiceChat() {
 
   // Sync refs
   useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { perfilFiscalRef.current = perfilFiscal; }, [perfilFiscal]);
   useEffect(() => { historialRef.current = historialResumen; }, [historialResumen]);
   useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
   useEffect(() => { openRef.current = open; }, [open]);
@@ -101,9 +107,9 @@ export function useVoiceChat() {
   useEffect(() => {
     if (!open || ready) return;
     (async () => {
-      const resumen = user?.uid ? await buildHistorialResumen(user.uid) : '';
+      const resumen = user?.uid ? await buildHistorialResumen(user.uid, perfilFiscal.clienteId) : '';
       setHistorialResumen(resumen);
-      const nombre = profile.nombre || 'contribuyente';
+      const nombre = profile.nombre || 'contador';
       const welcome = `Hola ${nombre}! Soy ${ASISTENTE}, tu asistente de nomina. Puedes escribirme o hablar conmigo. En que te ayudo hoy?`;
       setMessages([{ role: 'assistant', content: welcome }]);
       const hist: ChatMessage[] = [{ role: 'assistant', content: welcome }];
@@ -111,7 +117,18 @@ export function useVoiceChat() {
       chatHistoryRef.current = hist;
       setReady(true);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- el cambio de cliente lo cubre el efecto de abajo
   }, [open, ready, user?.uid, profile.nombre]);
+
+  // K: al cambiar de cliente activo, el historial que ve el asistente cambia con él.
+  useEffect(() => {
+    if (!ready || !user?.uid) return;
+    let vigente = true;
+    buildHistorialResumen(user.uid, perfilFiscal.clienteId).then((r) => {
+      if (vigente) setHistorialResumen(r);
+    });
+    return () => { vigente = false; };
+  }, [ready, user?.uid, perfilFiscal.clienteId]);
 
   // Process a user message (text) through the agent loop + optional TTS.
   // Las refs vivas (profileRef, historialRef, chatHistoryRef) se leen en el
@@ -125,6 +142,7 @@ export function useVoiceChat() {
         history: chatHistoryRef.current,
         userMessage: text,
         profile: profileRef.current,
+        perfilFiscal: perfilFiscalRef.current,
         historialResumen: historialRef.current,
         navigate,
         uid: uidRef.current,

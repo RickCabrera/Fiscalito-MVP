@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
-import { modoDespacho } from '../test/modoDespacho';
+import { resolverPerfilFiscal } from '../context/perfilFiscal';
+import type { ClienteResumen } from '../services/despachoApi';
 
 vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion: vi.fn() }));
@@ -29,28 +30,21 @@ vi.mock('./AgentContext', () => ({
 
 const { runAgentLoop } = await import('./agentLoop');
 
-/**
- * O-cierre: este archivo mide la semántica del MODO DESPACHO —el prompt que
- * habla de clientes, la ruta de la cartera, la pre-declaración que no aplica—.
- * Desde el pivote el modo por default es empresa única, así que sin declararlo
- * estos casos medían otra app. Es el hueco que el revisor de cierre encontró:
- * sólo 22 de 57 archivos de prueba declaraban modo.
- */
-modoDespacho();
-
-
 const PERFIL = {
-  rfc: 'AAA010101AAA',
-  regimen: '612',
-  nombre: 'Contribuyente Demo',
-  actividad: 'Servicios',
+  rfc: '', regimen: '', nombre: 'Contadora Demo',
+  contributorType: 'contador', nombreDespacho: 'Despacho Demo',
 } as UserProfile;
 
-function correr(userMessage = 'hola') {
+const CLIENTE = {
+  id: 'taller', nombre: 'Taller Nogal', rfc: 'TNO010101AB1', regimen: '612',
+} as ClienteResumen;
+
+function correr(userMessage = 'hola', cliente: ClienteResumen | null = CLIENTE) {
   return runAgentLoop({
     history: [],
     userMessage,
     profile: PERFIL,
+    perfilFiscal: resolverPerfilFiscal(PERFIL, cliente),
     historialResumen: '',
     navigate: vi.fn() as unknown as NavigateFunction,
     uid: null,
@@ -73,7 +67,7 @@ beforeEach(() => {
 });
 
 describe('runAgentLoop', () => {
-  it('devuelve el texto del LLM y arma el historial, con el perfil en el system prompt', async () => {
+  it('devuelve el texto del LLM y arma el historial, con el cliente activo en el system prompt', async () => {
     sendMessageWithTools.mockResolvedValue({ type: 'text', text: 'Claro que sí.' });
 
     const res = await correr('¿qué es el ISR?');
@@ -88,36 +82,26 @@ describe('runAgentLoop', () => {
     // buildAgentSystemPrompt es privada: se verifica por lo que recibe el LLM.
     const [mensajes] = sendMessageWithTools.mock.calls[0];
     expect(mensajes[0].role).toBe('system');
-    expect(mensajes[0].content).toContain('AAA010101AAA');
-    expect(mensajes[0].content).toContain('Contribuyente Demo');
+    // K: el RFC que ve el asistente es el del CLIENTE ACTIVO, no el del despacho.
+    expect(mensajes[0].content).toContain('TNO010101AB1');
+    expect(mensajes[0].content).toContain('Taller Nogal');
   });
 
   /**
-   * E-07: un DESPACHO no tiene RFC ni régimen, y no es un olvido del usuario —
-   * E-05 dejó de pedírselos porque la app no le calcula nada propio. Con el
-   * bloque de contribuyente, el prompt decía "RFC: No proporcionado" y el LLM le
-   * pedía completar su perfil: un callejón, porque ya no hay dónde capturarlo.
+   * E-07: un DESPACHO no tiene RFC ni régimen propios —E-05 dejó de pedírselos—
+   * y el prompt no se los puede pedir: no hay dónde capturarlos.
    */
-  it('a un despacho no le pide RFC ni régimen en el system prompt', async () => {
+  it('a un despacho no le pide RFC ni régimen propios en el system prompt', async () => {
     sendMessageWithTools.mockResolvedValue({ type: 'text', text: 'ok' });
 
-    await runAgentLoop({
-      history: [],
-      userMessage: 'hola',
-      profile: {
-        rfc: '', regimen: '', nombre: 'Contadora Demo',
-        contributorType: 'contador', nombreDespacho: 'Despacho Demo',
-      } as UserProfile,
-      historialResumen: '',
-      navigate: vi.fn() as unknown as NavigateFunction,
-      uid: null,
-    });
+    await correr('hola', null);
 
     const [mensajes] = sendMessageWithTools.mock.calls[0];
     const prompt = mensajes[0].content as string;
     expect(prompt).toContain('DESPACHO CONTABLE');
     expect(prompt).toContain('Despacho Demo');
-    expect(prompt).toContain('Nunca le pidas su RFC');
+    expect(prompt).toContain('nunca se los pidas');
+    expect(prompt).toContain('No hay cliente activo');
     expect(prompt).not.toContain('RFC: No proporcionado');
   });
 

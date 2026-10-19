@@ -1,5 +1,15 @@
 # FISCALITO · Contexto para Claude Code
 
+> **Solo despachos (K, 2026-10-19).** El sistema es SOLO para despachos y
+> contadores que llevan varias empresas. Ya no hay perfiles de contribuyente en
+> el onboarding, ni Dashboard/Historial propios, ni modo empresa única (Orca y el
+> flag `VITE_MODO_EMPRESA_UNICA` se retiraron). Toda cuenta es `contador` y todo
+> opera sobre el **cliente activo**. Una cuenta vieja de contribuyente cae al
+> wizard (`cuentaLista` en `services/navigation.ts`) y sale convertida en
+> despacho. Lo que diga abajo sobre contribuyentes, empresa única o Orca es
+> historia: manda este recuadro. `ContributorType` conserva los seis valores
+> porque son la llave guardada en Firestore de cuentas existentes.
+
 > **Pivote (corrida O, 2026-09-03).** El producto dejó de ser un marketplace
 > multi-cliente y pasó a ser la **nómina interna de Orca Ordorica Cristal
 > Templado**. El modo despacho no se borra: se apaga con
@@ -211,14 +221,14 @@ fiscalito-store-app/
 /                              → LandingPage (publica)
 /login                         → LoginPage (publica)
 /app/onboarding                → OnboardingWizard (protegida, sin sidebar)
-/app                           → DashboardPage (protegida, con sidebar)
-/app/historial                 → HistorialPage (protegida)
+/app                           → redirige a /app/clientes (K: no hay dashboard de contribuyente)
+/app/historial                 → redirige a /app/clientes (K)
 /app/clientes                  → ClientesPage (protegida, cartera del despacho — solo contador)
 /app/clientes/:id              → ClienteDetallePage (protegida, ficha con la plantilla del cliente)
 /app/clientes/:id/nomina       → NominaClientePage (protegida, checador + cierre + calculo + PDF)
 /app/nomina                    → NominaDelClienteActivo (redirige a la nomina del cliente activo)
 /app/calendario                → CalendarioPatronalPage (obligaciones patronales de la cartera — solo contador)
-/app/nomina-demo               → redireccion a /app/clientes/demo/nomina (ruta vieja de D-07)
+/app/nomina-demo               → redireccion a /app/nomina (ruta vieja de D-07)
 /app/store                     → MarketplacePage (protegida)
 /app/store/fiscalito/use       → FiscalitoServicePage (protegida, interfaz principal del servicio)
 /app/store/contabilito/use     → ContabilitoPage (protegida, Contabilito: catalogo/polizas/balanza/buzon — T7)
@@ -305,8 +315,7 @@ modulo puro sin JSX. `AppLayout` solo le pone iconos por `id`.
 
 | Perfil | Sidebar |
 |--------|---------|
-| contador | Clientes · Empleados · Dispositivos · Nomina · Calendario (**patronal**, E-07) · Fiscalito (del cliente activo, T1) · **Contabilito** (del cliente activo) · Perfil |
-| cualquier otro (incluido perfil sin tipo) | Dashboard · Fiscalito · Historial · Nomina (demo) · Perfil |
+| contador (el unico desde K) | Clientes · Empleados · Dispositivos · Nomina · Calendario (**patronal**, E-07) · Fiscalito (del cliente activo, T1) · **Contabilito** (del cliente activo) · Perfil |
 
 Los tabs y pantallas de contribuyente **no se borraron**: dejan de mostrarse. Un contador que
 teclee `/app` es redirigido a `/app/clientes` (`rutaInicial`).
@@ -383,6 +392,8 @@ Los dos mapas son `Record<ContributorType, ...>` exhaustivos a proposito: un tip
 el build y obliga a decidir que se le manda al backend.
 
 ### Wizard de onboarding (post-registro)
+
+**Desde K son dos pasos y nada mas: Datos del despacho → Confirmacion.** No hay paso de tipo; la cuenta se guarda como `contador` con los campos de contribuyente vacios. Lo de abajo describe el wizard anterior.
 
 Los pasos **dependen del tipo** (E-05). Un contribuyente recorre cuatro:
 1. **Tipo de cuenta** — card selector visual con iconos (incluye Despacho / Contador)
@@ -599,7 +610,7 @@ DB: Firestore
 - `VITE_FISCAL_AGENT_URL` — URL del Fiscal Agent API (default: `http://localhost:8000`)
 - `VITE_OPENAI_API_KEY` — API key de OpenAI para voice chat (Whisper + GPT-4o-mini + TTS). **NOTA**: esta key se expone en el bundle del cliente; aceptable para demo/hackathon, no para produccion.
 
-#### Flags (los dos vienen APAGADOS; ver `.env.example`)
+#### Flags (viene APAGADO; ver `.env.example`)
 
 Los dos se leen con la misma regla (`services/flagEncendido.ts`): encienden `1`,
 `true`, `on`, `yes`, `si` y `sí`; **cualquier otra cosa, y la variable ausente,
@@ -619,11 +630,6 @@ avisa, así que escribe uno de esos seis.
   de datos**: las rutas de Firestore (`users/{uid}/clientes/{id}/empleados/{id}`)
   son las mismas de los dos lados, así que apagarlo tampoco mueve nada. El
   contrato vive en `docs/api-contract.md`, y R-07 sigue ABIERTA en `backlog.md`.
-- `VITE_MODO_EMPRESA_UNICA` (O-01, default invertido en T1) — apagado
-  (**default**) es la app del DESPACHO: cartera, selector de cliente activo y el
-  Fiscalito de cada cliente. Encendido es la nómina de UNA empresa implícita,
-  sin cartera ni lista de clientes. Ninguno de los dos modos se borra; se
-  apagan. Ojo con tu `.env` local: gana sobre el default.
 
 ### Estructura Firestore:
 

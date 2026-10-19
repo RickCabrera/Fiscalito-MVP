@@ -311,8 +311,7 @@ describe('O-03 · el periodo sigue a la PERIODICIDAD de cada cliente', () => {
   });
 
   it('pide UNA vez por clave, no una por cliente', async () => {
-    // Los clientes que comparten periodicidad comparten periodo. En modo
-    // empresa única esto es una sola llamada.
+    // Los clientes que comparten periodicidad comparten periodo.
     getDocs
       .mockResolvedValueOnce({
         docs: [

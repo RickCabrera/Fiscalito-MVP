@@ -1,5 +1,9 @@
 /**
- * Navegación por perfil — fuente única de qué ve cada tipo de cuenta.
+ * Navegación — fuente única de qué ve la cuenta.
+ *
+ * Desde K (2026-10-19) el sistema es SOLO para despachos y contadores: no hay
+ * navegación de contribuyente ni modo empresa única. Toda cuenta que entra es un
+ * despacho y opera sobre el cliente activo.
  *
  * Módulo PURO a propósito (sin JSX, sin React): así se prueba sin jsdom y
  * las dos pantallas que dependían de copias divergentes de
@@ -17,7 +21,6 @@
  */
 
 import type { ContributorType } from './contributorProfiles';
-import { modoEmpresaUnica } from './modoEmpresa';
 import { MARCA_CORTA } from './marca';
 
 // ────────────────────────────────────────────────────────────
@@ -26,7 +29,7 @@ import { MARCA_CORTA } from './marca';
 
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
-  | 'dashboard' | 'fiscalito' | 'contabilito' | 'historial' | 'nomina' | 'perfil'
+  | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
   | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
 
 export interface SidebarLink {
@@ -36,23 +39,6 @@ export interface SidebarLink {
   /** `end` de NavLink: solo marca activo en coincidencia exacta. */
   end?: boolean;
 }
-
-/** Navegación del contribuyente — la de siempre, intacta. */
-const LINKS_CONTRIBUYENTE: SidebarLink[] = [
-  { id: 'dashboard', to: '/app', label: 'Dashboard', end: true },
-  // O-02: la RUTA se queda literal —es interna y vive en enlaces guardados— y
-  // la ETIQUETA sale de la marca, porque es lo que el contribuyente lee en el
-  // sidebar. Que las dos vivan en la misma línea fue lo que dejó pasar esta
-  // etiqueta la primera vez: el guardián de marca perdonaba la línea entera por
-  // la ruta, y ahora tacha los nombres internos en vez de perdonarla.
-  { id: 'fiscalito', to: '/app/store/fiscalito/use', label: MARCA_CORTA },
-  { id: 'historial', to: '/app/historial', label: 'Historial' },
-  // DEMO D-07: se borra en F2. Va en el sidebar y no sólo por URL porque el
-  // criterio de la tarea es recorrer el flujo sin tocar consola, y teclear
-  // una ruta a mano enfrente del cliente es justo lo que falla en vivo.
-  { id: 'nomina', to: '/app/nomina-demo', label: 'Nómina (demo)' },
-  { id: 'perfil', to: '/app/profile', label: 'Perfil' },
-];
 
 /**
  * Navegación del despacho.
@@ -87,25 +73,6 @@ const LINKS_CONTADOR: SidebarLink[] = [
 ];
 
 /**
- * Navegación de la EMPRESA ÚNICA (O-01).
- *
- * Es la del despacho **menos Clientes**: no hay cartera que listar, hay una
- * empresa implícita. Empleados, Dispositivos, Nómina y Calendario apuntan a las
- * mismas rutas y a las mismas pantallas — lo que cambia es que resuelven la
- * empresa en vez de un cliente activo elegido en una barra superior.
- *
- * `nomina` apunta a `/app/nomina`, que en este modo **es** la pantalla de
- * nómina, no la redirección de E-03. Ver `AppRoutes.tsx`.
- */
-const LINKS_EMPRESA: SidebarLink[] = [
-  { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
-  { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
-  { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
-  { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
-  { id: 'perfil', to: '/app/profile', label: 'Perfil' },
-];
-
-/**
  * Si este perfil es el que OPERA la nómina.
  *
  * El nombre se queda —`contributorType: 'contador'` es la llave guardada en
@@ -119,13 +86,17 @@ export function esContador(tipo: ContributorType | null): boolean {
 }
 
 /**
- * Cómo se le llama en pantalla al perfil que opera la nómina.
+ * Si la cuenta ya puede usar la app (K).
  *
- * En modo empresa única, "Despacho / Contador" es falso: no hay despacho ni
- * cartera. La etiqueta cambia; el id guardado, no.
+ * El sistema es solo para despachos: una cuenta vieja de contribuyente cuenta
+ * como onboarding SIN terminar, así que `AppLayout` la manda al wizard, que sólo
+ * ofrece despacho, y al terminarlo queda convertida.
  */
-export function etiquetaDelPerfilOperador(): string {
-  return modoEmpresaUnica() ? 'Empresa' : 'Despacho / Contador';
+export function cuentaLista(p: {
+  onboardingComplete: boolean;
+  contributorType: ContributorType | null;
+}): boolean {
+  return p.onboardingComplete && esContador(p.contributorType);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -184,29 +155,14 @@ export function navActivo(link: SidebarLink, pathname: string): boolean {
   return link.end ? pathname === destino : bajoLaRuta(pathname, destino);
 }
 
-/**
- * Links del sidebar para el perfil dado. `null` (perfil sin tipo) ve el de
- * contribuyente.
- *
- * O-01: en modo empresa única el perfil operador ve la navegación de la
- * empresa. **Los perfiles de contribuyente no cambian en ningún modo**: el
- * pivote es sobre la nómina, no sobre la app fiscal, y sus pantallas siguen
- * enteras.
- */
-export function getSidebarLinks(tipo: ContributorType | null): SidebarLink[] {
-  if (!esContador(tipo)) return LINKS_CONTRIBUYENTE;
-  return modoEmpresaUnica() ? LINKS_EMPRESA : LINKS_CONTADOR;
+/** Links del sidebar. Desde K sólo existe la navegación del despacho. */
+export function getSidebarLinks(): SidebarLink[] {
+  return LINKS_CONTADOR;
 }
 
-/**
- * Ruta a la que entra cada perfil al terminar el onboarding o al pedir `/app`.
- *
- * En modo empresa única no hay `/app/clientes` a dónde llegar: la entrada es la
- * nómina, que es para lo que se abre la app.
- */
-export function rutaInicial(tipo: ContributorType | null): string {
-  if (!esContador(tipo)) return '/app';
-  return modoEmpresaUnica() ? '/app/nomina' : '/app/clientes';
+/** Ruta a la que entra la cuenta al terminar el onboarding o al pedir `/app`. */
+export function rutaInicial(): string {
+  return '/app/clientes';
 }
 
 // ────────────────────────────────────────────────────────────
@@ -220,18 +176,14 @@ export function rutaInicial(tipo: ContributorType | null): string {
  * que LEER `useClienteActivo` y pedirle los datos a ese cliente. Si no, el
  * selector afirma un cliente y la pantalla enseña otro.
  *
- * `/app/nomina-demo` NO está aquí a propósito: hoy esa pantalla cae en los
- * defaults de `nominaDemoApi` (el cliente `demo`) y no mira el cliente activo.
- * Con el selector encima diría "Taller Nogal · 12 empleados" sobre los nueve
- * empleados del caso real, sus salarios y su PDF — y el guard del backend
- * (`routes/nomina.py`, que rechaza calcularle a un cliente la plantilla de
- * otro) nunca se dispararía, porque el front seguiría mandando `demo`.
- * **E-03 la cablea al cliente activo y entonces entra a esta lista** — y si
- * E-03 mueve la nómina a `/app/clientes/:id/nomina`, esta constante se mueve
- * con ella o el selector desaparece justo donde más se necesita.
  */
 const RUTAS_CON_CLIENTE = [
   '/app/clientes', '/app/empleados', '/app/dispositivos',
+  // K: `/app/nomina` sin cliente activo pinta "Elige un cliente primero"; con el
+  // selector encima se elige ahí mismo y `NominaDelClienteActivo` redirige a la
+  // nómina de ese cliente. Con cliente, la nómina vive en
+  // `/app/clientes/{id}/nomina`, que ya cae bajo `/app/clientes`.
+  '/app/nomina',
   // T1: entra porque CUMPLE la regla de admisión de arriba, no porque hable de
   // clientes. `FiscalitoServicePage` lee `useClienteActivo` y filtra sus tabs
   // con el régimen de ese cliente; sin el selector encima, el contador no
@@ -264,11 +216,6 @@ const RUTAS_CON_CLIENTE = [
  * datos, no la que habla de clientes.
  */
 export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
-  // O-01: sin cartera no hay cliente que elegir. Se corta aquí, en la función
-  // que ya decide dónde se pinta el selector, y no en `AppLayout`: así el
-  // selector desaparece de TODAS las rutas de una vez y no queda una pantalla
-  // olvidada mostrando una barra que afirma un alcance que no existe.
-  if (modoEmpresaUnica()) return false;
   return RUTAS_CON_CLIENTE.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
@@ -320,68 +267,15 @@ function tabsCompletos(): TabFiscalito[] {
 }
 
 /**
- * Tabs de Fiscalito que aplican al perfil. La usan `FiscalitoServicePage`
- * (para los tabs) y `DashboardPage` (para las cards de servicio): antes eran
- * dos copias idénticas y divergibles.
+ * Tabs de Fiscalito para el CLIENTE ACTIVO del despacho, por su régimen.
  *
- * QUÉ ES `regimen` CUANDO EL TIPO ES `contador` (T1)
- * -------------------------------------------------
- * **El régimen del CLIENTE ACTIVO, no el del despacho.** Un despacho no
- * presenta las declaraciones de su cliente desde su propio régimen; presenta
- * las del cliente. Y desde E-05 el perfil del despacho ni siquiera tiene dónde
- * capturar un régimen propio: `profile.regimen` viene vacío, así que pasarlo
- * aquí no sólo sería incorrecto, sería inútil.
- *
- * Quien resuelve ese régimen es `FiscalitoServicePage` leyendo
- * `ClienteActivoContext`. Esta función sigue siendo pura y no sabe de contextos.
- *
- * OJO CON EL ORDEN: la rama de contador va PRIMERO, y ahora importa MÁS que
- * antes. Si se evaluara después, un contador cuyo cliente es RESICO caería en
- * `regimen === '626'` y saldría igual por casualidad — pero uno sin cliente
- * elegido caería hasta el `return` final y vería tres tabs sin que nada
- * explicara de dónde salen.
+ * Desde K no hay contribuyentes: el sujeto del cálculo siempre es un cliente.
+ * Sin cliente elegido (`regimen` vacío) no hay tabs: la pantalla pinta el estado
+ * vacío con el selector en vez de tabs sobre un cliente inexistente.
  */
-export function getTabsForProfile(
-  contributorType: string | null,
-  regimen: string | null,
-): TabFiscalito[] {
-  // Contador: los tabs del CLIENTE que tiene activo.
-  //
-  // E-01 no le daba ninguno y E-07 lo quitó de la pantalla entera, con razones
-  // que siguen en pie para lo que medían: el único tab que le quedaba era su
-  // calendario como persona física (§D21), y E-05 le quitó el RFC y el régimen
-  // de los que ese tab depende. **T1 no lo deshace: lo cambia de sujeto.** Lo
-  // que el despacho recupera no es su Fiscalito, es el de su cliente, y por eso
-  // el calendario que ve aquí también es el del cliente y `/app/calendario`
-  // sigue siendo el patronal de toda la cartera.
-  if (contributorType === 'contador') {
-    // Sin cliente elegido no hay régimen que aplicar. La pantalla pinta un
-    // estado vacío con el selector; devolver tabs aquí los pintaría sobre un
-    // cliente inexistente.
-    if (!regimen) return [];
-    return tabsPorRegimenDeCliente(regimen);
-  }
-
-  if (contributorType === 'asalariado' || regimen === '605')
-    return ['deducciones', 'calendario'];
-  // T6: el 601 va ANTES de `pyme`, y no es cosmético. Una persona moral se da
-  // de alta como `pyme` —es el único tipo que la ofrece—, así que evaluar el
-  // tipo primero la mandaría al set completo de persona física y le pintaría
-  // pre-declaración, DIOT y comparador de regímenes como si el motor los
-  // supiera calcular para ella.
-  if (regimen === '601')
-    return [...TABS_601];
-  if (contributorType === 'pyme')
-    return tabsCompletos();
-  if (regimen === '626')
-    return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
-  if (regimen === '612')
-    return tabsCompletos();
-  if (contributorType === 'arrendamiento' || regimen === '606')
-    return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (contributorType === 'plataformas' || regimen === '625')
-    return ['declaracion', 'anual', 'calendario', 'estado'];
-  return ['declaracion', 'anual', 'calendario', 'estado'];
+export function getTabsForProfile(regimen: string | null): TabFiscalito[] {
+  if (!regimen) return [];
+  return tabsPorRegimenDeCliente(regimen);
 }
 
 /**
