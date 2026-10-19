@@ -133,6 +133,21 @@ vi.mock('../services/credencialesApi', async () => {
   return { ...real, listarCredenciales: vi.fn(async () => []) };
 });
 vi.mock('../services/api', () => ({ apiFetch: vi.fn(), apiArchivo: vi.fn() }));
+// P0-04: la ficha monta "Procesos en segundo plano", que habla con `/trabajos` por
+// `services/api.ts` → `services/firebase.ts`, y ese archivo lanza sin llaves (ver
+// `sinLlavesDeFirebase.test.ts`). Lo que esta suite mide es la ficha, no la cola.
+vi.mock('../services/trabajosApi', async () => {
+  const real = await vi.importActual<typeof import('../services/trabajosApi')>(
+    '../services/trabajosApi',
+  );
+  return {
+    ...real,
+    listarTrabajos: vi.fn(async () => []),
+    encolarDiagnostico: vi.fn(),
+    reintentarTrabajo: vi.fn(),
+  };
+});
+vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 
 const { default: ClienteDetallePage } = await import('./ClienteDetallePage');
 

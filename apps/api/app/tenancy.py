@@ -12,6 +12,7 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auditoria import anotar_cliente, anotar_contexto
 from app.auth_firebase import usuario_actual
 from app.db.session import obtener_db
 from app.exceptions import FiscalAgentError
@@ -58,6 +59,7 @@ def contexto_actual(
 ) -> Contexto:
     """Dependencia de FastAPI: el contexto autenticado del request."""
     usuario = asegurar_usuario(db, uid)
+    anotar_contexto(uid, usuario.despacho_id, db)  # P0-07: el middleware sabe quién fue
     return Contexto(uid=uid, despacho_id=usuario.despacho_id, rol=usuario.rol, db=db)
 
 
@@ -88,6 +90,7 @@ def cliente_o_404(ctx: Contexto, clave: str) -> Cliente:
             raise FiscalAgentError(
                 f"No existe el cliente '{clave}' en tu despacho.", status_code=404
             )
+    anotar_cliente(cliente)  # P0-07: el renglón de auditoría del request lleva el cliente
     return cliente
 
 

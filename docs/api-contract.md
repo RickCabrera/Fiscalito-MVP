@@ -1155,3 +1155,67 @@ no la abre.
 
 Fuera de `/api/v1`, sin autenticación. `{"listo_para_produccion": bool, "servicios": [{servicio,
 descripcion, variable, implementacion, disponibles, configurado, es_falso}]}`.
+## Trabajos en segundo plano (P0-04)
+
+Autenticado (`Authorization: Bearer <ID token>`), multi-tenant: sólo se ven los trabajos con
+`despacho_id` del usuario; los de sistema (despacho nulo) nunca. Un auxiliar ve sólo los de sus
+clientes asignados. Trabajo o cliente de otro despacho = **404**.
+
+Forma de un trabajo (`TrabajoSalida`):
+
+```json
+{ "id": 7, "tipo": "diagnostico.cliente", "estado": "fallido", "cliente": "taller",
+  "intentos": 5, "max_intentos": 5, "ejecutar_en": "2026-10-19T15:00:30Z",
+  "iniciado_en": "...", "terminado_en": "...", "creado_en": "...",
+  "error": "RuntimeError: ...", "resultado": null, "carga": {} }
+```
+
+`estado`: `pendiente | corriendo | hecho | fallido | cancelado`. `cliente` es la clave pública.
+Fechas en ISO 8601 UTC.
+
+### `GET /api/v1/trabajos`
+Query: `cliente` (clave; 404 si no es del despacho), `estado`, `tipo`, `limite` (1–200, 50).
+Más reciente primero. → `{"exito": true, "trabajos": [TrabajoSalida]}`. Estado desconocido → 422.
+
+### `GET /api/v1/trabajos/{trabajo_id}`
+→ `{"exito": true, "trabajo": TrabajoSalida}`.
+
+### `POST /api/v1/trabajos/{trabajo_id}/reintentar`
+Sólo `fallido` o `cancelado` (si no, **409**). Vuelve a `pendiente` con `intentos = 0` y
+`ejecutar_en = ahora`. 409 también si ya hay otro trabajo vivo con su misma `clave_unica`.
+
+### `POST /api/v1/trabajos/{trabajo_id}/cancelar`
+Sólo `pendiente` (si no, **409**): uno `corriendo` no se corta a media transacción.
+
+### `POST /api/v1/trabajos/clientes/{clave}/diagnostico`
+Trabajo de prueba de la ficha del cliente (cuenta sus empleados). Cuerpo opcional
+`{"fallar_intentos": n}` (0–10) para verlo fallar y reintentar. Query opcional `ejecutar_en`
+(ISO 8601 **con zona**; sin zona → 422). Clave única por cliente: mientras uno esté vivo, otro
+POST devuelve el mismo. → **201** `{"exito": true, "trabajo": TrabajoSalida}`.
+
+**Worker:** `python -m app.trabajos.worker [--una-vez] [--pausa 5]`. Reintento con backoff
+exponencial (30 s, 60 s, 2 min… techo 1 h) hasta `max_intentos`; un `corriendo` de más de
+15 min vuelve a `pendiente`. Tareas recurrentes en `app/trabajos/programacion.py` (hora diaria
+en America/Mexico_City o intervalo); la última ranura se guarda en `ejecuciones_programadas`.
+
+---
+
+## Auditoría (P0-07)
+
+Toda escritura autenticada (`POST/PUT/PATCH/DELETE` que pasó por `contexto_actual`) deja un
+renglón: el que registra la ruta (`accion` del dominio, p. ej. `trabajo.reintentar`) o, si la
+ruta no registró o falló, el del middleware (`accion: "http.<MÉTODO>"`, `entidad_id` = ruta,
+`detalle: {"metodo", "ruta", "status"}`). Escrituras anónimas no dejan renglón.
+
+### `GET /api/v1/auditoria`
+Sólo roles `dueno` y `contador` (auxiliar → **403**). Query: `usuario` (uid), `cliente` (clave;
+incluye clientes ya borrados), `accion` (exacta, o prefijo con `*`: `trabajo.*`), `desde` y
+`hasta` (AAAA-MM-DD, días completos en hora de Ciudad de México; `desde > hasta` → 422),
+`pagina` (≥1), `por_pagina` (1–200, 50). Más reciente primero.
+
+```json
+{ "exito": true, "total": 1, "pagina": 1, "por_pagina": 50,
+  "eventos": [ { "id": 1, "fecha": "2026-10-19T15:00:00Z", "uid": "uid-a", "cliente": "taller",
+                 "accion": "trabajo.reintentar", "entidad": "trabajo", "entidad_id": "7",
+                 "detalle": {"tipo": "diagnostico.cliente"}, "ip": "201.0.0.1" } ] }
+```

@@ -20,6 +20,8 @@ import { Link, useParams } from 'react-router-dom';
 import CredencialesCliente from '../components/cartera/CredencialesCliente';
 import DatosFiscalesFicha from '../components/cartera/DatosFiscalesFicha';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
+// P0-04: procesos en segundo plano del cliente (demo de EstadoTrabajos).
+import ProcesosCliente from '../components/cartera/ProcesosCliente';
 import { useCartera } from '../context/carteraStore';
 import { useAuth } from '../context/AuthContext';
 import { esCuentaDeDesarrollo } from '../services/entorno';
@@ -381,6 +383,8 @@ export default function ClienteDetallePage() {
             </>
             )}
           </div>
+
+          {id && <ProcesosCliente cliente={id} />}
         </>
       )}
     </div>

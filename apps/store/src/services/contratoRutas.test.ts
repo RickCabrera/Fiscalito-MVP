@@ -71,6 +71,8 @@ import * as cfdiNominaApi from './cfdiNominaApi';
 import * as bovedaApi from './bovedaApi';
 // P0-05: bóveda de e.firma y CSD. Se registra el día que nace.
 import * as credencialesApi from './credencialesApi';
+// P0-04 / P0-07: trabajos en segundo plano y bitácora de auditoría.
+import * as trabajosApi from './trabajosApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -201,6 +203,14 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
       ),
     borrarCredencial: () => credencialesApi.borrarCredencial('taller', 7),
   },
+  'trabajosApi.ts': {
+    listarTrabajos: () => trabajosApi.listarTrabajos({ cliente: 'demo', estado: 'fallido' }),
+    obtenerTrabajo: () => trabajosApi.obtenerTrabajo(7),
+    reintentarTrabajo: () => trabajosApi.reintentarTrabajo(7),
+    cancelarTrabajo: () => trabajosApi.cancelarTrabajo(7),
+    encolarDiagnostico: () => trabajosApi.encolarDiagnostico('demo', 1),
+    listarAuditoria: () => trabajosApi.listarAuditoria({ cliente: 'demo', pagina: 2 }),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -236,6 +246,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'cfdiNominaApi.ts': cfdiNominaApi,
   'bovedaApi.ts': bovedaApi,
   'credencialesApi.ts': credencialesApi,
+  'trabajosApi.ts': trabajosApi,
 };
 
 /**
@@ -265,6 +276,8 @@ const HELPERS_PUROS = new Set([
   'reciboParaCFDI',
   // P0-03: arma el query string de los filtros de la bóveda. No pega al backend.
   'consultaDeFiltros',
+  // P0-04: etiqueta del estado de un trabajo. Un mapeo, no pega al backend.
+  'etiquetaEstado',
 ]);
 
 /**
