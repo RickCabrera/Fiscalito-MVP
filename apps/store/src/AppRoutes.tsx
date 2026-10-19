@@ -41,6 +41,7 @@ import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
 // P0-03: bóveda de CFDI del cliente activo.
 import BovedaPage from './pages/BovedaPage';
+import DescargaSatPage from './pages/DescargaSatPage';
 // DEMO E-07: calendario patronal de la cartera. Se borra en F2.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
 
@@ -80,6 +81,8 @@ export default function AppRoutes() {
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="dispositivos" element={<DispositivosPage />} />
         <Route path="boveda" element={<BovedaPage />} />
+        {/* P1-02: descarga masiva del SAT del cliente activo. */}
+        <Route path="sat" element={<DescargaSatPage />} />
         {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
         <Route path="store" element={<MarketplacePage />} />

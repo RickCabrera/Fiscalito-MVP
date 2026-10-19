@@ -221,6 +221,37 @@
       ]
     },
     {
+      "path": "/api/v1/sat/clientes/{clave}/bitacora",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/descargar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/historica",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/solicitudes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/trabajos",
       "metodos": [
         "GET"

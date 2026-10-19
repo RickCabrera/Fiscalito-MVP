@@ -35,6 +35,7 @@ from app.routes import (
     multi_periodo,
     nomina,
     retenciones,
+    sat_descarga,
     trabajos,
 )
 
@@ -121,6 +122,8 @@ app.include_router(credenciales.router, prefix="/api/v1")
 # Plan P: trabajos en segundo plano (P0-04) y bitácora de auditoría (P0-07).
 app.include_router(trabajos.router, prefix="/api/v1")
 app.include_router(auditoria.router, prefix="/api/v1")
+# P1-01/P1-02: descarga masiva del SAT por cliente (config, rangos, solicitudes, bitácora).
+app.include_router(sat_descarga.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

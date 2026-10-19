@@ -20,7 +20,7 @@ Para ver qué está configurado: `GET /health/integraciones`.
 | Monitoreo | `FISCALITO_MONITOREO` | falso, log, sentry | P0-06 hecho |
 | LLM | `FISCALITO_LLM` | falso, openai, anthropic | P0-06 hecho |
 | Almacenamiento | `FISCALITO_ALMACENAMIENTO` | — | otra tarea |
-| Descarga masiva SAT | `FISCALITO_SAT_DESCARGA` | — | P1 |
+| Descarga masiva SAT | `FISCALITO_SAT_DESCARGA` | falso, sat | P1-01 hecho |
 | Estatus de CFDI | `FISCALITO_SAT_ESTATUS` | — | P1 |
 | Listas 69-B | `FISCALITO_LISTAS_69B` | — | P1 |
 | Opinión de cumplimiento | `FISCALITO_OPINION` | — | P1-05 |
@@ -184,9 +184,61 @@ usuario IAM limitado al bucket.
 
 ## Descarga masiva del SAT
 
-*Pendiente (P1-01).* Servicio público del SAT; no hay contrato. Se firma con la e.firma del
-cliente vía `app.credenciales.obtener_firmante(db, cliente, "efirma")`. Variable prevista:
-`FISCALITO_SAT_DESCARGA`.
+**Qué es.** El *Servicio Web de Descarga Masiva de CFDI y Retenciones* del SAT (versión 1.5,
+2025-05-30): baja los XML y la metadata emitidos y recibidos de un RFC autenticándose con SU
+e.firma. Implementación propia (sin librería externa) en `apps/api/app/integraciones/`:
+`sat_soap.py` (arma y lee los mensajes SOAP y firma XMLDSig) y `sat_descarga.py` (transporte,
+token). La lógica de reintentos, espera y bóveda vive en `apps/api/app/sat_descarga/`.
+
+Cuatro operaciones: **Autentica** (WS-Security con el Timestamp firmado → token, ≈5 min) →
+**SolicitaDescargaEmitidos/Recibidos** (→ IdSolicitud) → **VerificaSolicitudDescarga** (cada
+2, 4, 8… min con techo de 2 h; el SAT tarda de minutos a días) → **Descargar** (cada paquete,
+un ZIP en base64 de hasta 200,000 XML, que se decodifica a disco en trozos y entra a la bóveda
+por streaming). Se firma con `app.credenciales.obtener_firmante(db, cliente, "efirma")`.
+
+| Variable | Valores | Default | Para qué |
+|---|---|---|---|
+| `FISCALITO_SAT_DESCARGA` | `falso`, `sat` | `falso` fuera de producción | Elige la implementación |
+| `FISCALITO_SAT_DIAS_MAX_ESPERA` | entero | `7` | Días que se espera una solicitud "en proceso" antes de darla por fallida |
+| `FISCALITO_SAT_HORAS_AVISO` | entero | `24` | Horas en proceso a partir de las cuales queda una alerta "atorada" |
+| `FISCALITO_SAT_URL_AUTENTICACION` | URL | producción del SAT | Sólo para apuntar a otro ambiente |
+| `FISCALITO_SAT_URL_SOLICITUD` | URL | producción del SAT | ídem |
+| `FISCALITO_SAT_URL_VERIFICACION` | URL | producción del SAT | ídem |
+| `FISCALITO_SAT_URL_DESCARGA` | URL | producción del SAT | ídem |
+
+URLs de producción por default (`*.clouda.sat.gob.mx`, las del servicio 1.5):
+`cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc`,
+`…/SolicitaDescargaService.svc`, `…/VerificaSolicitudDescargaService.svc` y
+`cfdidescargamasiva.clouda.sat.gob.mx/DescargaMasivaService.svc`.
+
+**Reglas del SAT que el código respeta** (y dónde): el SAT permite **dos solicitudes de por
+vida con los mismos parámetros** (5002) → cada solicitud tiene una huella única y no se repite;
+sólo se re-solicita si el SAT la perdió (5004 en verificación, vencida) y nunca más de dos
+veces. 5005 (ya hay una igual vigente) → espera con backoff de horas. 5003 (tope) → el rango se
+parte en dos y así sucesivamente. 404/5006 → reintento con backoff. 300–305/5001 → falla con
+mensaje en español (e.firma revocada, de otro RFC, etc.). Paquetes: viven 72 h y se bajan a lo
+más dos veces (5007/5008) → cada paquete importado queda registrado y no se vuelve a pedir.
+Desde la 1.5: la fecha inicial debe ser menor que la final, no más de seis años atrás, y los
+**XML recibidos sólo vigentes** (los cancelados recibidos se ven en la metadata).
+
+**Cómo se prueba.** Sin red: `tests/plan_p/test_sat_soap.py` verifica la firma de cada sobre
+con lxml (exc-c14n) y la llave PÚBLICA del certificado de prueba, y compara los `DigestValue`
+contra los que phpcfdi/sat-ws-descarga-masiva obtuvo para los mismos parámetros.
+`tests/plan_p/test_sat_descarga.py` corre el ciclo completo contra un SAT simulado
+(`httpx.MockTransport` + respuestas grabadas en `tests/fixtures/sat_descarga/`): mes completo
+a la bóveda, solicitud atorada ~30 h, token vencido y rechazado, duplicados, códigos de error,
+tope 5003, worker que muere a media descarga. `test_sat_sincronizacion.py` cubre la diaria, la
+bitácora y las rutas.
+
+**Por confirmar con una e.firma real** (no se puede sin red ni credencial de verdad): que el
+SAT acepte la firma (los sobres son byte por byte los de phpcfdi, que sí opera en producción,
+pero no se ha mandado uno desde aquí); la duración real del token; el texto exacto del Fault
+con token vencido (se detecta por HTTP 401/403 o "security"/"token" en el Fault); y si
+`Descargar` responde 200 con `CodEstatus` de error o un HTTP de error.
+
+**A quién contratar.** Nadie: el servicio es gratuito. Requisito: la e.firma vigente de cada
+cliente cargada en su ficha (P0-05). Sin ella la descarga diaria de ese cliente se pausa y deja
+una alerta `sin_efirma`.
 
 ## Estatus de CFDI
 

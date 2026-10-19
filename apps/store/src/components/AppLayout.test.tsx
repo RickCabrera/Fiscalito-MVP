@@ -195,9 +195,10 @@ describe('sidebar de AppLayout', () => {
     // T1 sumó el servicio fiscal, que abre el del CLIENTE ACTIVO —no el del
     // despacho, que es lo que E-07 quitó y sigue sin existir. Contabilito entró
     // después: la portada ya lo anunciaba en BETA y su pantalla (T7) sólo se
-    // alcanzaba tecleando la URL. P0-03 sumó la Bóveda de CFDI del cliente activo.
+    // alcanzaba tecleando la URL. P0-03 sumó la Bóveda de CFDI del cliente activo
+    // y P1-02 la Descarga SAT, que la llena.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Nómina', 'Calendario',
+      'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Descarga SAT', 'Nómina', 'Calendario',
       MARCA_CORTA, 'Contabilito', 'Perfil',
     ]);
   });
