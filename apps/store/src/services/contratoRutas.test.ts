@@ -69,6 +69,8 @@ import * as carteraBackend from './carteraBackend';
 import * as cfdiNominaApi from './cfdiNominaApi';
 // P0-03: la bóveda de CFDI. Se registra el día que nace.
 import * as bovedaApi from './bovedaApi';
+// P0-05: bóveda de e.firma y CSD. Se registra el día que nace.
+import * as credencialesApi from './credencialesApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -191,6 +193,14 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     borrarCfdi: () => bovedaApi.borrarCfdi('taller', 'AAAA-BBBB'),
     resumenBoveda: () => bovedaApi.resumenBoveda('taller'),
   },
+  'credencialesApi.ts': {
+    listarCredenciales: () => credencialesApi.listarCredenciales('taller'),
+    subirCredencial: () =>
+      credencialesApi.subirCredencial(
+        'taller', 'efirma', new File(['c'], 'a.cer'), new File(['k'], 'a.key'), 'x',
+      ),
+    borrarCredencial: () => credencialesApi.borrarCredencial('taller', 7),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -225,6 +235,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'carteraBackend.ts': carteraBackend,
   'cfdiNominaApi.ts': cfdiNominaApi,
   'bovedaApi.ts': bovedaApi,
+  'credencialesApi.ts': credencialesApi,
 };
 
 /**

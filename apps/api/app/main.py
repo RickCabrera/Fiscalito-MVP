@@ -24,6 +24,7 @@ from app.routes import (
     calendario,
     cartera,
     comparador,
+    credenciales,
     declaraciones,
     despacho,
     diot,
@@ -110,6 +111,8 @@ app.include_router(despacho.router, prefix="/api/v1")
 app.include_router(cartera.router, prefix="/api/v1")
 # Plan P, P0-03: bóveda de CFDI por cliente (contexto_actual + cliente_o_404).
 app.include_router(boveda.router, prefix="/api/v1")
+# P0-05: bóveda de e.firma y CSD por cliente (autenticada y multi-despacho).
+app.include_router(credenciales.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

@@ -1103,3 +1103,55 @@ dirección:
 { "exito": true, "renglones": [
   {"periodo": "2026-03", "tipo": "I", "direccion": "emitido", "cantidad": 42, "total": "48720.00"} ] }
 ```
+## Credenciales del cliente — e.firma y CSD (P0-05)
+
+Autenticadas (`Authorization: Bearer <ID token>`), multi-despacho (cliente de otro despacho =
+404) y sólo para los roles `dueno` y `contador` (auxiliar = 403). Cifrado con
+`FISCALITO_LLAVE_MAESTRA` (ver `docs/servicios-externos.md`); sin ella en producción, 503.
+**Ninguna respuesta trae la llave privada ni la contraseña.**
+
+Forma de una credencial (`metadatos`):
+
+```json
+{
+  "id": 7, "tipo": "efirma", "rfc": "XAXX010101AB1",
+  "numero_certificado": "30001000000500003416",
+  "valido_desde": "2026-01-01T00:00:00+00:00", "valido_hasta": "2030-01-01T00:00:00+00:00",
+  "dias_para_vencer": 1200, "vencida": false, "por_vencer": false,
+  "creado_por": "uid", "creado_en": "2026-10-19T15:00:00+00:00"
+}
+```
+
+`por_vencer` = vence en menos de 30 días.
+
+### `POST /api/v1/clientes/{clave}/credenciales`
+
+`multipart/form-data`: `tipo` (`efirma` | `csd`), `password`, `cer` (archivo .cer DER),
+`key` (archivo .key PKCS#8 DER cifrada). Respuesta `{"exito": true, "credencial": {...}}`.
+Si ya había una activa del mismo tipo, queda inactiva.
+
+Errores 422 con mensaje en español: contraseña que no abre la llave, llave que no corresponde
+al certificado, RFC del certificado distinto al RFC del cliente (sólo si el cliente tiene RFC),
+e.firma subida como CSD o al revés, certificado vencido o aún no vigente, archivo que no es
+certificado, archivo > 64 KB.
+
+### `GET /api/v1/clientes/{clave}/credenciales`
+
+`{"exito": true, "credenciales": [ {...}, ... ]}` — sólo las activas.
+
+### `DELETE /api/v1/clientes/{clave}/credenciales/{credencial_id}`
+
+`{"exito": true}`. Destruye la llave y la contraseña cifradas y deja el renglón inactivo
+(historial). 404 si la credencial no es de ese cliente.
+
+### Uso interno (no es endpoint)
+
+`app.credenciales.obtener_firmante(db, cliente, tipo)` → objeto con `firmar(bytes)` (SHA256 con
+RSA, PKCS#1 v1.5), `firmar_base64`, `certificado_base64`, `rfc`, `numero_certificado`. Lo usan
+la descarga masiva del SAT y el PAC. 404 sin credencial, 422 vencida, 503 si la llave maestra
+no la abre.
+
+### `GET /health/integraciones` (P0-06)
+
+Fuera de `/api/v1`, sin autenticación. `{"listo_para_produccion": bool, "servicios": [{servicio,
+descripcion, variable, implementacion, disponibles, configurado, es_falso}]}`.
