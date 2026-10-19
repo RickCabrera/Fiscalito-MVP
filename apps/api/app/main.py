@@ -23,6 +23,7 @@ from app.routes import (
     asistencia,
     auditoria,
     boveda,
+    calculadoras,
     calendario,
     cartera,
     comparador,
@@ -32,6 +33,7 @@ from app.routes import (
     diot,
     estado_cuenta,
     health,
+    impuestos,
     multi_periodo,
     nomina,
     retenciones,
@@ -127,6 +129,9 @@ app.include_router(auditoria.router, prefix="/api/v1")
 app.include_router(sat_descarga.router, prefix="/api/v1")
 # P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
 app.include_router(sat_verificacion.router, prefix="/api/v1")
+# P3-02/03/07/08: impuestos del cliente y calculadoras fiscales (autenticadas).
+app.include_router(impuestos.router, prefix="/api/v1")
+app.include_router(calculadoras.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

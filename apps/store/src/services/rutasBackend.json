@@ -54,6 +54,60 @@
       ]
     },
     {
+      "path": "/api/v1/calculadoras/actualizacion-recargos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/aguinaldo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/fecha-limite",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/finiquito",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isn",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isn/tasas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isr-resico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isr-sueldos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/ptu",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
@@ -162,6 +216,31 @@
     },
     {
       "path": "/api/v1/estado-cuenta",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/isn",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/iva",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/resumen",
       "metodos": [
         "POST"
       ]
