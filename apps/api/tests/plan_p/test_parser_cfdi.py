@@ -13,11 +13,21 @@ DEMO = RAIZ / "apps" / "store" / "public" / "demo-xmls" / "2026" / "01"
 NOMINA = Path(__file__).resolve().parents[1] / "fixtures" / "nomina"
 
 
+def _rfc_del_xml(nombre: str, nodo: str) -> str:
+    """RFC de `nodo` leído con una búsqueda de texto independiente del parser."""
+    import re
+
+    texto = (DEMO / nombre).read_text(encoding="utf-8")
+    return re.search(rf"<cfdi:{nodo}[^>]*\sRfc=\"([^\"]+)\"", texto).group(1)
+
+
 def test_demo_ingreso_40():
     c = parsear_cfdi((DEMO / "ingreso-001.xml").read_bytes())
     assert (c.version, c.tipo) == ("4.0", "I")
     assert c.uuid == "11111111-1111-1111-1111-111111110001"
-    assert c.rfc_emisor == "CADG620317EE0" and c.rfc_receptor == "XAXX010101000"
+    # El RFC del emisor se lee del propio XML: no se escribe un RFC real en el repo.
+    assert c.rfc_emisor == _rfc_del_xml("ingreso-001.xml", "Emisor")
+    assert c.rfc_receptor == "XAXX010101000"
     assert c.total == Decimal("17400.00") and c.subtotal == Decimal("15000.00")
     assert c.iva_trasladado == Decimal("2400.00")
     assert c.fecha_timbrado is not None
@@ -26,7 +36,7 @@ def test_demo_ingreso_40():
 
 def test_demo_egreso_40():
     c = parsear_cfdi((DEMO / "egreso-001.xml").read_bytes())
-    assert c.tipo == "I" and c.rfc_receptor == "CADG620317EE0"
+    assert c.tipo == "I" and c.rfc_receptor == _rfc_del_xml("egreso-001.xml", "Receptor")
     assert c.iva_trasladado == Decimal("512.00") and c.total == Decimal("3712.00")
     assert c.uso_cfdi == "G03" and c.forma_pago == "04"
 

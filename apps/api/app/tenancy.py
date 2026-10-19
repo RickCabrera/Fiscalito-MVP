@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from fastapi import Depends
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auditoria import anotar_cliente, anotar_contexto
@@ -45,12 +46,20 @@ def asegurar_usuario(db: Session, uid: str) -> Usuario:
         if not usuario.activo:
             raise FiscalAgentError("Tu usuario está desactivado en este despacho.", status_code=403)
         return usuario
-    if db.get(Despacho, uid) is None:
-        db.add(Despacho(id=uid))
-        db.flush()
-    usuario = Usuario(uid=uid, despacho_id=uid, rol="dueno")
-    db.add(usuario)
-    db.flush()
+    # Dos primeros requests simultáneos del mismo uid compiten por crear lo mismo: el que
+    # pierde la carrera relee lo que creó el otro en vez de responder 500 (revisor P0).
+    try:
+        with db.begin_nested():
+            if db.get(Despacho, uid) is None:
+                db.add(Despacho(id=uid))
+                db.flush()
+            usuario = Usuario(uid=uid, despacho_id=uid, rol="dueno")
+            db.add(usuario)
+            db.flush()
+    except IntegrityError:
+        usuario = db.get(Usuario, uid)
+        if usuario is None:
+            raise
     return usuario
 
 

@@ -20,6 +20,7 @@ cual vienen en el XML, para no perder precisión que el SAT sí aceptó.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -40,6 +41,9 @@ _PARSER = etree.XMLParser(
     resolve_entities=False, no_network=True, huge_tree=False, remove_blank_text=False
 )
 CENTAVO = Decimal("0.01")
+
+
+_RE_UUID = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}")
 
 
 class CfdiInvalido(ValueError):
@@ -208,8 +212,12 @@ def parsear_cfdi(contenido: bytes) -> CfdiLeido:
             isr_retenido = _dec(nomina.get("isr_retenido"))
 
     tipo_cambio = raiz.get("TipoCambio")
+    uuid = (timbre.get("UUID") or "").strip().upper()
+    # El UUID va a rutas de almacenamiento y a encabezados HTTP: se exige su formato.
+    if not _RE_UUID.fullmatch(uuid):
+        raise CfdiInvalido(f"UUID del timbre inválido: {uuid!r}")
     return CfdiLeido(
-        uuid=timbre.get("UUID").strip().upper(),
+        uuid=uuid,
         version=version,
         tipo=tipo,
         fecha=_fecha(raiz.get("Fecha"), "Fecha"),

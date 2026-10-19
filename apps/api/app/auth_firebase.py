@@ -161,6 +161,10 @@ def sin_verificar_activo() -> bool:
     ninguna otra razón de existir y que nadie copia por accidente. Y se grita al
     log: un servicio que dejó de autenticar no puede hacerlo en silencio.
     """
+    from app.config import settings
+
+    if settings.ENTORNO == "produccion":
+        return False
     if not os.environ.get("FIRESTORE_EMULATOR_HOST"):
         return False
     if os.environ.get("PERMITIR_TOKEN_SIN_VERIFICAR") != "1":
