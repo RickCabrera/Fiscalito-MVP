@@ -1612,3 +1612,79 @@ El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
   "acreedor"}]}`; `PUT …/saldos-iniciales` body `{"saldos": [{"cuenta_id", "deudor",
   "acreedor"}]}` (0 y 0 lo quita; cuenta no afectable → 422) → `{"totales": {"deudor",
   "acreedor", "cuadra"}, "saldos"}`.
+
+## Conciliación bancaria (P2-06)
+
+Autenticado; todo `/api/v1/conciliacion/clientes/{clave}/…` pasa por `contexto_actual` +
+`cliente_o_404` (otro despacho = **404**). Ids de cuenta bancaria, plantilla, movimiento y
+conciliación se buscan junto con el cliente. Importes como texto con dos decimales. Código en
+`apps/api/app/contabilidad/conciliacion/`.
+
+- `GET /api/v1/conciliacion/bancos` → `{"bancos": [{"clave" (c_Banco), "nombre"}]}`: bancos
+  con lector de PDF (diseños **POR CONFIRMAR CON PDF REAL**).
+- Cuentas bancarias: `GET …/cuentas` · `POST …/cuentas` (201) body `{"banco" (3 dígitos
+  c_Banco), "nombre", "numero", "clabe" (18 dígitos o ""), "moneda", "cuenta_contable_id"
+  (afectable; si no, 422), "ventana_dias" (0–31, default 3), "umbral" (50–100, default 60),
+  "activa"}` · `PATCH …/cuentas/{id}` · `DELETE …/cuentas/{id}` (409 si ya tiene estados
+  importados). Cada cuenta: `{"id", "banco", "nombre", "numero", "clabe", "moneda",
+  "cuenta_contable_id", "cuenta_contable", "ventana_dias", "umbral", "activa"}`.
+- Plantillas de columnas: `GET …/plantillas` · `PUT …/plantillas` body `{"nombre", "banco",
+  "formato": "csv"|"xlsx", "mapeo": {"fecha", "concepto", "referencia", "cargo", "abono",
+  "importe", "saldo", "formato_fecha", "fila_encabezado", "separador", "signo_importe", "hoja"}}`
+  (crea o reemplaza por nombre; columna por encabezado, letra o número) · `DELETE
+  …/plantillas/{id}`.
+- `POST …/cuentas/{id}/estados` multipart `archivo` + opcionales `formato`
+  (`csv|xlsx|ofx|pdf`; si no, por extensión/contenido), `plantilla_id`, `mapeo` (JSON que se
+  encima a la plantilla) → `{"estado": {"id", "archivo", "formato", "desde", "hasta",
+  "saldo_inicial", "saldo_final", "nuevos", "duplicados", "advertencias"}, "banco_pdf"}`.
+  Reimportar no duplica (huella por renglón). PDF ilegible/banco desconocido → 422 que
+  sugiere plantilla CSV/XLSX. `GET …/cuentas/{id}/estados` lista los importados.
+- `GET …/cuentas/{id}/movimientos?desde&hasta&incluir_cfdi=true` → `{"cuenta", "banco":
+  [{"clave": "b:<id>", "id", "fecha", "concepto", "referencia", "cargo", "abono", "saldo",
+  "conciliacion_id"}], "libros": [{"clave": "p:<id>"|"c:<id>", "id", "origen":
+  "poliza"|"cfdi", "poliza_id", "folio", "fecha", "concepto", "cargo", "abono", "uuid", "rfc",
+  "conciliacion_id"}], "pendientes_banco", "pendientes_libros"}`. Libros = movimientos de
+  pólizas activas sobre la cuenta contable ligada (+ complementos de pago y facturas PUE de la
+  bóveda que mueven bancos y aún no tienen póliza). `conciliacion_id` null = pendiente.
+- `POST …/cuentas/{id}/conciliar` body `{"desde", "hasta", "incluir_cfdi"}` → `{"resultado":
+  {"conciliados", "uno_a_varios", "ambiguos", "pendientes_banco", "pendientes_libros"}}`.
+  Importe exacto + ventana de fechas + referencia/UUID/RFC en el concepto, puntaje ≥ umbral;
+  uno a uno y uno a varios (suma exacta, hasta 4). Empates exactos quedan pendientes.
+- `POST …/cuentas/{id}/conciliaciones` (201) body `{"banco": ["b:…"], "libros": ["p:…",
+  "c:…"], "motivo"}` → `{"conciliacion_id"}`. Sumas distintas → 422; ya conciliado → 409.
+- `DELETE …/cuentas/{id}/conciliaciones/{conciliacion_id}` deshace (las partidas vuelven a
+  pendientes).
+- `GET …/cuentas/{id}/movimientos/{mov_id}/sugerencia` → `{"sugerida": {"cuenta_id",
+  "numero", "nombre"} | null}` (comisiones 701.10, intereses 702.04/701.04, IVA 118.01…).
+- `POST …/cuentas/{id}/movimientos/{mov_id}/poliza` (201) body `{"contrapartidas":
+  [{"cuenta_id", "importe"}], "concepto"}` (deben sumar el importe del movimiento) → crea la
+  póliza (ingreso si entra dinero, egreso si sale) y la concilia: `{"poliza",
+  "conciliacion_id"}`.
+- `GET …/cuentas/{id}/reporte?corte=AAAA-MM-DD&formato=json|xlsx` → `{"reporte": {"corte",
+  "cuenta_bancaria", "saldo_banco", "saldo_libros", "depositos_en_transito",
+  "retiros_en_transito", "abonos_banco_no_registrados", "cargos_banco_no_registrados",
+  "totales", "saldo_banco_conciliado", "saldo_libros_conciliado", "diferencia", "cuadra",
+  "advertencias"}}` o el XLSX.
+
+## Contabilidad electrónica — Anexo 24 (P2-07)
+
+Autenticado; `/api/v1/contabilidad-electronica/clientes/{clave}/…` con `cliente_o_404`.
+Código en `apps/api/app/contabilidad/anexo24/`; XSD 1.3 oficiales versionados (fuente en
+`apps/api/tests/xsd/contabilidad/README.md`).
+
+Body común (`SolicitudEntrada`): `{"documento": "catalogo"|"balanza"|"polizas"|
+"auxiliar_cuentas"|"auxiliar_folios", "anio" (≥ 2015), "mes" (1–12), "tipo_envio": "N"|"C",
+"fecha_mod_bal" (exigida con C), "tipo_solicitud": ""|"AF"|"FC"|"DE"|"CO" (exigida en pólizas
+y auxiliares), "num_orden" (AF/FC, `AAA0000000/00`), "num_tramite" (DE/CO,
+`AA000000000000`), "sellar": bool}`. `sellar: true` usa la e.firma activa del cliente (404 si
+no hay; 422 si venció).
+
+- `GET /api/v1/contabilidad-electronica/documentos` → `{"documentos": [{"clave", "nombre",
+  "sufijo", "a_solicitud"}], "instrucciones_portal": [str]}`.
+- `POST …/validar` → `{"nombre" (RFC+AAAA+MM+sufijo), "valido", "errores" (del XSD),
+  "advertencias", "sellado", "xml"}`.
+- `POST …/zip` → `application/zip` con `Content-Disposition: filename="<nombre>.zip"`
+  (CT, BN/BC, PL, XC, XF). 422 si el XML no valida.
+- `POST …/enviar` → `{"via", "acuse": {"folio", "estado", "mensaje"}, "zip_base64"}` por el
+  adaptador `buzon_sat` (`falso` = simulación; `portal_sat` responde 501, POR CONFIRMAR). El SAT
+  no tiene API: el envío real se hace en el portal.

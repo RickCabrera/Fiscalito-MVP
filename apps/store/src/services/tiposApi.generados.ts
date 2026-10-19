@@ -36,6 +36,13 @@ export interface Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post {
   archivos: string[];
 }
 
+export interface Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post {
+  archivo: string;
+  formato?: "csv" | "xlsx" | "ofx" | "pdf" | null;
+  plantilla_id?: number | null;
+  mapeo?: string | null;
+}
+
 export interface Body_subir_credencial_api_v1_clientes__clave__credenciales_post {
   tipo: string;
   password: string;
@@ -243,8 +250,42 @@ export interface CompararRegimenResponse {
   explicacion?: string | null;
 }
 
+export interface ConciliacionManual {
+  banco: string[];
+  libros: string[];
+  motivo?: string;
+}
+
+export interface Contrapartida {
+  cuenta_id: number;
+  importe: number | string;
+}
+
 /** Tipo de contribuyente en el ecosistema Fiscalito. */
 export type ContributorType = "asalariado" | "independiente" | "arrendamiento" | "plataformas" | "pyme";
+
+export interface CuentaBancariaCambio {
+  banco?: string | null;
+  nombre?: string | null;
+  numero?: string | null;
+  clabe?: string | null;
+  cuenta_contable_id?: number | null;
+  ventana_dias?: number | null;
+  umbral?: number | null;
+  activa?: boolean | null;
+}
+
+export interface CuentaBancariaEntrada {
+  banco: string;
+  nombre?: string;
+  numero?: string;
+  clabe?: string;
+  moneda?: string;
+  cuenta_contable_id: number;
+  ventana_dias?: number;
+  umbral?: number;
+  activa?: boolean;
+}
 
 export interface CuentaCambio {
   numero?: string | null;
@@ -848,10 +889,22 @@ export interface PlantillaDemoResponse {
   periodo_sugerido: PeriodoNomina;
 }
 
+export interface PlantillaEntrada {
+  nombre: string;
+  banco?: string;
+  formato?: "csv" | "xlsx";
+  mapeo: Record<string, unknown>;
+}
+
 export interface PolizaCambio {
   fecha?: string | null;
   concepto?: string | null;
   movimientos?: MovimientoEntrada[] | null;
+}
+
+export interface PolizaDesdeBanco {
+  contrapartidas: Contrapartida[];
+  concepto?: string;
 }
 
 export interface PolizaEntrada {
@@ -938,12 +991,6 @@ export interface ProveedorDIOT {
   total_operaciones: number;
   iva_pagado: number;
   cantidad_facturas: number;
-}
-
-export interface Rango {
-  desde: string;
-  hasta: string;
-  segundo_plano?: boolean | null;
 }
 
 export interface RangoEntrada {
@@ -1087,6 +1134,18 @@ export interface Seleccion {
   cancelados?: boolean;
 }
 
+export interface SolicitudEntrada {
+  documento: "catalogo" | "balanza" | "polizas" | "auxiliar_cuentas" | "auxiliar_folios";
+  anio: number;
+  mes: number;
+  tipo_envio?: "N" | "C";
+  fecha_mod_bal?: string | null;
+  tipo_solicitud?: "" | "AF" | "FC" | "DE" | "CO";
+  num_orden?: string;
+  num_tramite?: string;
+  sellar?: boolean;
+}
+
 /** Detalle de retenciones a un tercero. */
 export interface TerceroRetencion {
   rfc: string;
@@ -1169,6 +1228,12 @@ export interface _ConExplicacion {
   incluir_explicacion?: boolean;
 }
 
+export interface app__routes__conciliacion__Rango {
+  desde?: string | null;
+  hasta?: string | null;
+  incluir_cfdi?: boolean;
+}
+
 export interface app__routes__contabilidad__ConfigEntrada {
   automatica_ingresos?: boolean | null;
   automatica_egresos?: boolean | null;
@@ -1187,6 +1252,12 @@ export interface app__routes__contabilidad__ConfigEntrada {
 export interface app__routes__contabilidad__Periodo {
   anio: number;
   mes: number;
+}
+
+export interface app__routes__contabilidad__Rango {
+  desde: string;
+  hasta: string;
+  segundo_plano?: boolean | null;
 }
 
 export interface app__routes__sat_descarga__ConfigEntrada {
@@ -1240,6 +1311,23 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/credenciales"
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
   | "/api/v1/comparar-regimenes"
+  | "/api/v1/conciliacion/bancos"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones/{conciliacion_id}"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliar"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/poliza"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/sugerencia"
+  | "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/reporte"
+  | "/api/v1/conciliacion/clientes/{clave}/plantillas"
+  | "/api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}"
+  | "/api/v1/contabilidad-electronica/clientes/{clave}/enviar"
+  | "/api/v1/contabilidad-electronica/clientes/{clave}/validar"
+  | "/api/v1/contabilidad-electronica/clientes/{clave}/zip"
+  | "/api/v1/contabilidad-electronica/documentos"
   | "/api/v1/contabilidad/clientes/{clave}/balanza"
   | "/api/v1/contabilidad/clientes/{clave}/config"
   | "/api/v1/contabilidad/clientes/{clave}/cuentas"
@@ -1439,6 +1527,90 @@ export interface OperacionesApi {
     cuerpo: CompararRegimenRequest;
     respuesta: CompararRegimenResponse;
   };
+  "GET /api/v1/conciliacion/bancos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/cuentas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/conciliacion/clientes/{clave}/cuentas": {
+    cuerpo: CuentaBancariaEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PATCH /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}": {
+    cuerpo: CuentaBancariaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones": {
+    cuerpo: ConciliacionManual;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones/{conciliacion_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliar": {
+    cuerpo: app__routes__conciliacion__Rango;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados": {
+    cuerpo: Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/poliza": {
+    cuerpo: PolizaDesdeBanco;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/sugerencia": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/reporte": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/conciliacion/clientes/{clave}/plantillas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/conciliacion/clientes/{clave}/plantillas": {
+    cuerpo: PlantillaEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad-electronica/clientes/{clave}/enviar": {
+    cuerpo: SolicitudEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad-electronica/clientes/{clave}/validar": {
+    cuerpo: SolicitudEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad-electronica/clientes/{clave}/zip": {
+    cuerpo: SolicitudEntrada;
+    respuesta: unknown;
+  };
+  "GET /api/v1/contabilidad-electronica/documentos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/contabilidad/clientes/{clave}/balanza": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -1496,7 +1668,7 @@ export interface OperacionesApi {
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/contabilidad/clientes/{clave}/polizas/generar": {
-    cuerpo: Rango;
+    cuerpo: app__routes__contabilidad__Rango;
     respuesta: Record<string, unknown>;
   };
   "GET /api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}": {

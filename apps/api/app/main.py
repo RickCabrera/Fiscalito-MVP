@@ -28,7 +28,9 @@ from app.routes import (
     calendario,
     cartera,
     comparador,
+    conciliacion,
     contabilidad,
+    contabilidad_electronica,
     credenciales,
     declaraciones,
     despacho,
@@ -139,6 +141,9 @@ ROUTERS_PROTEGIDOS = (
     sat_verificacion.router,
     calculos_cliente.router,
     contabilidad.router,
+    # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).
+    conciliacion.router,
+    contabilidad_electronica.router,
 )
 
 app.include_router(health.router)
