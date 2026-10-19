@@ -116,10 +116,13 @@ def registrar(
 
 
 def _ip(scope: Scope) -> str:
-    """IP del cliente. Detrás del proxy de Railway, el primer X-Forwarded-For."""
+    """
+    IP del cliente. Detrás del proxy de Railway, el ÚLTIMO X-Forwarded-For: es el que pone
+    el proxy de confianza; los anteriores los puede inventar quien hace el request.
+    """
     for nombre, valor in scope.get("headers") or []:
         if nombre == b"x-forwarded-for":
-            return valor.decode("latin-1").split(",")[0].strip()[:64]
+            return valor.decode("latin-1").split(",")[-1].strip()[:64]
     cliente = scope.get("client")
     return str(cliente[0])[:64] if cliente else ""
 

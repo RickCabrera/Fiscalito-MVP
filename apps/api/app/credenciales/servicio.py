@@ -103,7 +103,7 @@ def guardar(
             CredencialCliente.tipo == tipo,
             CredencialCliente.activo.is_(True),
         )
-        .values(activo=False)
+        .values(activo=False, key_cifrada=b"", password_cifrada=b"")
     )
     cred = CredencialCliente(
         cliente_id=cliente.id,
@@ -121,8 +121,8 @@ def guardar(
     db.add(cred)
     db.flush()
     logger.info(
-        "Credencial %s guardada: cliente_id=%s rfc=%s no=%s",
-        tipo, cliente.id, datos.rfc, datos.numero_certificado,
+        "Credencial %s guardada: cliente_id=%s no=%s",
+        tipo, cliente.id, datos.numero_certificado,
     )
     return cred
 

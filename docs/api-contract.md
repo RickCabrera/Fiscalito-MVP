@@ -1,27 +1,68 @@
 # Contrato de la API — Fiscal Agent
 
-> **PARCIAL.** Cubre los endpoints de la **épica D** —los de **asistencia** que agregó D-04 y
-> el de **nómina** que agregó D-06— y los de **despacho** que agregó E-02.
-> **S-03 lo completa** con los 11 endpoints existentes exportados del OpenAPI de FastAPI y
-> reemplaza por una referencia a este archivo las secciones duplicadas de
-> `apps/api/CLAUDE.md` y `apps/store/CLAUDE.md`. Ese trabajo **no** está hecho: S-03 sigue
-> abierta con su criterio intacto.
+> **Contrato máquina-legible (P0-08):** [`docs/openapi.json`](openapi.json) — el OpenAPI
+> completo, exportado de `app.main:app` — y los tipos TypeScript que el front importa,
+> `apps/store/src/services/tiposApi.generados.ts`. Los dos se regeneran con
+> `cd apps/api && PYTHONPATH=. python scripts/exportar_openapi.py`, y
+> `apps/api/tests/test_contrato_openapi.py` **falla** si el código y el contrato divergen.
+> Este archivo es la explicación para humanos: qué garantiza cada endpoint y por qué.
 
 Base: `/api/v1`. Errores de dominio se serializan como `{"exito": false, "error": ...}` con
-422 (validación) o 500 (cálculo), vía el handler global de `main.py`.
+401 (sin sesión), 403 (rol o recurso ajeno con token de dispositivo), 404 (no existe **en tu
+despacho**), 422 (validación), 429 (límite) o 500 (cálculo), vía el handler global de
+`main.py`.
+
+## Autenticación, límites y tope de LLM (P0-02)
+
+**Todo `/api/v1` exige sesión** (salvo lo declarado abajo). `/health` y
+`/health/integraciones` quedan abiertos.
+
+| Qué | Cómo |
+|---|---|
+| Sesión | `Authorization: Bearer <ID token de Firebase>`. Sin encabezado o mal formado: **401**. Token inválido o expirado: **401** sin detalle del SDK. Sin credenciales de Firebase en el servidor: **503**. |
+| Despacho | Sale del token, nunca del request. El primer request de un uid le crea su despacho (`id = uid`). Un cliente de otro despacho es **404**, nunca 403: un 403 confirmaría que existe. |
+| Rutas públicas | `app/acceso/dependencias.RUTAS_PUBLICAS`. Hoy sólo `POST /asistencia/eventos` (token de dispositivo). Un webhook nuevo se declara ahí, se monta sin `PROTEGIDO` y verifica la firma del proveedor dentro de la ruta. `tests/plan_p/test_acceso.py` recorre **todas** las rutas y exige 401 sin token al resto. |
+| Límite por usuario | `FISCALITO_RATE_LIMIT_POR_MINUTO` (default **120**), ventana deslizante de 60 s por uid (por token en el caso del checador). Al excederlo: **429** con `Retry-After: <segundos>`. Una petición rechazada no gasta cupo. En memoria del proceso: con varias réplicas el límite efectivo se multiplica; la interfaz `Limitador` está lista para Redis/DB (`FISCALITO_LIMITADOR`). |
+| Límite de LLM | `FISCALITO_RATE_LIMIT_LLM_POR_MINUTO` (default **20**) por uid. Cuenta cada llamada al proveedor: cada `incluir_explicacion: true` (pre-declaración, anual, deducciones, comparador, DIOT, retenciones, multi-periodo, estado de cuenta, nómina) y cada vuelta del loop de `/agente/predeclaracion`. El cálculo sin explicación no cuenta. **429** + `Retry-After`. |
+| Tope diario de LLM | `FISCALITO_TOPE_LLM_DIARIO_LLAMADAS` (default **500**) llamadas por **despacho** por día de la Ciudad de México, contadas en la tabla `consumo_llm`. Al llegar: **429** con `Retry-After` hasta la medianoche. Se mide en llamadas, no en pesos: los servicios LLM actuales no devuelven tokens; cada llamada tiene `max_tokens` fijo. |
+
+CORS expone `Retry-After` y acepta el encabezado `X-Token-Dispositivo`.
+
+### Token de dispositivo (checador)
+
+El Hikvision no puede mandar un ID token. Cada checador lleva un secreto propio
+(`fdt_…`, 256 bits) que el backend guarda **sólo como SHA-256**. Viaja en
+`X-Token-Dispositivo: <token>` o en `?token=<token>` (el aparato sólo deja configurar una URL,
+así que la forma real es `…/api/v1/asistencia/eventos?token=fdt_…`). El token fija **despacho y
+cliente**: un `?cliente=` distinto es **403**; un token inventado o revocado es **401**.
+
+#### `POST /api/v1/asistencia/tokens`
+Sesión + rol `dueno`/`contador`. Cuerpo `{cliente, etiqueta?, dispositivo?}`. Responde **201**
+`{exito, token, registro}`: es la **única vez** que el token se ve en claro. Un cliente de otro
+despacho es 404; los tres clientes del catálogo de demostración (`demo`, `cafeteria`,
+`taller`) se aceptan sin renglón en `clientes`.
+
+#### `GET /api/v1/asistencia/tokens?cliente=`
+Tokens activos del despacho: `{id, cliente, dispositivo_id, etiqueta, prefijo, creado_en,
+ultimo_uso}`. Nunca el secreto ni el hash.
+
+#### `DELETE /api/v1/asistencia/tokens/{token_id}`
+Revoca en el acto. Otro despacho: 404.
 
 ---
 
 ## Asistencia (épica D — demo del checador)
 
-> ⚠️ **DEMO — sin autenticación, almacenamiento en memoria del proceso, no desplegar.**
+> ⚠️ **DEMO — almacenamiento en memoria del proceso, no desplegar.**
 >
-> - **Sin auth**: el push del Hikvision no sabe mandar un ID token de Firebase. La
->   autenticación del dispositivo está mandada a **F3**; la del resto de `/api/v1`, a S-00b.
-> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers. Los
->   reemplaza Firestore en F1-09 (`clientes/{id}/asistencia/{periodoId}`).
-> - Tope duro de 5,000 eventos por cliente (ring buffer): un `POST` abierto y sin auth sería
->   si no un agotamiento de memoria de una línea de `curl`. Se pierden los más viejos; el POST
+> - **Auth (P0-02)**: `POST /eventos` acepta el **token del dispositivo** o la sesión de
+>   Firebase (el simulador y las pantallas); `GET /eventos` y `cerrar-periodo` exigen sesión.
+>   Ver "Token de dispositivo" arriba.
+> - **Aislado por despacho**: el almacén se indexa por `despacho::cliente`. Los clientes de la
+>   demo son un catálogo compartido; sin esto, el `taller` de un despacho vería las checadas del
+>   `taller` de otro.
+> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers.
+> - Tope duro de 5,000 eventos por cliente (ring buffer). Se pierden los más viejos; el POST
 >   nunca falla en medio de la demo.
 
 ### `POST /api/v1/asistencia/eventos`
@@ -34,7 +75,8 @@ Starlette lo entrega como archivo en vez de como texto.
 
 | Query param | Default | Notas |
 |---|---|---|
-| `cliente` | `demo` | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Por eso va como query con default y `POST /asistencia/eventos` pelado funciona. |
+| `cliente` | `demo` (o el del token) | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Con token de dispositivo, el cliente es el del token y otro valor es 403. |
+| `token` | — | Token del dispositivo (alternativa a `X-Token-Dispositivo`). |
 | `fuente` | `hikvision` | `hikvision` · `simulado` · `csv` |
 
 Cuerpo (campos que se leen de `AcsEvent.InfoList[]`):
@@ -1125,8 +1167,9 @@ No se guarda en el historial.
 ## Declaraciones — regímenes sin motor (T6)
 
 `POST /api/v1/pre-declaracion` y `POST /api/v1/pre-declaracion-anual` **rechazan el régimen
-601 (General de Ley Personas Morales)** con `400 {"detail": "Motor de personas morales en
-desarrollo"}`.
+601 (General de Ley Personas Morales)** con `400`. Desde P3-01 el `detail` dice a dónde ir: el
+motor PM vive en `/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales` y `.../anual`
+(§Personas morales y anual); esta puerta sigue siendo la de `calculadora.py` (personas físicas).
 
 - **El corte va ANTES que cualquier otra validación**, incluida la de "se requiere al menos una
   factura": un 601 sin facturas tiene que enterarse de que no hay motor, no de que le falta un
@@ -1135,15 +1178,14 @@ desarrollo"}`.
   físicas y su rama por defecto no falla: devolvería un ISR de persona física, creíble y
   equivocado, calculado sobre los ingresos de una moral. El guard es lo único que separa un 400
   honesto de ese número.
-- La lista vive en `REGIMENES_SIN_MOTOR` (`app/routes/declaraciones.py`), no dispersa en `if`s:
-  el día que exista el motor PM se borra una línea.
+- La lista vive en `REGIMENES_SIN_MOTOR` (`app/routes/declaraciones.py`), no dispersa en `if`s.
 - **El 601 SÍ es un valor conocido del catálogo** —`RegimenFiscal.GENERAL_LEY_PM` en
   `app/schemas/fiscal.py` y `NOMBRES_REGIMEN` en `app/constants.py`—, y el resto de los
   endpoints **no lo rechazan**. En particular `POST /api/v1/calendario` lo acepta y le devuelve
-  el calendario de `contributor_type: "pyme"` (mensual + DIOT + anual), que T6 reusó tal cual:
-  **su declaración anual sale al 30 de abril y una persona moral la presenta en marzo**
-  (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, que T6 tenía prohibido
-  tocar. Queda como deuda escrita, no como sorpresa.
+  el calendario de `contributor_type: "pyme"` (mensual + DIOT + anual). **Corregido en P3-01:**
+  la anual de una persona moral (601, o 626 con RFC de 12 caracteres) vence el **31 de marzo**
+  del año siguiente (Arts. 9 último párrafo y 76 fr. V LISR; `fecha_limite_anual` en
+  `fiscal_engine/calendario.py`); las personas físicas siguen en abril (Art. 150).
 
 ---
 
@@ -1225,6 +1267,68 @@ dirección:
 { "exito": true, "renglones": [
   {"periodo": "2026-03", "tipo": "I", "direccion": "emitido", "cantidad": 42, "total": "48720.00"} ] }
 ```
+
+### `GET /api/v1/boveda/clientes/{clave}/facturas-calculo` (P1-06)
+
+Los CFDI del periodo **ya en la forma del esquema `CFDI`** de `app/schemas/fiscal.py` (lo que
+reciben todos los endpoints de cálculo). Query: `desde`, `hasta` (obligatorios, AAAA-MM-DD,
+inclusivos, sobre `Fecha` del CFDI), `tipos` (opcional, `I,E,P,T` separados por coma; `N` → 422).
+`desde > hasta` → 422. Lógica en `app/boveda_cfdi/calculo.py`; no calcula impuestos.
+
+```json
+{ "exito": true, "desde": "2026-03-01", "hasta": "2026-03-31",
+  "facturas": [{ "uuid": "…", "fecha": "2026-03-05", "tipo": "I", "rfc_emisor": "…",
+    "rfc_receptor": "…", "subtotal": 1000.0, "total": 1160.0, "iva_trasladado": 160.0,
+    "iva_retenido": 0.0, "isr_retenido": 0.0, "descuento": 0.0, "uso_cfdi": "G03",
+    "descripcion": "Servicio", "clave_prod_serv": "84111506", "metodo_pago": "PUE",
+    "uuid_relacionado": null, "monto_pago": null }],
+  "relacionados": [ /* originales PPD de OTROS periodos que los pagos del periodo liquidan */ ],
+  "resumen": { "comprobantes": 4, "emitidos": 3, "recibidos": 1, "por_tipo": {"I": 3, "P": 1},
+    "cancelados_excluidos": 1, "nomina_excluidos": 1, "relacionados_fuera_del_periodo": 1 },
+  "advertencias": [] }
+```
+
+- **Cancelados fuera** (`estatus_sat = cancelado`, P1-03); los `desconocido` sí cuentan.
+- **Nómina (`N`) fuera**: no es ingreso ni gasto del contribuyente en estos cálculos (mismo
+  criterio que `facturasFiscales` del front); se cuenta en `nomina_excluidos`.
+- **Pagos (`P`)**: uno por `DoctoRelacionado`, con `uuid_relacionado = IdDocumento` y
+  `monto_pago = ImpPagado` (o `Monto` del pago si es el único documento y no trae `ImpPagado`).
+  Si un pago liquida varias facturas, cada documento sale como `<UUID>#1`, `<UUID>#2`…
+- **`relacionados`**: si el original PPD de un pago es de otro periodo, va aquí para que el motor
+  lo cruce. **No** se cuenta en `resumen.comprobantes`; DIOT y retenciones no lo reciben.
+- **Moneda**: importes a pesos con el `TipoCambio` del CFDI; sin `TipoCambio` en moneda
+  extranjera se manda tal cual y se dice en `advertencias`.
+- `descripcion` y `clave_prod_serv` son los del primer concepto (como el parser del navegador).
+
+## Cálculos por cliente desde la bóveda (P1-06)
+
+`POST /api/v1/clientes/{clave}/calculos/<calculo>` — el mismo cálculo que el endpoint de siempre,
+pero **sin `contribuyente` ni `facturas` en el body**: el RFC y el régimen salen de la ficha del
+cliente (`datos.regimen`) y los CFDI de `facturas-calculo` del periodo. Se llama al **mismo
+handler** que el endpoint original (no hay motor duplicado). Autenticado; cliente de otro despacho
+= 404. La respuesta es la del endpoint original más `boveda` (el `resumen` de arriba +
+`advertencias`).
+
+| `<calculo>` | Body | Periodo que lee | Igual que |
+|---|---|---|---|
+| `pre-declaracion` | `periodo_year`, `periodo_month` **o** `periodo_bimestre`, `pagos_provisionales_anteriores`, `ingresos_acumulados_anteriores`, `deducciones_acumuladas_anteriores`, `predial_pagado`, `incluir_explicacion` | el mes/bimestre (+ `relacionados`) | `POST /pre-declaracion` |
+| `pre-declaracion-anual` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /pre-declaracion-anual` |
+| `diot` | `periodo_year`, `periodo_month`, `incluir_explicacion` | el mes | `POST /diot` |
+| `retenciones-terceros` | `periodo_year`, `periodo_month`/`periodo_bimestre` (opcionales), `incluir_explicacion` | el mes/bimestre/ejercicio | `POST /retenciones-terceros` |
+| `multi-periodo` | `periodo_year`, `periodos` (meses 1–12), `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /multi-periodo` |
+| `estado-cuenta` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /estado-cuenta` |
+
+Errores: cliente sin RFC → 422 `"Captura el RFC de este cliente."`; sin régimen → 422 `"Captura
+el régimen de este cliente."`; régimen 601 → 400 (como el original, antes de leer la bóveda);
+bóveda sin CFDI vigentes del periodo → 400 `"La bóveda de este cliente no tiene CFDI vigentes de
+<periodo>. …"`; pre-declaración sin mes ni bimestre → 422.
+
+**Front (P1-06):** los tabs de Fiscalito y Contabilito usan por defecto
+`facturas-calculo` (hook `useFuenteFacturas` / `useFacturasDeBoveda` en
+`apps/store/src/components/fiscalito/`) y siguen llamando a los endpoints de siempre con
+`facturas`; así el Art. 106 de la pre-declaración, que el front arma desde el historial, no
+cambia. Los cálculos por cliente quedan disponibles para integraciones y el agente.
+
 ## Credenciales del cliente — e.firma y CSD (P0-05)
 
 Autenticadas (`Authorization: Bearer <ID token>`), multi-despacho (cliente de otro despacho =
@@ -1505,3 +1609,361 @@ Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha
 `sat_estatus_mes` diario 2:00 (CFDI del mes) · `sat_estatus_anio` semanal (último año) ·
 `sat_listas` diario 6:30 · `sat_cumplimiento` diario 7:00 (encola a quien le toca su día).
 Hora de Ciudad de México.
+
+## Contabilidad — catálogo, pólizas automáticas, pólizas y balanza (P2-01/02/03/04)
+
+Autenticado; todo lo de `/contabilidad/clientes/{clave}/…` pasa por `contexto_actual` +
+`cliente_o_404` (cliente de otro despacho = **404**). Los ids de cuenta, regla y póliza se
+buscan junto con el cliente: un id de otro cliente es **404**. Importes como texto con dos
+decimales (`"1160.00"`), en pesos. Código en `apps/api/app/contabilidad/`; esquemas de asiento
+en `asientos.py`.
+
+### `GET /api/v1/contabilidad/codigo-agrupador`
+
+El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
+`{"fuente", "codigos": [{"codigo", "nivel" (0 encabezado | 1 | 2), "nombre", "naturaleza",
+"tipo", "nota"}]}`. Fuente versionada en `app/contabilidad/datos/codigo_agrupador.csv`.
+
+### Catálogo (P2-01)
+
+- `GET …/cuentas` → `{"cuentas": [{"id", "numero", "nombre", "nivel", "naturaleza", "tipo",
+  "padre_id", "codigo_agrupador", "afectable"}]}` ordenadas por número.
+- `POST …/cuentas/sembrar` → `{"creadas": n}`. Agrega las cuentas del catálogo base que falten
+  (idempotente; no toca las existentes).
+- `POST …/cuentas` (201) body `{"numero", "nombre", "codigo_agrupador", "padre_id"?, "nivel"?,
+  "naturaleza"?, "tipo"?}`. El nivel lo dicta el padre (uno incoherente → 422); naturaleza y tipo
+  se heredan del padre o del agrupador. Agrupador inexistente o encabezado → 422; número repetido
+  → 409; subcuenta a una cuenta con movimientos o saldo inicial → 409. El padre deja de ser
+  afectable.
+- `PATCH …/cuentas/{cuenta_id}` body `{"numero"?, "nombre"?, "codigo_agrupador"?,
+  "naturaleza"?, "tipo"?}`. Renumerar una cuenta que usa la configuración → 409.
+- `DELETE …/cuentas/{cuenta_id}`. Con subcuentas, con movimientos o usada por la configuración
+  (default o personalizada) o por una regla → 409.
+
+### Configuración de pólizas automáticas (P2-02)
+
+- `GET …/config` → `{"config": {"automatica_ingresos", "automatica_egresos",
+  "automatica_pagos", "automatica_nomina", "pue_registra_cobro", "uso_s01_no_deducible",
+  "efectivo_no_deducible", "tope_activo", "plantilla_concepto", "fecha_saldos_iniciales",
+  "cuentas" (rol → número, con defaults), "cuentas_personalizadas", "roles": [{"rol",
+  "default", "descripcion"}], "formas_pago" (c_FormaPago → número), "reglas": [...]}}`.
+- `PUT …/config` body con cualquiera de esos campos (excepto `roles`, `reglas` y
+  `cuentas_personalizadas`; `cuentas` sustituye las personalizadas). Cada cuenta debe existir y
+  ser afectable (422). `fecha_saldos_iniciales` debe ser día 1.
+- `POST …/reglas` (201) body `{"criterio": "rfc"|"clave"|"prefijo"|"uso"|"descripcion",
+  "valor", "cuenta_numero", "prioridad" (menor primero, default 100), "activa"}`;
+  `PATCH …/reglas/{regla_id}`; `DELETE …/reglas/{regla_id}`. Aplican a las pólizas NUEVAS.
+
+### Pólizas (P2-03)
+
+- `POST …/polizas/generar` body `{"desde", "hasta", "segundo_plano"?}`. Genera las pólizas
+  automáticas de los CFDI **vigentes** de la bóveda del rango que no tengan póliza (idempotente
+  por UUID; una póliza cancelada a mano no se regenera) y cancela/revierte las de CFDI ya
+  cancelados. Hasta 62 días corre en el request → `{"en_segundo_plano": false, "resultado":
+  {"generadas", "ya_existian", "omitidas", "canceladas", "revertidas", "errores": [{"uuid",
+  "error"}], "omitidas_detalle"}}`; más largo o `segundo_plano: true` encola
+  `contabilidad.generar_polizas` → `{"en_segundo_plano": true, "trabajo": {...}}`. Sin catálogo
+  → 409. Rango > 5 años → 422.
+- `GET …/polizas?desde&hasta&tipo&origen&estado&uuid&texto&pagina&por_pagina` →
+  `{"total", "pagina", "por_pagina", "polizas": [{"id", "folio" ("D-2026-03-0001"), "tipo",
+  "numero", "fecha", "concepto", "origen" (automatica|manual), "estado" (activa|cancelada),
+  "uuid_cfdi", "tipo_cfdi", "total_cargos", "total_abonos", "diferencia" (total del CFDI − lo
+  contabilizado contra la contraparte), "advertencias", "editada", "reversa_de_id",
+  "motivo_cancelacion", "cancelada_en"}]}`.
+- `GET …/polizas/{poliza_id}` → la póliza con `"movimientos": [{"id", "cuenta_id", "cuenta",
+  "nombre_cuenta", "concepto", "cargo", "abono", "uuid", "rfc"}]`.
+- `POST …/polizas` (201) body `{"tipo", "fecha", "concepto", "movimientos": [{"cuenta_id",
+  "cargo", "abono", "concepto"?, "uuid"?, "rfc"?}]}` (≥ 2). Cada movimiento lleva cargo o abono
+  (no los dos), cuentas afectables del cliente, Σ cargos = Σ abonos; si no → 422. Periodo
+  cerrado → 409. Folio consecutivo por tipo y mes.
+- `PATCH …/polizas/{poliza_id}` body `{"fecha"?, "concepto"?, "movimientos"?}` (mismas
+  validaciones; la fecha no puede salir del mes). Cancelada o periodo cerrado → 409.
+- `POST …/polizas/{poliza_id}/cancelar` body `{"motivo"}`. Periodo cerrado → 409.
+- `GET …/periodos-cerrados` → `{"periodos": [{"anio", "mes", "cerrado_en", "cerrado_por"}]}`.
+  **P2-08 retiró `POST …/periodos-cerrados` y `DELETE …/periodos-cerrados/{anio}/{mes}`**:
+  cerrar y reabrir van por `…/periodos/{anio}/{mes}/cerrar|reabrir` (con validación, motivo,
+  rol y bitácora). Un mes cerrado no acepta pólizas nuevas, ediciones ni
+  cancelaciones. Las pólizas con `origen` `cierre` o `apertura` (cierre anual) no se editan ni
+  se cancelan a mano (409). Un CFDI cancelado ante el SAT cuya póliza cae en mes cerrado genera una póliza
+  de **reversa** con fecha del día (P1-03 lo hace al detectar la cancelación).
+
+### Balanza, auxiliar y saldos iniciales (P2-04)
+
+- `GET …/balanza?desde&hasta&nivel&solo&incluir_cierre` (`solo`: `con_saldo_o_movimiento` default |
+  `con_movimiento` | `todas`) → `{"renglones": [{"cuenta_id", "numero", "nombre", "nivel",
+  "naturaleza", "tipo", "afectable", "codigo_agrupador", "padre_id", "saldo_inicial",
+  "saldo_final" (con signo: deudor +), "inicial_deudor", "inicial_acreedor", "cargos", "abonos",
+  "final_deudor", "final_acreedor"}], "totales": {...}, "cuadra", "diferencias":
+  {"saldo_inicial", "movimientos", "saldo_final"}}`. Sólo pólizas activas. Saldo inicial =
+  movimientos anteriores a `desde` + saldos iniciales capturados. Las cuentas acumulativas suman
+  a sus subcuentas. P2-08: la póliza de apertura fechada en `desde` cuenta como saldo inicial;
+  las pólizas de cierre/apertura dentro del rango sólo cuentan con `incluir_cierre=true`
+  (balanza de cierre). El auxiliar acepta el mismo `incluir_cierre`.
+- `GET …/cuentas/{cuenta_id}/auxiliar?desde&hasta` → `{"cuenta", "saldo_inicial", "cargos",
+  "abonos", "saldo_final", "movimientos": [{"poliza_id", "folio", "fecha", "tipo_poliza",
+  "concepto", "cuenta", "cargo", "abono", "saldo" (corrido), "uuid", "rfc",
+  "xml_disponible"}], "truncado"}` (máx. 5,000 movimientos). Incluye las subcuentas. El XML se
+  baja con `GET /api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml`.
+- `GET …/saldos-iniciales` → `{"saldos": [{"cuenta_id", "numero", "nombre", "deudor",
+  "acreedor"}]}`; `PUT …/saldos-iniciales` body `{"saldos": [{"cuenta_id", "deudor",
+  "acreedor"}]}` (0 y 0 lo quita; cuenta no afectable → 422) → `{"totales": {"deudor",
+  "acreedor", "cuadra"}, "saldos"}`.
+## Impuestos del cliente y calculadoras (P3-02, P3-03, P3-07, P3-08)
+
+Motor: `app/fiscal_engine/{actualizacion,inpc,iva,isn,resumen_impuestos,calculadoras_laborales}.py`;
+lectura de la bóveda en `app/impuestos/`. Todo autenticado (`contexto_actual`); las rutas con
+`{clave}` usan `cliente_o_404` (otro despacho = 404). Importes en las respuestas como texto con
+dos decimales. Fuentes y `FUENTE POR CONFIRMAR` en los docstrings y en `fiscal_engine/datos/*.csv`.
+
+### `GET|PUT /api/v1/impuestos/clientes/{clave}/config`
+
+Criterio del despacho por cliente (DP-3): `modo_factor` (`truncar`|`redondear`|`sin_redondeo`,
+default `truncar`), `tipo_recargo` (default `mora`), `tope_meses_recargos` (60),
+`region_fronteriza` (false), `proporcion_iva_modo` (`calculada`|`fija`) + `proporcion_iva_fija`,
+`asignacion_iva` (UUID → `gravado`|`exento`|`indistinto`), `isn_aplicar_adicional` (true),
+`isn_claves_excluidas`, `isn_claves_incluidas`, `saldo_favor_iva_inicial`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/resumen`
+
+Body `{"anio", "mes", "fecha_pago", "fecha_limite"?, "capturas": {<clave>: {"importe_a_pagar"?,
+"subsidio", "compensaciones"}}, "formato": "json"|"xlsx"|"csv"}`. Sin `fecha_limite`: día 17
+del mes siguiente corrido a hábil (Art. 12 CFF; sin prórroga por sexto dígito). Respuesta JSON:
+`{"renglones": [{"clave", "grupo", "concepto", "aplica", "importe_sistema", "importe_a_pagar",
+"actualizacion", "recargos", "subsidio", "compensaciones", "total", "capturado", "nota",
+"factor", "meses_recargo"}], "totales", "total_a_pagar_ajustado", "fecha_limite", "notas"}`.
+Claves: `isr_pm`, `isr_pf_empresarial`, `isr_arrendamiento`, `isr_plataformas`,
+`isr_resico_pf`, `isr_resico_pm`, `ret_isr_salarios`, `ret_isr_asimilados`,
+`ret_isr_honorarios`, `ret_isr_arrendamiento`, `ret_isr_resico`, `iva_a_cargo`, `iva_retenido`.
+`subsidio` sólo en `ret_isr_salarios` (422 en otro). `xlsx`/`csv` devuelven el archivo.
+
+### `POST /api/v1/impuestos/clientes/{clave}/iva`
+
+Body `{"anio", "meses": [1..12], "saldo_favor_inicial"?, "opciones_saldo": {mes:
+"acreditar"|"devolucion"|"compensacion"}}`. Lee `comprobantes_vigentes` por flujo de efectivo
+(PUE en su mes, PPD por complemento de pago). Devuelve `{"meses": [ResultadoIVAMes]}` con
+valor de actos por tasa, proporción (Art. 5o. fr. V c), acreditable, saldo a favor anterior /
+aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`.
+
+### `GET /api/v1/impuestos/clientes/{clave}/isn?anio&mes`
+
+ISN del mes con los CFDI de nómina emitidos (por `FechaPago`) y la `clave_entidad` del cliente.
+
+## Personas morales y anual del cliente (P3-01, P3-06)
+
+Router `app/routes/impuestos_anual.py`; motor `app/fiscal_engine/personas_morales.py` (601 y
+RESICO PM) y `anual_pf.py` (PF); fuentes en `apps/api/knowledge_base/16_personas_morales.md`.
+Persona moral = régimen `601`, o `626` con RFC de 12 caracteres (RESICO PM). Las rutas `/pm/*`
+dan **422** si el cliente no lo es; cliente de otro despacho = **404**. En el resumen de
+impuestos, `isr_pm` / `isr_resico_pm` traen ya el pago provisional del mes (antes en cero).
+
+### `GET|PUT /api/v1/impuestos/clientes/{clave}/pm/datos/{anio}`
+
+`DatosAnualesPMSchema` (tabla `datos_anuales_pm`, por cliente y ejercicio; sin renglón rigen
+los defaults): `coeficiente_utilidad` (el que se aplica en ese ejercicio; null = calcularlo con
+`utilidad_fiscal_base`/`ingresos_nominales_base` o con la anual del sistema de hasta cinco
+ejercicios atrás), `anticipos_miembros_base`, `ptu_pagada` + `mes_pago_ptu` (5), `perdidas`
+`[{ejercicio, remanente, actualizada_a: "AAAA-MM"|null}]`, `retenciones_bancarias` y
+`pagos_efectuados` (`{mes: importe}`), `saldos_creditos`/`saldos_deudas` (12 saldos de fin de
+mes si no hay contabilidad), `cuentas_creditos`/`cuentas_deudas`/`cuentas_no_deducibles`
+(prefijos de código agrupador), `deduccion_inversiones`, `deducciones_adicionales`,
+`no_deducibles_adicionales`, `ingresos_adicionales`, `estimulos` `[{concepto, importe,
+fundamento, desde_mes, en_provisionales}]`, `fuente` (`auto`|`contabilidad`|`boveda`),
+`factor_exentos_nomina` (0.47), `aai_en_resico` (false). Respuesta `{"anio", "datos"}`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales`
+
+Body `{"anio", "mes"}`. Pagos de enero a `mes`: 601 por el Art. 14 LISR (coeficiente × ingresos
+nominales acumulados − PTU en octavos de mayo a diciembre − estímulos − pérdidas, × 30 %, −
+pagos anteriores − retenciones Art. 54); RESICO PM por el Art. 211 (cobrado − pagado − PTU −
+pérdidas). Respuesta `{"tipo": "pm"|"resico_pm", "fuente", "coeficiente",
+"origen_coeficiente", "tasa", "fecha_limite", "pagos": [{"mes", "ingresos_mes",
+"ingresos_acumulados", "deducciones_acumuladas", "coeficiente", "utilidad_estimada",
+"ptu_disminuida", "estimulos", "perdidas", "base", "isr_causado", "pagos_anteriores",
+"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado", "a_pagar_pesos"}],
+"notas"}`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/anual` · `POST .../anual/papeles`
+
+Body `{"anio", "pagos_provisionales"?: {mes: importe}}` (sólo PF: pagos realmente
+presentados; la PM los captura en sus datos). Régimen 612/606/625/626 (PF) → `{"tipo": "pf",
+"renglones", "meses": [{"mes", "ingresos", "deducciones", "base", "isr_causado",
+"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado"}], "notas"}`. 601 y
+RESICO PM → `{"tipo": "pm"|"resico_pm", "fuente", "renglones", "meses": [{"mes", "ingresos",
+"deducciones", "no_deducibles", "retenciones", "pago_provisional"}], "ajustes", "cuentas",
+"pagos_provisionales", "coeficiente": {"aplicado", "origen", "siguiente", "utilidad_fiscal",
+"ingresos_nominales", "anticipos_miembros"}, "aai": {saldos, promedios, factor, acumulable,
+deducible}|null, "origen_saldos", "ptu": {"renta_gravable", "porcentaje", "a_repartir",
+"pagada_en_el_ejercicio"}, "perdidas", "notas"}`. Cada renglón: `{"clave", "concepto",
+"importe", "fundamento"}`. Otro régimen → 422. `/anual/papeles` devuelve el `.xlsx` (hojas PF:
+Cálculo ISR, Mes a mes, Notas; PM: Cálculo ISR, Ingresos, Deducciones, Ajuste por inflación,
+Coeficiente [601], PTU, Pérdidas, Pagos provisionales, Notas) armado del MISMO diccionario.
+
+### `POST /api/v1/calculadoras/actualizacion-recargos`
+
+Body `{"monto", "fecha_limite", "fecha_pago", "tipo_recargo"?, "modo_factor"?, "tope_meses"?}`.
+Respuesta: `factor` (INPC usados, cortado y sin cortar), `monto_actualizado`, `actualizacion`,
+`meses`, `tasa_acumulada`, `recargos`, `total`, `total_a_pagar_ajustado` (Art. 20 CFF),
+`detalle_meses`, `notas`, `inpc_ultimo_publicado`.
+
+### `GET /api/v1/calculadoras/fecha-limite?anio&mes`
+
+`{"fecha_limite"}`.
+
+### `POST /api/v1/calculadoras/isn` · `GET /api/v1/calculadoras/isn/tasas?fecha`
+
+Con `{"cliente", "anio", "mes"}` usa la bóveda (igual que el módulo); sin cliente,
+`{"entidad", "fecha", "percepciones": [{"clave", "importe"}] | "total_erogaciones",
+"aplicar_adicional", "claves_excluidas"}`. Respuesta: `tasa`, `adicional_sobre_impuesto`,
+`fundamento`, `fuente`, `por_confirmar`, `base`, `impuesto`, `adicional`, `total`,
+`detalle_exclusiones`, `notas`. `/isn/tasas`: las 32 entidades.
+
+### `POST /api/v1/calculadoras/isr-sueldos` · `isr-resico` · `aguinaldo` · `ptu` · `finiquito`
+
+- `isr-sueldos`: `{"base_gravable", "clave_periodicidad", "fecha_pago",
+  "ingreso_gravado_mensual"?, "dias_periodo", "es_trabajador_de_salario_minimo"}` →
+  `isr_causado`, `subsidio`, `subsidio_acreditado`, `isr_retenido` (motor de nómina).
+- `isr-resico`: `{"ingresos_cobrados", "isr_retenido"}` → `tasa`, `isr_causado`, `isr_a_pagar`.
+- `aguinaldo`: `{"salario_diario", "dias_aguinaldo", "dias_trabajados_en_el_anio",
+  "fecha_pago"}` → `importe`, `partidas` (exento/gravado), `isr`, `neto`.
+- `ptu`: `{"utilidad_repartible", "dias_trabajador", "salario_trabajador", "total_dias_todos",
+  "total_salarios_todos", "salario_diario", "promedio_ptu_3_anios", "fecha_pago"}`.
+- `finiquito`: `{"salario_diario", "fecha_ingreso", "fecha_baja", "tipo":
+  "renuncia"|"despido_injustificado", ...}` → `partidas`, `separacion`, `isr`, `neto`.
+  Aguinaldo/PTU/finiquito son versión mínima: P4 las reemplaza con `nomina_engine`.
+
+### Reportes contables (P2-05)
+
+Mismas reglas de tenencia. Filtros comunes (query): `desde`, `hasta` (obligatorios), `nivel`
+(1–10), `solo` (`con_saldo_o_movimiento` | `con_movimiento` | `todas`), `agrupar` (`cuenta` |
+`agrupador`: por código agrupador del SAT), `moneda` (default `MXN`), `tipo_cambio` (MXN por 1
+unidad; **obligatorio si `moneda` ≠ MXN**, 422 si falta: el sistema no guarda tipos de cambio),
+`idioma` (`es` | `en`: etiquetas), `comparar` (`ninguno` | `periodo_anterior` |
+`anio_anterior`), `incluir_cierre` (bool).
+
+- `GET …/reportes/estado-resultados` → `{"reporte", "titulo", "cliente", "desde", "hasta",
+  "moneda", "tipo_cambio", "idioma", "comparativo": {"tipo", "desde", "hasta"} | null,
+  "columnas": [{"clave", "etiqueta"}] (`importe`, `acumulado` del 1-ene a `hasta`, y con
+  comparativo `comparativo`, `variacion`), "lineas": [{"tipo": "encabezado" | "cuenta" |
+  "subtotal" | "total", "clave", "etiqueta", "nivel", "numero"?, "cuenta_id"?, "valores"?}],
+  "resumen": {"ingresos", "costo", "utilidad_bruta", "gastos", "utilidad_operacion",
+  "utilidad_antes_impuestos", "utilidad_neta", "utilidad_neta_acumulada"}}`. Importes =
+  movimiento del periodo (cargos − abonos) de las cuentas de resultados, presentados en
+  positivo según su naturaleza.
+- `GET …/reportes/balance-general` → misma forma (columnas `importe` = saldo final a `hasta`,
+  y `comparativo`/`variacion`), `"resumen": {"activo", "pasivo", "capital", "resultado",
+  "resultados_sin_cierre", "pasivo_mas_capital", "cuentas_de_orden"}, "cuadra", "diferencia"`.
+  Cuadre: activo = pasivo + capital + resultado del ejercicio.
+- Clasificación por el primer segmento del código agrupador de cada cuenta: 101–149 activo
+  circulante, 150–199 no circulante, 201–249 pasivo corto plazo, 250–299 largo plazo, 3xx
+  capital, 401–402 ingresos, 5xx costo, 6xx gastos (611 → impuestos a la utilidad), 403/702/704
+  otros ingresos y productos financieros, 701/703 gastos financieros y otros gastos, 8xx orden.
+- `GET …/reportes/polizas?desde&hasta&estado` → `{"total", "truncado", "polizas": [póliza con
+  "movimientos"]}` (máx. 2,000; para imprimir).
+- `GET …/reportes/excel?reporte=balanza|auxiliar|estado_resultados|balance_general|polizas&…`
+  (+ `cuenta_id` para `auxiliar`, 422 si falta) → archivo `.xlsx` (openpyxl) con importes
+  numéricos en formato `#,##0.00` y sus totales. El PDF se arma en el front (jspdf) con la
+  misma respuesta JSON.
+
+### Cierre de periodo y de ejercicio (P2-08)
+
+- `GET …/periodos/{anio}` → `{"anio", "meses": [{"mes", "estado": "abierto" | "cerrado",
+  "cerrado_en", "cerrado_por", "polizas"}], "historial": [{"mes" (0 = ejercicio), "accion":
+  "cerrar" | "reabrir" | "cierre_anual" | "deshacer_cierre_anual", "motivo", "uid", "fecha"}],
+  "cierre_anual": {"hecho", "polizas"}}`.
+- `GET …/periodos/{anio}/{mes}/validacion` → `{"desde", "hasta", "balanza_cuadra",
+  "diferencias", "cfdi_sin_poliza": [{"uuid", "fecha", "tipo", "direccion", "rfc", "total",
+  "moneda"}] (máx. 200), "total_cfdi_sin_poliza", "se_puede_cerrar"}`. CFDI sin póliza =
+  vigentes del mes (sin traslados ni nómina recibida) sin póliza que los cite.
+- `POST …/periodos/{anio}/{mes}/cerrar` body `{"forzar"?: false, "motivo"?}` →
+  `{"validacion"}`. Balanza descuadrada → 409 (no se fuerza). CFDI sin póliza → 409 salvo
+  `forzar: true` con motivo (≥ 5 caracteres, si no 422). Ya cerrado → 409.
+- `POST …/periodos/{anio}/{mes}/reabrir` body `{"motivo"}` (≥ 5, si no 422). Sólo rol `dueno`
+  o `contador` (auxiliar → 403). No cerrado → 404.
+- `GET …/cierre-anual/{anio}/validacion` → misma forma, sobre el ejercicio (desde la fecha de
+  saldos iniciales si la contabilidad arrancó ese año).
+- `POST …/cierre-anual/{anio}` body `{"traspasar_resultado"?: false, "forzar"?: false,
+  "motivo"?}` → `{"anio", "resultado" (utilidad +), "tipo_resultado": "utilidad" | "perdida",
+  "polizas", "validacion"}`. Genera tres pólizas de diario: cierre de resultados (31-dic,
+  contra 305.01/305.02), cierre de balance (31-dic) y apertura (1-ene siguiente; con
+  `traspasar_resultado` el resultado abre en 304.01/304.02). Cuentas por rol
+  `resultado_utilidad`, `resultado_perdida`, `utilidad_anteriores`, `perdida_anteriores`
+  (configurables). Cierra los doce meses. Mismas validaciones que el mensual; ya cerrado o
+  enero siguiente cerrado → 409.
+- `POST …/cierre-anual/{anio}/deshacer` body `{"motivo"}` → `{"canceladas"}`. Dueño o contador;
+  cancela las tres pólizas (si enero siguiente sigue abierto) y reabre diciembre.
+
+## Conciliación bancaria (P2-06)
+
+Autenticado; todo `/api/v1/conciliacion/clientes/{clave}/…` pasa por `contexto_actual` +
+`cliente_o_404` (otro despacho = **404**). Ids de cuenta bancaria, plantilla, movimiento y
+conciliación se buscan junto con el cliente. Importes como texto con dos decimales. Código en
+`apps/api/app/contabilidad/conciliacion/`.
+
+- `GET /api/v1/conciliacion/bancos` → `{"bancos": [{"clave" (c_Banco), "nombre"}]}`: bancos
+  con lector de PDF (diseños **POR CONFIRMAR CON PDF REAL**).
+- Cuentas bancarias: `GET …/cuentas` · `POST …/cuentas` (201) body `{"banco" (3 dígitos
+  c_Banco), "nombre", "numero", "clabe" (18 dígitos o ""), "moneda", "cuenta_contable_id"
+  (afectable; si no, 422), "ventana_dias" (0–31, default 3), "umbral" (50–100, default 60),
+  "activa"}` · `PATCH …/cuentas/{id}` · `DELETE …/cuentas/{id}` (409 si ya tiene estados
+  importados). Cada cuenta: `{"id", "banco", "nombre", "numero", "clabe", "moneda",
+  "cuenta_contable_id", "cuenta_contable", "ventana_dias", "umbral", "activa"}`.
+- Plantillas de columnas: `GET …/plantillas` · `PUT …/plantillas` body `{"nombre", "banco",
+  "formato": "csv"|"xlsx", "mapeo": {"fecha", "concepto", "referencia", "cargo", "abono",
+  "importe", "saldo", "formato_fecha", "fila_encabezado", "separador", "signo_importe", "hoja"}}`
+  (crea o reemplaza por nombre; columna por encabezado, letra o número) · `DELETE
+  …/plantillas/{id}`.
+- `POST …/cuentas/{id}/estados` multipart `archivo` + opcionales `formato`
+  (`csv|xlsx|ofx|pdf`; si no, por extensión/contenido), `plantilla_id`, `mapeo` (JSON que se
+  encima a la plantilla) → `{"estado": {"id", "archivo", "formato", "desde", "hasta",
+  "saldo_inicial", "saldo_final", "nuevos", "duplicados", "advertencias"}, "banco_pdf"}`.
+  Reimportar no duplica (huella por renglón). PDF ilegible/banco desconocido → 422 que
+  sugiere plantilla CSV/XLSX. `GET …/cuentas/{id}/estados` lista los importados.
+- `GET …/cuentas/{id}/movimientos?desde&hasta&incluir_cfdi=true` → `{"cuenta", "banco":
+  [{"clave": "b:<id>", "id", "fecha", "concepto", "referencia", "cargo", "abono", "saldo",
+  "conciliacion_id"}], "libros": [{"clave": "p:<id>"|"c:<id>", "id", "origen":
+  "poliza"|"cfdi", "poliza_id", "folio", "fecha", "concepto", "cargo", "abono", "uuid", "rfc",
+  "conciliacion_id"}], "pendientes_banco", "pendientes_libros"}`. Libros = movimientos de
+  pólizas activas sobre la cuenta contable ligada (+ complementos de pago y facturas PUE de la
+  bóveda que mueven bancos y aún no tienen póliza). `conciliacion_id` null = pendiente.
+- `POST …/cuentas/{id}/conciliar` body `{"desde", "hasta", "incluir_cfdi"}` → `{"resultado":
+  {"conciliados", "uno_a_varios", "ambiguos", "pendientes_banco", "pendientes_libros"}}`.
+  Importe exacto + ventana de fechas + referencia/UUID/RFC en el concepto, puntaje ≥ umbral;
+  uno a uno y uno a varios (suma exacta, hasta 4). Empates exactos quedan pendientes.
+- `POST …/cuentas/{id}/conciliaciones` (201) body `{"banco": ["b:…"], "libros": ["p:…",
+  "c:…"], "motivo"}` → `{"conciliacion_id"}`. Sumas distintas → 422; ya conciliado → 409.
+- `DELETE …/cuentas/{id}/conciliaciones/{conciliacion_id}` deshace (las partidas vuelven a
+  pendientes).
+- `GET …/cuentas/{id}/movimientos/{mov_id}/sugerencia` → `{"sugerida": {"cuenta_id",
+  "numero", "nombre"} | null}` (comisiones 701.10, intereses 702.04/701.04, IVA 118.01…).
+- `POST …/cuentas/{id}/movimientos/{mov_id}/poliza` (201) body `{"contrapartidas":
+  [{"cuenta_id", "importe"}], "concepto"}` (deben sumar el importe del movimiento) → crea la
+  póliza (ingreso si entra dinero, egreso si sale) y la concilia: `{"poliza",
+  "conciliacion_id"}`.
+- `GET …/cuentas/{id}/reporte?corte=AAAA-MM-DD&formato=json|xlsx` → `{"reporte": {"corte",
+  "cuenta_bancaria", "saldo_banco", "saldo_libros", "depositos_en_transito",
+  "retiros_en_transito", "abonos_banco_no_registrados", "cargos_banco_no_registrados",
+  "totales", "saldo_banco_conciliado", "saldo_libros_conciliado", "diferencia", "cuadra",
+  "advertencias"}}` o el XLSX.
+
+## Contabilidad electrónica — Anexo 24 (P2-07)
+
+Autenticado; `/api/v1/contabilidad-electronica/clientes/{clave}/…` con `cliente_o_404`.
+Código en `apps/api/app/contabilidad/anexo24/`; XSD 1.3 oficiales versionados (fuente en
+`apps/api/tests/xsd/contabilidad/README.md`).
+
+Body común (`SolicitudEntrada`): `{"documento": "catalogo"|"balanza"|"polizas"|
+"auxiliar_cuentas"|"auxiliar_folios", "anio" (≥ 2015), "mes" (1–12), "tipo_envio": "N"|"C",
+"fecha_mod_bal" (exigida con C), "tipo_solicitud": ""|"AF"|"FC"|"DE"|"CO" (exigida en pólizas
+y auxiliares), "num_orden" (AF/FC, `AAA0000000/00`), "num_tramite" (DE/CO,
+`AA000000000000`), "sellar": bool}`. `sellar: true` usa la e.firma activa del cliente (404 si
+no hay; 422 si venció).
+
+- `GET /api/v1/contabilidad-electronica/documentos` → `{"documentos": [{"clave", "nombre",
+  "sufijo", "a_solicitud"}], "instrucciones_portal": [str]}`.
+- `POST …/validar` → `{"nombre" (RFC+AAAA+MM+sufijo), "valido", "errores" (del XSD),
+  "advertencias", "sellado", "xml"}`.
+- `POST …/zip` → `application/zip` con `Content-Disposition: filename="<nombre>.zip"`
+  (CT, BN/BC, PL, XC, XF). 422 si el XML no valida.
+- `POST …/enviar` → `{"via", "acuse": {"folio", "estado", "mensaje"}, "zip_base64"}` por el
+  adaptador `buzon_sat` (`falso` = simulación; `portal_sat` responde 501, POR CONFIRMAR). El SAT
+  no tiene API: el envío real se hace en el portal.

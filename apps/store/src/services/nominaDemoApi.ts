@@ -14,11 +14,10 @@
  * diverjan de `app/demo_nomina.py`.
  */
 
+import { V1, encabezadoAuth } from './api';
 import { cuerpoDeError, detalleDelError } from './errorApi';
 import type { HorarioLaboral } from './carteraApi';
 
-const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
-const V1 = `${BASE_URL}/api/v1`;
 
 /** El cliente único de la demo. El backend lo usa como default. */
 export const CLIENTE_DEMO = 'demo';
@@ -168,8 +167,9 @@ export interface EmpleadoNominaRequest {
 
 async function pedir<T>(ruta: string, opciones?: RequestInit): Promise<T> {
   const res = await fetch(`${V1}${ruta}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...opciones,
+    // P0-02: la sesión viaja siempre; `/api/v1` responde 401 sin ella.
+    headers: { 'Content-Type': 'application/json', ...(await encabezadoAuth()) },
   });
   if (!res.ok) {
     // El handler de dominio responde `{exito: false, error: "..."}`; las

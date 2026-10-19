@@ -19,9 +19,9 @@ QUÉ SE ESCRIBE
 CANCELADO = DEJA DE CONTAR
 --------------------------
 `app.boveda_cfdi.servicio.comprobantes_vigentes(consulta)` es el filtro que deben usar los
-cálculos (Fiscalito, Contabilito, la anual). La reversión de pólizas que pide el backlog
-queda para P2-03, que es cuando las pólizas se vuelven persistentes; hoy no hay póliza
-guardada que revertir.
+cálculos (Fiscalito, Contabilito, la anual). Desde P2-03, al detectar una cancelación nueva
+se cancela su póliza automática (o se genera la reversa si su mes está cerrado), con
+`app.contabilidad.polizas.cancelar_por_cfdi`.
 
 RITMO
 -----
@@ -46,6 +46,8 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.contabilidad.polizas import cancelar_por_cfdi
+from app.exceptions import FiscalAgentError
 from app.integraciones.sat_estatus import EstatusCfdi, ExpresionCfdi, SatEstatus
 from app.modelos.cfdi import Comprobante
 from app.modelos.nucleo import Cliente
@@ -162,6 +164,14 @@ def _aplicar(db: Session, c: Comprobante, est: EstatusCfdi, momento: datetime,
         r.cancelados += 1
         if previo != "cancelado":
             r.nuevos_cancelados += 1
+            # P2-03: la póliza del CFDI deja de contar (o se revierte si su mes se cerró).
+            try:
+                with db.begin_nested():
+                    cancelar_por_cfdi(db, c)
+            except FiscalAgentError:
+                # Periodo de la reversa cerrado: el generador lo vuelve a intentar en su
+                # siguiente corrida (`revertir_cancelados`); el estatus se guarda igual.
+                pass
     elif c.estatus_sat == "vigente":
         r.vigentes += 1
     if est.en_proceso_de_cancelacion:

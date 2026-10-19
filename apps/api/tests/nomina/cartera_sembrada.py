@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-UID = "uid-nomina"
+UID = "uid-prueba"  # el mismo `UID_PRUEBA` de tests/conftest.py: asistencia es por despacho
 
 
 def sembrar_cliente(

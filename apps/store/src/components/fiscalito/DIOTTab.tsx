@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { generarDIOT, type CFDI, type DIOTResponse, facturasFiscales } from '../../services/fiscalAgentApi';
+import { generarDIOT, type CFDI, type DIOTResponse } from '../../services/fiscalAgentApi';
 import { guardarDIOT } from '../../services/declaracionesHistory';
 import { exportarDIOTPDF } from '../../services/pdfExportDIOT';
 import { generarDIOTBatch, DIOT_BATCH_POR_VALIDAR } from '../../services/exportadores/diot';
 import { descargarBytes } from '../../services/exportadores/descargar';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle } from '../../utils/styles';
-import XMLUploader from './XMLUploader';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import { useFuenteFacturas } from './useFuenteFacturas';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
@@ -30,9 +31,11 @@ export default function DIOTTab() {
   const [guardado, setGuardado] = useState(false);
   const [errorTxt, setErrorTxt] = useState('');
   const [transliterados, setTransliterados] = useState<string[]>([]);
+  // P1-06: los CFDI del mes salen de la bóveda del cliente; subir XML sigue disponible.
+  const fuente = useFuenteFacturas({ clave: perfil.clienteId, anio: year, mes: month, manual: facturas });
 
   const handleGenerar = async () => {
-    if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
+    if (fuente.paraCalcular.length === 0) { setError(fuente.motivoVacio); return; }
     if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
@@ -40,11 +43,11 @@ export default function DIOTTab() {
     try {
       const res = await generarDIOT({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
+        facturas: fuente.paraCalcular, periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarDIOT(user.uid, res, facturas.length, perfil.clienteId)
+        guardarDIOT(user.uid, res, fuente.delPeriodo.length, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -179,7 +182,7 @@ export default function DIOTTab() {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
           Genera tu Declaración Informativa de Operaciones con Terceros.
         </p>
-        <XMLUploader facturas={facturas} onChange={setFacturas} />
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={setFacturas} />
       </div>
       <div className="card" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <PeriodSelector year={year} month={month} onYearChange={setYear} onMonthChange={setMonth} />

@@ -28,6 +28,10 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// P0-02: `src/test/setup.ts` dobla `./firebase` para toda la suite. Este archivo mide
+// justo el módulo REAL, así que lo desdobla.
+vi.unmock('./firebase');
+
 afterEach(() => { vi.resetModules(); vi.unstubAllEnvs(); });
 
 describe('services/firebase se inicializa al importarse', () => {

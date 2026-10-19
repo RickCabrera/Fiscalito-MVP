@@ -5,9 +5,11 @@ description = "Motor de inteligencia fiscal para el ecosistema Fiscalito"
 authors = [{name = "Ricardo Cabrera"}]
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115.0",
+    # Pineados: la forma del OpenAPI (docs/openapi.json, verificado en CI) depende de la
+    # versión exacta de FastAPI y Pydantic. Subirlos = regenerar el contrato en el mismo PR.
+    "fastapi==0.149.0",
     "uvicorn[standard]>=0.30.0",
-    "pydantic>=2.0.0",
+    "pydantic==2.14.1",
     "openai>=1.30.0",
     "anthropic>=0.30.0",
     "python-dotenv>=1.0.0",
@@ -67,6 +69,8 @@ addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
+# Migraciones autogeneradas por Alembic: no se editan a mano.
+extend-exclude = ["migrations/versions"]
 target-version = "py311"
 
 [tool.ruff.lint]

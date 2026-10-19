@@ -77,6 +77,12 @@ import * as credencialesApi from './credencialesApi';
 import * as trabajosApi from './trabajosApi';
 // P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
 import * as satVerificacionApi from './satVerificacionApi';
+import * as contabilidadApi from './contabilidadApi';
+// P3-02/03/07/08: impuestos del cliente y calculadoras fiscales.
+import * as impuestosApi from './impuestosApi';
+import * as anualApi from './anualApi';
+import * as conciliacionApi from './conciliacionApi';
+import * as contabilidadElectronicaApi from './contabilidadElectronicaApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -112,6 +118,8 @@ interface Llamada {
   metodo: string;
   /** La URL completa: hace falta para anclar QUERY PARAMS, no sólo rutas (O-01). */
   url: string;
+  /** P0-02: los encabezados, para exigir la sesión en todo `/api/v1`. */
+  encabezados: Record<string, string>;
 }
 
 /**
@@ -132,6 +140,7 @@ async function urlDe(accion: () => Promise<unknown>): Promise<Llamada> {
         path: new URL(entrada).pathname,
         metodo: (opciones?.method ?? 'GET').toUpperCase(),
         url: entrada,
+        encabezados: Object.fromEntries(new Headers(opciones?.headers).entries()),
       };
       return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
     }),
@@ -151,6 +160,11 @@ const FICHA_VACIA = {
   clave_periodicidad: '04',
   empleados: [],
 } as unknown as ClienteDetalle;
+
+const SOLICITUD_A24 = {
+  documento: 'catalogo', anio: 2026, mes: 3, tipo_envio: 'N', fecha_mod_bal: null,
+  tipo_solicitud: '', num_orden: '', num_tramite: '', sellar: false,
+} as const;
 
 const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
   'despachoApi.ts': {
@@ -223,6 +237,8 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     descargarXml: () => bovedaApi.descargarXml('taller', 'AAAA-BBBB'),
     borrarCfdi: () => bovedaApi.borrarCfdi('taller', 'AAAA-BBBB'),
     resumenBoveda: () => bovedaApi.resumenBoveda('taller'),
+    // P1-06: los CFDI del periodo en la forma de los cálculos.
+    facturasParaCalculo: () => bovedaApi.facturasParaCalculo('taller', { desde: '2026-03-01', hasta: '2026-03-31' }),
   },
   'satDescargaApi.ts': {
     obtenerConfigSat: () => satDescargaApi.obtenerConfigSat('taller'),
@@ -261,6 +277,86 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     guardarConfigCumplimiento: () =>
       satVerificacionApi.guardarConfigCumplimiento('taller', { automatico: true, dia_del_mes: 1, constancia: true }),
     semaforoCartera: () => satVerificacionApi.semaforoCartera(),
+  },
+  'contabilidadApi.ts': {
+    listarCuentas: () => contabilidadApi.listarCuentas('taller'),
+    sembrarCatalogo: () => contabilidadApi.sembrarCatalogo('taller'),
+    crearCuenta: () => contabilidadApi.crearCuenta('taller', { numero: '1', nombre: 'x', codigo_agrupador: '101' }),
+    editarCuenta: () => contabilidadApi.editarCuenta('taller', 3, { nombre: 'x' }),
+    borrarCuenta: () => contabilidadApi.borrarCuenta('taller', 3),
+    obtenerAgrupador: () => contabilidadApi.obtenerAgrupador(),
+    obtenerConfigContable: () => contabilidadApi.obtenerConfigContable('taller'),
+    guardarConfigContable: () => contabilidadApi.guardarConfigContable('taller', { tope_activo: '0' }),
+    crearRegla: () => contabilidadApi.crearRegla('taller', { criterio: 'rfc', valor: 'X', cuenta_numero: '601.84', prioridad: 1, activa: true }),
+    editarRegla: () => contabilidadApi.editarRegla('taller', 4, { activa: false }),
+    borrarRegla: () => contabilidadApi.borrarRegla('taller', 4),
+    generarPolizas: () => contabilidadApi.generarPolizas('taller', '2026-03-01', '2026-03-31'),
+    listarPolizas: () => contabilidadApi.listarPolizas('taller', { tipo: 'diario', pagina: 2 }),
+    obtenerPoliza: () => contabilidadApi.obtenerPoliza('taller', 5),
+    crearPoliza: () => contabilidadApi.crearPoliza('taller', { tipo: 'diario', fecha: '2026-03-01', concepto: '', movimientos: [] }),
+    editarPoliza: () => contabilidadApi.editarPoliza('taller', 5, { concepto: 'x' }),
+    cancelarPoliza: () => contabilidadApi.cancelarPoliza('taller', 5, 'x'),
+    listarPeriodosCerrados: () => contabilidadApi.listarPeriodosCerrados('taller'),
+    obtenerBalanza: () => contabilidadApi.obtenerBalanza('taller', '2026-03-01', '2026-03-31', 1, 'todas'),
+    obtenerAuxiliar: () => contabilidadApi.obtenerAuxiliar('taller', 6, '2026-03-01', '2026-03-31'),
+    listarSaldosIniciales: () => contabilidadApi.listarSaldosIniciales('taller'),
+    guardarSaldosIniciales: () => contabilidadApi.guardarSaldosIniciales('taller', []),
+    obtenerEstadoResultados: () => contabilidadApi.obtenerEstadoResultados('taller', { desde: '2026-03-01', hasta: '2026-03-31', comparar: 'anio_anterior' }),
+    obtenerBalanceGeneral: () => contabilidadApi.obtenerBalanceGeneral('taller', { desde: '2026-03-01', hasta: '2026-03-31', moneda: 'USD', tipo_cambio: '18.5' }),
+    obtenerPolizasImpresion: () => contabilidadApi.obtenerPolizasImpresion('taller', '2026-03-01', '2026-03-31'),
+    descargarExcel: () => contabilidadApi.descargarExcel('taller', 'auxiliar', { desde: '2026-03-01', hasta: '2026-03-31' }, 6),
+    obtenerEjercicio: () => contabilidadApi.obtenerEjercicio('taller', 2026),
+    validarCierreMes: () => contabilidadApi.validarCierreMes('taller', 2026, 3),
+    cerrarMes: () => contabilidadApi.cerrarMes('taller', 2026, 3),
+    reabrirMes: () => contabilidadApi.reabrirMes('taller', 2026, 3, 'motivo'),
+    validarCierreAnual: () => contabilidadApi.validarCierreAnual('taller', 2026),
+    hacerCierreAnual: () => contabilidadApi.hacerCierreAnual('taller', 2026, { traspasar_resultado: false, forzar: false, motivo: '' }),
+    deshacerCierreAnual: () => contabilidadApi.deshacerCierreAnual('taller', 2026, 'motivo'),
+  },
+  'conciliacionApi.ts': {
+    listarBancos: () => conciliacionApi.listarBancos(),
+    listarCuentasBancarias: () => conciliacionApi.listarCuentasBancarias('taller'),
+    crearCuentaBancaria: () => conciliacionApi.crearCuentaBancaria('taller', { banco: '012', nombre: 'x', numero: '1', clabe: '', cuenta_contable_id: 1, ventana_dias: 3, umbral: 60 }),
+    editarCuentaBancaria: () => conciliacionApi.editarCuentaBancaria('taller', 2, { nombre: 'y' }),
+    borrarCuentaBancaria: () => conciliacionApi.borrarCuentaBancaria('taller', 2),
+    listarPlantillas: () => conciliacionApi.listarPlantillas('taller'),
+    guardarPlantilla: () => conciliacionApi.guardarPlantilla('taller', { nombre: 'p', banco: '012', formato: 'csv', mapeo: {} }),
+    borrarPlantilla: () => conciliacionApi.borrarPlantilla('taller', 3),
+    importarEstado: () => conciliacionApi.importarEstado('taller', 2, new File(['x'], 'e.csv')),
+    listarEstados: () => conciliacionApi.listarEstados('taller', 2),
+    obtenerVista: () => conciliacionApi.obtenerVista('taller', 2, '2026-03-01', '2026-03-31'),
+    conciliarAutomatico: () => conciliacionApi.conciliarAutomatico('taller', 2),
+    conciliarManual: () => conciliacionApi.conciliarManual('taller', 2, ['b:1'], ['p:1']),
+    deshacerConciliacion: () => conciliacionApi.deshacerConciliacion('taller', 2, 4),
+    sugerirCuenta: () => conciliacionApi.sugerirCuenta('taller', 2, 5),
+    polizaDesdeBanco: () => conciliacionApi.polizaDesdeBanco('taller', 2, 5, [], ''),
+    obtenerReporte: () => conciliacionApi.obtenerReporte('taller', 2, '2026-03-31'),
+    descargarReporte: () => conciliacionApi.descargarReporte('taller', 2, '2026-03-31'),
+  },
+  'contabilidadElectronicaApi.ts': {
+    obtenerDocumentos: () => contabilidadElectronicaApi.obtenerDocumentos(),
+    validarAnexo24: () => contabilidadElectronicaApi.validarAnexo24('taller', SOLICITUD_A24),
+    descargarZipAnexo24: () => contabilidadElectronicaApi.descargarZipAnexo24('taller', SOLICITUD_A24),
+    enviarAnexo24: () => contabilidadElectronicaApi.enviarAnexo24('taller', SOLICITUD_A24),
+  },
+  'impuestosApi.ts': {
+    obtenerResumen: () =>
+      impuestosApi.obtenerResumen('taller', { anio: 2026, mes: 1, fecha_pago: '2026-02-17', capturas: {} }),
+    exportarResumen: () =>
+      impuestosApi.exportarResumen('taller', { anio: 2026, mes: 1, fecha_pago: '2026-02-17', capturas: {} }, 'xlsx'),
+    obtenerIvaPeriodos: () => impuestosApi.obtenerIvaPeriodos('taller', 2026, [1, 2]),
+    obtenerConfigImpuestos: () => impuestosApi.obtenerConfigImpuestos('taller'),
+    guardarConfigImpuestos: () => impuestosApi.guardarConfigImpuestos('taller', {}),
+    calcular: () => impuestosApi.calcular('actualizacion-recargos', {}),
+    tasasIsn: () => impuestosApi.tasasIsn('2026-03-01'),
+    fechaLimite: () => impuestosApi.fechaLimite(2026, 1),
+  },
+  'anualApi.ts': {
+    obtenerDatosPM: () => anualApi.obtenerDatosPM('moral', 2026),
+    guardarDatosPM: () => anualApi.guardarDatosPM('moral', 2026, {}),
+    pagosProvisionalesPM: () => anualApi.pagosProvisionalesPM('moral', 2026, 3),
+    calcularAnual: () => anualApi.calcularAnual('moral', 2025),
+    papelesAnual: () => anualApi.papelesAnual('moral', 2025),
   },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
@@ -303,6 +399,11 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'credencialesApi.ts': credencialesApi,
   'trabajosApi.ts': trabajosApi,
   'satVerificacionApi.ts': satVerificacionApi,
+  'contabilidadApi.ts': contabilidadApi,
+  'impuestosApi.ts': impuestosApi,
+  'anualApi.ts': anualApi,
+  'conciliacionApi.ts': conciliacionApi,
+  'contabilidadElectronicaApi.ts': contabilidadElectronicaApi,
 };
 
 /**
@@ -389,6 +490,16 @@ describe('contrato de rutas front ↔ backend', () => {
             ruta!.metodos,
             `${nombre} usa ${metodo} contra ${path}, que sólo acepta ${ruta!.metodos.join(', ')}.`,
           ).toContain(metodo);
+        });
+
+        it(`${nombre} manda la sesión si pega a /api/v1 (P0-02)`, async () => {
+          const { path, encabezados } = await urlDe(llamar);
+          if (!path.startsWith('/api/v1/')) return; // `/health` es público
+          expect(
+            encabezados.authorization,
+            `${nombre} pide ${path} SIN Authorization: el backend responde 401. ` +
+              'Usa apiFetch o encabezadoAuth de services/api.ts.',
+          ).toBe('Bearer token-de-prueba');
         });
       }
     });

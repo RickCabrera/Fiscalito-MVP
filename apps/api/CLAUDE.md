@@ -183,6 +183,14 @@ Agente conversacional con tool use. Provider (Anthropic `claude-haiku-4-5-202510
 - Loop agéntico máx 10 iteraciones. Tools definidas en `services/agent_tools.py`.
 - Retorna: texto + `predeclaracion` calculada (si se invocó la herramienta) + `herramientas_usadas`
 
+> **Auth (P0-02):** todo `/api/v1` exige `Authorization: Bearer <ID token>`; se monta en
+> `app/main.py` (`ROUTERS_PROTEGIDOS` + `dependencies=PROTEGIDO`). Un router nuevo va en esa
+> lista; una ruta pública (webhook) se declara en `app/acceso/dependencias.RUTAS_PUBLICAS`.
+> `tests/plan_p/test_acceso.py` recorre todas las rutas y exige 401 sin token. Lo que gaste LLM
+> pide `Depends(cobrador_llm)` y llama `cobrador.cobrar()` antes de cada llamada al proveedor.
+> El OpenAPI versionado (`docs/openapi.json`) y los tipos TS se regeneran con
+> `PYTHONPATH=. python scripts/exportar_openapi.py` (P0-08).
+>
 > **El contrato vive en `docs/api-contract.md`**, que es la fuente unica. Lo de abajo es un
 > resumen; los endpoints de las epicas D (asistencia, nomina) y E (despacho) estan documentados
 > ahi con su forma de request y response.
