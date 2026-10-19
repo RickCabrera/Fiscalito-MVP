@@ -1588,21 +1588,26 @@ El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
 - `PATCH …/polizas/{poliza_id}` body `{"fecha"?, "concepto"?, "movimientos"?}` (mismas
   validaciones; la fecha no puede salir del mes). Cancelada o periodo cerrado → 409.
 - `POST …/polizas/{poliza_id}/cancelar` body `{"motivo"}`. Periodo cerrado → 409.
-- `GET/POST …/periodos-cerrados` (body `{"anio", "mes"}`), `DELETE
-  …/periodos-cerrados/{anio}/{mes}`. Un mes cerrado no acepta pólizas nuevas, ediciones ni
-  cancelaciones. Un CFDI cancelado ante el SAT cuya póliza cae en mes cerrado genera una póliza
+- `GET …/periodos-cerrados` → `{"periodos": [{"anio", "mes", "cerrado_en", "cerrado_por"}]}`.
+  **P2-08 retiró `POST …/periodos-cerrados` y `DELETE …/periodos-cerrados/{anio}/{mes}`**:
+  cerrar y reabrir van por `…/periodos/{anio}/{mes}/cerrar|reabrir` (con validación, motivo,
+  rol y bitácora). Un mes cerrado no acepta pólizas nuevas, ediciones ni
+  cancelaciones. Las pólizas con `origen` `cierre` o `apertura` (cierre anual) no se editan ni
+  se cancelan a mano (409). Un CFDI cancelado ante el SAT cuya póliza cae en mes cerrado genera una póliza
   de **reversa** con fecha del día (P1-03 lo hace al detectar la cancelación).
 
 ### Balanza, auxiliar y saldos iniciales (P2-04)
 
-- `GET …/balanza?desde&hasta&nivel&solo` (`solo`: `con_saldo_o_movimiento` default |
+- `GET …/balanza?desde&hasta&nivel&solo&incluir_cierre` (`solo`: `con_saldo_o_movimiento` default |
   `con_movimiento` | `todas`) → `{"renglones": [{"cuenta_id", "numero", "nombre", "nivel",
   "naturaleza", "tipo", "afectable", "codigo_agrupador", "padre_id", "saldo_inicial",
   "saldo_final" (con signo: deudor +), "inicial_deudor", "inicial_acreedor", "cargos", "abonos",
   "final_deudor", "final_acreedor"}], "totales": {...}, "cuadra", "diferencias":
   {"saldo_inicial", "movimientos", "saldo_final"}}`. Sólo pólizas activas. Saldo inicial =
   movimientos anteriores a `desde` + saldos iniciales capturados. Las cuentas acumulativas suman
-  a sus subcuentas.
+  a sus subcuentas. P2-08: la póliza de apertura fechada en `desde` cuenta como saldo inicial;
+  las pólizas de cierre/apertura dentro del rango sólo cuentan con `incluir_cierre=true`
+  (balanza de cierre). El auxiliar acepta el mismo `incluir_cierre`.
 - `GET …/cuentas/{cuenta_id}/auxiliar?desde&hasta` → `{"cuenta", "saldo_inicial", "cargos",
   "abonos", "saldo_final", "movimientos": [{"poliza_id", "folio", "fecha", "tipo_poliza",
   "concepto", "cuenta", "cargo", "abono", "saldo" (corrido), "uuid", "rfc",
@@ -1612,3 +1617,65 @@ El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
   "acreedor"}]}`; `PUT …/saldos-iniciales` body `{"saldos": [{"cuenta_id", "deudor",
   "acreedor"}]}` (0 y 0 lo quita; cuenta no afectable → 422) → `{"totales": {"deudor",
   "acreedor", "cuadra"}, "saldos"}`.
+
+### Reportes contables (P2-05)
+
+Mismas reglas de tenencia. Filtros comunes (query): `desde`, `hasta` (obligatorios), `nivel`
+(1–10), `solo` (`con_saldo_o_movimiento` | `con_movimiento` | `todas`), `agrupar` (`cuenta` |
+`agrupador`: por código agrupador del SAT), `moneda` (default `MXN`), `tipo_cambio` (MXN por 1
+unidad; **obligatorio si `moneda` ≠ MXN**, 422 si falta: el sistema no guarda tipos de cambio),
+`idioma` (`es` | `en`: etiquetas), `comparar` (`ninguno` | `periodo_anterior` |
+`anio_anterior`), `incluir_cierre` (bool).
+
+- `GET …/reportes/estado-resultados` → `{"reporte", "titulo", "cliente", "desde", "hasta",
+  "moneda", "tipo_cambio", "idioma", "comparativo": {"tipo", "desde", "hasta"} | null,
+  "columnas": [{"clave", "etiqueta"}] (`importe`, `acumulado` del 1-ene a `hasta`, y con
+  comparativo `comparativo`, `variacion`), "lineas": [{"tipo": "encabezado" | "cuenta" |
+  "subtotal" | "total", "clave", "etiqueta", "nivel", "numero"?, "cuenta_id"?, "valores"?}],
+  "resumen": {"ingresos", "costo", "utilidad_bruta", "gastos", "utilidad_operacion",
+  "utilidad_antes_impuestos", "utilidad_neta", "utilidad_neta_acumulada"}}`. Importes =
+  movimiento del periodo (cargos − abonos) de las cuentas de resultados, presentados en
+  positivo según su naturaleza.
+- `GET …/reportes/balance-general` → misma forma (columnas `importe` = saldo final a `hasta`,
+  y `comparativo`/`variacion`), `"resumen": {"activo", "pasivo", "capital", "resultado",
+  "resultados_sin_cierre", "pasivo_mas_capital", "cuentas_de_orden"}, "cuadra", "diferencia"`.
+  Cuadre: activo = pasivo + capital + resultado del ejercicio.
+- Clasificación por el primer segmento del código agrupador de cada cuenta: 101–149 activo
+  circulante, 150–199 no circulante, 201–249 pasivo corto plazo, 250–299 largo plazo, 3xx
+  capital, 401–402 ingresos, 5xx costo, 6xx gastos (611 → impuestos a la utilidad), 403/702/704
+  otros ingresos y productos financieros, 701/703 gastos financieros y otros gastos, 8xx orden.
+- `GET …/reportes/polizas?desde&hasta&estado` → `{"total", "truncado", "polizas": [póliza con
+  "movimientos"]}` (máx. 2,000; para imprimir).
+- `GET …/reportes/excel?reporte=balanza|auxiliar|estado_resultados|balance_general|polizas&…`
+  (+ `cuenta_id` para `auxiliar`, 422 si falta) → archivo `.xlsx` (openpyxl) con importes
+  numéricos en formato `#,##0.00` y sus totales. El PDF se arma en el front (jspdf) con la
+  misma respuesta JSON.
+
+### Cierre de periodo y de ejercicio (P2-08)
+
+- `GET …/periodos/{anio}` → `{"anio", "meses": [{"mes", "estado": "abierto" | "cerrado",
+  "cerrado_en", "cerrado_por", "polizas"}], "historial": [{"mes" (0 = ejercicio), "accion":
+  "cerrar" | "reabrir" | "cierre_anual" | "deshacer_cierre_anual", "motivo", "uid", "fecha"}],
+  "cierre_anual": {"hecho", "polizas"}}`.
+- `GET …/periodos/{anio}/{mes}/validacion` → `{"desde", "hasta", "balanza_cuadra",
+  "diferencias", "cfdi_sin_poliza": [{"uuid", "fecha", "tipo", "direccion", "rfc", "total",
+  "moneda"}] (máx. 200), "total_cfdi_sin_poliza", "se_puede_cerrar"}`. CFDI sin póliza =
+  vigentes del mes (sin traslados ni nómina recibida) sin póliza que los cite.
+- `POST …/periodos/{anio}/{mes}/cerrar` body `{"forzar"?: false, "motivo"?}` →
+  `{"validacion"}`. Balanza descuadrada → 409 (no se fuerza). CFDI sin póliza → 409 salvo
+  `forzar: true` con motivo (≥ 5 caracteres, si no 422). Ya cerrado → 409.
+- `POST …/periodos/{anio}/{mes}/reabrir` body `{"motivo"}` (≥ 5, si no 422). Sólo rol `dueno`
+  o `contador` (auxiliar → 403). No cerrado → 404.
+- `GET …/cierre-anual/{anio}/validacion` → misma forma, sobre el ejercicio (desde la fecha de
+  saldos iniciales si la contabilidad arrancó ese año).
+- `POST …/cierre-anual/{anio}` body `{"traspasar_resultado"?: false, "forzar"?: false,
+  "motivo"?}` → `{"anio", "resultado" (utilidad +), "tipo_resultado": "utilidad" | "perdida",
+  "polizas", "validacion"}`. Genera tres pólizas de diario: cierre de resultados (31-dic,
+  contra 305.01/305.02), cierre de balance (31-dic) y apertura (1-ene siguiente; con
+  `traspasar_resultado` el resultado abre en 304.01/304.02). Cuentas por rol
+  `resultado_utilidad`, `resultado_perdida`, `utilidad_anteriores`, `perdida_anteriores`
+  (configurables). Cierra los doce meses. Mismas validaciones que el mensual; ya cerrado o
+  enero siguiente cerrado → 409.
+- `POST …/cierre-anual/{anio}/deshacer` body `{"motivo"}` → `{"canceladas"}`. Dueño o contador;
+  cancela las tres pólizas (si enero siguiente sigue abierto) y reabre diciembre.
+

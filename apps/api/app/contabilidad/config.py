@@ -73,6 +73,11 @@ ROLES: dict[str, tuple[str, str]] = {
     "isr_retenido_asimilados": ("216.02", "ISR retenido por asimilados"),
     "otras_deducciones_nomina": ("216.11", "Otras deducciones de nómina (IMSS obrero, etc.)"),
     "otros_pagos_nomina": ("110.01", "Otros pagos de nómina (subsidio al empleo)"),
+    # P2-08: cierre anual y apertura.
+    "resultado_utilidad": ("305.01", "Utilidad del ejercicio (póliza de cierre)"),
+    "resultado_perdida": ("305.02", "Pérdida del ejercicio (póliza de cierre)"),
+    "utilidad_anteriores": ("304.01", "Utilidad de ejercicios anteriores (apertura)"),
+    "perdida_anteriores": ("304.02", "Pérdida de ejercicios anteriores (apertura)"),
 }
 
 # c_FormaPago del SAT → rol de la cuenta de efectivo. Las formas que no mueven dinero

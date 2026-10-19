@@ -146,7 +146,9 @@ fiscalito-store-app/
 │   │   ├── voice/               # useVoiceChat (hook: STT/Chat/TTS + VAD) + VoiceChatUI
 │   │   ├── contabilidad/        # Tabs de Contabilito (P2): CatalogoCuentas, ConfigPolizas,
 │   │   │                        # ReglasEgreso, PolizasCliente, DetallePoliza, FormPoliza,
-│   │   │                        # BalanzaCliente, AuxiliarCuenta, SaldosIniciales, BuzonTab
+│   │   │                        # BalanzaCliente, AuxiliarCuenta, SaldosIniciales, BuzonTab,
+│   │   │                        # ReportesContables, FiltrosReportes, TablaEstadoFinanciero (P2-05),
+│   │   │                        # PeriodosContables, ValidacionPeriodo, CierreAnual (P2-08)
 │   │   └── fiscalito/           # Tabs del servicio Fiscalito
 │   │       ├── PreDeclaracionTab.tsx      # Upload XML + calculo pre-declaracion
 │   │       ├── DeclaracionAnualTab.tsx    # T3: ejercicio completo + deducciones personales
@@ -565,6 +567,13 @@ cliente, `SinClienteActivo`; al cambiar de cliente se remonta (`key`).
   cambios hasta P2-07).
 - Servicio: `services/contabilidadApi.ts` (tipos en `contabilidadTipos.ts`). Los importes viajan
   como texto; el front no decide el cuadre, lo pinta.
+- **Reportes** (P2-05, `ReportesContables`): estado de resultados, balance general, balanza,
+  auxiliar e impresión de pólizas, con filtros de ejercicio/periodo, cuentas, nivel,
+  agrupación, moneda + tipo de cambio, idioma y comparativo. Excel lo genera el backend; PDF
+  `services/pdfExportContabilidad.ts` (jspdf) transcribiendo la misma respuesta.
+- **Periodos** (P2-08, `PeriodosContables`): estado por mes, cerrar con la validación del
+  backend (lista de CFDI sin póliza; forzar con motivo), reabrir con motivo, cierre anual
+  (`CierreAnual`) y bitácora.
 
 ### Constancias de retencion y DIOT .txt (T5)
 

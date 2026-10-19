@@ -150,16 +150,27 @@ export interface Cancelacion {
 export interface CerrarPeriodoRequest {
   cliente: string;
   empleados: string[];
-  periodo: app__schemas__asistencia__Periodo;
+  periodo: Periodo;
   horario?: HorarioLaboral;
 }
 
 export interface CerrarPeriodoResponse {
   exito?: boolean;
   cliente: string;
-  periodo: PeriodoOutput;
+  periodo: Periodo;
   incidencias: IncidenciasEmpleado[];
   empleados_desconocidos?: string[];
+}
+
+export interface Cierre {
+  forzar?: boolean;
+  motivo?: string;
+}
+
+export interface CierreAnual {
+  traspasar_resultado?: boolean;
+  forzar?: boolean;
+  motivo?: string;
 }
 
 /** Un cliente tal como lo captura el despacho. */
@@ -810,7 +821,7 @@ export interface PerfilContribuyente {
 export type PeriodicidadDeclaracion = "mensual" | "bimestral" | "anual";
 
 /** Periodo cerrado, inclusivo en los dos extremos. */
-export interface PeriodoOutput {
+export interface Periodo {
   inicio: string;
   fin: string;
 }
@@ -955,6 +966,10 @@ export interface RangoEntrada {
 export interface RangoEstatus {
   desde: string;
   hasta: string;
+}
+
+export interface Reapertura {
+  motivo: string;
 }
 
 /** Lo que el CFDI necesita de un recibo, y nada más. */
@@ -1184,11 +1199,6 @@ export interface app__routes__contabilidad__ConfigEntrada {
   fecha_saldos_iniciales?: string | null;
 }
 
-export interface app__routes__contabilidad__Periodo {
-  anio: number;
-  mes: number;
-}
-
 export interface app__routes__sat_descarga__ConfigEntrada {
   activa?: boolean | null;
   emitidos?: boolean | null;
@@ -1203,12 +1213,6 @@ export interface app__routes__sat_verificacion__ConfigEntrada {
   automatico?: boolean;
   dia_del_mes?: number;
   constancia?: boolean;
-}
-
-/** Periodo cerrado, inclusivo en los dos extremos. */
-export interface app__schemas__asistencia__Periodo {
-  inicio: string;
-  fin: string;
 }
 
 /** Toda ruta que publica la API. */
@@ -1241,19 +1245,29 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
   | "/api/v1/comparar-regimenes"
   | "/api/v1/contabilidad/clientes/{clave}/balanza"
+  | "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}"
+  | "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer"
+  | "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion"
   | "/api/v1/contabilidad/clientes/{clave}/config"
   | "/api/v1/contabilidad/clientes/{clave}/cuentas"
   | "/api/v1/contabilidad/clientes/{clave}/cuentas/sembrar"
   | "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}"
   | "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar"
   | "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados"
-  | "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion"
   | "/api/v1/contabilidad/clientes/{clave}/polizas"
   | "/api/v1/contabilidad/clientes/{clave}/polizas/generar"
   | "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}"
   | "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar"
   | "/api/v1/contabilidad/clientes/{clave}/reglas"
   | "/api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}"
+  | "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general"
+  | "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados"
+  | "/api/v1/contabilidad/clientes/{clave}/reportes/excel"
+  | "/api/v1/contabilidad/clientes/{clave}/reportes/polizas"
   | "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales"
   | "/api/v1/contabilidad/codigo-agrupador"
   | "/api/v1/deducciones-personales"
@@ -1443,6 +1457,18 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: Record<string, unknown>;
   };
+  "POST /api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}": {
+    cuerpo: CierreAnual;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer": {
+    cuerpo: Reapertura;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/contabilidad/clientes/{clave}/config": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -1479,11 +1505,19 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: Record<string, unknown>;
   };
-  "POST /api/v1/contabilidad/clientes/{clave}/periodos-cerrados": {
-    cuerpo: app__routes__contabilidad__Periodo;
+  "GET /api/v1/contabilidad/clientes/{clave}/periodos/{anio}": {
+    cuerpo: never;
     respuesta: Record<string, unknown>;
   };
-  "DELETE /api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}": {
+  "POST /api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar": {
+    cuerpo: Cierre;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir": {
+    cuerpo: Reapertura;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
   };
@@ -1521,6 +1555,22 @@ export interface OperacionesApi {
   };
   "PATCH /api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}": {
     cuerpo: ReglaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/reportes/balance-general": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/reportes/excel": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/reportes/polizas": {
+    cuerpo: never;
     respuesta: Record<string, unknown>;
   };
   "GET /api/v1/contabilidad/clientes/{clave}/saldos-iniciales": {

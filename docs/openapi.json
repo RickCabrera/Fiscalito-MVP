@@ -7001,6 +7001,7 @@
           "contabilidad"
         ],
         "summary": "Periodos",
+        "description": "Los meses cerrados. Cerrar y reabrir: `contabilidad_reportes.py` (P2-08).",
         "operationId": "periodos_api_v1_contabilidad_clientes__clave__periodos_cerrados_get",
         "parameters": [
           {
@@ -7038,152 +7039,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Periodos Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "contabilidad"
-        ],
-        "summary": "Cerrar",
-        "operationId": "cerrar_api_v1_contabilidad_clientes__clave__periodos_cerrados_post",
-        "parameters": [
-          {
-            "name": "clave",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Clave"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/app__routes__contabilidad__Periodo"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Cerrar Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}": {
-      "delete": {
-        "tags": [
-          "contabilidad"
-        ],
-        "summary": "Abrir",
-        "operationId": "abrir_api_v1_contabilidad_clientes__clave__periodos_cerrados__anio___mes__delete",
-        "parameters": [
-          {
-            "name": "clave",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Clave"
-            }
-          },
-          {
-            "name": "anio",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Anio"
-            }
-          },
-          {
-            "name": "mes",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Mes"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Abrir Api V1 Contabilidad Clientes  Clave  Periodos Cerrados  Anio   Mes  Delete"
                 }
               }
             }
@@ -7269,6 +7124,16 @@
               "type": "string",
               "default": "con_saldo_o_movimiento",
               "title": "Solo"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
             }
           },
           {
@@ -7358,6 +7223,16 @@
               "type": "string",
               "format": "date",
               "title": "Hasta"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
             }
           },
           {
@@ -7514,6 +7389,1281 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Guardar Saldos Api V1 Contabilidad Clientes  Clave  Saldos Iniciales Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Estado Resultados",
+        "operationId": "estado_resultados_api_v1_contabilidad_clientes__clave__reportes_estado_resultados_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Resultados Api V1 Contabilidad Clientes  Clave  Reportes Estado Resultados Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Balance General",
+        "operationId": "balance_general_api_v1_contabilidad_clientes__clave__reportes_balance_general_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Balance General Api V1 Contabilidad Clientes  Clave  Reportes Balance General Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/polizas": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Polizas Impresion",
+        "description": "Pólizas del rango CON sus movimientos, para imprimirlas (máx. 2000).",
+        "operationId": "polizas_impresion_api_v1_contabilidad_clientes__clave__reportes_polizas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "activa",
+                    "cancelada"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Polizas Impresion Api V1 Contabilidad Clientes  Clave  Reportes Polizas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/excel": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Exportar Excel",
+        "description": "El reporte pedido como .xlsx (importes numéricos con formato y sus totales).",
+        "operationId": "exportar_excel_api_v1_contabilidad_clientes__clave__reportes_excel_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "reporte",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "balanza",
+                "auxiliar",
+                "estado_resultados",
+                "balance_general",
+                "polizas"
+              ],
+              "type": "string",
+              "title": "Reporte"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Periodos Del Ejercicio",
+        "operationId": "periodos_del_ejercicio_api_v1_contabilidad_clientes__clave__periodos__anio__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Periodos Del Ejercicio Api V1 Contabilidad Clientes  Clave  Periodos  Anio  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Validar Mes",
+        "description": "Qué impide cerrar el mes: descuadre y CFDI vigentes sin póliza (con su lista).",
+        "operationId": "validar_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__validacion_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Validar Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Validacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cerrar Mes",
+        "operationId": "cerrar_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__cerrar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Cierre"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cerrar Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Cerrar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Reabrir Mes",
+        "operationId": "reabrir_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__reabrir_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reapertura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reabrir Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Reabrir Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Validar Ejercicio",
+        "operationId": "validar_ejercicio_api_v1_contabilidad_clientes__clave__cierre_anual__anio__validacion_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Validar Ejercicio Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Validacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cierre Anual",
+        "operationId": "cierre_anual_api_v1_contabilidad_clientes__clave__cierre_anual__anio__post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CierreAnual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cierre Anual Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Deshacer Cierre Anual",
+        "operationId": "deshacer_cierre_anual_api_v1_contabilidad_clientes__clave__cierre_anual__anio__deshacer_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reapertura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Deshacer Cierre Anual Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Deshacer Post"
                 }
               }
             }
@@ -8243,7 +9393,7 @@
             "description": "employeeNo de los empleados del cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/app__schemas__asistencia__Periodo"
+            "$ref": "#/components/schemas/Periodo"
           },
           "horario": {
             "$ref": "#/components/schemas/HorarioLaboral"
@@ -8269,7 +9419,7 @@
             "title": "Cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/Periodo-Output"
+            "$ref": "#/components/schemas/Periodo"
           },
           "incidencias": {
             "items": {
@@ -8295,6 +9445,45 @@
           "incidencias"
         ],
         "title": "CerrarPeriodoResponse"
+      },
+      "Cierre": {
+        "properties": {
+          "forzar": {
+            "type": "boolean",
+            "title": "Forzar",
+            "default": false
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Cierre"
+      },
+      "CierreAnual": {
+        "properties": {
+          "traspasar_resultado": {
+            "type": "boolean",
+            "title": "Traspasar Resultado",
+            "default": false
+          },
+          "forzar": {
+            "type": "boolean",
+            "title": "Forzar",
+            "default": false
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CierreAnual"
       },
       "ClienteCarteraSchema": {
         "properties": {
@@ -11646,7 +12835,7 @@
         ],
         "title": "PeriodicidadDeclaracion"
       },
-      "Periodo-Output": {
+      "Periodo": {
         "properties": {
           "inicio": {
             "type": "string",
@@ -12359,6 +13548,21 @@
           "hasta"
         ],
         "title": "RangoEstatus"
+      },
+      "Reapertura": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "Reapertura"
       },
       "ReciboCFDISchema": {
         "properties": {
@@ -13613,28 +14817,6 @@
         "type": "object",
         "title": "ConfigEntrada"
       },
-      "app__routes__contabilidad__Periodo": {
-        "properties": {
-          "anio": {
-            "type": "integer",
-            "maximum": 2100.0,
-            "minimum": 2000.0,
-            "title": "Anio"
-          },
-          "mes": {
-            "type": "integer",
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Mes"
-          }
-        },
-        "type": "object",
-        "required": [
-          "anio",
-          "mes"
-        ],
-        "title": "Periodo"
-      },
       "app__routes__sat_descarga__ConfigEntrada": {
         "properties": {
           "activa": {
@@ -13742,27 +14924,6 @@
         },
         "type": "object",
         "title": "ConfigEntrada"
-      },
-      "app__schemas__asistencia__Periodo": {
-        "properties": {
-          "inicio": {
-            "type": "string",
-            "format": "date",
-            "title": "Inicio"
-          },
-          "fin": {
-            "type": "string",
-            "format": "date",
-            "title": "Fin"
-          }
-        },
-        "type": "object",
-        "required": [
-          "inicio",
-          "fin"
-        ],
-        "title": "Periodo",
-        "description": "Periodo cerrado, inclusivo en los dos extremos."
       }
     }
   }

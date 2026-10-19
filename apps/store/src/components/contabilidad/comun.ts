@@ -7,7 +7,7 @@
  */
 
 import { fmtMoney } from '../../utils/format';
-import type { Cuenta } from '../../services/contabilidadApi';
+import type { Cuenta, TipoReporte } from '../../services/contabilidadApi';
 
 /** Primer y último día del mes de `fecha` (AAAA-MM-DD). */
 export function mesDe(fecha: string = new Date().toISOString().slice(0, 10)): { desde: string; hasta: string } {
@@ -73,4 +73,23 @@ export function enArbol(cuentas: Cuenta[]): Cuenta[] {
   };
   visitar(null);
   return salida;
+}
+
+// ── P2-05 / P2-08 ──
+
+export const REPORTES: { id: TipoReporte; nombre: string }[] = [
+  { id: 'estado_resultados', nombre: 'Estado de resultados' },
+  { id: 'balance_general', nombre: 'Balance general' },
+  { id: 'balanza', nombre: 'Balanza de comprobación' },
+  { id: 'auxiliar', nombre: 'Auxiliar de cuenta' },
+  { id: 'polizas', nombre: 'Impresión de pólizas' },
+];
+
+export const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
+  'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+/** Rango de un periodo: mes 1-12, 0 = ejercicio completo, -1 = fechas libres (no cambia). */
+export function rangoDePeriodo(anio: number, periodo: number): { desde: string; hasta: string } {
+  if (periodo === 0) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` };
+  return mesDe(`${anio}-${String(periodo).padStart(2, '0')}-01`);
 }
