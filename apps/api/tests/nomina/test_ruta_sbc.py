@@ -24,7 +24,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.constants import ZonaSalarioMinimo, salario_minimo_vigente, uma_vigente
-from app.main import app
 from app.nomina_engine.integracion import (
     clamp_sbc,
     dias_vacaciones_de_ley,
@@ -37,9 +36,7 @@ RUTA = "/api/v1/nomina/sbc"
 FECHA = "2026-09-01"
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 def pedir(cliente_http: TestClient, **campos) -> dict:

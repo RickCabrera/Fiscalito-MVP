@@ -1,7 +1,7 @@
 """
 Schemas de la cartera de clientes del despacho (E-02).
 
-**Demo — datos estáticos, sin autenticación, no desplegar.** Mismo estatus que
+**Demo — datos estáticos, no desplegar.** Mismo estatus que
 la épica D: la persistencia y el alta de clientes reales son F1-09.
 """
 

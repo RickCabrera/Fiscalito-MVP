@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from app.asistencia.almacen import almacen
+from app.asistencia.almacen import almacen, llave_almacen
 from app.asistencia.incidencias import cerrar_periodo
 from app.constants import CLIENTE_DEMO
 from app.demo_nomina import CLAVE_PERIODICIDAD_DEMO, PLANTILLA_DEMO, PRIMA_RIESGO_DEMO
@@ -79,9 +79,13 @@ def _error(mensaje: str) -> str:
     return json.dumps({"error": mensaje}, ensure_ascii=False)
 
 
-def calcular_nomina_periodo(tool_input: dict) -> str:
+def calcular_nomina_periodo(tool_input: dict, despacho_id: str | None = None) -> str:
     """
     Ejecuta la tool. Devuelve JSON para el LLM, nunca levanta.
+
+    `despacho_id` es el del usuario autenticado (P0-02): las checadas se leen bajo
+    `llave_almacen(despacho_id, cliente)`, igual que las guarda la ruta. Sin despacho
+    (llamada directa desde un test) se usa la clave pelada del cliente.
 
     El agente convierte cualquier excepción en un turno roto, así que los
     errores de dominio se devuelven como `{"error": ...}` y el modelo puede
@@ -94,7 +98,8 @@ def calcular_nomina_periodo(tool_input: dict) -> str:
         return _error(str(exc))
     cliente = tool_input.get("cliente") or CLIENTE_DEMO
 
-    eventos = almacen.eventos(cliente)
+    llave = llave_almacen(despacho_id, cliente) if despacho_id else cliente
+    eventos = almacen.eventos(llave)
     del_periodo = [e for e in eventos if inicio <= e.timestamp.date() <= fin]
     if not del_periodo:
         return _error(
