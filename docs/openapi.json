@@ -7530,10 +7530,993 @@
           }
         }
       }
+    },
+    "/api/v1/impuestos/clientes/{clave}/config": {
+      "get": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Leer Config",
+        "description": "Criterio fiscal del cliente (DP-3), con defaults si no hay.",
+        "operationId": "leer_config_api_v1_impuestos_clientes__clave__config_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Leer Config Api V1 Impuestos Clientes  Clave  Config Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Guardar Config",
+        "description": "Guarda el criterio fiscal del cliente.",
+        "operationId": "guardar_config_api_v1_impuestos_clientes__clave__config_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigImpuestosSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Config Api V1 Impuestos Clientes  Clave  Config Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/resumen": {
+      "post": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Resumen",
+        "description": "Tabla de impuestos del periodo con actualización y recargos a la fecha de pago.",
+        "operationId": "resumen_api_v1_impuestos_clientes__clave__resumen_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/iva": {
+      "post": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Iva",
+        "description": "IVA de uno o varios meses desde la bóveda, con saldo a favor arrastrado (Art. 6o. LIVA).",
+        "operationId": "iva_api_v1_impuestos_clientes__clave__iva_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IvaPeriodoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Iva Api V1 Impuestos Clientes  Clave  Iva Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/isn": {
+      "get": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Isn",
+        "description": "ISN del mes del cliente con sus CFDI de nómina y su entidad.",
+        "operationId": "isn_api_v1_impuestos_clientes__clave__isn_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Isn Api V1 Impuestos Clientes  Clave  Isn Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/actualizacion-recargos": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Actualizacion Recargos",
+        "description": "Actualización (Art. 17-A CFF) y recargos (Art. 21 CFF) de un adeudo.",
+        "operationId": "actualizacion_recargos_api_v1_calculadoras_actualizacion_recargos_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizacionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Actualizacion Recargos Api V1 Calculadoras Actualizacion Recargos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/fecha-limite": {
+      "get": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Fecha Limite",
+        "description": "Día 17 del mes siguiente corrido a hábil (Art. 12 CFF).",
+        "operationId": "fecha_limite_api_v1_calculadoras_fecha_limite_get",
+        "parameters": [
+          {
+            "name": "anio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Fecha Limite Api V1 Calculadoras Fecha Limite Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/isr-sueldos": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Isr Sueldos",
+        "description": "ISR a retener de sueldos con el motor de nómina.",
+        "operationId": "isr_sueldos_api_v1_calculadoras_isr_sueldos_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IsrSueldosRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Isr Sueldos Api V1 Calculadoras Isr Sueldos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/isr-resico": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Isr Resico",
+        "description": "ISR mensual RESICO PF con el mismo motor de la pre-declaración (Art. 113-E LISR).",
+        "operationId": "isr_resico_api_v1_calculadoras_isr_resico_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IsrResicoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Isr Resico Api V1 Calculadoras Isr Resico Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/isn/tasas": {
+      "get": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Isn Tasas",
+        "description": "Catálogo de tasas ISN vigentes por entidad, con su fuente.",
+        "operationId": "isn_tasas_api_v1_calculadoras_isn_tasas_get",
+        "parameters": [
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fecha"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Isn Tasas Api V1 Calculadoras Isn Tasas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/isn": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Isn",
+        "description": "ISN: con cliente (bóveda + entidad del cliente) o con datos capturados.",
+        "operationId": "isn_api_v1_calculadoras_isn_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IsnRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Isn Api V1 Calculadoras Isn Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/aguinaldo": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Aguinaldo",
+        "description": "Aguinaldo proporcional y su ISR (versión mínima, P4 la reemplaza).",
+        "operationId": "aguinaldo_api_v1_calculadoras_aguinaldo_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AguinaldoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Aguinaldo Api V1 Calculadoras Aguinaldo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/ptu": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Ptu",
+        "description": "PTU de un trabajador y su ISR (versión mínima, P4 la reemplaza).",
+        "operationId": "ptu_api_v1_calculadoras_ptu_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PtuRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ptu Api V1 Calculadoras Ptu Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculadoras/finiquito": {
+      "post": {
+        "tags": [
+          "calculadoras"
+        ],
+        "summary": "Finiquito",
+        "description": "Finiquito o liquidación y su ISR (versión mínima, P4 la reemplaza).",
+        "operationId": "finiquito_api_v1_calculadoras_finiquito_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FiniquitoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Finiquito Api V1 Calculadoras Finiquito Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActualizacionRequest": {
+        "properties": {
+          "monto": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Monto"
+          },
+          "fecha_limite": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Limite"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "tipo_recargo": {
+            "type": "string",
+            "enum": [
+              "mora",
+              "prorroga",
+              "parcialidades_12",
+              "parcialidades_24",
+              "parcialidades_mas_24"
+            ],
+            "title": "Tipo Recargo",
+            "default": "mora"
+          },
+          "modo_factor": {
+            "type": "string",
+            "enum": [
+              "truncar",
+              "redondear",
+              "sin_redondeo"
+            ],
+            "title": "Modo Factor",
+            "default": "truncar"
+          },
+          "tope_meses": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Tope Meses",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "required": [
+          "monto",
+          "fecha_limite",
+          "fecha_pago"
+        ],
+        "title": "ActualizacionRequest",
+        "description": "`POST /calculadoras/actualizacion-recargos`."
+      },
       "AcumuladoMultiPeriodo": {
         "properties": {
           "total_isr_pagado": {
@@ -7654,6 +8637,56 @@
         ],
         "title": "AgentePreDeclaracionResponse",
         "description": "Respuesta del agente de pre-declaraciones."
+      },
+      "AguinaldoRequest": {
+        "properties": {
+          "salario_diario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Diario"
+          },
+          "dias_aguinaldo": {
+            "type": "integer",
+            "minimum": 15.0,
+            "title": "Dias Aguinaldo",
+            "default": 15
+          },
+          "dias_trabajados_en_el_anio": {
+            "type": "integer",
+            "maximum": 366.0,
+            "minimum": 0.0,
+            "title": "Dias Trabajados En El Anio",
+            "default": 365
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "zona": {
+            "type": "string",
+            "enum": [
+              "general",
+              "zlfn"
+            ],
+            "title": "Zona",
+            "default": "general"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salario_diario",
+          "fecha_pago"
+        ],
+        "title": "AguinaldoRequest",
+        "description": "`POST /calculadoras/aguinaldo`."
       },
       "Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post": {
         "properties": {
@@ -8228,6 +9261,54 @@
         "type": "object",
         "title": "Cancelacion"
       },
+      "CapturaRenglon": {
+        "properties": {
+          "importe_a_pagar": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importe A Pagar"
+          },
+          "subsidio": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Subsidio",
+            "default": "0"
+          },
+          "compensaciones": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Compensaciones",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "title": "CapturaRenglon",
+        "description": "Captura del contador en un renglón del resumen."
+      },
       "CerrarPeriodoRequest": {
         "properties": {
           "cliente": {
@@ -8722,6 +9803,116 @@
         ],
         "title": "CompararRegimenResponse",
         "description": "Respuesta con ISR estimado para cada regimen fiscal, ordenado de menor a mayor."
+      },
+      "ConfigImpuestosSchema": {
+        "properties": {
+          "modo_factor": {
+            "type": "string",
+            "enum": [
+              "truncar",
+              "redondear",
+              "sin_redondeo"
+            ],
+            "title": "Modo Factor",
+            "default": "truncar"
+          },
+          "tipo_recargo": {
+            "type": "string",
+            "enum": [
+              "mora",
+              "prorroga",
+              "parcialidades_12",
+              "parcialidades_24",
+              "parcialidades_mas_24"
+            ],
+            "title": "Tipo Recargo",
+            "default": "mora"
+          },
+          "tope_meses_recargos": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Tope Meses Recargos",
+            "default": 60
+          },
+          "region_fronteriza": {
+            "type": "boolean",
+            "title": "Region Fronteriza",
+            "default": false
+          },
+          "proporcion_iva_modo": {
+            "type": "string",
+            "enum": [
+              "calculada",
+              "fija"
+            ],
+            "title": "Proporcion Iva Modo",
+            "default": "calculada"
+          },
+          "proporcion_iva_fija": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proporcion Iva Fija"
+          },
+          "asignacion_iva": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "gravado",
+                "exento",
+                "indistinto"
+              ]
+            },
+            "type": "object",
+            "title": "Asignacion Iva"
+          },
+          "isn_aplicar_adicional": {
+            "type": "boolean",
+            "title": "Isn Aplicar Adicional",
+            "default": true
+          },
+          "isn_claves_excluidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Isn Claves Excluidas"
+          },
+          "isn_claves_incluidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Isn Claves Incluidas"
+          },
+          "saldo_favor_iva_inicial": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Saldo Favor Iva Inicial",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "title": "ConfigImpuestosSchema",
+        "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-C, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
       },
       "ContributorType": {
         "type": "string",
@@ -10712,6 +11903,104 @@
         ],
         "title": "EventosResponse"
       },
+      "FiniquitoRequest": {
+        "properties": {
+          "salario_diario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Diario"
+          },
+          "fecha_ingreso": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Ingreso"
+          },
+          "fecha_baja": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Baja"
+          },
+          "dias_aguinaldo": {
+            "type": "integer",
+            "minimum": 15.0,
+            "title": "Dias Aguinaldo",
+            "default": 15
+          },
+          "prima_vacacional": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.25
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Vacacional",
+            "default": "0.25"
+          },
+          "dias_vacaciones_pendientes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dias Vacaciones Pendientes",
+            "default": "0"
+          },
+          "dias_pendientes_de_pago": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dias Pendientes De Pago",
+            "default": "0"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "renuncia",
+              "despido_injustificado"
+            ],
+            "title": "Tipo",
+            "default": "renuncia"
+          },
+          "zona": {
+            "type": "string",
+            "enum": [
+              "general",
+              "zlfn"
+            ],
+            "title": "Zona",
+            "default": "general"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salario_diario",
+          "fecha_ingreso",
+          "fecha_baja"
+        ],
+        "title": "FiniquitoRequest",
+        "description": "`POST /calculadoras/finiquito`."
+      },
       "FuenteChecada": {
         "type": "string",
         "enum": [
@@ -10976,6 +12265,256 @@
         ],
         "title": "IncidenciasEmpleadoSchema",
         "description": "Incidencias de un empleado, tal como las devuelve `cerrar-periodo`.\n\n`dias_periodo` son **días naturales**, no laborables ni cotizados.\n`dias_ausentismo` alimenta `DiasDelPeriodo`; `faltas` descuenta días\npagados. Hoy son el mismo número; en F1-09 divergen."
+      },
+      "IsnRequest": {
+        "properties": {
+          "cliente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cliente"
+          },
+          "anio": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2020.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anio"
+          },
+          "mes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 12.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mes"
+          },
+          "entidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entidad"
+          },
+          "fecha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha"
+          },
+          "percepciones": {
+            "items": {
+              "$ref": "#/components/schemas/PercepcionEntrada"
+            },
+            "type": "array",
+            "title": "Percepciones"
+          },
+          "total_erogaciones": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Erogaciones"
+          },
+          "aplicar_adicional": {
+            "type": "boolean",
+            "title": "Aplicar Adicional",
+            "default": true
+          },
+          "claves_excluidas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Claves Excluidas"
+          }
+        },
+        "type": "object",
+        "title": "IsnRequest",
+        "description": "`POST /calculadoras/isn`.\n\nCon `cliente` + `anio`/`mes`: usa la entidad del cliente y los CFDI de nómina de la bóveda.\nSin cliente: `entidad` y `percepciones` (o `total_erogaciones` como una sola percepción)."
+      },
+      "IsrResicoRequest": {
+        "properties": {
+          "ingresos_cobrados": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Ingresos Cobrados"
+          },
+          "isr_retenido": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Isr Retenido",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ingresos_cobrados"
+        ],
+        "title": "IsrResicoRequest",
+        "description": "`POST /calculadoras/isr-resico`."
+      },
+      "IsrSueldosRequest": {
+        "properties": {
+          "base_gravable": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Base Gravable"
+          },
+          "clave_periodicidad": {
+            "type": "string",
+            "pattern": "^\\d{2}$",
+            "title": "Clave Periodicidad",
+            "default": "05"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "ingreso_gravado_mensual": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingreso Gravado Mensual"
+          },
+          "dias_periodo": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Dias Periodo",
+            "default": 30
+          },
+          "es_trabajador_de_salario_minimo": {
+            "type": "boolean",
+            "title": "Es Trabajador De Salario Minimo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_gravable",
+          "fecha_pago"
+        ],
+        "title": "IsrSueldosRequest",
+        "description": "`POST /calculadoras/isr-sueldos`."
+      },
+      "IvaPeriodoRequest": {
+        "properties": {
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2020.0,
+            "title": "Anio"
+          },
+          "meses": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Meses"
+          },
+          "saldo_favor_inicial": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saldo Favor Inicial"
+          },
+          "opciones_saldo": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "acreditar",
+                "devolucion",
+                "compensacion"
+              ]
+            },
+            "type": "object",
+            "title": "Opciones Saldo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio",
+          "meses"
+        ],
+        "title": "IvaPeriodoRequest",
+        "description": "`POST /impuestos/clientes/{clave}/iva`."
       },
       "ListaTrabajos": {
         "properties": {
@@ -11558,6 +13097,39 @@
           "importe"
         ],
         "title": "PartidaSchema"
+      },
+      "PercepcionEntrada": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "pattern": "^\\d{3}$",
+            "title": "Clave"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "importe"
+        ],
+        "title": "PercepcionEntrada",
+        "description": "Una percepción (clave c_TipoPercepcion) para el ISN."
       },
       "PerfilContribuyente": {
         "properties": {
@@ -12279,6 +13851,99 @@
         "title": "ProveedorDIOT",
         "description": "Detalle de un proveedor en el DIOT."
       },
+      "PtuRequest": {
+        "properties": {
+          "utilidad_repartible": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Utilidad Repartible"
+          },
+          "dias_trabajador": {
+            "type": "integer",
+            "maximum": 366.0,
+            "minimum": 0.0,
+            "title": "Dias Trabajador"
+          },
+          "salario_trabajador": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Trabajador"
+          },
+          "total_dias_todos": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Total Dias Todos"
+          },
+          "total_salarios_todos": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Total Salarios Todos"
+          },
+          "salario_diario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Diario"
+          },
+          "promedio_ptu_3_anios": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Promedio Ptu 3 Anios",
+            "default": "0"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          }
+        },
+        "type": "object",
+        "required": [
+          "utilidad_repartible",
+          "dias_trabajador",
+          "salario_trabajador",
+          "total_dias_todos",
+          "total_salarios_todos",
+          "salario_diario",
+          "fecha_pago"
+        ],
+        "title": "PtuRequest",
+        "description": "`POST /calculadoras/ptu`."
+      },
       "Rango": {
         "properties": {
           "desde": {
@@ -12700,6 +14365,65 @@
         ],
         "title": "ResultadoRegimen",
         "description": "Resultado ISR estimado para un regimen fiscal especifico."
+      },
+      "ResumenRequest": {
+        "properties": {
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2020.0,
+            "title": "Anio"
+          },
+          "mes": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "fecha_limite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Limite",
+            "description": "Si se omite: día 17 del mes siguiente, corrido a hábil."
+          },
+          "capturas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CapturaRenglon"
+            },
+            "type": "object",
+            "title": "Capturas"
+          },
+          "formato": {
+            "type": "string",
+            "enum": [
+              "json",
+              "xlsx",
+              "csv"
+            ],
+            "title": "Formato",
+            "default": "json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio",
+          "mes",
+          "fecha_pago"
+        ],
+        "title": "ResumenRequest",
+        "description": "`POST /impuestos/clientes/{clave}/resumen`."
       },
       "RetencionesCliente": {
         "properties": {

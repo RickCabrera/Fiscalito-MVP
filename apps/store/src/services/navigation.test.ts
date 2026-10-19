@@ -54,6 +54,8 @@ describe('getSidebarLinks', () => {
       // de un servicio del catálogo, no el de la marca que lo aloja, y los dos
       // coincidieron alguna vez por accidente del rebrand.
       { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
+      // P3-08: calculadoras fiscales sueltas, sin alcance de cliente.
+      { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
   });
@@ -163,7 +165,7 @@ describe('rutaTieneAlcanceDeCliente', () => {
   });
 
   it('no lo muestra en Calendario (toda la cartera) ni en Perfil (del despacho)', () => {
-    for (const ruta of ['/app/calendario', '/app/profile', '/app/store/fiscalito']) {
+    for (const ruta of ['/app/calendario', '/app/profile', '/app/store/fiscalito', '/app/calculadoras']) {
       expect(rutaTieneAlcanceDeCliente(ruta), ruta).toBe(false);
     }
   });
@@ -173,11 +175,17 @@ describe('getTabsForProfile (régimen del cliente activo)', () => {
   it('un cliente 612 ve el set completo', () => {
     expect(getTabsForProfile('612')).toEqual([
       'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+      // P3-02: resumen y actualización de impuestos, al final (no es el tab por defecto).
+      'resumen',
     ]);
   });
 
   it('un cliente 626 NO ve DIOT ni Retenciones', () => {
-    expect(getTabsForProfile('626')).toEqual(['declaracion', 'anual', 'calendario', 'comparar', 'estado']);
+    expect(getTabsForProfile('626')).toEqual(['declaracion', 'anual', 'calendario', 'comparar', 'estado', 'resumen']);
+  });
+
+  it('el 605 no ve el resumen de impuestos: no declara mensualmente', () => {
+    expect(getTabsForProfile('605')).not.toContain('resumen');
   });
 
   it('un cliente 612 y uno 626 no ven lo mismo', () => {
@@ -185,7 +193,7 @@ describe('getTabsForProfile (régimen del cliente activo)', () => {
   });
 
   it('un cliente persona moral (601) abre en pagos provisionales PM', () => {
-    expect(getTabsForProfile('601')).toEqual(['pagospm', 'calendario', 'declaracion']);
+    expect(getTabsForProfile('601')).toEqual(['pagospm', 'calendario', 'declaracion', 'resumen']);
   });
 
   it('sin cliente elegido no hay tabs', () => {

@@ -30,7 +30,8 @@ import { MARCA_CORTA } from './marca';
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
-  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario';
+  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario'
+  | 'calculadoras';
 
 export interface SidebarLink {
   id: NavId;
@@ -75,6 +76,10 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // que opera sobre el CLIENTE ACTIVO, y la ruta es la misma que ya usaba el
   // botón del detalle: no hay una segunda forma de entrar que mantener.
   { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
+  // P3-08: herramientas sueltas del despacho. SIN alcance de cliente (no lee el
+  // cliente activo), por eso no está en `RUTAS_CON_CLIENTE`. Va antes de Perfil:
+  // es herramienta, no ajuste.
+  { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -237,7 +242,7 @@ export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
 
 export type TabFiscalito =
   | 'declaracion' | 'anual' | 'deducciones' | 'calendario' | 'comparar'
-  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm';
+  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm' | 'resumen';
 
 /**
  * Los tabs de una PERSONA MORAL (601) — T6, cascarón.
@@ -256,6 +261,9 @@ export type TabFiscalito =
  */
 const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
   'pagospm', 'calendario', 'declaracion',
+  // P3-02: el resumen de impuestos sí aplica a una moral (retenciones, IVA; su ISR
+  // propio sale en cero con nota hasta que exista el motor PM).
+  'resumen',
 ]);
 
 /**
@@ -271,6 +279,7 @@ const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
  */
 const TABS_COMPLETOS: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
   'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+  'resumen',
 ]);
 
 /** Copia fresca del set completo, para no repartir la misma referencia. */
@@ -315,9 +324,11 @@ function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
   // esta rama no es hipotética como las de 605/606/625.
   if (regimen === '601') return [...TABS_601];
   if (regimen === '605') return ['deducciones', 'calendario'];
-  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
-  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado'];
+  // P3-02: `resumen` (resumen y actualización de impuestos) al final de cada régimen
+  // que declara mensualmente; no cambia el tab por defecto. El 605 no declara mensual.
+  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado', 'resumen'];
+  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado', 'resumen'];
+  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado', 'resumen'];
   // 612 y cualquier otro: el set completo, que es el de `pyme`.
   return tabsCompletos();
 }

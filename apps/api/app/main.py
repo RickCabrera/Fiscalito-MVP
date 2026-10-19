@@ -24,6 +24,7 @@ from app.routes import (
     asistencia,
     auditoria,
     boveda,
+    calculadoras,
     calculos_cliente,
     calendario,
     cartera,
@@ -35,6 +36,7 @@ from app.routes import (
     diot,
     estado_cuenta,
     health,
+    impuestos,
     multi_periodo,
     nomina,
     retenciones,
@@ -139,6 +141,8 @@ ROUTERS_PROTEGIDOS = (
     sat_verificacion.router,
     calculos_cliente.router,
     contabilidad.router,
+    impuestos.router,
+    calculadoras.router,
 )
 
 app.include_router(health.router)

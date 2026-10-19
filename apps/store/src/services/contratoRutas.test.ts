@@ -77,6 +77,8 @@ import * as trabajosApi from './trabajosApi';
 // P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
 import * as satVerificacionApi from './satVerificacionApi';
 import * as contabilidadApi from './contabilidadApi';
+// P3-02/03/07/08: impuestos del cliente y calculadoras fiscales.
+import * as impuestosApi from './impuestosApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -277,6 +279,18 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     listarSaldosIniciales: () => contabilidadApi.listarSaldosIniciales('taller'),
     guardarSaldosIniciales: () => contabilidadApi.guardarSaldosIniciales('taller', []),
   },
+  'impuestosApi.ts': {
+    obtenerResumen: () =>
+      impuestosApi.obtenerResumen('taller', { anio: 2026, mes: 1, fecha_pago: '2026-02-17', capturas: {} }),
+    exportarResumen: () =>
+      impuestosApi.exportarResumen('taller', { anio: 2026, mes: 1, fecha_pago: '2026-02-17', capturas: {} }, 'xlsx'),
+    obtenerIvaPeriodos: () => impuestosApi.obtenerIvaPeriodos('taller', 2026, [1, 2]),
+    obtenerConfigImpuestos: () => impuestosApi.obtenerConfigImpuestos('taller'),
+    guardarConfigImpuestos: () => impuestosApi.guardarConfigImpuestos('taller', {}),
+    calcular: () => impuestosApi.calcular('actualizacion-recargos', {}),
+    tasasIsn: () => impuestosApi.tasasIsn('2026-03-01'),
+    fechaLimite: () => impuestosApi.fechaLimite(2026, 1),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -318,6 +332,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'trabajosApi.ts': trabajosApi,
   'satVerificacionApi.ts': satVerificacionApi,
   'contabilidadApi.ts': contabilidadApi,
+  'impuestosApi.ts': impuestosApi,
 };
 
 /**

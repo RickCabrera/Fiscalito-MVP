@@ -6,6 +6,16 @@
  * `apps/api/tests/test_contrato_openapi.py` falla si este archivo quedó viejo.
  */
 
+/** `POST /calculadoras/actualizacion-recargos`. */
+export interface ActualizacionRequest {
+  monto: number | string;
+  fecha_limite: string;
+  fecha_pago: string;
+  tipo_recargo?: "mora" | "prorroga" | "parcialidades_12" | "parcialidades_24" | "parcialidades_mas_24";
+  modo_factor?: "truncar" | "redondear" | "sin_redondeo";
+  tope_meses?: number;
+}
+
 /** Resumen acumulado de todos los periodos. */
 export interface AcumuladoMultiPeriodo {
   total_isr_pagado: number;
@@ -30,6 +40,15 @@ export interface AgentePreDeclaracionResponse {
   respuesta: string;
   predeclaracion?: PreDeclaracionResponse | null;
   herramientas_usadas?: string[];
+}
+
+/** `POST /calculadoras/aguinaldo`. */
+export interface AguinaldoRequest {
+  salario_diario: number | string;
+  dias_aguinaldo?: number;
+  dias_trabajados_en_el_anio?: number;
+  fecha_pago: string;
+  zona?: "general" | "zlfn";
 }
 
 export interface Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post {
@@ -147,6 +166,13 @@ export interface Cancelacion {
   motivo?: string;
 }
 
+/** Captura del contador en un renglón del resumen. */
+export interface CapturaRenglon {
+  importe_a_pagar?: number | string | null;
+  subsidio?: number | string;
+  compensaciones?: number | string;
+}
+
 export interface CerrarPeriodoRequest {
   cliente: string;
   empleados: string[];
@@ -241,6 +267,21 @@ export interface CompararRegimenResponse {
   ahorro_maximo: number;
   recomendacion: string;
   explicacion?: string | null;
+}
+
+/** Criterio del despacho por cliente (DP-3). Cada default está documentado. */
+export interface ConfigImpuestosSchema {
+  modo_factor?: "truncar" | "redondear" | "sin_redondeo";
+  tipo_recargo?: "mora" | "prorroga" | "parcialidades_12" | "parcialidades_24" | "parcialidades_mas_24";
+  tope_meses_recargos?: number;
+  region_fronteriza?: boolean;
+  proporcion_iva_modo?: "calculada" | "fija";
+  proporcion_iva_fija?: number | string | null;
+  asignacion_iva?: Record<string, "gravado" | "exento" | "indistinto">;
+  isn_aplicar_adicional?: boolean;
+  isn_claves_excluidas?: string[];
+  isn_claves_incluidas?: string[];
+  saldo_favor_iva_inicial?: number | string;
 }
 
 /** Tipo de contribuyente en el ecosistema Fiscalito. */
@@ -624,6 +665,19 @@ export interface EventosResponse {
   eventos: EventoChecada[];
 }
 
+/** `POST /calculadoras/finiquito`. */
+export interface FiniquitoRequest {
+  salario_diario: number | string;
+  fecha_ingreso: string;
+  fecha_baja: string;
+  dias_aguinaldo?: number;
+  prima_vacacional?: number | string;
+  dias_vacaciones_pendientes?: number | string;
+  dias_pendientes_de_pago?: number | string;
+  tipo?: "renuncia" | "despido_injustificado";
+  zona?: "general" | "zlfn";
+}
+
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
 
@@ -680,6 +734,43 @@ export interface IncidenciasEmpleadoSchema {
   faltas: number;
   dias_ausentismo: number;
   dias_incapacidad?: number;
+}
+
+/** `POST /calculadoras/isn`. */
+export interface IsnRequest {
+  cliente?: string | null;
+  anio?: number | null;
+  mes?: number | null;
+  entidad?: string | null;
+  fecha?: string | null;
+  percepciones?: PercepcionEntrada[];
+  total_erogaciones?: number | string | null;
+  aplicar_adicional?: boolean;
+  claves_excluidas?: string[];
+}
+
+/** `POST /calculadoras/isr-resico`. */
+export interface IsrResicoRequest {
+  ingresos_cobrados: number | string;
+  isr_retenido?: number | string;
+}
+
+/** `POST /calculadoras/isr-sueldos`. */
+export interface IsrSueldosRequest {
+  base_gravable: number | string;
+  clave_periodicidad?: string;
+  fecha_pago: string;
+  ingreso_gravado_mensual?: number | string | null;
+  dias_periodo?: number;
+  es_trabajador_de_salario_minimo?: boolean;
+}
+
+/** `POST /impuestos/clientes/{clave}/iva`. */
+export interface IvaPeriodoRequest {
+  anio: number;
+  meses: number[];
+  saldo_favor_inicial?: number | string | null;
+  opciones_saldo?: Record<string, "acreditar" | "devolucion" | "compensacion">;
 }
 
 export interface ListaTrabajos {
@@ -791,6 +882,13 @@ export interface PartidaSchemaOutput {
   gravado?: string | null;
   exento?: string | null;
   subsidio_causado?: string | null;
+}
+
+/** Una percepción (clave c_TipoPercepcion) para el ISN. */
+export interface PercepcionEntrada {
+  clave: string;
+  importe: number | string;
+  descripcion?: string;
 }
 
 /** Datos del contribuyente necesarios para calcular declaraciones. */
@@ -940,6 +1038,18 @@ export interface ProveedorDIOT {
   cantidad_facturas: number;
 }
 
+/** `POST /calculadoras/ptu`. */
+export interface PtuRequest {
+  utilidad_repartible: number | string;
+  dias_trabajador: number;
+  salario_trabajador: number | string;
+  total_dias_todos: number;
+  total_salarios_todos: number | string;
+  salario_diario: number | string;
+  promedio_ptu_3_anios?: number | string;
+  fecha_pago: string;
+}
+
 export interface Rango {
   desde: string;
   hasta: string;
@@ -1016,6 +1126,16 @@ export interface ResultadoRegimen {
   isr_mensual: number;
   disponible: boolean;
   notas?: string[];
+}
+
+/** `POST /impuestos/clientes/{clave}/resumen`. */
+export interface ResumenRequest {
+  anio: number;
+  mes: number;
+  fecha_pago: string;
+  fecha_limite?: string | null;
+  capturas?: Record<string, CapturaRenglon>;
+  formato?: "json" | "xlsx" | "csv";
 }
 
 export interface RetencionesCliente {
@@ -1224,6 +1344,15 @@ export type RutaApi =
   | "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml"
   | "/api/v1/boveda/clientes/{clave}/facturas-calculo"
   | "/api/v1/boveda/clientes/{clave}/resumen"
+  | "/api/v1/calculadoras/actualizacion-recargos"
+  | "/api/v1/calculadoras/aguinaldo"
+  | "/api/v1/calculadoras/fecha-limite"
+  | "/api/v1/calculadoras/finiquito"
+  | "/api/v1/calculadoras/isn"
+  | "/api/v1/calculadoras/isn/tasas"
+  | "/api/v1/calculadoras/isr-resico"
+  | "/api/v1/calculadoras/isr-sueldos"
+  | "/api/v1/calculadoras/ptu"
   | "/api/v1/calendario"
   | "/api/v1/cartera/clientes"
   | "/api/v1/cartera/clientes/{cliente_id}"
@@ -1264,6 +1393,10 @@ export type RutaApi =
   | "/api/v1/despacho/primas-de-riesgo"
   | "/api/v1/diot"
   | "/api/v1/estado-cuenta"
+  | "/api/v1/impuestos/clientes/{clave}/config"
+  | "/api/v1/impuestos/clientes/{clave}/isn"
+  | "/api/v1/impuestos/clientes/{clave}/iva"
+  | "/api/v1/impuestos/clientes/{clave}/resumen"
   | "/api/v1/multi-periodo"
   | "/api/v1/nomina/calcular-periodo"
   | "/api/v1/nomina/cfdi"
@@ -1353,6 +1486,42 @@ export interface OperacionesApi {
   };
   "GET /api/v1/boveda/clientes/{clave}/resumen": {
     cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/actualizacion-recargos": {
+    cuerpo: ActualizacionRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/aguinaldo": {
+    cuerpo: AguinaldoRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/calculadoras/fecha-limite": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/finiquito": {
+    cuerpo: FiniquitoRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/isn": {
+    cuerpo: IsnRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/calculadoras/isn/tasas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/isr-resico": {
+    cuerpo: IsrResicoRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/isr-sueldos": {
+    cuerpo: IsrSueldosRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/calculadoras/ptu": {
+    cuerpo: PtuRequest;
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/calendario": {
@@ -1566,6 +1735,26 @@ export interface OperacionesApi {
   "POST /api/v1/estado-cuenta": {
     cuerpo: EstadoCuentaRequest;
     respuesta: EstadoCuentaResponse;
+  };
+  "GET /api/v1/impuestos/clientes/{clave}/config": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/impuestos/clientes/{clave}/config": {
+    cuerpo: ConfigImpuestosSchema;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/impuestos/clientes/{clave}/isn": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/impuestos/clientes/{clave}/iva": {
+    cuerpo: IvaPeriodoRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/impuestos/clientes/{clave}/resumen": {
+    cuerpo: ResumenRequest;
+    respuesta: unknown;
   };
   "POST /api/v1/multi-periodo": {
     cuerpo: MultiPeriodoRequest;

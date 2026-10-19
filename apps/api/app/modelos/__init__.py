@@ -8,6 +8,7 @@ from app.modelos import acceso  # noqa: F401, I001
 from app.modelos import auditoria  # noqa: F401, I001
 from app.modelos import cfdi  # noqa: F401, I001
 from app.modelos import credenciales  # noqa: F401, I001
+from app.modelos import impuestos  # noqa: F401, I001
 from app.modelos import nucleo  # noqa: F401, I001
 from app.modelos import sat_descarga  # noqa: F401, I001
 from app.modelos import sat_verificacion  # noqa: F401, I001

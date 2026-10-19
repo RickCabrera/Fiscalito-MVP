@@ -199,7 +199,7 @@ describe('sidebar de AppLayout', () => {
     // y P1-02 la Descarga SAT, que la llena.
     expect(enlacesDelSidebar(container)).toEqual([
       'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Descarga SAT', 'Nómina', 'Calendario',
-      MARCA_CORTA, 'Contabilito', 'Perfil',
+      MARCA_CORTA, 'Contabilito', 'Calculadoras', 'Perfil',
     ]);
   });
 

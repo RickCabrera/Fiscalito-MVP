@@ -41,6 +41,7 @@ import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
 // P0-03: bóveda de CFDI del cliente activo.
 import BovedaPage from './pages/BovedaPage';
+import CalculadorasPage from './pages/CalculadorasPage';
 import DescargaSatPage from './pages/DescargaSatPage';
 // DEMO E-07: calendario patronal de la cartera. Se borra en F2.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
@@ -85,6 +86,8 @@ export default function AppRoutes() {
         <Route path="sat" element={<DescargaSatPage />} />
         {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
+        {/* P3-08: calculadoras fiscales sueltas del despacho (sin cliente). */}
+        <Route path="calculadoras" element={<CalculadorasPage />} />
         <Route path="store" element={<MarketplacePage />} />
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
         {/* T7. Va ANTES de `store/:serviceId` por legibilidad, no por necesidad:
