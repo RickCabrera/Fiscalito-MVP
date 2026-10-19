@@ -4,7 +4,57 @@
   "_para_que_sirve": "Contrato de rutas entre apps/api y apps/store. apps/store/src/services/contratoRutas.test.ts afirma que cada URL que el front construye está aquí.",
   "rutas": [
     {
+      "path": "/api/v1/agenda/tareas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/tareas/desde-obligaciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/tareas/{tarea_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/usuarios",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/agente/predeclaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/conteo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/evaluar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/{alerta_id}/resolver",
       "metodos": [
         "POST"
       ]
@@ -133,6 +183,12 @@
       ]
     },
     {
+      "path": "/api/v1/calendario/cartera",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/cartera/clientes",
       "metodos": [
         "GET"
@@ -219,6 +275,73 @@
       "path": "/api/v1/clientes/{clave}/credenciales/{credencial_id}",
       "metodos": [
         "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/declaraciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/proveedores",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/proveedores/{rfc}",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/{anio}/{mes}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/obligaciones/estado",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/terceros",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
       ]
     },
     {

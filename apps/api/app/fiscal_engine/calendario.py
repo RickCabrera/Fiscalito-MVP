@@ -7,7 +7,9 @@ Genera obligaciones fiscales segun el tipo de contribuyente, regimen y RFC.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
+
+from app.fiscal_engine.vencimientos import fecha_dia_17
 
 
 @dataclass
@@ -46,16 +48,14 @@ def _dias_habiles_extra(sexto_digito: int | None) -> int:
 
 
 def _fecha_limite_dia_17(year: int, month: int, dias_extra: int) -> str:
-    """Calcula fecha limite partiendo del dia 17 mas dias habiles extra."""
-    base = date(year, month, 17)
-    dias_agregados = 0
-    current = base
-    while dias_agregados < dias_extra:
-        current += timedelta(days=1)
-        # Saltar fines de semana (lunes=0 ... domingo=6)
-        if current.weekday() < 5:
-            dias_agregados += 1
-    return current.isoformat()
+    """
+    Fecha limite: dia 17 mas los dias habiles extra del sexto digito (P3-10).
+
+    Usa el mismo computo que el calendario de la cartera (`vencimientos.fecha_dia_17`):
+    dias inhabiles del Art. 12 CFF, no solo fines de semana, y sin prorroga el 17 inhabil
+    corre al siguiente dia habil (antes se quedaba en sabado o domingo).
+    """
+    return fecha_dia_17(year, month, dias_extra).isoformat()
 
 
 def es_persona_moral(regimen: str, rfc: str) -> bool:

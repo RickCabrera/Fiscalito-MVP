@@ -35,6 +35,8 @@ dependencies = [
     "openpyxl>=3.1",
     # P1-05: leer el sentido de la opinión de cumplimiento y la constancia (texto del PDF).
     "pypdf>=4.0",
+    # P3-04: PDF de la constancia del CFDI de retenciones con su QR (reportlab trae el QR).
+    "reportlab>=4.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -115,7 +115,9 @@ function enlace(container: HTMLElement, etiqueta: string): HTMLElement {
  * una de su cliente. El nombre del cliente se asserta aparte, más abajo.
  */
 function enlacesDelSidebar(container: HTMLElement): string[] {
-  const aside = container.querySelector('.sidebar-full');
+  // P3-09: la campana de alertas vive en la cabecera del sidebar, fuera del `<nav>`; los
+  // enlaces de navegación son los del `<nav>`.
+  const aside = container.querySelector('.sidebar-full nav');
   if (!aside) throw new Error('no se renderizó el sidebar');
   return within(aside as HTMLElement).getAllByRole('link').map((a) => {
     const soloEtiqueta = a.cloneNode(true) as HTMLElement;

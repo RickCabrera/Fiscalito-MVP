@@ -15,3 +15,7 @@ from app.modelos import sat_verificacion  # noqa: F401, I001
 from app.modelos import trabajos  # noqa: F401, I001
 from app.modelos import contabilidad  # noqa: F401, I001
 from app.modelos import conciliacion  # noqa: F401, I001
+from app.modelos import retenciones_cfdi  # noqa: F401, I001 — P3-04
+from app.modelos import diot  # noqa: F401, I001 — P3-05
+from app.modelos import alertas  # noqa: F401, I001 — P3-09
+from app.modelos import agenda  # noqa: F401, I001 — P3-10

@@ -151,6 +151,8 @@ vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 // P1-05: la ficha monta "Cumplimiento ante el SAT"; tiene sus propios tests en
 // `components/cartera/CumplimientoCliente.test.tsx`. Aquí se mide la ficha.
 vi.mock('../components/cartera/CumplimientoCliente', () => ({ default: () => null }));
+// P3-09: igual con la sección de alertas fiscales (`components/alertas/alertas.test.tsx`).
+vi.mock('../components/alertas/AlertasCliente', () => ({ default: () => null }));
 
 const { default: ClienteDetallePage } = await import('./ClienteDetallePage');
 

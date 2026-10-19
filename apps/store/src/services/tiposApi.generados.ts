@@ -179,6 +179,11 @@ export interface Cancelacion {
   motivo?: string;
 }
 
+export interface CancelarRetencion {
+  motivo: string;
+  folio_sustitucion?: string | null;
+}
+
 /** Captura del contador en un renglón del resumen. */
 export interface CapturaRenglon {
   importe_a_pagar?: number | string | null;
@@ -312,6 +317,21 @@ export interface ConfigImpuestosSchema {
   isn_claves_excluidas?: string[];
   isn_claves_incluidas?: string[];
   saldo_favor_iva_inicial?: number | string;
+}
+
+/** Clasificación de un proveedor en la DIOT. `None` = se deduce de los CFDI. */
+export interface ConfigProveedorDiotSchema {
+  tipo_tercero?: "04" | "05" | "15" | null;
+  tipo_operacion?: "02" | "03" | "06" | "07" | "08" | "85" | "87" | null;
+  region_8?: "norte" | "sur";
+  importacion?: "tangibles" | "intangibles";
+  asignacion_iva?: "gravadas" | "proporcion";
+  iva_no_acreditable?: "" | "proporcion" | "requisitos" | "exentas" | "no_objeto";
+  id_fiscal?: string;
+  nombre_extranjero?: string;
+  pais?: string;
+  jurisdiccion?: string;
+  efectos_fiscales?: "01" | "02";
 }
 
 export interface Contrapartida {
@@ -571,6 +591,17 @@ export interface DispositivosResponse {
   dispositivos: Record<string, unknown>[];
 }
 
+export interface EmitirRetencion {
+  rfc_tercero: string;
+  ejercicio: number;
+  mes_ini: number;
+  mes_fin: number;
+  cve_retenc?: string | null;
+  desc_retenc?: string;
+  domicilio_fiscal?: string | null;
+  nombre?: string | null;
+}
+
 export interface EmitirTokenRequest {
   cliente: string;
   etiqueta?: string;
@@ -774,6 +805,13 @@ export interface FiniquitoRequest {
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
 
+export interface GenerarTareas {
+  desde: string;
+  hasta: string;
+  cliente?: string;
+  responsable_uid?: string;
+}
+
 export interface HTTPValidationError {
   detail?: ValidationError[];
 }
@@ -869,6 +907,14 @@ export interface IvaPeriodoRequest {
 export interface ListaTrabajos {
   exito?: boolean;
   trabajos: TrabajoSalida[];
+}
+
+export interface MarcarObligacion {
+  clave: string;
+  estado: "presentada" | "pendiente";
+  fecha_presentacion?: string | null;
+  responsable_uid?: string | null;
+  nota?: string;
 }
 
 export interface MovimientoEntrada {
@@ -1218,6 +1264,15 @@ export interface ReciboSchema {
 /** Qué regla de cómputo produjo la fecha límite. */
 export type RegimenDePlazo = "imss" | "imss_sin_prorroga" | "imss_aviso" | "sat" | "lft";
 
+export interface RegistrarDeclaracion {
+  tipo: "mensual" | "diot" | "balanza" | "anual";
+  periodo: string;
+  fecha_presentacion?: string | null;
+  ingresos_declarados?: number | string | null;
+  importe_pagado?: number | string | null;
+  numero_operacion?: string;
+}
+
 export interface ReglaCambio {
   criterio?: "rfc" | "clave" | "prefijo" | "uso" | "descripcion" | null;
   valor?: string | null;
@@ -1333,6 +1388,23 @@ export interface SolicitudEntrada {
   num_orden?: string;
   num_tramite?: string;
   sellar?: boolean;
+}
+
+export interface TareaCambio {
+  titulo?: string | null;
+  fecha?: string | null;
+  responsable_uid?: string | null;
+  descripcion?: string | null;
+  estado?: "pendiente" | "en_proceso" | "hecha" | null;
+}
+
+export interface TareaNueva {
+  titulo: string;
+  fecha: string;
+  cliente?: string | null;
+  responsable_uid?: string;
+  descripcion?: string;
+  estado?: "pendiente" | "en_proceso" | "hecha";
 }
 
 /** Detalle de retenciones a un tercero. */
@@ -1462,7 +1534,15 @@ export interface app__routes__sat_verificacion__ConfigEntrada {
 
 /** Toda ruta que publica la API. */
 export type RutaApi =
+  | "/api/v1/agenda/tareas"
+  | "/api/v1/agenda/tareas/desde-obligaciones"
+  | "/api/v1/agenda/tareas/{tarea_id}"
+  | "/api/v1/agenda/usuarios"
   | "/api/v1/agente/predeclaracion"
+  | "/api/v1/alertas"
+  | "/api/v1/alertas/conteo"
+  | "/api/v1/alertas/evaluar"
+  | "/api/v1/alertas/{alerta_id}/resolver"
   | "/api/v1/asistencia/cerrar-periodo"
   | "/api/v1/asistencia/eventos"
   | "/api/v1/asistencia/tokens"
@@ -1483,6 +1563,7 @@ export type RutaApi =
   | "/api/v1/calculadoras/isr-sueldos"
   | "/api/v1/calculadoras/ptu"
   | "/api/v1/calendario"
+  | "/api/v1/calendario/cartera"
   | "/api/v1/cartera/clientes"
   | "/api/v1/cartera/clientes/{cliente_id}"
   | "/api/v1/cartera/clientes/{cliente_id}/dispositivos"
@@ -1497,6 +1578,17 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/calculos/retenciones-terceros"
   | "/api/v1/clientes/{clave}/credenciales"
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
+  | "/api/v1/clientes/{clave}/declaraciones"
+  | "/api/v1/clientes/{clave}/diot/proveedores"
+  | "/api/v1/clientes/{clave}/diot/proveedores/{rfc}"
+  | "/api/v1/clientes/{clave}/diot/{anio}/{mes}"
+  | "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt"
+  | "/api/v1/clientes/{clave}/obligaciones/estado"
+  | "/api/v1/clientes/{clave}/retenciones-cfdi"
+  | "/api/v1/clientes/{clave}/retenciones-cfdi/terceros"
+  | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar"
+  | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf"
+  | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml"
   | "/api/v1/comparar-regimenes"
   | "/api/v1/conciliacion/bancos"
   | "/api/v1/conciliacion/clientes/{clave}/cuentas"
@@ -1592,9 +1684,49 @@ export type RutaApi =
 
 /** Cuerpo y respuesta (2xx) de cada operación, por `MÉTODO /ruta`. */
 export interface OperacionesApi {
+  "GET /api/v1/agenda/tareas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/agenda/tareas": {
+    cuerpo: TareaNueva;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/agenda/tareas/desde-obligaciones": {
+    cuerpo: GenerarTareas;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/agenda/tareas/{tarea_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/agenda/tareas/{tarea_id}": {
+    cuerpo: TareaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/agenda/usuarios": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "POST /api/v1/agente/predeclaracion": {
     cuerpo: AgentePreDeclaracionRequest;
     respuesta: AgentePreDeclaracionResponse;
+  };
+  "GET /api/v1/alertas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/alertas/conteo": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/alertas/evaluar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/alertas/{alerta_id}/resolver": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
   };
   "POST /api/v1/asistencia/cerrar-periodo": {
     cuerpo: CerrarPeriodoRequest;
@@ -1688,6 +1820,10 @@ export interface OperacionesApi {
     cuerpo: CalendarioRequest;
     respuesta: CalendarioResponse;
   };
+  "GET /api/v1/calendario/cartera": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/cartera/clientes": {
     cuerpo: never;
     respuesta: ClientesCarteraResponse;
@@ -1763,6 +1899,54 @@ export interface OperacionesApi {
   "DELETE /api/v1/clientes/{clave}/credenciales/{credencial_id}": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/declaraciones": {
+    cuerpo: RegistrarDeclaracion;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/diot/proveedores": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/clientes/{clave}/diot/proveedores/{rfc}": {
+    cuerpo: ConfigProveedorDiotSchema;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/diot/{anio}/{mes}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/diot/{anio}/{mes}/txt": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "PUT /api/v1/clientes/{clave}/obligaciones/estado": {
+    cuerpo: MarcarObligacion;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/retenciones-cfdi": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/retenciones-cfdi": {
+    cuerpo: EmitirRetencion;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/retenciones-cfdi/terceros": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar": {
+    cuerpo: CancelarRetencion;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml": {
+    cuerpo: never;
+    respuesta: unknown;
   };
   "POST /api/v1/comparar-regimenes": {
     cuerpo: CompararRegimenRequest;

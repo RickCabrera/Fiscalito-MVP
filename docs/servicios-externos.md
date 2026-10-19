@@ -25,7 +25,7 @@ Para ver qué está configurado: `GET /health/integraciones`.
 | Listas 69-B / 69 | `FISCALITO_SAT_LISTAS` | falso, sat | P1-04 hecho |
 | Opinión de cumplimiento | `FISCALITO_OPINION_CUMPLIMIENTO` | falso, portal_sat, proveedor, manual | P1-05 hecho |
 | Buzón SAT (contabilidad electrónica) | `FISCALITO_BUZON_SAT` | falso, portal_sat (POR CONFIRMAR) | P2-07 hecho (falso) |
-| PAC | `FISCALITO_PAC` | — | P4 |
+| PAC | `FISCALITO_PAC` | falso, finkok, sw_sapien, facturama | P3-04 hecho (reales POR CONFIRMAR con sandbox) |
 
 ---
 
@@ -406,10 +406,45 @@ pantalla muestra cómo subirlo. Ver `apps/api/app/integraciones/buzon_sat.py`.
 **A quién contratar.** A nadie hoy. Si se automatiza: validar el flujo con una e.firma real
 de un cliente que lo autorice.
 
-## PAC (timbrado y cancelación)
+## PAC — timbrado y cancelación (`pac`) — P3-04
 
-*Pendiente (P4).* Timbra con el CSD del cliente (`obtener_firmante(db, cliente, "csd")`).
-Variable prevista: `FISCALITO_PAC`. Se elige proveedor en EXT-04 (DP-4).
+**Qué es.** Proveedor Autorizado de Certificación. `app/integraciones/pac.py`, contrato
+genérico que reusarán nómina (P4) y facturación:
+`timbrar(xml_sellado, tipo="cfdi"|"retenciones") -> Timbre(xml_timbrado, uuid, fecha)`,
+`cancelar(uuid, rfc, motivo, folio_sustitucion, *, tipo, firmante)` y
+`consultar_estatus(uuid, rfc, *, tipo)`. **Fiscalito sella** con el CSD del cliente
+(`obtener_firmante(db, cliente, "csd")`, SHA256withRSA sobre la cadena original del XSLT
+oficial) y valida contra el XSD antes de mandar nada; el PAC sólo certifica.
+
+**Variables.** `FISCALITO_PAC` = `falso` | `finkok` | `sw_sapien` | `facturama`.
+- falso: sin variables. Inserta un `TimbreFiscalDigital` 1.1 **sintético** (UUID aleatorio,
+  `NoCertificadoSAT` en ceros, `Leyenda` "NO FISCAL") que valida contra su XSD. **Sin validez
+  ante el SAT**: el PDF lo dice en rojo y el registro guarda `es_prueba=true`.
+- finkok (SOAP): `FISCALITO_FINKOK_USUARIO`, `FISCALITO_FINKOK_PASSWORD`,
+  `FISCALITO_FINKOK_URL` (default `https://demo-facturacion.finkok.com`; producción
+  `https://facturacion.finkok.com`). Cancela con `cancel_signature` (solicitud firmada con el
+  CSD del cliente).
+- sw_sapien (REST): `FISCALITO_SW_TOKEN` (token de larga duración) o `FISCALITO_SW_USUARIO` +
+  `FISCALITO_SW_PASSWORD`; `FISCALITO_SW_URL` (default `https://services.test.sw.com.mx`).
+  Cancela por UUID con el CSD cargado en la cuenta de SW.
+- facturama (REST): `FISCALITO_FACTURAMA_USUARIO`, `FISCALITO_FACTURAMA_PASSWORD`,
+  `FISCALITO_FACTURAMA_URL` (default `https://apisandbox.facturama.mx`). Facturama **no recibe
+  XML sellado**: sella con el CSD que el despacho sube a su cuenta Multiemisor; el adaptador
+  traduce el XML de retenciones al JSON de `POST /2/retenciones`. Para CFDI de ingreso/nómina
+  responde 501 hasta que exista el mapeo completo.
+
+**Cómo probar.** `pytest tests/plan_p/test_retenciones_cfdi.py`. Las reales se prueban con
+`httpx.MockTransport` y respuestas en `apps/api/tests/fixtures/pac/` **construidas desde la
+documentación pública** (wiki.finkok.com, developers.sw.com.mx, facturama.mx/api/cfdi-retenciones
+y la implementación MIT de `satcfdi` 26.10.1), no capturadas de un sandbox. Lo que no se pudo
+verificar sin cuenta de pruebas está marcado `POR CONFIRMAR CON CUENTA DE PRUEBAS` en el código:
+servicio y namespace de retenciones de Finkok (`retentions.wsdl`), rutas de retenciones de SW
+(`retencion/stamp/v3`, `retencion/cancel`) y de Facturama (descarga y cancelación por Id),
+algoritmo de firma de la solicitud de cancelación (exc-c14n/rsa-sha1) y namespace de la
+cancelación de retenciones.
+
+**A quién contratar.** Cualquiera de los tres con sandbox (EXT-04, DP-4). Finkok y SW timbran
+XML presellado (encaja con el diseño); Facturama obliga a subirle el CSD de cada cliente.
 
 ## Límite de peticiones (`limitador`) — P0-02
 

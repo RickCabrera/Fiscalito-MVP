@@ -1876,3 +1876,78 @@ no hay; 422 si venció).
 - `POST …/enviar` → `{"via", "acuse": {"folio", "estado", "mensaje"}, "zip_base64"}` por el
   adaptador `buzon_sat` (`falso` = simulación; `portal_sat` responde 501, POR CONFIRMAR). El SAT
   no tiene API: el envío real se hace en el portal.
+
+## CFDI de retenciones e información de pagos 2.0 (P3-04)
+
+Todas bajo `/api/v1/clientes/{clave}/retenciones-cfdi`, con `contexto_actual` + `cliente_o_404`
+(otro despacho = 404). El PAC lo elige `FISCALITO_PAC` (ver `docs/servicios-externos.md`).
+
+- `GET …/terceros?ejercicio&mes_ini&mes_fin` → `{"terceros": [{rfc, nombre, regimen,
+  domicilio_fiscal, monto_operacion, isr_retenido, iva_retenido, cantidad_cfdi,
+  cve_retenc_sugerida, uuids}], "emitidos": [...]}`. Sale de los CFDI recibidos pagados en el
+  periodo (flujo de efectivo) agrupados por `fiscal_engine/retenciones.py`.
+- `POST …` `{rfc_tercero, ejercicio, mes_ini, mes_fin, cve_retenc?, desc_retenc?,
+  domicilio_fiscal?, nombre?}` → `{"cfdi": {uuid, rfc_tercero, nombre_tercero, ejercicio,
+  mes_ini, mes_fin, cve_retenc, monto_operacion, isr_retenido, iva_retenido, estado, pac,
+  es_prueba, fecha_timbrado, motivo_cancelacion}}`. Sella con el CSD (404 sin CSD, 422 vencido),
+  valida contra el XSD (422 si no valida: NO se manda al PAC), timbra y guarda el XML.
+- `GET …?ejercicio` → `{"cfdi": [...]}`.
+- `GET …/{uuid}/xml` (application/xml) · `GET …/{uuid}/pdf` (constancia con QR; si es del PAC
+  falso dice "NO FISCAL").
+- `POST …/{uuid}/cancelar` `{motivo: "01"-"04", folio_sustitucion?}` → `{"cfdi"}` con estado
+  `cancelado` | `cancelacion_en_proceso`. 409 si ya estaba cancelado.
+
+## DIOT con layout 2025 (P3-05)
+
+Versión nueva por cliente; `POST /api/v1/diot` y `POST …/calculos/diot` no cambian.
+
+- `GET /api/v1/clientes/{clave}/diot/{anio}/{mes}` (anio ≥ 2025) → `{anio, mes,
+  total_proveedores, proveedores: [{rfc, nombre, tipo_tercero, tipo_operacion,
+  clasificacion_capturada, config, campos: {<clave del layout>: entero}, cantidad_cfdi,
+  advertencias, linea}], advertencias, errores_layout, layout}`. Claves de `campos`: las de
+  `app/diot/layout.py` (`valor_tasa_16`, `acreditable_gravadas_tasa_16`, `iva_retenido`,
+  `exentos`, `tasa_0`, ...).
+- `GET …/{anio}/{mes}/txt` → `text/plain` UTF-8, un proveedor por renglón, 54 campos separados
+  por `|`. 422 si algún renglón no cumple el instructivo (no se entrega un archivo inválido);
+  404 sin operaciones.
+- `GET /api/v1/clientes/{clave}/diot/proveedores` → `{"proveedores": {rfc: config}}`.
+- `PUT /api/v1/clientes/{clave}/diot/proveedores/{rfc}` `ConfigProveedorDiotSchema`
+  (`tipo_tercero`, `tipo_operacion`, `region_8` norte|sur, `importacion` tangibles|intangibles,
+  `asignacion_iva` gravadas|proporcion, `iva_no_acreditable`, `id_fiscal`, `nombre_extranjero`,
+  `pais`, `jurisdiccion`, `efectos_fiscales`).
+
+## Alertas fiscales (P3-09)
+
+- `GET /api/v1/alertas?cliente&tipo&severidad&resuelta=false&limite` → `{"alertas": [{id,
+  cliente, cliente_nombre, tipo, severidad (alta|media|baja), titulo, detalle, fecha, enlace,
+  resuelta, resuelta_por, resuelta_en}]}`; graves y recientes primero. Tipos: `tope_resico`,
+  `efos`, `cfdi_cancelado`, `credencial`, `opinion`, `descarga_sat`, `vencimiento`,
+  `diferencia_declarado`, `sin_polizas`.
+- `GET /api/v1/alertas/conteo` → `{total, alta, por_cliente: {clave: {total, alta, media,
+  baja}}}` (abiertas).
+- `POST /api/v1/alertas/{id}/resolver` → `{"alerta"}`. 404 si es de otro despacho.
+- `POST /api/v1/alertas/evaluar?cliente` → corre las reglas ya (el trabajo diario
+  `alertas.programado` corre a las 7:30, America/Mexico_City).
+
+## Calendario de la cartera y agenda (P3-10)
+
+- `GET /api/v1/calendario/cartera?desde&hasta&cliente&tipo(fiscal|patronal|credencial)&
+  responsable&estado&con_tareas=true` → `{desde, hasta, obligaciones: [{clave, cliente,
+  cliente_nombre, tipo, nombre, periodo, fecha_limite, fundamento, condicional, nota, estado
+  (pendiente|presentada|vencida), origen_estado, fecha_presentacion, responsable_uid}],
+  tareas: [...]}`. Rango máximo 400 días.
+- `PUT /api/v1/clientes/{clave}/obligaciones/estado` `{clave, estado: presentada|pendiente,
+  fecha_presentacion?, responsable_uid?, nota?}`.
+- `POST /api/v1/clientes/{clave}/declaraciones` `{tipo: mensual|diot|balanza|anual, periodo
+  (YYYY-MM | YYYY), fecha_presentacion?, ingresos_declarados?, importe_pagado?,
+  numero_operacion?}` → la obligación queda `presentada` (origen `declaracion`).
+- `GET /api/v1/agenda/usuarios` → `{"usuarios": [{uid, nombre, rol}]}` del despacho.
+- `GET /api/v1/agenda/tareas?desde&hasta&cliente&responsable&estado` → `{"tareas": [{id,
+  titulo, descripcion, cliente, cliente_nombre, responsable_uid, fecha, estado, origen,
+  obligacion_clave}]}`.
+- `POST /api/v1/agenda/tareas` `{titulo, fecha, cliente?, responsable_uid?, descripcion?,
+  estado?}` · `PUT /api/v1/agenda/tareas/{id}` (parcial) · `DELETE /api/v1/agenda/tareas/{id}`.
+  El responsable debe ser usuario del despacho (422); tarea de otro despacho = 404.
+- `POST /api/v1/agenda/tareas/desde-obligaciones` `{desde, hasta, cliente?, responsable_uid?}`
+  → una tarea por obligación pendiente o vencida del rango; idempotente (`creadas: 0` al
+  repetir).

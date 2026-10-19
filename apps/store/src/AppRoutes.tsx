@@ -43,8 +43,10 @@ import DispositivosPage from './pages/DispositivosPage';
 import BovedaPage from './pages/BovedaPage';
 import CalculadorasPage from './pages/CalculadorasPage';
 import DescargaSatPage from './pages/DescargaSatPage';
-// DEMO E-07: calendario patronal de la cartera. Se borra en F2.
+// P3-10: calendario unificado (fiscal + patronal + credenciales) y agenda del despacho.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
+// P3-09: alertas fiscales de la cartera (se entra por la campana del layout).
+import AlertasPage from './pages/AlertasPage';
 
 export default function AppRoutes() {
   return (
@@ -84,8 +86,9 @@ export default function AppRoutes() {
         <Route path="boveda" element={<BovedaPage />} />
         {/* P1-02: descarga masiva del SAT del cliente activo. */}
         <Route path="sat" element={<DescargaSatPage />} />
-        {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
+        {/* P3-10: vencimientos fiscales y patronales de la cartera + agenda semanal. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
+        <Route path="alertas" element={<AlertasPage />} />
         {/* P3-08: calculadoras fiscales sueltas del despacho (sin cliente). */}
         <Route path="calculadoras" element={<CalculadorasPage />} />
         <Route path="store" element={<MarketplacePage />} />

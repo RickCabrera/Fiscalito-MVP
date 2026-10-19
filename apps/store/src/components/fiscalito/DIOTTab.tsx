@@ -7,8 +7,6 @@ import { useAuth } from '../../context/AuthContext';
 import { generarDIOT, type CFDI, type DIOTResponse } from '../../services/fiscalAgentApi';
 import { guardarDIOT } from '../../services/declaracionesHistory';
 import { exportarDIOTPDF } from '../../services/pdfExportDIOT';
-import { generarDIOTBatch, DIOT_BATCH_POR_VALIDAR } from '../../services/exportadores/diot';
-import { descargarBytes } from '../../services/exportadores/descargar';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle } from '../../utils/styles';
 import FuenteFacturasPanel from './FuenteFacturasPanel';
@@ -17,7 +15,8 @@ import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
-import { Loader, Download, RefreshCw, MessageSquare, AlertTriangle, FileDown } from 'lucide-react';
+import DiotOficialPanel from './DiotOficialPanel';
+import { Loader, Download, RefreshCw, MessageSquare } from 'lucide-react';
 
 export default function DIOTTab() {
   const perfil = usePerfilFiscal();
@@ -29,8 +28,6 @@ export default function DIOTTab() {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<DIOTResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
-  const [errorTxt, setErrorTxt] = useState('');
-  const [transliterados, setTransliterados] = useState<string[]>([]);
   // P1-06: los CFDI del mes salen de la bóveda del cliente; subir XML sigue disponible.
   const fuente = useFuenteFacturas({ clave: perfil.clienteId, anio: year, mes: month, manual: facturas });
 
@@ -55,23 +52,6 @@ export default function DIOTTab() {
       setError(e instanceof Error ? e.message : 'Error inesperado');
     } finally {
       setLoading(false);
-    }
-  };
-
-  /**
-   * El .txt de carga batch. Se arma en el momento y no se guarda en el
-   * historial: el historial guarda el RESULTADO del calculo, y este archivo es
-   * una serializacion de ese mismo resultado con un layout que todavia puede
-   * cambiar. Guardarlo congelaria el layout sin validar.
-   */
-  const descargarTxt = (data: DIOTResponse) => {
-    setErrorTxt('');
-    try {
-      const archivo = generarDIOTBatch(data);
-      setTransliterados(archivo.transliterados);
-      descargarBytes(archivo.nombre, archivo.bytes);
-    } catch (e) {
-      setErrorTxt(e instanceof Error ? e.message : 'No se pudo generar el archivo.');
     }
   };
 
@@ -134,37 +114,14 @@ export default function DIOTTab() {
           </div>
         )}
 
-        {/*
-          * La advertencia va ARRIBA del boton, no debajo: quien esta a punto de
-          * bajar un archivo para subirlo al portal del SAT tiene que leer que el
-          * layout no esta validado ANTES de hacer clic. Mismo criterio que
-          * `SelectorExportacion` con los formatos `por-validar`.
-          */}
-        <div className="card" style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <AlertTriangle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              {DIOT_BATCH_POR_VALIDAR}
-            </p>
-          </div>
-          {errorTxt && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: 10 }}>{errorTxt}</p>
-          )}
-          {transliterados.length > 0 && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: 10 }}>
-              RFC transliterados a ASCII: {transliterados.join(', ')}
-            </p>
-          )}
-        </div>
+        {/* P3-05: el .txt sale del backend con el layout 2025 validado y los cortes por tasa
+            reales de la bóveda (antes se deducían aquí y salía marcado PORVALIDAR). */}
+        {perfil.clienteId && <DiotOficialPanel clave={perfil.clienteId} anio={year} mes={month} />}
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button className="btn-primary" onClick={() => exportarDIOTPDF(resultado, { nombre: perfil.nombre, rfc: perfil.rfc })}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Download size={16} /> Descargar PDF
-          </button>
-          <button className="btn-secondary" onClick={() => descargarTxt(resultado)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <FileDown size={16} /> Descargar DIOT (.txt)
           </button>
           <button className="btn-secondary" onClick={() => setResultado(null)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

@@ -11499,6 +11499,1704 @@
           }
         }
       }
+    },
+    "/api/v1/clientes/{clave}/retenciones-cfdi/terceros": {
+      "get": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Terceros",
+        "description": "Terceros con retenciones en el periodo y los CFDI de retenciones ya emitidos.",
+        "operationId": "terceros_api_v1_clientes__clave__retenciones_cfdi_terceros_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "ejercicio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2027,
+              "minimum": 2019,
+              "title": "Ejercicio"
+            }
+          },
+          {
+            "name": "mes_ini",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Mes Ini"
+            }
+          },
+          {
+            "name": "mes_fin",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Mes Fin"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Terceros Api V1 Clientes  Clave  Retenciones Cfdi Terceros Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/retenciones-cfdi": {
+      "get": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Listar",
+        "operationId": "listar_api_v1_clientes__clave__retenciones_cfdi_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "ejercicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ejercicio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Api V1 Clientes  Clave  Retenciones Cfdi Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Emitir",
+        "description": "Genera, valida y timbra el CFDI de retenciones de un tercero y lo guarda.",
+        "operationId": "emitir_api_v1_clientes__clave__retenciones_cfdi_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmitirRetencion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Emitir Api V1 Clientes  Clave  Retenciones Cfdi Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml": {
+      "get": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Descargar Xml",
+        "operationId": "descargar_xml_api_v1_clientes__clave__retenciones_cfdi__uuid__xml_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf": {
+      "get": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Descargar Pdf",
+        "operationId": "descargar_pdf_api_v1_clientes__clave__retenciones_cfdi__uuid__pdf_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar": {
+      "post": {
+        "tags": [
+          "retenciones-cfdi"
+        ],
+        "summary": "Cancelar",
+        "operationId": "cancelar_api_v1_clientes__clave__retenciones_cfdi__uuid__cancelar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarRetencion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Api V1 Clientes  Clave  Retenciones Cfdi  Uuid  Cancelar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/diot/proveedores": {
+      "get": {
+        "tags": [
+          "diot"
+        ],
+        "summary": "Proveedores",
+        "description": "Clasificación capturada por proveedor.",
+        "operationId": "proveedores_api_v1_clientes__clave__diot_proveedores_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Proveedores Api V1 Clientes  Clave  Diot Proveedores Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/diot/proveedores/{rfc}": {
+      "put": {
+        "tags": [
+          "diot"
+        ],
+        "summary": "Guardar Proveedor",
+        "operationId": "guardar_proveedor_api_v1_clientes__clave__diot_proveedores__rfc__put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "rfc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rfc"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigProveedorDiotSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Proveedor Api V1 Clientes  Clave  Diot Proveedores  Rfc  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/diot/{anio}/{mes}": {
+      "get": {
+        "tags": [
+          "diot"
+        ],
+        "summary": "Diot",
+        "description": "Proveedores del mes con sus 54 campos y los errores contra el layout (si hay).",
+        "operationId": "diot_api_v1_clientes__clave__diot__anio___mes__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2025,
+              "description": "El layout de 54 campos aplica desde 2025.",
+              "title": "Anio"
+            },
+            "description": "El layout de 54 campos aplica desde 2025."
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Diot Api V1 Clientes  Clave  Diot  Anio   Mes  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt": {
+      "get": {
+        "tags": [
+          "diot"
+        ],
+        "summary": "Archivo",
+        "description": "El `.txt` de carga masiva. 422 si algún renglón no cumple el layout (no se entrega).",
+        "operationId": "archivo_api_v1_clientes__clave__diot__anio___mes__txt_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2025,
+              "description": "El layout de 54 campos aplica desde 2025.",
+              "title": "Anio"
+            },
+            "description": "El layout de 54 campos aplica desde 2025."
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alertas": {
+      "get": {
+        "tags": [
+          "alertas"
+        ],
+        "summary": "Listar",
+        "description": "Alertas de los clientes visibles, las más graves y recientes primero.",
+        "operationId": "listar_api_v1_alertas_get",
+        "parameters": [
+          {
+            "name": "cliente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cliente"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "severidad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Severidad"
+            }
+          },
+          {
+            "name": "resuelta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Resuelta"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limite"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Api V1 Alertas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alertas/conteo": {
+      "get": {
+        "tags": [
+          "alertas"
+        ],
+        "summary": "Conteo",
+        "description": "Alertas abiertas por cliente y severidad (para la campana y la cartera).",
+        "operationId": "conteo_api_v1_alertas_conteo_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Conteo Api V1 Alertas Conteo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alertas/{alerta_id}/resolver": {
+      "post": {
+        "tags": [
+          "alertas"
+        ],
+        "summary": "Resolver",
+        "operationId": "resolver_api_v1_alertas__alerta_id__resolver_post",
+        "parameters": [
+          {
+            "name": "alerta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alerta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resolver Api V1 Alertas  Alerta Id  Resolver Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alertas/evaluar": {
+      "post": {
+        "tags": [
+          "alertas"
+        ],
+        "summary": "Evaluar",
+        "description": "Corre las reglas ahora (un cliente o todos los visibles), sin esperar al diario.",
+        "operationId": "evaluar_api_v1_alertas_evaluar_post",
+        "parameters": [
+          {
+            "name": "cliente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cliente"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Evaluar Api V1 Alertas Evaluar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendario/cartera": {
+      "get": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Calendario",
+        "description": "Obligaciones fiscales, patronales y de credenciales de la cartera en el rango.",
+        "operationId": "calendario_api_v1_calendario_cartera_get",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "cliente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cliente"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "responsable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Responsable"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "con_tareas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Con Tareas"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Calendario Api V1 Calendario Cartera Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/obligaciones/estado": {
+      "put": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Marcar",
+        "description": "Marca a mano una obligación como presentada (o la regresa a pendiente).",
+        "operationId": "marcar_api_v1_clientes__clave__obligaciones_estado_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarcarObligacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Marcar Api V1 Clientes  Clave  Obligaciones Estado Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/declaraciones": {
+      "post": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Registrar Declaracion",
+        "description": "Registra una declaración presentada: su obligación queda presentada sola.",
+        "operationId": "registrar_declaracion_api_v1_clientes__clave__declaraciones_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarDeclaracion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Registrar Declaracion Api V1 Clientes  Clave  Declaraciones Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/usuarios": {
+      "get": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Usuarios",
+        "description": "Usuarios del despacho, para asignar responsables.",
+        "operationId": "usuarios_api_v1_agenda_usuarios_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Usuarios Api V1 Agenda Usuarios Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/tareas": {
+      "get": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Tareas",
+        "operationId": "tareas_api_v1_agenda_tareas_get",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "cliente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Cliente"
+            }
+          },
+          {
+            "name": "responsable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Responsable"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Tareas Api V1 Agenda Tareas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Crear",
+        "operationId": "crear_api_v1_agenda_tareas_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TareaNueva"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Api V1 Agenda Tareas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/tareas/{tarea_id}": {
+      "put": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Actualizar",
+        "operationId": "actualizar_api_v1_agenda_tareas__tarea_id__put",
+        "parameters": [
+          {
+            "name": "tarea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tarea Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TareaCambio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Actualizar Api V1 Agenda Tareas  Tarea Id  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Borrar",
+        "operationId": "borrar_api_v1_agenda_tareas__tarea_id__delete",
+        "parameters": [
+          {
+            "name": "tarea_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tarea Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Api V1 Agenda Tareas  Tarea Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/tareas/desde-obligaciones": {
+      "post": {
+        "tags": [
+          "agenda"
+        ],
+        "summary": "Generar",
+        "description": "Crea una tarea por cada obligación pendiente o vencida del rango (idempotente).",
+        "operationId": "generar_api_v1_agenda_tareas_desde_obligaciones_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerarTareas"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Generar Api V1 Agenda Tareas Desde Obligaciones Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12395,6 +14093,31 @@
         "type": "object",
         "title": "Cancelacion"
       },
+      "CancelarRetencion": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "pattern": "^0[1-4]$",
+            "title": "Motivo"
+          },
+          "folio_sustitucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folio Sustitucion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelarRetencion"
+      },
       "CapturaRenglon": {
         "properties": {
           "importe_a_pagar": {
@@ -13120,6 +14843,121 @@
         "type": "object",
         "title": "ConfigImpuestosSchema",
         "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-C, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
+      },
+      "ConfigProveedorDiotSchema": {
+        "properties": {
+          "tipo_tercero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "04",
+                  "05",
+                  "15"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Tercero"
+          },
+          "tipo_operacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "02",
+                  "03",
+                  "06",
+                  "07",
+                  "08",
+                  "85",
+                  "87"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Operacion"
+          },
+          "region_8": {
+            "type": "string",
+            "enum": [
+              "norte",
+              "sur"
+            ],
+            "title": "Region 8",
+            "default": "norte"
+          },
+          "importacion": {
+            "type": "string",
+            "enum": [
+              "tangibles",
+              "intangibles"
+            ],
+            "title": "Importacion",
+            "default": "tangibles"
+          },
+          "asignacion_iva": {
+            "type": "string",
+            "enum": [
+              "gravadas",
+              "proporcion"
+            ],
+            "title": "Asignacion Iva",
+            "default": "gravadas"
+          },
+          "iva_no_acreditable": {
+            "type": "string",
+            "enum": [
+              "",
+              "proporcion",
+              "requisitos",
+              "exentas",
+              "no_objeto"
+            ],
+            "title": "Iva No Acreditable",
+            "default": ""
+          },
+          "id_fiscal": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Id Fiscal",
+            "default": ""
+          },
+          "nombre_extranjero": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Nombre Extranjero",
+            "default": ""
+          },
+          "pais": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Pais",
+            "default": ""
+          },
+          "jurisdiccion": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Jurisdiccion",
+            "default": ""
+          },
+          "efectos_fiscales": {
+            "type": "string",
+            "enum": [
+              "01",
+              "02"
+            ],
+            "title": "Efectos Fiscales",
+            "default": "01"
+          }
+        },
+        "type": "object",
+        "title": "ConfigProveedorDiotSchema",
+        "description": "Clasificación de un proveedor en la DIOT. `None` = se deduce de los CFDI.\n\nDefaults (DP-3, documentados): IVA acreditable \"exclusivamente de actividades gravadas\";\nel 8 % se reporta en la región fronteriza NORTE; la importación, como bienes tangibles;\nefectos fiscales 01 (Sí)."
       },
       "Contrapartida": {
         "properties": {
@@ -14679,6 +16517,84 @@
         ],
         "title": "DispositivosResponse"
       },
+      "EmitirRetencion": {
+        "properties": {
+          "rfc_tercero": {
+            "type": "string",
+            "maxLength": 13,
+            "minLength": 12,
+            "title": "Rfc Tercero"
+          },
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2027.0,
+            "minimum": 2019.0,
+            "title": "Ejercicio"
+          },
+          "mes_ini": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes Ini"
+          },
+          "mes_fin": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes Fin"
+          },
+          "cve_retenc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0[1-9]|1[0-9]|2[0-8])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cve Retenc"
+          },
+          "desc_retenc": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Desc Retenc",
+            "default": ""
+          },
+          "domicilio_fiscal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{5}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domicilio Fiscal"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rfc_tercero",
+          "ejercicio",
+          "mes_ini",
+          "mes_fin"
+        ],
+        "title": "EmitirRetencion"
+      },
       "EmitirTokenRequest": {
         "properties": {
           "cliente": {
@@ -15714,6 +17630,36 @@
         "title": "FuenteChecada",
         "description": "De donde vino el evento. `csv` queda para el plan C (import manual)."
       },
+      "GenerarTareas": {
+        "properties": {
+          "desde": {
+            "type": "string",
+            "format": "date",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "format": "date",
+            "title": "Hasta"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente",
+            "default": ""
+          },
+          "responsable_uid": {
+            "type": "string",
+            "title": "Responsable Uid",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "desde",
+          "hasta"
+        ],
+        "title": "GenerarTareas"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -16239,6 +18185,59 @@
           "trabajos"
         ],
         "title": "ListaTrabajos"
+      },
+      "MarcarObligacion": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Clave"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "presentada",
+              "pendiente"
+            ],
+            "title": "Estado"
+          },
+          "fecha_presentacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Presentacion"
+          },
+          "responsable_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Uid"
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "estado"
+        ],
+        "title": "MarcarObligacion"
       },
       "MovimientoEntrada": {
         "properties": {
@@ -18013,6 +20012,78 @@
         "title": "RegimenDePlazo",
         "description": "Qué regla de cómputo produjo la fecha límite.\n\nViaja como **dato** hasta la respuesta HTTP, no como comentario: el doc 25\n§4 advierte que juntar obligaciones del IMSS y del SAT en una vista \"sin\ndistinguir su regla es un bug esperando\".\n\n`IMSS_SIN_PRORROGA` existe porque `IMSS` promete una prórroga que la\ndeclaración anual de prima de RT no recibe (§D23). Etiquetarla `IMSS`\npondría el sábado 28-feb-2026 bajo el rótulo \"se corre al siguiente hábil\"."
       },
+      "RegistrarDeclaracion": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "mensual",
+              "diot",
+              "balanza",
+              "anual"
+            ],
+            "title": "Tipo"
+          },
+          "periodo": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 4,
+            "title": "Periodo"
+          },
+          "fecha_presentacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Presentacion"
+          },
+          "ingresos_declarados": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingresos Declarados"
+          },
+          "importe_pagado": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Importe Pagado"
+          },
+          "numero_operacion": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Numero Operacion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "periodo"
+        ],
+        "title": "RegistrarDeclaracion"
+      },
       "ReglaCambio": {
         "properties": {
           "criterio": {
@@ -18689,6 +20760,129 @@
           "mes"
         ],
         "title": "SolicitudEntrada"
+      },
+      "TareaCambio": {
+        "properties": {
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          },
+          "fecha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha"
+          },
+          "responsable_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Uid"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "estado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pendiente",
+                  "en_proceso",
+                  "hecha"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "title": "TareaCambio"
+      },
+      "TareaNueva": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Titulo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "cliente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cliente"
+          },
+          "responsable_uid": {
+            "type": "string",
+            "title": "Responsable Uid",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Descripcion",
+            "default": ""
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "pendiente",
+              "en_proceso",
+              "hecha"
+            ],
+            "title": "Estado",
+            "default": "pendiente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "fecha"
+        ],
+        "title": "TareaNueva"
       },
       "TerceroRetencion": {
         "properties": {
