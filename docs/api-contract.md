@@ -1414,3 +1414,76 @@ Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha
 `sat_estatus_mes` diario 2:00 (CFDI del mes) · `sat_estatus_anio` semanal (último año) ·
 `sat_listas` diario 6:30 · `sat_cumplimiento` diario 7:00 (encola a quien le toca su día).
 Hora de Ciudad de México.
+
+## Impuestos del cliente y calculadoras (P3-02, P3-03, P3-07, P3-08)
+
+Motor: `app/fiscal_engine/{actualizacion,inpc,iva,isn,resumen_impuestos,calculadoras_laborales}.py`;
+lectura de la bóveda en `app/impuestos/`. Todo autenticado (`contexto_actual`); las rutas con
+`{clave}` usan `cliente_o_404` (otro despacho = 404). Importes en las respuestas como texto con
+dos decimales. Fuentes y `FUENTE POR CONFIRMAR` en los docstrings y en `fiscal_engine/datos/*.csv`.
+
+### `GET|PUT /api/v1/impuestos/clientes/{clave}/config`
+
+Criterio del despacho por cliente (DP-3): `modo_factor` (`truncar`|`redondear`|`sin_redondeo`,
+default `truncar`), `tipo_recargo` (default `mora`), `tope_meses_recargos` (60),
+`region_fronteriza` (false), `proporcion_iva_modo` (`calculada`|`fija`) + `proporcion_iva_fija`,
+`asignacion_iva` (UUID → `gravado`|`exento`|`indistinto`), `isn_aplicar_adicional` (true),
+`isn_claves_excluidas`, `isn_claves_incluidas`, `saldo_favor_iva_inicial`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/resumen`
+
+Body `{"anio", "mes", "fecha_pago", "fecha_limite"?, "capturas": {<clave>: {"importe_a_pagar"?,
+"subsidio", "compensaciones"}}, "formato": "json"|"xlsx"|"csv"}`. Sin `fecha_limite`: día 17
+del mes siguiente corrido a hábil (Art. 12 CFF; sin prórroga por sexto dígito). Respuesta JSON:
+`{"renglones": [{"clave", "grupo", "concepto", "aplica", "importe_sistema", "importe_a_pagar",
+"actualizacion", "recargos", "subsidio", "compensaciones", "total", "capturado", "nota",
+"factor", "meses_recargo"}], "totales", "total_a_pagar_ajustado", "fecha_limite", "notas"}`.
+Claves: `isr_pm`, `isr_pf_empresarial`, `isr_arrendamiento`, `isr_plataformas`,
+`isr_resico_pf`, `isr_resico_pm`, `ret_isr_salarios`, `ret_isr_asimilados`,
+`ret_isr_honorarios`, `ret_isr_arrendamiento`, `ret_isr_resico`, `iva_a_cargo`, `iva_retenido`.
+`subsidio` sólo en `ret_isr_salarios` (422 en otro). `xlsx`/`csv` devuelven el archivo.
+
+### `POST /api/v1/impuestos/clientes/{clave}/iva`
+
+Body `{"anio", "meses": [1..12], "saldo_favor_inicial"?, "opciones_saldo": {mes:
+"acreditar"|"devolucion"|"compensacion"}}`. Lee `comprobantes_vigentes` por flujo de efectivo
+(PUE en su mes, PPD por complemento de pago). Devuelve `{"meses": [ResultadoIVAMes]}` con
+valor de actos por tasa, proporción (Art. 5o. fr. V c), acreditable, saldo a favor anterior /
+aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`.
+
+### `GET /api/v1/impuestos/clientes/{clave}/isn?anio&mes`
+
+ISN del mes con los CFDI de nómina emitidos (por `FechaPago`) y la `clave_entidad` del cliente.
+
+### `POST /api/v1/calculadoras/actualizacion-recargos`
+
+Body `{"monto", "fecha_limite", "fecha_pago", "tipo_recargo"?, "modo_factor"?, "tope_meses"?}`.
+Respuesta: `factor` (INPC usados, cortado y sin cortar), `monto_actualizado`, `actualizacion`,
+`meses`, `tasa_acumulada`, `recargos`, `total`, `total_a_pagar_ajustado` (Art. 20 CFF),
+`detalle_meses`, `notas`, `inpc_ultimo_publicado`.
+
+### `GET /api/v1/calculadoras/fecha-limite?anio&mes`
+
+`{"fecha_limite"}`.
+
+### `POST /api/v1/calculadoras/isn` · `GET /api/v1/calculadoras/isn/tasas?fecha`
+
+Con `{"cliente", "anio", "mes"}` usa la bóveda (igual que el módulo); sin cliente,
+`{"entidad", "fecha", "percepciones": [{"clave", "importe"}] | "total_erogaciones",
+"aplicar_adicional", "claves_excluidas"}`. Respuesta: `tasa`, `adicional_sobre_impuesto`,
+`fundamento`, `fuente`, `por_confirmar`, `base`, `impuesto`, `adicional`, `total`,
+`detalle_exclusiones`, `notas`. `/isn/tasas`: las 32 entidades.
+
+### `POST /api/v1/calculadoras/isr-sueldos` · `isr-resico` · `aguinaldo` · `ptu` · `finiquito`
+
+- `isr-sueldos`: `{"base_gravable", "clave_periodicidad", "fecha_pago",
+  "ingreso_gravado_mensual"?, "dias_periodo", "es_trabajador_de_salario_minimo"}` →
+  `isr_causado`, `subsidio`, `subsidio_acreditado`, `isr_retenido` (motor de nómina).
+- `isr-resico`: `{"ingresos_cobrados", "isr_retenido"}` → `tasa`, `isr_causado`, `isr_a_pagar`.
+- `aguinaldo`: `{"salario_diario", "dias_aguinaldo", "dias_trabajados_en_el_anio",
+  "fecha_pago"}` → `importe`, `partidas` (exento/gravado), `isr`, `neto`.
+- `ptu`: `{"utilidad_repartible", "dias_trabajador", "salario_trabajador", "total_dias_todos",
+  "total_salarios_todos", "salario_diario", "promedio_ptu_3_anios", "fecha_pago"}`.
+- `finiquito`: `{"salario_diario", "fecha_ingreso", "fecha_baja", "tipo":
+  "renuncia"|"despido_injustificado", ...}` → `partidas`, `separacion`, `isr`, `neto`.
+  Aguinaldo/PTU/finiquito son versión mínima: P4 las reemplaza con `nomina_engine`.

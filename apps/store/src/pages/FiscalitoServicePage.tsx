@@ -28,7 +28,8 @@ import RetencionesTab from '../components/fiscalito/RetencionesTab';
 import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
 import PagosProvisionalesPMTab from '../components/fiscalito/PagosProvisionalesPMTab';
-import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import ResumenImpuestosTab from '../components/fiscalito/ResumenImpuestosTab';
+import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator, Table } from 'lucide-react';
 import { MARCA_CORTA } from '../services/marca';
 
 type Tab = TabFiscalito;
@@ -50,6 +51,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'retenciones', label: 'Retenciones', icon: <Users size={16} /> },
   { id: 'multiperiodo', label: 'Multi-periodo', icon: <TrendingUp size={16} /> },
   { id: 'estado', label: 'Estado de cuenta', icon: <Wallet size={16} /> },
+  { id: 'resumen', label: 'Resumen de impuestos', icon: <Table size={16} /> },
 ];
 
 /** Cabecera compartida entre el estado vacío del despacho y la pantalla llena. */
@@ -77,6 +79,7 @@ const TAB_PARAM_MAP: Record<string, Tab> = {
   multiperiodo: 'multiperiodo',
   'estado-cuenta': 'estado',
   estado: 'estado',
+  resumen: 'resumen',
 };
 
 export default function FiscalitoServicePage() {
@@ -286,6 +289,7 @@ export default function FiscalitoServicePage() {
         {activeTab === 'retenciones' && <RetencionesTab />}
         {activeTab === 'multiperiodo' && <MultiPeriodoTab />}
         {activeTab === 'estado' && <EstadoCuentaTab />}
+        {activeTab === 'resumen' && <ResumenImpuestosTab />}
       </div>
     </div>
   );
