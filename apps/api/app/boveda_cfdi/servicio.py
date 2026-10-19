@@ -47,6 +47,10 @@ from app.modelos.nucleo import Cliente
 
 # Un CFDI real rara vez pasa de 1 MB; los de nómina con cientos de conceptos, de 5.
 MAX_BYTES_XML = 10 * 1024 * 1024
+# Topes globales por ZIP (revisor P0): sin ellos, un ZIP con millones de miembros pequeños
+# o un total descomprimido enorme agota memoria y CPU aunque cada XML sea chico.
+MAX_MIEMBROS_ZIP = 250_000
+MAX_BYTES_ZIP = 4 * 1024 * 1024 * 1024
 FIRMA_ZIP = b"PK\x03\x04"
 LOTE_FLUSH = 100
 
@@ -116,7 +120,15 @@ def _iterar_zip(nombre_zip: str, archivo: IO[bytes]) -> Iterator[tuple[str, byte
         yield nombre_zip, None, "El ZIP está dañado o no es un ZIP."
         return
     with zf:
-        for info in zf.infolist():
+        miembros = zf.infolist()
+        if len(miembros) > MAX_MIEMBROS_ZIP:
+            yield nombre_zip, None, (
+                f"El ZIP trae {len(miembros):,} archivos; el máximo por carga es "
+                f"{MAX_MIEMBROS_ZIP:,}. Pártelo en varios."
+            )
+            return
+        leidos = 0
+        for info in miembros:
             if info.is_dir() or info.filename.startswith("__MACOSX/"):
                 continue
             nombre = f"{nombre_zip}/{info.filename}"
@@ -137,6 +149,10 @@ def _iterar_zip(nombre_zip: str, archivo: IO[bytes]) -> Iterator[tuple[str, byte
             except (zipfile.BadZipFile, RuntimeError, OSError, EOFError) as e:
                 yield nombre, None, f"No se pudo extraer del ZIP: {e}"
                 continue
+            leidos += len(datos)
+            if leidos > MAX_BYTES_ZIP:
+                yield nombre, None, "El ZIP pasa del tope total descomprimido; pártelo en varios."
+                return
             if len(datos) > MAX_BYTES_XML:
                 yield nombre, None, "El XML pasa de 10 MB."
             else:

@@ -285,8 +285,12 @@ F1-07, F1-08 → P0-08 / P5-07 · F2, F3, F4 → todo P · D-08 → EXT-15.
   descarga (falsa) → pólizas → balanza → declaración → nómina → timbrado (falso) → envío.
   *Listo cuando:* el recorrido completo corre en CI.
 - [ ] **P6-05 · Limpieza final** — lint a cero (S-02), ruff alineado (S-01b), emulador en CI o
-  decisión escrita (R-11), demo-xmls anonimizadas (S-07), bug de egresos demo (B-01), fuera las
-  rutas y catálogos de demostración.
+  decisión escrita (R-11), demo-xmls anonimizadas (S-07: `public/demo-xmls` trae RFC y nombre
+  reales y se sirve en público — prioridad alta), bug de egresos demo (B-01), fuera las rutas y
+  catálogos de demostración, y partir los archivos que rebasan 300 líneas (revisor P0:
+  `boveda_cfdi/parser.py`, `boveda_cfdi/servicio.py`, `trabajos/cola.py`, `routes/asistencia.py`,
+  `routes/cartera.py`, `schemas/cartera.py`, `carteraApi.ts`, `ClienteDetallePage.tsx`,
+  `navigation.ts`, `fiscalAgentApi.ts`).
   *Listo cuando:* lint, tests y build en verde y ningún dato demo real en `public/` ni `dist/`.
 - [ ] **P6-06 · Runbook de conexión** — `docs/conexion-servicios.md`: por cada servicio de EXT,
   qué cuenta crear, qué variable llenar, cómo probar que quedó. Es la guía que seguirá Claude
