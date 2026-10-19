@@ -1,5 +1,6 @@
 /**
- * Contabilito — la contabilidad del CLIENTE ACTIVO (plan P, P2-01 a P2-04).
+ * Contabilito — la contabilidad del CLIENTE ACTIVO (plan P, P2-01 a P2-05 y P2-08:
+ * reportes contables y cierre de periodo y de ejercicio).
  *
  * QUÉ CAMBIÓ CONTRA EL CASCARÓN DE T7: ya no se suben XML ni se arman pólizas
  * en el navegador. El backend es el dueño del catálogo, de la configuración de
@@ -12,27 +13,34 @@
  * con el RFC del cliente al importarlo. Al cambiar de cliente el contenido se
  * REMONTA (`key`), para que nada de un cliente se pinte sobre otro.
  *
- * El tab Buzón se queda como estaba hasta P2-07 (contabilidad electrónica).
+ * P2-06: tab Conciliación (estado de cuenta vs pólizas). P2-07: el tab Buzón
+ * genera y valida la contabilidad electrónica del Anexo 24.
  */
 
 import { useContext, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileStack, Inbox, Scale, Settings2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarCheck, FileBarChart, FileStack, Inbox, Landmark, Scale, Settings2 } from 'lucide-react';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
 import CatalogoCuentas from '../components/contabilidad/CatalogoCuentas';
 import ConfigPolizas from '../components/contabilidad/ConfigPolizas';
 import PolizasCliente from '../components/contabilidad/PolizasCliente';
 import BalanzaCliente from '../components/contabilidad/BalanzaCliente';
 import BuzonTab from '../components/contabilidad/BuzonTab';
+import ReportesContables from '../components/contabilidad/ReportesContables';
+import PeriodosContables from '../components/contabilidad/PeriodosContables';
+import ConciliacionBancaria from '../components/contabilidad/ConciliacionBancaria';
 import SinClienteActivo from '../components/common/SinClienteActivo';
 
-type TabContabilito = 'catalogo' | 'config' | 'polizas' | 'balanza' | 'buzon';
+type TabContabilito = 'catalogo' | 'config' | 'polizas' | 'balanza' | 'conciliacion' | 'reportes' | 'periodos' | 'buzon';
 
 const TABS: { id: TabContabilito; label: string; icon: React.ReactNode }[] = [
   { id: 'catalogo', label: 'Catálogo', icon: <BookOpen size={16} /> },
   { id: 'config', label: 'Configuración', icon: <Settings2 size={16} /> },
   { id: 'polizas', label: 'Pólizas', icon: <FileStack size={16} /> },
   { id: 'balanza', label: 'Balanza', icon: <Scale size={16} /> },
+  { id: 'conciliacion', label: 'Conciliación', icon: <Landmark size={16} /> },
+  { id: 'reportes', label: 'Reportes', icon: <FileBarChart size={16} /> },
+  { id: 'periodos', label: 'Periodos', icon: <CalendarCheck size={16} /> },
   { id: 'buzon', label: 'Buzón', icon: <Inbox size={16} /> },
 ];
 
@@ -49,10 +57,10 @@ export default function ContabilitoPage() {
       />
     );
   }
-  return <ContabilidadDelCliente key={clave} clave={clave} nombre={activo?.cliente?.nombre ?? clave} />;
+  return <ContabilidadDelCliente key={clave} clave={clave} nombre={activo?.cliente?.nombre ?? clave} rfc={activo?.cliente?.rfc ?? ''} />;
 }
 
-function ContabilidadDelCliente({ clave, nombre }: { clave: string; nombre: string }) {
+function ContabilidadDelCliente({ clave, nombre, rfc }: { clave: string; nombre: string; rfc: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [polizaAbierta, setPolizaAbierta] = useState<number | null>(null);
 
@@ -128,7 +136,10 @@ function ContabilidadDelCliente({ clave, nombre }: { clave: string; nombre: stri
         {activeTab === 'balanza' && (
           <BalanzaCliente clave={clave} onAbrirPoliza={(id) => { setPolizaAbierta(id); irA('polizas'); }} />
         )}
-        {activeTab === 'buzon' && <BuzonTab />}
+        {activeTab === 'conciliacion' && <ConciliacionBancaria clave={clave} />}
+        {activeTab === 'reportes' && <ReportesContables clave={clave} nombre={nombre} rfc={rfc} onVerBalanza={() => irA('balanza')} />}
+        {activeTab === 'periodos' && <PeriodosContables clave={clave} />}
+        {activeTab === 'buzon' && <BuzonTab clave={clave} />}
       </div>
     </div>
   );

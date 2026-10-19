@@ -24,6 +24,7 @@ Para ver qué está configurado: `GET /health/integraciones`.
 | Estatus de CFDI | `FISCALITO_SAT_ESTATUS` | falso, sat | P1-03 hecho |
 | Listas 69-B / 69 | `FISCALITO_SAT_LISTAS` | falso, sat | P1-04 hecho |
 | Opinión de cumplimiento | `FISCALITO_OPINION_CUMPLIMIENTO` | falso, portal_sat, proveedor, manual | P1-05 hecho |
+| Buzón SAT (contabilidad electrónica) | `FISCALITO_BUZON_SAT` | falso, portal_sat (POR CONFIRMAR) | P2-07 hecho (falso) |
 | PAC | `FISCALITO_PAC` | — | P4 |
 
 ---
@@ -382,6 +383,28 @@ RFC pide su opinión (y constancia) el día 1 de cada mes; se cambia por cliente
 **A quién contratar.** Depende de DP-2. Si es `proveedor`, alguien que entregue la 32-D por API
 con la autorización del contribuyente; con `portal_sat`, nadie, pero cada cliente necesita su
 e.firma vigente cargada.
+
+## Buzón SAT — envío de contabilidad electrónica (`buzon_sat`) — P2-07
+
+**Qué es.** El envío de los XML del Anexo 24 (catálogo, balanza, pólizas, auxiliares) al SAT.
+**El SAT no publica una API para esto**: se sube en el portal (Contabilidad electrónica →
+Envío de archivos) firmando con la e.firma del contribuyente. Hoy Fiscalito genera, valida
+contra el XSD oficial, sella (opcional) y empaqueta el ZIP con el nombre que pide el SAT; la
+pantalla muestra cómo subirlo. Ver `apps/api/app/integraciones/buzon_sat.py`.
+
+**Variables.** `FISCALITO_BUZON_SAT` = `falso` (default fuera de producción) | `portal_sat`.
+
+- `falso`: sin red; valida el nombre del ZIP y devuelve un acuse sintético `FALSO-…` que dice
+  que no se envió nada.
+- `portal_sat`: **POR CONFIRMAR CON E.FIRMA REAL.** Preparado para automatizar el portal con
+  la e.firma del cliente (`obtener_firmante`), como `opinion_cumplimiento.portal_sat`. El
+  flujo de carga no está documentado; hoy responde 501 y no sale ningún request.
+
+**Cómo se prueba.** `tests/plan_p/test_anexo24.py` (falso determinístico, portal 501, ruta
+`/enviar`).
+
+**A quién contratar.** A nadie hoy. Si se automatiza: validar el flujo con una e.firma real
+de un cliente que lo autorice.
 
 ## PAC (timbrado y cancelación)
 

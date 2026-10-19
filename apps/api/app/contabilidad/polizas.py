@@ -192,6 +192,13 @@ def crear_manual(db: Session, cliente: Cliente, *, tipo: str, fecha: date, conce
     return guardar(db, poliza, movs)
 
 
+def _exigir_no_de_cierre(p: Poliza) -> None:
+    if p.origen in ("cierre", "apertura"):
+        raise FiscalAgentError(
+            "Las pólizas de cierre y apertura no se editan ni se cancelan a mano: deshaz el "
+            "cierre anual desde la pantalla de periodos.", 409)
+
+
 def obtener(db: Session, cliente: Cliente, poliza_id: int) -> Poliza:
     p = db.scalar(select(Poliza).where(Poliza.id == poliza_id, Poliza.cliente_id == cliente.id))
     if p is None:
@@ -205,6 +212,7 @@ def editar(db: Session, cliente: Cliente, poliza_id: int, *, fecha: date | None,
     p = obtener(db, cliente, poliza_id)
     if p.estado != "activa":
         raise FiscalAgentError("Una póliza cancelada no se edita.", 409)
+    _exigir_no_de_cierre(p)
     exigir_abierto(db, cliente.id, p.fecha)
     if fecha is not None and fecha != p.fecha:
         if (fecha.year, fecha.month) != (p.anio, p.mes):
@@ -231,6 +239,7 @@ def cancelar(db: Session, cliente: Cliente, poliza_id: int, motivo: str) -> Poli
     p = obtener(db, cliente, poliza_id)
     if p.estado == "cancelada":
         return p
+    _exigir_no_de_cierre(p)
     exigir_abierto(db, cliente.id, p.fecha)
     p.estado, p.cancelada_en = "cancelada", datetime.now(UTC)
     p.motivo_cancelacion = (motivo or "Cancelada por el usuario.")[:300]

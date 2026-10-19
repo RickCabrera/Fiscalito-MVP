@@ -1,5 +1,6 @@
 """
-Contabilidad por cliente (P2-01 a P2-04): `/api/v1/contabilidad/...`.
+Contabilidad por cliente (P2-01 a P2-04; reportes y cierre P2-05/08 en
+`contabilidad_reportes.py`): `/api/v1/contabilidad/...`.
 
 Todo lo de un cliente cuelga de `/contabilidad/clientes/{clave}/...`, pasa por
 `contexto_actual` y obtiene al cliente con `cliente_o_404` (otro despacho = 404). Los ids de
@@ -20,7 +21,6 @@ from app.auditoria import registrar
 from app.contabilidad import agrupador, balanza, catalogo, config, generador, polizas
 from app.contabilidad import trabajos as trabajos_conta
 from app.exceptions import FiscalAgentError
-from app.modelos.contabilidad import PeriodoCerrado
 from app.tenancy import Contexto, cliente_o_404, contexto_actual
 
 router = APIRouter(prefix="/contabilidad", tags=["contabilidad"])
@@ -310,35 +310,11 @@ def cancelar_poliza(clave: str, poliza_id: int, entrada: Cancelacion,
 # ── periodos ──
 
 
-class Periodo(BaseModel):
-    anio: int = Field(..., ge=2000, le=2100)
-    mes: int = Field(..., ge=1, le=12)
-
-
 @router.get("/clientes/{clave}/periodos-cerrados")
 def periodos(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
+    """Los meses cerrados. Cerrar y reabrir: `contabilidad_reportes.py` (P2-08)."""
     cliente = cliente_o_404(ctx, clave)
     return {"exito": True, "periodos": polizas.periodos_cerrados(ctx.db, cliente)}
-
-
-@router.post("/clientes/{clave}/periodos-cerrados")
-def cerrar(clave: str, periodo: Periodo, ctx: Contexto = Depends(contexto_actual)) -> dict:
-    cliente = cliente_o_404(ctx, clave)
-    polizas.cerrar_periodo(ctx.db, cliente, periodo.anio, periodo.mes, ctx.uid)
-    registrar(ctx, "contabilidad.cerrar_periodo", "cliente", cliente.id, periodo.model_dump(),
-              cliente)
-    return {"exito": True}
-
-
-@router.delete("/clientes/{clave}/periodos-cerrados/{anio}/{mes}")
-def abrir(clave: str, anio: int, mes: int, ctx: Contexto = Depends(contexto_actual)) -> dict:
-    cliente = cliente_o_404(ctx, clave)
-    if ctx.db.get(PeriodoCerrado, (cliente.id, anio, mes)) is None:
-        raise FiscalAgentError("Ese periodo no está cerrado.", 404)
-    polizas.abrir_periodo(ctx.db, cliente, anio, mes)
-    registrar(ctx, "contabilidad.abrir_periodo", "cliente", cliente.id,
-              {"anio": anio, "mes": mes}, cliente)
-    return {"exito": True}
 
 
 # ── P2-04: balanza, auxiliar y saldos iniciales ──
@@ -350,19 +326,21 @@ def ver_balanza(
     nivel: int | None = Query(None, ge=1, le=10),
     solo: Literal["con_movimiento", "con_saldo_o_movimiento", "todas"] = Query(
         "con_saldo_o_movimiento"),
+    incluir_cierre: bool = Query(False),
     ctx: Contexto = Depends(contexto_actual),
 ) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
     return {"exito": True, **balanza.balanza(ctx.db, cliente, desde, hasta, nivel=nivel,
-                                              solo=solo)}
+                                              solo=solo, incluir_cierre=incluir_cierre)}
 
 
 @router.get("/clientes/{clave}/cuentas/{cuenta_id}/auxiliar")
 def ver_auxiliar(clave: str, cuenta_id: int, desde: date = Query(...),
-                 hasta: date = Query(...),
+                 hasta: date = Query(...), incluir_cierre: bool = Query(False),
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
-    return {"exito": True, **balanza.auxiliar(ctx.db, cliente, cuenta_id, desde, hasta)}
+    return {"exito": True, **balanza.auxiliar(ctx.db, cliente, cuenta_id, desde, hasta,
+                                              incluir_cierre=incluir_cierre)}
 
 
 class SaldoEntrada(BaseModel):

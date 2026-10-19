@@ -79,6 +79,8 @@ import * as satVerificacionApi from './satVerificacionApi';
 import * as contabilidadApi from './contabilidadApi';
 // P3-02/03/07/08: impuestos del cliente y calculadoras fiscales.
 import * as impuestosApi from './impuestosApi';
+import * as conciliacionApi from './conciliacionApi';
+import * as contabilidadElectronicaApi from './contabilidadElectronicaApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -156,6 +158,11 @@ const FICHA_VACIA = {
   clave_periodicidad: '04',
   empleados: [],
 } as unknown as ClienteDetalle;
+
+const SOLICITUD_A24 = {
+  documento: 'catalogo', anio: 2026, mes: 3, tipo_envio: 'N', fecha_mod_bal: null,
+  tipo_solicitud: '', num_orden: '', num_tramite: '', sellar: false,
+} as const;
 
 const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
   'despachoApi.ts': {
@@ -272,12 +279,47 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     editarPoliza: () => contabilidadApi.editarPoliza('taller', 5, { concepto: 'x' }),
     cancelarPoliza: () => contabilidadApi.cancelarPoliza('taller', 5, 'x'),
     listarPeriodosCerrados: () => contabilidadApi.listarPeriodosCerrados('taller'),
-    cerrarPeriodo: () => contabilidadApi.cerrarPeriodo('taller', 2026, 3),
-    abrirPeriodo: () => contabilidadApi.abrirPeriodo('taller', 2026, 3),
     obtenerBalanza: () => contabilidadApi.obtenerBalanza('taller', '2026-03-01', '2026-03-31', 1, 'todas'),
     obtenerAuxiliar: () => contabilidadApi.obtenerAuxiliar('taller', 6, '2026-03-01', '2026-03-31'),
     listarSaldosIniciales: () => contabilidadApi.listarSaldosIniciales('taller'),
     guardarSaldosIniciales: () => contabilidadApi.guardarSaldosIniciales('taller', []),
+    obtenerEstadoResultados: () => contabilidadApi.obtenerEstadoResultados('taller', { desde: '2026-03-01', hasta: '2026-03-31', comparar: 'anio_anterior' }),
+    obtenerBalanceGeneral: () => contabilidadApi.obtenerBalanceGeneral('taller', { desde: '2026-03-01', hasta: '2026-03-31', moneda: 'USD', tipo_cambio: '18.5' }),
+    obtenerPolizasImpresion: () => contabilidadApi.obtenerPolizasImpresion('taller', '2026-03-01', '2026-03-31'),
+    descargarExcel: () => contabilidadApi.descargarExcel('taller', 'auxiliar', { desde: '2026-03-01', hasta: '2026-03-31' }, 6),
+    obtenerEjercicio: () => contabilidadApi.obtenerEjercicio('taller', 2026),
+    validarCierreMes: () => contabilidadApi.validarCierreMes('taller', 2026, 3),
+    cerrarMes: () => contabilidadApi.cerrarMes('taller', 2026, 3),
+    reabrirMes: () => contabilidadApi.reabrirMes('taller', 2026, 3, 'motivo'),
+    validarCierreAnual: () => contabilidadApi.validarCierreAnual('taller', 2026),
+    hacerCierreAnual: () => contabilidadApi.hacerCierreAnual('taller', 2026, { traspasar_resultado: false, forzar: false, motivo: '' }),
+    deshacerCierreAnual: () => contabilidadApi.deshacerCierreAnual('taller', 2026, 'motivo'),
+  },
+  'conciliacionApi.ts': {
+    listarBancos: () => conciliacionApi.listarBancos(),
+    listarCuentasBancarias: () => conciliacionApi.listarCuentasBancarias('taller'),
+    crearCuentaBancaria: () => conciliacionApi.crearCuentaBancaria('taller', { banco: '012', nombre: 'x', numero: '1', clabe: '', cuenta_contable_id: 1, ventana_dias: 3, umbral: 60 }),
+    editarCuentaBancaria: () => conciliacionApi.editarCuentaBancaria('taller', 2, { nombre: 'y' }),
+    borrarCuentaBancaria: () => conciliacionApi.borrarCuentaBancaria('taller', 2),
+    listarPlantillas: () => conciliacionApi.listarPlantillas('taller'),
+    guardarPlantilla: () => conciliacionApi.guardarPlantilla('taller', { nombre: 'p', banco: '012', formato: 'csv', mapeo: {} }),
+    borrarPlantilla: () => conciliacionApi.borrarPlantilla('taller', 3),
+    importarEstado: () => conciliacionApi.importarEstado('taller', 2, new File(['x'], 'e.csv')),
+    listarEstados: () => conciliacionApi.listarEstados('taller', 2),
+    obtenerVista: () => conciliacionApi.obtenerVista('taller', 2, '2026-03-01', '2026-03-31'),
+    conciliarAutomatico: () => conciliacionApi.conciliarAutomatico('taller', 2),
+    conciliarManual: () => conciliacionApi.conciliarManual('taller', 2, ['b:1'], ['p:1']),
+    deshacerConciliacion: () => conciliacionApi.deshacerConciliacion('taller', 2, 4),
+    sugerirCuenta: () => conciliacionApi.sugerirCuenta('taller', 2, 5),
+    polizaDesdeBanco: () => conciliacionApi.polizaDesdeBanco('taller', 2, 5, [], ''),
+    obtenerReporte: () => conciliacionApi.obtenerReporte('taller', 2, '2026-03-31'),
+    descargarReporte: () => conciliacionApi.descargarReporte('taller', 2, '2026-03-31'),
+  },
+  'contabilidadElectronicaApi.ts': {
+    obtenerDocumentos: () => contabilidadElectronicaApi.obtenerDocumentos(),
+    validarAnexo24: () => contabilidadElectronicaApi.validarAnexo24('taller', SOLICITUD_A24),
+    descargarZipAnexo24: () => contabilidadElectronicaApi.descargarZipAnexo24('taller', SOLICITUD_A24),
+    enviarAnexo24: () => contabilidadElectronicaApi.enviarAnexo24('taller', SOLICITUD_A24),
   },
   'impuestosApi.ts': {
     obtenerResumen: () =>
@@ -333,6 +375,8 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'satVerificacionApi.ts': satVerificacionApi,
   'contabilidadApi.ts': contabilidadApi,
   'impuestosApi.ts': impuestosApi,
+  'conciliacionApi.ts': conciliacionApi,
+  'contabilidadElectronicaApi.ts': contabilidadElectronicaApi,
 };
 
 /**

@@ -6459,7 +6459,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Rango"
+                "$ref": "#/components/schemas/app__routes__contabilidad__Rango"
               }
             }
           }
@@ -7001,6 +7001,7 @@
           "contabilidad"
         ],
         "summary": "Periodos",
+        "description": "Los meses cerrados. Cerrar y reabrir: `contabilidad_reportes.py` (P2-08).",
         "operationId": "periodos_api_v1_contabilidad_clientes__clave__periodos_cerrados_get",
         "parameters": [
           {
@@ -7038,152 +7039,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Periodos Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "contabilidad"
-        ],
-        "summary": "Cerrar",
-        "operationId": "cerrar_api_v1_contabilidad_clientes__clave__periodos_cerrados_post",
-        "parameters": [
-          {
-            "name": "clave",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Clave"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/app__routes__contabilidad__Periodo"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Cerrar Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}": {
-      "delete": {
-        "tags": [
-          "contabilidad"
-        ],
-        "summary": "Abrir",
-        "operationId": "abrir_api_v1_contabilidad_clientes__clave__periodos_cerrados__anio___mes__delete",
-        "parameters": [
-          {
-            "name": "clave",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Clave"
-            }
-          },
-          {
-            "name": "anio",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Anio"
-            }
-          },
-          {
-            "name": "mes",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Mes"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Abrir Api V1 Contabilidad Clientes  Clave  Periodos Cerrados  Anio   Mes  Delete"
                 }
               }
             }
@@ -7269,6 +7124,16 @@
               "type": "string",
               "default": "con_saldo_o_movimiento",
               "title": "Solo"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
             }
           },
           {
@@ -7358,6 +7223,16 @@
               "type": "string",
               "format": "date",
               "title": "Hasta"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
             }
           },
           {
@@ -8450,6 +8325,2823 @@
           }
         }
       }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Estado Resultados",
+        "operationId": "estado_resultados_api_v1_contabilidad_clientes__clave__reportes_estado_resultados_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Resultados Api V1 Contabilidad Clientes  Clave  Reportes Estado Resultados Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Balance General",
+        "operationId": "balance_general_api_v1_contabilidad_clientes__clave__reportes_balance_general_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Balance General Api V1 Contabilidad Clientes  Clave  Reportes Balance General Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/polizas": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Polizas Impresion",
+        "description": "Pólizas del rango CON sus movimientos, para imprimirlas (máx. 2000).",
+        "operationId": "polizas_impresion_api_v1_contabilidad_clientes__clave__reportes_polizas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "activa",
+                    "cancelada"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Polizas Impresion Api V1 Contabilidad Clientes  Clave  Reportes Polizas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reportes/excel": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Exportar Excel",
+        "description": "El reporte pedido como .xlsx (importes numéricos con formato y sus totales).",
+        "operationId": "exportar_excel_api_v1_contabilidad_clientes__clave__reportes_excel_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "reporte",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "balanza",
+                "auxiliar",
+                "estado_resultados",
+                "balance_general",
+                "polizas"
+              ],
+              "type": "string",
+              "title": "Reporte"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "agrupar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "cuenta",
+                "agrupador"
+              ],
+              "type": "string",
+              "default": "cuenta",
+              "title": "Agrupar"
+            }
+          },
+          {
+            "name": "moneda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "MXN",
+              "title": "Moneda"
+            }
+          },
+          {
+            "name": "tipo_cambio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Cambio"
+            }
+          },
+          {
+            "name": "idioma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "es",
+                "en"
+              ],
+              "type": "string",
+              "default": "es",
+              "title": "Idioma"
+            }
+          },
+          {
+            "name": "comparar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ninguno",
+                "periodo_anterior",
+                "anio_anterior"
+              ],
+              "type": "string",
+              "default": "ninguno",
+              "title": "Comparar"
+            }
+          },
+          {
+            "name": "incluir_cierre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Incluir Cierre"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Periodos Del Ejercicio",
+        "operationId": "periodos_del_ejercicio_api_v1_contabilidad_clientes__clave__periodos__anio__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Periodos Del Ejercicio Api V1 Contabilidad Clientes  Clave  Periodos  Anio  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Validar Mes",
+        "description": "Qué impide cerrar el mes: descuadre y CFDI vigentes sin póliza (con su lista).",
+        "operationId": "validar_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__validacion_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Validar Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Validacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cerrar Mes",
+        "operationId": "cerrar_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__cerrar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Cierre"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cerrar Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Cerrar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Reabrir Mes",
+        "operationId": "reabrir_mes_api_v1_contabilidad_clientes__clave__periodos__anio___mes__reabrir_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reapertura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reabrir Mes Api V1 Contabilidad Clientes  Clave  Periodos  Anio   Mes  Reabrir Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Validar Ejercicio",
+        "operationId": "validar_ejercicio_api_v1_contabilidad_clientes__clave__cierre_anual__anio__validacion_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Validar Ejercicio Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Validacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cierre Anual",
+        "operationId": "cierre_anual_api_v1_contabilidad_clientes__clave__cierre_anual__anio__post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CierreAnual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cierre Anual Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Deshacer Cierre Anual",
+        "operationId": "deshacer_cierre_anual_api_v1_contabilidad_clientes__clave__cierre_anual__anio__deshacer_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reapertura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Deshacer Cierre Anual Api V1 Contabilidad Clientes  Clave  Cierre Anual  Anio  Deshacer Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/bancos": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Bancos",
+        "description": "Bancos con lector de PDF (diseños POR CONFIRMAR CON PDF REAL).",
+        "operationId": "bancos_api_v1_conciliacion_bancos_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Bancos Api V1 Conciliacion Bancos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Listar Cuentas",
+        "operationId": "listar_cuentas_api_v1_conciliacion_clientes__clave__cuentas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Cuentas Api V1 Conciliacion Clientes  Clave  Cuentas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Crear Cuenta",
+        "operationId": "crear_cuenta_api_v1_conciliacion_clientes__clave__cuentas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuentaBancariaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Cuenta Api V1 Conciliacion Clientes  Clave  Cuentas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}": {
+      "patch": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Cambiar Cuenta",
+        "operationId": "cambiar_cuenta_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__patch",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuentaBancariaCambio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Cuenta Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Borrar Cuenta",
+        "operationId": "borrar_cuenta_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Cuenta Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/plantillas": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Listar Plantillas",
+        "operationId": "listar_plantillas_api_v1_conciliacion_clientes__clave__plantillas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Plantillas Api V1 Conciliacion Clientes  Clave  Plantillas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Guardar Plantilla",
+        "description": "Crea o reemplaza (por nombre) una plantilla de columnas.",
+        "operationId": "guardar_plantilla_api_v1_conciliacion_clientes__clave__plantillas_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlantillaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Plantilla Api V1 Conciliacion Clientes  Clave  Plantillas Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}": {
+      "delete": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Borrar Plantilla",
+        "operationId": "borrar_plantilla_api_v1_conciliacion_clientes__clave__plantillas__plantilla_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "plantilla_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Plantilla Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Plantilla Api V1 Conciliacion Clientes  Clave  Plantillas  Plantilla Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados": {
+      "post": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Importar Estado",
+        "description": "Importa un estado de cuenta (CSV, XLSX, OFX o PDF). No duplica renglones ya importados.",
+        "operationId": "importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Importar Estado Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Estados Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Listar Estados",
+        "operationId": "listar_estados_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Estados Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Estados Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Ver Movimientos",
+        "description": "Las dos tablas: estado de cuenta y movimientos de libros, con su marca.",
+        "operationId": "ver_movimientos_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__movimientos_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "incluir_cfdi",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Incluir Cfdi"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ver Movimientos Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Movimientos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliar": {
+      "post": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Conciliar",
+        "description": "Emparejamiento automático de lo pendiente en el rango.",
+        "operationId": "conciliar_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__conciliar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routes__conciliacion__Rango"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Conciliar Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Conciliar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones": {
+      "post": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Conciliar Manual",
+        "operationId": "conciliar_manual_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__conciliaciones_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConciliacionManual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Conciliar Manual Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Conciliaciones Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones/{conciliacion_id}": {
+      "delete": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Deshacer",
+        "operationId": "deshacer_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__conciliaciones__conciliacion_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "conciliacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Conciliacion Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Deshacer Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Conciliaciones  Conciliacion Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/sugerencia": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Sugerencia",
+        "description": "Cuenta sugerida para la póliza de un movimiento del banco sin CFDI.",
+        "operationId": "sugerencia_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__movimientos__movimiento_id__sugerencia_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "movimiento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movimiento Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sugerencia Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Movimientos  Movimiento Id  Sugerencia Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/poliza": {
+      "post": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Poliza Desde Banco",
+        "operationId": "poliza_desde_banco_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__movimientos__movimiento_id__poliza_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "movimiento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movimiento Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolizaDesdeBanco"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Poliza Desde Banco Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Movimientos  Movimiento Id  Poliza Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/reporte": {
+      "get": {
+        "tags": [
+          "conciliacion"
+        ],
+        "summary": "Ver Reporte",
+        "description": "Reporte de conciliación al corte (saldo banco vs libros, partidas en tránsito).",
+        "operationId": "ver_reporte_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__reporte_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Corte"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "xlsx"
+              ],
+              "type": "string",
+              "default": "json",
+              "title": "Formato"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Ver Reporte Api V1 Conciliacion Clientes  Clave  Cuentas  Cuenta Id  Reporte Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad-electronica/documentos": {
+      "get": {
+        "tags": [
+          "contabilidad-electronica"
+        ],
+        "summary": "Documentos",
+        "description": "Documentos que se generan y cómo se entregan (no hay API del SAT para el envío).",
+        "operationId": "documentos_api_v1_contabilidad_electronica_documentos_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Documentos Api V1 Contabilidad Electronica Documentos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad-electronica/clientes/{clave}/validar": {
+      "post": {
+        "tags": [
+          "contabilidad-electronica"
+        ],
+        "summary": "Validar",
+        "description": "Genera y valida contra el XSD oficial. Devuelve errores, advertencias y el XML.",
+        "operationId": "validar_api_v1_contabilidad_electronica_clientes__clave__validar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Validar Api V1 Contabilidad Electronica Clientes  Clave  Validar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad-electronica/clientes/{clave}/zip": {
+      "post": {
+        "tags": [
+          "contabilidad-electronica"
+        ],
+        "summary": "Descargar Zip",
+        "description": "El ZIP con el nombre que exige el SAT (RFC+AAAA+MM+tipo). 422 si no valida.",
+        "operationId": "descargar_zip_api_v1_contabilidad_electronica_clientes__clave__zip_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad-electronica/clientes/{clave}/enviar": {
+      "post": {
+        "tags": [
+          "contabilidad-electronica"
+        ],
+        "summary": "Enviar",
+        "description": "Envía por el adaptador `buzon_sat` (falso = simulación; portal_sat POR CONFIRMAR).",
+        "operationId": "enviar_api_v1_contabilidad_electronica_clientes__clave__enviar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Enviar Api V1 Contabilidad Electronica Clientes  Clave  Enviar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8705,6 +11397,60 @@
           "archivos"
         ],
         "title": "Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post"
+      },
+      "Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "formato": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "ofx",
+                  "pdf"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formato"
+          },
+          "plantilla_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plantilla Id"
+          },
+          "mapeo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapeo",
+            "description": "JSON con el mapeo de columnas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post"
       },
       "Body_subir_credencial_api_v1_clientes__clave__credenciales_post": {
         "properties": {
@@ -9324,7 +12070,7 @@
             "description": "employeeNo de los empleados del cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/app__schemas__asistencia__Periodo"
+            "$ref": "#/components/schemas/Periodo"
           },
           "horario": {
             "$ref": "#/components/schemas/HorarioLaboral"
@@ -9350,7 +12096,7 @@
             "title": "Cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/Periodo-Output"
+            "$ref": "#/components/schemas/Periodo"
           },
           "incidencias": {
             "items": {
@@ -9376,6 +12122,45 @@
           "incidencias"
         ],
         "title": "CerrarPeriodoResponse"
+      },
+      "Cierre": {
+        "properties": {
+          "forzar": {
+            "type": "boolean",
+            "title": "Forzar",
+            "default": false
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Cierre"
+      },
+      "CierreAnual": {
+        "properties": {
+          "traspasar_resultado": {
+            "type": "boolean",
+            "title": "Traspasar Resultado",
+            "default": false
+          },
+          "forzar": {
+            "type": "boolean",
+            "title": "Forzar",
+            "default": false
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CierreAnual"
       },
       "ClienteCarteraSchema": {
         "properties": {
@@ -9804,6 +12589,40 @@
         "title": "CompararRegimenResponse",
         "description": "Respuesta con ISR estimado para cada regimen fiscal, ordenado de menor a mayor."
       },
+      "ConciliacionManual": {
+        "properties": {
+          "banco": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Banco"
+          },
+          "libros": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Libros"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "banco",
+          "libros"
+        ],
+        "title": "ConciliacionManual"
+      },
       "ConfigImpuestosSchema": {
         "properties": {
           "modo_factor": {
@@ -9914,6 +12733,32 @@
         "title": "ConfigImpuestosSchema",
         "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-C, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
       },
+      "Contrapartida": {
+        "properties": {
+          "cuenta_id": {
+            "type": "integer",
+            "title": "Cuenta Id"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuenta_id",
+          "importe"
+        ],
+        "title": "Contrapartida"
+      },
       "ContributorType": {
         "type": "string",
         "enum": [
@@ -9925,6 +12770,170 @@
         ],
         "title": "ContributorType",
         "description": "Tipo de contribuyente en el ecosistema Fiscalito."
+      },
+      "CuentaBancariaCambio": {
+        "properties": {
+          "banco": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banco"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "clabe": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(\\d{18})?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clabe"
+          },
+          "cuenta_contable_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cuenta Contable Id"
+          },
+          "ventana_dias": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 31.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ventana Dias"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 50.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral"
+          },
+          "activa": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activa"
+          }
+        },
+        "type": "object",
+        "title": "CuentaBancariaCambio"
+      },
+      "CuentaBancariaEntrada": {
+        "properties": {
+          "banco": {
+            "type": "string",
+            "pattern": "^\\d{3}$",
+            "title": "Banco"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Nombre",
+            "default": ""
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 30,
+            "title": "Numero",
+            "default": ""
+          },
+          "clabe": {
+            "type": "string",
+            "pattern": "^(\\d{18})?$",
+            "title": "Clabe",
+            "default": ""
+          },
+          "moneda": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "title": "Moneda",
+            "default": "MXN"
+          },
+          "cuenta_contable_id": {
+            "type": "integer",
+            "title": "Cuenta Contable Id"
+          },
+          "ventana_dias": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 0.0,
+            "title": "Ventana Dias",
+            "default": 3
+          },
+          "umbral": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 50.0,
+            "title": "Umbral",
+            "default": 60
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "banco",
+          "cuenta_contable_id"
+        ],
+        "title": "CuentaBancariaEntrada"
       },
       "CuentaCambio": {
         "properties": {
@@ -13218,7 +16227,7 @@
         ],
         "title": "PeriodicidadDeclaracion"
       },
-      "Periodo-Output": {
+      "Periodo": {
         "properties": {
           "inicio": {
             "type": "string",
@@ -13369,6 +16378,42 @@
         "title": "PlantillaDemoResponse",
         "description": "Todo lo que la pantalla de la demo necesita y **no puede inventarse**.\n\nExiste para que el front no escriba ni una constante fiscal. Sin este\nendpoint tendría que hardcodear los nueve empleados y la prima de riesgo\n—que tiene fundamento legal (Art. 72/74 LSS) y dueño en `demo_nomina.py`—\nen TypeScript, donde ningún test verifica que no diverjan.\n\n`periodo_sugerido` sale de la **regla de quincena real**, no de las fechas\nde las checadas: deducirlo de la primera y la última da 15 días donde la\nquincena tiene 16 —el día 16 cae en fin de semana— y ese día de menos\nentra a `DiasDelPeriodo` y a los días pagados, o sea a las cuotas y al ISR."
       },
+      "PlantillaEntrada": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "banco": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Banco",
+            "default": ""
+          },
+          "formato": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "xlsx"
+            ],
+            "title": "Formato",
+            "default": "csv"
+          },
+          "mapeo": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Mapeo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "mapeo"
+        ],
+        "title": "PlantillaEntrada"
+      },
       "PolizaCambio": {
         "properties": {
           "fecha": {
@@ -13414,6 +16459,30 @@
         },
         "type": "object",
         "title": "PolizaCambio"
+      },
+      "PolizaDesdeBanco": {
+        "properties": {
+          "contrapartidas": {
+            "items": {
+              "$ref": "#/components/schemas/Contrapartida"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Contrapartidas"
+          },
+          "concepto": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Concepto",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "contrapartidas"
+        ],
+        "title": "PolizaDesdeBanco"
       },
       "PolizaEntrada": {
         "properties": {
@@ -13944,37 +17013,6 @@
         "title": "PtuRequest",
         "description": "`POST /calculadoras/ptu`."
       },
-      "Rango": {
-        "properties": {
-          "desde": {
-            "type": "string",
-            "format": "date",
-            "title": "Desde"
-          },
-          "hasta": {
-            "type": "string",
-            "format": "date",
-            "title": "Hasta"
-          },
-          "segundo_plano": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Segundo Plano"
-          }
-        },
-        "type": "object",
-        "required": [
-          "desde",
-          "hasta"
-        ],
-        "title": "Rango"
-      },
       "RangoEntrada": {
         "properties": {
           "desde": {
@@ -14024,6 +17062,21 @@
           "hasta"
         ],
         "title": "RangoEstatus"
+      },
+      "Reapertura": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "Reapertura"
       },
       "ReciboCFDISchema": {
         "properties": {
@@ -14794,6 +17847,90 @@
         "type": "object",
         "title": "Seleccion"
       },
+      "SolicitudEntrada": {
+        "properties": {
+          "documento": {
+            "type": "string",
+            "enum": [
+              "catalogo",
+              "balanza",
+              "polizas",
+              "auxiliar_cuentas",
+              "auxiliar_folios"
+            ],
+            "title": "Documento"
+          },
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2015.0,
+            "title": "Anio"
+          },
+          "mes": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes"
+          },
+          "tipo_envio": {
+            "type": "string",
+            "enum": [
+              "N",
+              "C"
+            ],
+            "title": "Tipo Envio",
+            "default": "N"
+          },
+          "fecha_mod_bal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Mod Bal"
+          },
+          "tipo_solicitud": {
+            "type": "string",
+            "enum": [
+              "",
+              "AF",
+              "FC",
+              "DE",
+              "CO"
+            ],
+            "title": "Tipo Solicitud",
+            "default": ""
+          },
+          "num_orden": {
+            "type": "string",
+            "maxLength": 13,
+            "title": "Num Orden",
+            "default": ""
+          },
+          "num_tramite": {
+            "type": "string",
+            "maxLength": 14,
+            "title": "Num Tramite",
+            "default": ""
+          },
+          "sellar": {
+            "type": "boolean",
+            "title": "Sellar",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "documento",
+          "anio",
+          "mes"
+        ],
+        "title": "SolicitudEntrada"
+      },
       "TerceroRetencion": {
         "properties": {
           "rfc": {
@@ -15187,6 +18324,41 @@
         ],
         "title": "_ConExplicacion"
       },
+      "app__routes__conciliacion__Rango": {
+        "properties": {
+          "desde": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desde"
+          },
+          "hasta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hasta"
+          },
+          "incluir_cfdi": {
+            "type": "boolean",
+            "title": "Incluir Cfdi",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "Rango"
+      },
       "app__routes__contabilidad__ConfigEntrada": {
         "properties": {
           "automatica_ingresos": {
@@ -15337,27 +18509,36 @@
         "type": "object",
         "title": "ConfigEntrada"
       },
-      "app__routes__contabilidad__Periodo": {
+      "app__routes__contabilidad__Rango": {
         "properties": {
-          "anio": {
-            "type": "integer",
-            "maximum": 2100.0,
-            "minimum": 2000.0,
-            "title": "Anio"
+          "desde": {
+            "type": "string",
+            "format": "date",
+            "title": "Desde"
           },
-          "mes": {
-            "type": "integer",
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Mes"
+          "hasta": {
+            "type": "string",
+            "format": "date",
+            "title": "Hasta"
+          },
+          "segundo_plano": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segundo Plano"
           }
         },
         "type": "object",
         "required": [
-          "anio",
-          "mes"
+          "desde",
+          "hasta"
         ],
-        "title": "Periodo"
+        "title": "Rango"
       },
       "app__routes__sat_descarga__ConfigEntrada": {
         "properties": {
@@ -15466,27 +18647,6 @@
         },
         "type": "object",
         "title": "ConfigEntrada"
-      },
-      "app__schemas__asistencia__Periodo": {
-        "properties": {
-          "inicio": {
-            "type": "string",
-            "format": "date",
-            "title": "Inicio"
-          },
-          "fin": {
-            "type": "string",
-            "format": "date",
-            "title": "Fin"
-          }
-        },
-        "type": "object",
-        "required": [
-          "inicio",
-          "fin"
-        ],
-        "title": "Periodo",
-        "description": "Periodo cerrado, inclusivo en los dos extremos."
       }
     }
   }

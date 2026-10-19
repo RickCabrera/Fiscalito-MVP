@@ -26,6 +26,20 @@ SALDOS INICIALES
 ----------------
 Se capturan por cuenta afectable. Si la configuración tiene `fecha_saldos_iniciales`, sólo
 cuentan para periodos que empiezan en esa fecha o después (antes de arrancar no hay saldo).
+
+PÓLIZAS DE CIERRE Y APERTURA (P2-08)
+------------------------------------
+El cierre anual (`cierre.py`) deja una póliza con `origen = "cierre"` (31 de diciembre:
+salda las cuentas de resultados contra el resultado del ejercicio) y una con
+`origen = "apertura"` (1 de enero siguiente: traspasa el resultado del ejercicio a
+resultados de ejercicios anteriores). Son el "periodo 13" y el "periodo 0" de la
+contabilidad tradicional:
+- La apertura fechada el mismo día en que empieza el periodo cuenta como SALDO INICIAL, no
+  como movimiento: la balanza de enero arranca con los saldos ya traspasados.
+- Con `incluir_cierre=False` (default) las pólizas de cierre y apertura que caen DENTRO del
+  periodo no cuentan: diciembre (y el estado de resultados anual) se ven antes del cierre.
+  Las anteriores al periodo siempre cuentan: así enero trae resultados en cero.
+- Con `incluir_cierre=True` se ve la balanza de cierre (resultados en cero).
 """
 
 from __future__ import annotations
@@ -82,12 +96,18 @@ def _saldos_capturados(db: Session, cliente: Cliente, desde: date) -> dict[int, 
     return {cid: _dec(s) for cid, s in filas}
 
 
-def totales_por_cuenta(db: Session, cliente: Cliente, desde: date,
-                       hasta: date) -> dict[int, Totales]:
+ORIGENES_CIERRE = ("cierre", "apertura")
+
+
+def totales_por_cuenta(db: Session, cliente: Cliente, desde: date, hasta: date, *,
+                       incluir_cierre: bool = False) -> dict[int, Totales]:
     """Totales de cada cuenta afectable con algo que decir (en SQL)."""
     activa = [Poliza.cliente_id == cliente.id, Poliza.estado == "activa"]
-    en_periodo = (Poliza.fecha >= desde) & (Poliza.fecha <= hasta)
-    antes = Poliza.fecha < desde
+    apertura_inicial = (Poliza.origen == "apertura") & (Poliza.fecha == desde)
+    antes = (Poliza.fecha < desde) | apertura_inicial
+    en_periodo = (Poliza.fecha >= desde) & (Poliza.fecha <= hasta) & ~apertura_inicial
+    if not incluir_cierre:
+        en_periodo = en_periodo & Poliza.origen.not_in(ORIGENES_CIERRE)
     filas = db.execute(
         select(
             MovimientoPoliza.cuenta_id,
@@ -124,16 +144,17 @@ def _renglon(c: CuentaContable, t: Totales) -> dict[str, Any]:
 
 
 def balanza(db: Session, cliente: Cliente, desde: date, hasta: date, *, nivel: int | None = None,
-            solo: str = "con_saldo_o_movimiento") -> dict[str, Any]:
+            solo: str = "con_saldo_o_movimiento", incluir_cierre: bool = False) -> dict[str, Any]:
     """
     La balanza del rango. `nivel` = mostrar hasta ese nivel (None: todos). `solo`:
-    `con_movimiento`, `con_saldo_o_movimiento` (default) o `todas`.
+    `con_movimiento`, `con_saldo_o_movimiento` (default) o `todas`. `incluir_cierre`: ver
+    PÓLIZAS DE CIERRE Y APERTURA arriba.
     """
     if desde > hasta:
         raise FiscalAgentError("'desde' no puede ser posterior a 'hasta'.", 422)
     cuentas = catalogo.cuentas(db, cliente)
     por_id = {c.id: c for c in cuentas}
-    hojas = totales_por_cuenta(db, cliente, desde, hasta)
+    hojas = totales_por_cuenta(db, cliente, desde, hasta, incluir_cierre=incluir_cierre)
     acumulado: dict[int, Totales] = {c.id: Totales() for c in cuentas}
     total = Totales()
     deudor_ini = acreedor_ini = deudor_fin = acreedor_fin = CERO
@@ -164,7 +185,7 @@ def balanza(db: Session, cliente: Cliente, desde: date, hasta: date, *, nivel: i
     cuadra = total.inicial == 0 and total.cargos == total.abonos and total.final == 0
     return {
         "desde": desde.isoformat(), "hasta": hasta.isoformat(), "nivel": nivel,
-        "renglones": renglones,
+        "incluir_cierre": incluir_cierre, "renglones": renglones,
         "totales": {
             "inicial_deudor": f"{deudor_ini:.2f}", "inicial_acreedor": f"{acreedor_ini:.2f}",
             "cargos": f"{total.cargos:.2f}", "abonos": f"{total.abonos:.2f}",
@@ -191,7 +212,7 @@ def _ids_de_rama(db: Session, cliente: Cliente, cuenta: CuentaContable) -> list[
 
 
 def auxiliar(db: Session, cliente: Cliente, cuenta_id: int, desde: date, hasta: date,
-             *, limite: int = 5000) -> dict[str, Any]:
+             *, limite: int = 5000, incluir_cierre: bool = False) -> dict[str, Any]:
     """
     Mayor/auxiliar de una cuenta (con sus subcuentas): saldo inicial, cada movimiento del
     periodo con su póliza y saldo corrido, y saldo final. Cuadra con el renglón de la balanza.
@@ -200,17 +221,20 @@ def auxiliar(db: Session, cliente: Cliente, cuenta_id: int, desde: date, hasta: 
         raise FiscalAgentError("'desde' no puede ser posterior a 'hasta'.", 422)
     cuenta = catalogo.obtener(db, cliente, cuenta_id)
     ids = _ids_de_rama(db, cliente, cuenta)
-    hojas = totales_por_cuenta(db, cliente, desde, hasta)
+    hojas = totales_por_cuenta(db, cliente, desde, hasta, incluir_cierre=incluir_cierre)
     inicial = sum((hojas[i].inicial for i in ids if i in hojas), CERO)
+    cond = [Poliza.cliente_id == cliente.id, Poliza.estado == "activa",
+            Poliza.fecha >= desde, Poliza.fecha <= hasta, MovimientoPoliza.cuenta_id.in_(ids),
+            ~((Poliza.origen == "apertura") & (Poliza.fecha == desde))]
+    if not incluir_cierre:
+        cond.append(Poliza.origen.not_in(ORIGENES_CIERRE))
     filas = db.execute(
         select(Poliza, MovimientoPoliza, CuentaContable.numero, Comprobante.id)
         .join(MovimientoPoliza, MovimientoPoliza.poliza_id == Poliza.id)
         .join(CuentaContable, CuentaContable.id == MovimientoPoliza.cuenta_id)
         .outerjoin(Comprobante, (Comprobante.cliente_id == Poliza.cliente_id)
                    & (Comprobante.uuid == MovimientoPoliza.uuid_cfdi))
-        .where(Poliza.cliente_id == cliente.id, Poliza.estado == "activa",
-               Poliza.fecha >= desde, Poliza.fecha <= hasta,
-               MovimientoPoliza.cuenta_id.in_(ids))
+        .where(*cond)
         .order_by(Poliza.fecha, Poliza.tipo, Poliza.numero, MovimientoPoliza.orden)
         .limit(limite + 1)
     ).all()

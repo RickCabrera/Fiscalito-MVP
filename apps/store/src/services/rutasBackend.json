@@ -228,7 +228,131 @@
       ]
     },
     {
+      "path": "/api/v1/conciliacion/bancos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones/{conciliacion_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/poliza",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/sugerencia",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/reporte",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/plantillas",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/enviar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/validar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/zip",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/documentos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/contabilidad/clientes/{clave}/balanza",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion",
       "metodos": [
         "GET"
       ]
@@ -269,14 +393,31 @@
     {
       "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados",
       "metodos": [
-        "GET",
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar",
+      "metodos": [
         "POST"
       ]
     },
     {
-      "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}",
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir",
       "metodos": [
-        "DELETE"
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion",
+      "metodos": [
+        "GET"
       ]
     },
     {
@@ -316,6 +457,30 @@
       "metodos": [
         "DELETE",
         "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/excel",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/polizas",
+      "metodos": [
+        "GET"
       ]
     },
     {

@@ -29,7 +29,10 @@ from app.routes import (
     calendario,
     cartera,
     comparador,
+    conciliacion,
     contabilidad,
+    contabilidad_electronica,
+    contabilidad_reportes,
     credenciales,
     declaraciones,
     despacho,
@@ -143,6 +146,11 @@ ROUTERS_PROTEGIDOS = (
     contabilidad.router,
     impuestos.router,
     calculadoras.router,
+    # P2-05/P2-08: reportes contables y cierre de periodo y de ejercicio.
+    contabilidad_reportes.router,
+    # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).
+    conciliacion.router,
+    contabilidad_electronica.router,
 )
 
 app.include_router(health.router)
