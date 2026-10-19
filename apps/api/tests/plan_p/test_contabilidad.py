@@ -234,8 +234,11 @@ def test_egreso_con_retenciones_y_arrendamiento(db_sesion, cliente, almacen):
                             ret_isr="500.00", ret_iva="533.33")]))
     generador.generar(db_sesion, cliente, *MARZO)
     m = movs(db_sesion, poliza_de(db_sesion, cliente, fac))
-    assert m["216.03"] == (0, Decimal("500.00"))  # ISR retenido por arrendamiento
-    assert m["216.10"] == (0, Decimal("533.33"))
+    # PPD con `retenciones_al_pago` (default, revisión P2): la retención nace con el pago,
+    # así que al facturar queda en las cuentas de "pendiente de pago".
+    assert m["216.12.03"] == (0, Decimal("500.00"))  # ISR por arrendamiento, pendiente
+    assert m["216.12.01"] == (0, Decimal("533.33"))  # IVA retenido, pendiente
+    assert "216.03" not in m and "216.10" not in m
     assert m["119.01"] == (Decimal("800.00"), 0)
     assert m["201.01"] == (0, Decimal("5000.00") + Decimal("800.00") - Decimal("1033.33"))
 

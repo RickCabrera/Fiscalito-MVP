@@ -21,7 +21,7 @@ from app.credenciales.servicio import obtener_firmante
 from app.integraciones import registro
 from app.integraciones.buzon_sat import EnvioContabilidad
 from app.modelos.nucleo import Cliente
-from app.tenancy import Contexto, cliente_o_404, contexto_actual
+from app.tenancy import ROLES_CONTABLES, Contexto, cliente_o_404, contexto_actual, exigir_rol
 
 router = APIRouter(prefix="/contabilidad-electronica", tags=["contabilidad-electronica"])
 
@@ -31,7 +31,7 @@ Documento = Literal["catalogo", "balanza", "polizas", "auxiliar_cuentas", "auxil
 class SolicitudEntrada(BaseModel):
     documento: Documento
     anio: int = Field(..., ge=2015, le=2100)
-    mes: int = Field(..., ge=1, le=12)
+    mes: int = Field(..., ge=1, le=13, description="1-12; 13 = balanza de cierre del ejercicio")
     tipo_envio: Literal["N", "C"] = "N"
     fecha_mod_bal: date | None = None
     tipo_solicitud: Literal["", "AF", "FC", "DE", "CO"] = ""
@@ -64,6 +64,7 @@ def validar(clave: str, entrada: SolicitudEntrada,
             ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     """Genera y valida contra el XSD oficial. Devuelve errores, advertencias y el XML."""
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     doc = _generar(ctx, cliente, entrada)
     return {"exito": True, "nombre": doc.nombre, "valido": doc.valido, "errores": doc.errores,
             "advertencias": doc.advertencias, "sellado": doc.sellado,
@@ -75,6 +76,7 @@ def descargar_zip(clave: str, entrada: SolicitudEntrada,
                   ctx: Contexto = Depends(contexto_actual)) -> Response:
     """El ZIP con el nombre que exige el SAT (RFC+AAAA+MM+tipo). 422 si no valida."""
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     doc = _generar(ctx, cliente, entrada)
     datos = generador.empaquetar(doc)
     registrar(ctx, "contabilidad_electronica.generar", "cliente", cliente.id,
@@ -89,6 +91,7 @@ def enviar(clave: str, entrada: SolicitudEntrada,
            ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     """Envía por el adaptador `buzon_sat` (falso = simulación; portal_sat POR CONFIRMAR)."""
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     doc = _generar(ctx, cliente, entrada)
     datos = generador.empaquetar(doc)
     buzon = registro.obtener("buzon_sat")

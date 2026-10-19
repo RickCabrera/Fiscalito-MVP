@@ -21,7 +21,7 @@ from app.auditoria import registrar
 from app.contabilidad import agrupador, balanza, catalogo, config, generador, polizas
 from app.contabilidad import trabajos as trabajos_conta
 from app.exceptions import FiscalAgentError
-from app.tenancy import Contexto, cliente_o_404, contexto_actual
+from app.tenancy import ROLES_CONTABLES, Contexto, cliente_o_404, contexto_actual, exigir_rol
 
 router = APIRouter(prefix="/contabilidad", tags=["contabilidad"])
 
@@ -74,6 +74,7 @@ def listar_cuentas(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict
 def sembrar(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     """Agrega el catálogo base (lo que falte). Idempotente."""
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     creadas = catalogo.sembrar_base(ctx.db, cliente)
     registrar(ctx, "contabilidad.sembrar_catalogo", "cliente", cliente.id, {"creadas": creadas},
               cliente)
@@ -84,6 +85,7 @@ def sembrar(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict[str, A
 def crear_cuenta(clave: str, entrada: CuentaEntrada,
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cuenta = catalogo.crear(ctx.db, cliente, **entrada.model_dump())
     registrar(ctx, "contabilidad.crear_cuenta", "cuenta", cuenta.id, {"numero": cuenta.numero},
               cliente)
@@ -94,6 +96,7 @@ def crear_cuenta(clave: str, entrada: CuentaEntrada,
 def cambiar_cuenta(clave: str, cuenta_id: int, cambio: CuentaCambio,
                    ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cuenta = catalogo.actualizar(ctx.db, cliente, cuenta_id, **cambio.model_dump())
     return {"exito": True, "cuenta": catalogo.como_dict(cuenta)}
 
@@ -102,6 +105,7 @@ def cambiar_cuenta(clave: str, cuenta_id: int, cambio: CuentaCambio,
 def borrar_cuenta(clave: str, cuenta_id: int,
                   ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     catalogo.borrar(ctx.db, cliente, cuenta_id)
     registrar(ctx, "contabilidad.borrar_cuenta", "cuenta", cuenta_id, None, cliente)
     return {"exito": True}
@@ -118,6 +122,7 @@ class ConfigEntrada(BaseModel):
     pue_registra_cobro: bool | None = None
     uso_s01_no_deducible: bool | None = None
     efectivo_no_deducible: bool | None = None
+    retenciones_al_pago: bool | None = None
     tope_activo: Decimal | None = Field(None, ge=0, max_digits=16, decimal_places=2)
     plantilla_concepto: str | None = Field(None, max_length=200)
     cuentas: dict[str, str] | None = None
@@ -151,6 +156,7 @@ def leer_config(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict[st
 def guardar_config(clave: str, entrada: ConfigEntrada,
                    ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     config.guardar(ctx.db, cliente, entrada.model_dump(exclude_unset=True))
     registrar(ctx, "contabilidad.config", "cliente", cliente.id, None, cliente)
     return {"exito": True, "config": config.como_dict(ctx.db, cliente)}
@@ -160,6 +166,7 @@ def guardar_config(clave: str, entrada: ConfigEntrada,
 def crear_regla(clave: str, entrada: ReglaEntrada,
                 ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     regla = config.crear_regla(ctx.db, cliente, **entrada.model_dump())
     return {"exito": True, "regla": config.regla_dict(regla)}
 
@@ -168,6 +175,7 @@ def crear_regla(clave: str, entrada: ReglaEntrada,
 def cambiar_regla(clave: str, regla_id: int, cambio: ReglaCambio,
                   ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     regla = config.actualizar_regla(ctx.db, cliente, regla_id, cambio.model_dump())
     return {"exito": True, "regla": config.regla_dict(regla)}
 
@@ -176,6 +184,7 @@ def cambiar_regla(clave: str, regla_id: int, cambio: ReglaCambio,
 def borrar_regla(clave: str, regla_id: int,
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     ctx.db.delete(config.regla_o_404(ctx.db, cliente, regla_id))
     return {"exito": True}
 
@@ -278,6 +287,7 @@ def detalle_poliza(clave: str, poliza_id: int,
 def crear_poliza(clave: str, entrada: PolizaEntrada,
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     p = polizas.crear_manual(ctx.db, cliente, tipo=entrada.tipo, fecha=entrada.fecha,
                              concepto=entrada.concepto, movimientos=_movs(entrada.movimientos)
                              or [], uid=ctx.uid)
@@ -290,6 +300,7 @@ def crear_poliza(clave: str, entrada: PolizaEntrada,
 def editar_poliza(clave: str, poliza_id: int, cambio: PolizaCambio,
                   ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     p = polizas.editar(ctx.db, cliente, poliza_id, fecha=cambio.fecha, concepto=cambio.concepto,
                        movimientos=_movs(cambio.movimientos))
     registrar(ctx, "contabilidad.editar_poliza", "poliza", p.id, {"folio": polizas.folio(p)},
@@ -301,6 +312,7 @@ def editar_poliza(clave: str, poliza_id: int, cambio: PolizaCambio,
 def cancelar_poliza(clave: str, poliza_id: int, entrada: Cancelacion,
                     ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     p = polizas.cancelar(ctx.db, cliente, poliza_id, entrada.motivo)
     registrar(ctx, "contabilidad.cancelar_poliza", "poliza", p.id, {"folio": polizas.folio(p)},
               cliente)
@@ -363,6 +375,7 @@ def leer_saldos(clave: str, ctx: Contexto = Depends(contexto_actual)) -> dict[st
 def guardar_saldos(clave: str, entrada: SaldosEntrada,
                    ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     totales = balanza.guardar_saldos_iniciales(
         ctx.db, cliente, [(s.cuenta_id, s.deudor, s.acreedor) for s in entrada.saldos])
     registrar(ctx, "contabilidad.saldos_iniciales", "cliente", cliente.id,

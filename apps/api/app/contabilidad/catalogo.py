@@ -67,6 +67,11 @@ CATALOGO_BASE: tuple[CuentaBase, ...] = (
     CuentaBase("113.01", "113.01", "IVA a favor (incluye IVA retenido por clientes)"),
     CuentaBase("113.02", "113.02", "ISR a favor (incluye ISR retenido por clientes)"),
     CuentaBase("113.08", "113.08"),
+    # Retenciones de PPD aún no cobradas (revisión P2, `retenciones_al_pago`). El agrupador
+    # no tiene un código de "retención pendiente": cuelgan de "Otros impuestos a favor".
+    # DECISIÓN PROVISIONAL (revisión P2): confirmar el agrupador con la contadora.
+    CuentaBase("113.08.01", "113.08", "IVA retenido por clientes, pendiente de cobro (PPD)"),
+    CuentaBase("113.08.02", "113.08", "ISR retenido por clientes, pendiente de cobro (PPD)"),
     CuentaBase("114", "114"), CuentaBase("114.01", "114.01"),
     CuentaBase("115", "115"), CuentaBase("115.01", "115.01"),
     CuentaBase("118", "118"), CuentaBase("118.01", "118.01"),
@@ -98,6 +103,12 @@ CATALOGO_BASE: tuple[CuentaBase, ...] = (
     CuentaBase("216.01", "216.01"), CuentaBase("216.02", "216.02"),
     CuentaBase("216.03", "216.03"), CuentaBase("216.04", "216.04"),
     CuentaBase("216.10", "216.10"), CuentaBase("216.11", "216.11"),
+    # Retenciones de PPD aún no pagadas (revisión P2). DECISIÓN PROVISIONAL: cuelgan de
+    # 216.12 "Otros impuestos retenidos" (el Anexo 24 no tiene uno de retención pendiente).
+    CuentaBase("216.12", "216.12"),
+    CuentaBase("216.12.01", "216.12", "IVA retenido a proveedores, pendiente de pago (PPD)"),
+    CuentaBase("216.12.02", "216.12", "ISR por servicios profesionales, pendiente de pago"),
+    CuentaBase("216.12.03", "216.12", "ISR por arrendamiento, pendiente de pago (PPD)"),
     # ── Capital ──
     CuentaBase("301", "301"), CuentaBase("301.01", "301.01"), CuentaBase("301.02", "301.02"),
     CuentaBase("304", "304"), CuentaBase("304.01", "304.01"), CuentaBase("304.02", "304.02"),
@@ -206,6 +217,46 @@ def sembrar_base(db: Session, cliente: Cliente) -> int:
         existentes[base.numero] = cuenta
         creadas += 1
     db.flush()
+    return creadas
+
+
+def asegurar_base(db: Session, cliente: Cliente, numeros: set[str]) -> int:
+    """
+    Agrega SÓLO esas cuentas del catálogo base (y sus ancestros del base) si faltan. Para
+    clientes sembrados antes de que el catálogo base las trajera (p. ej. las de retención
+    pendiente): el generador las pide al usarlas, sin resembrar lo que el despacho quitó a
+    propósito. Un padre afectable con movimientos o saldo no se vuelve acumulativo: esa
+    cuenta no se crea (la póliza reporta la cuenta faltante).
+    """
+    pedidas: set[str] = set()
+    for numero in numeros:
+        actual: str | None = numero
+        while actual:
+            pedidas.add(actual)
+            actual = _padre_numero(actual)
+    existentes = por_numero(db, cliente)
+    creadas = 0
+    for base in CATALOGO_BASE:
+        if base.numero not in pedidas or base.numero in existentes:
+            continue
+        numero_padre = _padre_numero(base.numero)
+        padre = existentes.get(numero_padre or "")
+        codigo = agrupador.obtener(base.agrupador)
+        if (numero_padre and padre is None) or codigo is None or not codigo.asignable:
+            continue
+        if padre is not None and padre.afectable:
+            if tiene_movimientos(db, padre.id) or _tiene_saldo_inicial(db, padre.id):
+                continue
+            padre.afectable = False
+        cuenta = CuentaContable(
+            cliente_id=cliente.id, numero=base.numero, nombre=base.nombre or codigo.nombre,
+            nivel=(padre.nivel + 1) if padre else 1, naturaleza=codigo.naturaleza,
+            tipo=codigo.tipo, padre_id=padre.id if padre else None,
+            codigo_agrupador=codigo.codigo, afectable=True)
+        db.add(cuenta)
+        db.flush()
+        existentes[base.numero] = cuenta
+        creadas += 1
     return creadas
 
 

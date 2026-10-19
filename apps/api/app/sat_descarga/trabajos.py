@@ -44,8 +44,12 @@ def descargar_rango(db: Session, trabajo: Trabajo) -> dict[str, Any]:
 
 @manejador("sat.descarga.avanzar")
 def avanzar_solicitud(db: Session, trabajo: Trabajo) -> dict[str, Any]:
-    s = db.get(SolicitudDescargaSat, int(trabajo.carga["solicitud_id"]))
+    sid = int(trabajo.carga["solicitud_id"])
+    s = servicio.bloquear(db, sid)
     if s is None:
+        if db.get(SolicitudDescargaSat, sid) is not None:
+            # Otro worker tiene la fila: él da el paso (y re-encola el siguiente).
+            return {"omitido": "otro worker la está procesando"}
         return {"omitido": "solicitud borrada"}
     cliente = db.get(Cliente, s.cliente_id)
     assert cliente is not None

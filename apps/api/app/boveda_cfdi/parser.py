@@ -329,6 +329,17 @@ def _complemento_nomina(complemento: Any) -> dict[str, Any] | None:
     deducciones = _hijo(nodo, ns, "Deducciones")
     isr = sum((_dec(d.get("Importe")) for d in _hijos(deducciones, ns, "Deduccion")
                if d.get("TipoDeduccion") == "002"), Decimal("0"))
+    # Por tipo (c_TipoDeduccion / c_TipoOtroPago): la póliza de nómina separa IMSS obrero,
+    # otras deducciones, subsidio, viáticos y reintegros en cuentas propias (revisión P2).
+    deducciones_por_tipo: dict[str, Decimal] = {}
+    for d in _hijos(deducciones, ns, "Deduccion"):
+        tipo = d.get("TipoDeduccion", "")
+        deducciones_por_tipo[tipo] = deducciones_por_tipo.get(tipo, Decimal("0")) + \
+            _dec(d.get("Importe"))
+    otros_por_tipo: dict[str, Decimal] = {}
+    for o in _hijos(nodo, ns, "OtrosPagos/OtroPago"):
+        tipo = o.get("TipoOtroPago", "")
+        otros_por_tipo[tipo] = otros_por_tipo.get(tipo, Decimal("0")) + _dec(o.get("Importe"))
     receptor = _hijo(nodo, ns, "Receptor")
     subsidio = sum(
         (_dec(s.get("SubsidioCausado"))
@@ -344,6 +355,8 @@ def _complemento_nomina(complemento: Any) -> dict[str, Any] | None:
                                "TotalGravado", "TotalExento"),
         "deducciones": _attrs(deducciones, "TotalOtrasDeducciones", "TotalImpuestosRetenidos"),
         "isr_retenido": str(isr),
+        "deducciones_por_tipo": {k: str(v) for k, v in sorted(deducciones_por_tipo.items())},
+        "otros_pagos_por_tipo": {k: str(v) for k, v in sorted(otros_por_tipo.items())},
         "subsidio_causado": str(subsidio),
         "receptor": _attrs(receptor, "NumEmpleado", "Curp", "NumSeguridadSocial",
                            "PeriodicidadPago", "TipoRegimen"),

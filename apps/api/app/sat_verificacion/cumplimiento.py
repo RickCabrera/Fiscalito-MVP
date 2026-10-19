@@ -11,7 +11,10 @@ SEMÁFORO
 --------
 `verde` = última opinión positiva o sin obligaciones y con menos de `DIAS_VIGENCIA` días;
 `rojo` = última opinión negativa; `amarillo` = la última tiene más de `DIAS_VIGENCIA` días o
-su sentido es desconocido; `gris` = no hay opinión.
+su sentido es desconocido; `gris` = no hay opinión, o la última es **simulada** (origen
+`falso`: nunca se pinta verde algo que no vino del SAT). Una opinión subida a mano
+(`manual`) pinta según su sentido pero lleva la marca "según PDF subido, no verificado"
+(`marca`, `detalle_semaforo`).
 
 `DIAS_VIGENCIA` = 30 (configurable con `FISCALITO_OPINION_DIAS_VIGENCIA`). # FUENTE POR
 CONFIRMAR: la regla 2.1.37 de la RMF dice que la opinión positiva tiene vigencia de 30 días
@@ -158,8 +161,17 @@ def leer_pdf(doc: DocumentoCumplimiento, almacen: Almacenamiento | None = None) 
     return datos
 
 
+MARCA_SIMULADO = "Simulado: la opinión salió del adaptador falso, no del SAT."
+MARCA_MANUAL = "Según PDF subido, no verificado."
+
+
 def semaforo(doc: DocumentoCumplimiento | None, hoy: date | None = None) -> str:
-    if doc is None:
+    """
+    El color del semáforo. Honesto con el origen: una opinión del adaptador `falso` es gris
+    ("Simulado") aunque diga positiva; la subida a mano pinta según su sentido pero lleva la
+    marca de no verificada (ver `marca`).
+    """
+    if doc is None or doc.origen == "falso":
         return "gris"
     if doc.resultado == "negativa":
         return "rojo"
@@ -167,6 +179,24 @@ def semaforo(doc: DocumentoCumplimiento | None, hoy: date | None = None) -> str:
     if doc.resultado in ("positiva", "sin_obligaciones") and edad <= dias_vigencia():
         return "verde"
     return "amarillo"
+
+
+def marca(doc: DocumentoCumplimiento | None) -> str | None:
+    """La advertencia que acompaña al semáforo según de dónde salió la opinión."""
+    if doc is None:
+        return None
+    if doc.origen == "falso":
+        return MARCA_SIMULADO
+    if doc.origen == "manual":
+        return MARCA_MANUAL
+    return None
+
+
+def detalle_semaforo(doc: DocumentoCumplimiento | None, hoy: date | None = None
+                     ) -> dict[str, Any]:
+    """`semaforo`, `origen` y `marca` juntos: lo que la pantalla necesita para no engañar."""
+    return {"semaforo": semaforo(doc, hoy), "origen": doc.origen if doc else None,
+            "marca": marca(doc)}
 
 
 def fila(doc: DocumentoCumplimiento) -> dict[str, Any]:

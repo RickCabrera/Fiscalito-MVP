@@ -134,14 +134,26 @@ def pago20(uuid: str, documentos: list[tuple[str, str, str]], *, emisor: str = R
 
 def nomina(uuid: str, *, receptor: str = "TRAB010101AA1", fecha: str = "2026-03-15T10:00:00",
            percepciones: str = "10000.00", isr: str = "1000.00", imss: str = "250.00",
-           otros_pagos: str = "0.00", regimen: str = "02") -> bytes:
-    deducciones = _q(Decimal(isr) + Decimal(imss))
-    total = _q(Decimal(percepciones) + Decimal(otros_pagos) - Decimal(deducciones))
-    subtotal = _q(Decimal(percepciones) + Decimal(otros_pagos))
-    otros = (f'<nomina12:OtrosPagos><nomina12:OtroPago TipoOtroPago="002" Clave="002" '
-             f'Concepto="Subsidio" Importe="{otros_pagos}"><nomina12:SubsidioAlEmpleo '
-             f'SubsidioCausado="{otros_pagos}"/></nomina12:OtroPago></nomina12:OtrosPagos>'
-             if Decimal(otros_pagos) else "")
+           otros_pagos: str = "0.00", regimen: str = "02",
+           mas_deducciones: tuple[tuple[str, str], ...] = (),
+           mas_otros_pagos: tuple[tuple[str, str], ...] = ()) -> bytes:
+    """`mas_deducciones` / `mas_otros_pagos`: (TipoDeduccion|TipoOtroPago, importe) extra."""
+    extra_ded = sum((Decimal(i) for _t, i in mas_deducciones), Decimal("0"))
+    extra_otros = sum((Decimal(i) for _t, i in mas_otros_pagos), Decimal("0"))
+    deducciones = _q(Decimal(isr) + Decimal(imss) + extra_ded)
+    total_otros = _q(Decimal(otros_pagos) + extra_otros)
+    total = _q(Decimal(percepciones) + Decimal(total_otros) - Decimal(deducciones))
+    subtotal = _q(Decimal(percepciones) + Decimal(total_otros))
+    nodos_otros = (f'<nomina12:OtroPago TipoOtroPago="002" Clave="002" '
+                   f'Concepto="Subsidio" Importe="{otros_pagos}"><nomina12:SubsidioAlEmpleo '
+                   f'SubsidioCausado="{otros_pagos}"/></nomina12:OtroPago>'
+                   if Decimal(otros_pagos) else "")
+    nodos_otros += "".join(f'<nomina12:OtroPago TipoOtroPago="{t}" Clave="{t}" Concepto="Otro" '
+                           f'Importe="{i}"/>' for t, i in mas_otros_pagos)
+    otros = f"<nomina12:OtrosPagos>{nodos_otros}</nomina12:OtrosPagos>" if nodos_otros else ""
+    otras_ded = "".join(f'<nomina12:Deduccion TipoDeduccion="{t}" Clave="{t}" Concepto="Otra" '
+                        f'Importe="{i}"/>' for t, i in mas_deducciones)
+    otros_pagos = total_otros
     nodo = (
         '<nomina12:Nomina xmlns:nomina12="http://www.sat.gob.mx/nomina12" Version="1.2" '
         'TipoNomina="O" FechaPago="2026-03-15" FechaInicialPago="2026-03-01" '
@@ -152,10 +164,11 @@ def nomina(uuid: str, *, receptor: str = "TRAB010101AA1", fecha: str = "2026-03-
         'PeriodicidadPago="04" TipoContrato="01" ClaveEntFed="VER"/>'
         f'<nomina12:Percepciones TotalSueldos="{percepciones}" TotalGravado="{percepciones}" '
         'TotalExento="0.00"/>'
-        f'<nomina12:Deducciones TotalOtrasDeducciones="{imss}" TotalImpuestosRetenidos="{isr}">'
+        f'<nomina12:Deducciones TotalOtrasDeducciones="{_q(Decimal(imss) + extra_ded)}" '
+        f'TotalImpuestosRetenidos="{isr}">'
         f'<nomina12:Deduccion TipoDeduccion="002" Clave="002" Concepto="ISR" Importe="{isr}"/>'
         f'<nomina12:Deduccion TipoDeduccion="001" Clave="001" Concepto="IMSS" Importe="{imss}"/>'
-        f'</nomina12:Deducciones>{otros}</nomina12:Nomina>')
+        f'{otras_ded}</nomina12:Deducciones>{otros}</nomina12:Nomina>')
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'
         f'<cfdi:Comprobante xmlns:cfdi="{NS}" Version="4.0" Serie="N" Folio="1" Fecha="{fecha}" '

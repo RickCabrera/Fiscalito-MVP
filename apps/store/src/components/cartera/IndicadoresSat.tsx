@@ -7,22 +7,26 @@
 
 import { AlertTriangle } from 'lucide-react';
 import {
-  COLOR_SEMAFORO, ETIQUETA_SEMAFORO, type SemaforoCliente,
+  COLOR_SEMAFORO, etiquetaSemaforo, type SemaforoCliente,
 } from '../../services/semaforoSat';
 
 export default function IndicadoresSat({ dato }: { dato?: SemaforoCliente }) {
   if (!dato) return null;
   const s = dato.opinion.semaforo;
+  const etiqueta = etiquetaSemaforo(s, dato.opinion.origen);
+  const simulado = dato.opinion.origen === 'falso';
+  const marca = dato.opinion.marca ? ` · ${dato.opinion.marca}` : '';
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-xs)', fontSize: '0.72rem' }}>
       <span
         data-semaforo={s}
-        title={`Opinión de cumplimiento: ${ETIQUETA_SEMAFORO[s]}${dato.opinion.fecha ? ` (${dato.opinion.fecha})` : ''}`}
-        aria-label={`Opinión ${ETIQUETA_SEMAFORO[s]}`}
+        data-origen={dato.opinion.origen ?? undefined}
+        title={`Opinión de cumplimiento: ${etiqueta}${dato.opinion.fecha ? ` (${dato.opinion.fecha})` : ''}${marca}`}
+        aria-label={`Opinión ${etiqueta}`}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: COLOR_SEMAFORO[s], fontWeight: 600 }}
       >
         <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: COLOR_SEMAFORO[s] }} />
-        32-D
+        32-D{simulado ? ' · simulado' : dato.opinion.origen === 'manual' ? ' · no verificado' : ''}
       </span>
       {dato.riesgos_69b > 0 && (
         <span

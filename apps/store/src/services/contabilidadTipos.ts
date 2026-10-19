@@ -55,6 +55,8 @@ export interface ConfigContable {
   pue_registra_cobro: boolean;
   uso_s01_no_deducible: boolean;
   efectivo_no_deducible: boolean;
+  /** Retenciones de PPD en cuentas pendientes hasta el pago (default true, revisión P2). */
+  retenciones_al_pago: boolean;
   tope_activo: string;
   plantilla_concepto: string;
   fecha_saldos_iniciales: string | null;

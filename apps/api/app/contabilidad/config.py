@@ -26,6 +26,15 @@ descripción del concepto, sin distinguir mayúsculas). Sin regla, en este orden
    decide su tope; no hay un monto legal único.
 5. UsoCFDI G01 (adquisición de mercancías) → compras.
 6. Lo demás → gastos generales (la cuenta por default).
+
+RETENCIONES EN PPD (`retenciones_al_pago`, default true)
+--------------------------------------------------------
+La obligación de retener (y el derecho a acreditar lo retenido) nace con el PAGO (arts. 1-A
+LIVA y 106 LISR). Con `true`, las retenciones de una factura PPD se registran en cuentas de
+"retenido pendiente" (`*_pendiente`) y el complemento de pago las traspasa a 216.xx / 113.xx
+en proporción a lo pagado (todo lo que quede, en la última parcialidad). Con `false`, se
+registran directo en 216.xx / 113.xx al facturar (comportamiento anterior). Las PUE no
+cambian: se pagan al facturar.
 """
 
 from __future__ import annotations
@@ -71,8 +80,27 @@ ROLES: dict[str, tuple[str, str]] = {
     "asimilados": ("601.31", "Asimilados a salarios (nómina)"),
     "isr_retenido_salarios": ("216.01", "ISR retenido por sueldos"),
     "isr_retenido_asimilados": ("216.02", "ISR retenido por asimilados"),
-    "otras_deducciones_nomina": ("216.11", "Otras deducciones de nómina (IMSS obrero, etc.)"),
-    "otros_pagos_nomina": ("110.01", "Otros pagos de nómina (subsidio al empleo)"),
+    # Nómina (revisión P2): cada deducción y otro pago a su cuenta, según el agrupador.
+    "imss_obrero_nomina": ("216.11", "Cuota obrera IMSS retenida (216.11 del agrupador)"),
+    "otras_deducciones_nomina": ("205.06", "Otras deducciones de nómina (préstamos, "
+                                 "Infonavit, pensión alimenticia…)"),
+    "otros_pagos_nomina": ("110.01", "Subsidio para el empleo (TipoOtroPago 002, 007, 008)"),
+    "viaticos_nomina": ("107.01", "Viáticos entregados en nómina (TipoOtroPago 003)"),
+    "reintegro_isr_nomina": ("216.01", "Reintegro / compensación de ISR en nómina "
+                             "(TipoOtroPago 001, 004, 005)"),
+    "otros_pagos_distintos_nomina": ("601.84", "Otros pagos de nómina (TipoOtroPago 006, "
+                                     "009, 999)"),
+    # Retenciones de facturas PPD mientras no se pagan (`retenciones_al_pago`).
+    "iva_retenido_por_clientes_pendiente": ("113.08.01", "IVA que nos retendrán los clientes "
+                                            "(PPD pendiente de cobro)"),
+    "isr_retenido_por_clientes_pendiente": ("113.08.02", "ISR que nos retendrán los clientes "
+                                            "(PPD pendiente de cobro)"),
+    "iva_retenido_por_enterar_pendiente": ("216.12.01", "IVA retenido a proveedores pendiente de "
+                                           "pago (PPD)"),
+    "isr_retenido_honorarios_pendiente": ("216.12.02", "ISR por servicios profesionales "
+                                          "pendiente de pago (PPD)"),
+    "isr_retenido_arrendamiento_pendiente": ("216.12.03", "ISR por arrendamiento pendiente de "
+                                             "pago (PPD)"),
     # P2-08: cierre anual y apertura.
     "resultado_utilidad": ("305.01", "Utilidad del ejercicio (póliza de cierre)"),
     "resultado_perdida": ("305.02", "Pérdida del ejercicio (póliza de cierre)"),
@@ -101,7 +129,8 @@ def obtener_o_crear(db: Session, cliente: Cliente) -> ConfigContable:
     config = db.get(ConfigContable, cliente.id)
     if config is None:
         config = ConfigContable(cliente_id=cliente.id, cuentas={}, formas_pago={},
-                                tope_activo=Decimal("0"), plantilla_concepto="")
+                                tope_activo=Decimal("0"), plantilla_concepto="",
+                                retenciones_al_pago=True)
         db.add(config)
         db.flush()
     return config
@@ -165,7 +194,7 @@ def guardar(db: Session, cliente: Cliente, datos: dict[str, Any]) -> ConfigConta
         config.formas_pago = formas
     for campo in ("automatica_ingresos", "automatica_egresos", "automatica_pagos",
                   "automatica_nomina", "pue_registra_cobro", "uso_s01_no_deducible",
-                  "efectivo_no_deducible"):
+                  "efectivo_no_deducible", "retenciones_al_pago"):
         if campo in datos and datos[campo] is not None:
             setattr(config, campo, bool(datos[campo]))
     if datos.get("tope_activo") is not None:
@@ -193,6 +222,7 @@ def como_dict(db: Session, cliente: Cliente) -> dict[str, Any]:
         "pue_registra_cobro": c.pue_registra_cobro,
         "uso_s01_no_deducible": c.uso_s01_no_deducible,
         "efectivo_no_deducible": c.efectivo_no_deducible,
+        "retenciones_al_pago": c.retenciones_al_pago is not False,
         "tope_activo": f"{c.tope_activo:.2f}",
         "plantilla_concepto": c.plantilla_concepto,
         "fecha_saldos_iniciales": c.fecha_saldos_iniciales.isoformat()

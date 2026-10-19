@@ -1503,6 +1503,7 @@ export interface app__routes__contabilidad__ConfigEntrada {
   pue_registra_cobro?: boolean | null;
   uso_s01_no_deducible?: boolean | null;
   efectivo_no_deducible?: boolean | null;
+  retenciones_al_pago?: boolean | null;
   tope_activo?: number | string | null;
   plantilla_concepto?: string | null;
   cuentas?: Record<string, string> | null;

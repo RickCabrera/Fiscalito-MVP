@@ -21,7 +21,7 @@ from app.auditoria import registrar
 from app.contabilidad import balanza, cierre, excel, polizas, reportes
 from app.exceptions import FiscalAgentError
 from app.modelos.nucleo import Cliente
-from app.tenancy import Contexto, cliente_o_404, contexto_actual
+from app.tenancy import ROLES_CONTABLES, Contexto, cliente_o_404, contexto_actual, exigir_rol
 
 router = APIRouter(prefix="/contabilidad", tags=["contabilidad"])
 
@@ -175,6 +175,7 @@ def validar_mes(clave: str, anio: int, mes: int,
 def cerrar_mes(clave: str, anio: int, mes: int, entrada: Cierre,
                ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     v = cierre.cerrar_mes(ctx.db, cliente, anio, mes, ctx.uid, forzar=entrada.forzar,
                           motivo=entrada.motivo)
     registrar(ctx, "contabilidad.cerrar_periodo", "cliente", cliente.id,
@@ -187,6 +188,7 @@ def cerrar_mes(clave: str, anio: int, mes: int, entrada: Cierre,
 def reabrir_mes(clave: str, anio: int, mes: int, entrada: Reapertura,
                 ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     cierre.reabrir_mes(ctx.db, cliente, anio, mes, ctx.uid, ctx.rol, entrada.motivo)
     registrar(ctx, "contabilidad.abrir_periodo", "cliente", cliente.id,
               {"anio": anio, "mes": mes, "motivo": entrada.motivo}, cliente)
@@ -205,6 +207,7 @@ def validar_ejercicio(clave: str, anio: int,
 def cierre_anual(clave: str, anio: int, entrada: CierreAnual,
                  ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     r = cierre.cierre_anual(ctx.db, cliente, _anio(anio), ctx.uid,
                             traspasar_resultado=entrada.traspasar_resultado,
                             forzar=entrada.forzar, motivo=entrada.motivo)
@@ -217,6 +220,7 @@ def cierre_anual(clave: str, anio: int, entrada: CierreAnual,
 def deshacer_cierre_anual(clave: str, anio: int, entrada: Reapertura,
                           ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_rol(ctx, *ROLES_CONTABLES)  # auxiliar: sólo lectura
     n = cierre.deshacer_cierre_anual(ctx.db, cliente, _anio(anio), ctx.uid, ctx.rol,
                                      entrada.motivo)
     registrar(ctx, "contabilidad.deshacer_cierre_anual", "cliente", cliente.id,

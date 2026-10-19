@@ -10,7 +10,6 @@ cliente, RFC, periodo y moneda.
 
 from __future__ import annotations
 
-import io
 from decimal import Decimal
 from typing import Any
 
@@ -18,6 +17,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
+
+from app.exportar.excel_seguro import libro_a_bytes
 
 FORMATO = "#,##0.00;[Red]-#,##0.00"
 NEGRITA = Font(bold=True)
@@ -66,9 +67,8 @@ def _anchos(ws: Worksheet, anchos: list[int]) -> None:
 
 
 def _bytes(wb: Workbook) -> bytes:
-    salida = io.BytesIO()
-    wb.save(salida)
-    return salida.getvalue()
+    # Todo texto (conceptos, nombres, UUID) se fuerza a texto: sin inyección de fórmulas.
+    return libro_a_bytes(wb)
 
 
 def balanza(datos: dict[str, Any], cliente: dict[str, Any]) -> bytes:

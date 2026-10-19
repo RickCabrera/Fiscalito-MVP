@@ -269,8 +269,9 @@ def test_api_riesgos_boveda_y_estado(api, con_clientes, sesionador):
     assert next(x for x in estado if x["lista"] == "69b")["cargada_en"]
 
     semaforo = a.get("/api/v1/sat/cartera/semaforo").json()["clientes"]
-    assert semaforo == [{"clave": "taller", "riesgos_69b": 1,
-                         "opinion": {"semaforo": "gris", "resultado": None, "fecha": None}}]
+    assert semaforo == [{"clave": "taller", "riesgos_69b": 1, "alertas_contables": 0,
+                         "opinion": {"semaforo": "gris", "origen": None, "marca": None,
+                                     "resultado": None, "fecha": None}}]
 
     alerta = r["alertas"][0]["id"]
     b = api("uid-b")

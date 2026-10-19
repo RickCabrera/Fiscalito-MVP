@@ -19,28 +19,48 @@ Factura emitida (I):   Cargo clientes = base + IVA + IEPS − retenciones
                        Abono ingresos (tasa general / 0 % / exentos, por concepto) = base
                        Abono IVA trasladado: PUE → cobrado (208.01); PPD → no cobrado (209.01)
                        Abono IEPS trasladado (igual que IVA)
-                       Cargo IVA/ISR que nos retuvo el cliente (113.01 / 113.02)
+                       Cargo IVA/ISR que nos retuvo el cliente (113.01 / 113.02); en PPD con
+                         `retenciones_al_pago` (default), a 113.08.01 / 113.08.02 (pendiente)
                        PUE con forma de pago que mueve dinero: Cargo bancos/caja, Abono clientes.
 Factura recibida (I):  Cargo gasto/costo/activo por concepto (reglas) = base (+ IEPS)
                        Cargo IVA acreditable: PUE → pagado (118.01); PPD → pendiente (119.01).
                          El IVA de un concepto no deducible va a la misma cuenta no deducible.
                        Abono IVA retenido por enterar (216.10) y ISR retenido (216.04 servicios
-                         profesionales; 216.03 si un concepto es arrendamiento de inmuebles)
+                         profesionales; 216.03 si un concepto es arrendamiento de inmuebles);
+                         en PPD con `retenciones_al_pago`, a 216.12.01-03 (pendiente de pago)
                        Abono proveedores = base + IVA + IEPS − retenciones
                        PUE con forma de pago que mueve dinero: Cargo proveedores, Abono bancos.
 Nota de crédito (E):   El esquema de la factura con cargos y abonos invertidos; en las emitidas
                        la cuenta de ingresos se sustituye por devoluciones sobre ventas (402.01).
+                       Si se relaciona (TipoRelacion 01 o 03) con una factura PPD que aún tiene
+                       IVA/IEPS/retenciones pendientes, esos impuestos se revierten contra las
+                       cuentas PENDIENTES de esa factura (209.01 / 119.01 / 209.02 …, con el UUID
+                       de la factura), hasta lo que le quede; sólo el excedente va a
+                       cobrado/pagado (`redirigir_a_pendientes`).
 Pago (P):              Por cada pago: Cargo bancos (forma de pago) = Monto; por documento
                        Abono clientes = ImpPagado (emitido). Recibido: Cargo proveedores, Abono
-                       bancos. IVA efectivamente cobrado/pagado: traspaso de la parte
-                       proporcional (ImpPagado / Total del documento) del IVA pendiente de la
-                       factura PPD: Cargo 209.01 / Abono 208.01 (cobrado) o Cargo 118.01 /
-                       Abono 119.01 (pagado). Lo pendiente se toma de la póliza de la factura
-                       si existe (respeta el IVA que se mandó a no deducibles); si no, del CFDI
-                       en la bóveda; si tampoco está, de los Totales del complemento 2.0.
-Nómina (N emitida):    Cargo sueldos (o asimilados) = TotalPercepciones; Cargo otros pagos
-                       (110.01 subsidio) = TotalOtrosPagos; Abono ISR retenido (216.01/216.02);
-                       Abono otras deducciones (216.11); Abono bancos = neto.
+                       bancos. Traspaso de lo pendiente de la factura PPD a lo efectivo: IVA
+                       (Cargo 209.01 / Abono 208.01, o Cargo 118.01 / Abono 119.01), IEPS
+                       trasladado y, con `retenciones_al_pago`, las retenciones (113.08.0x →
+                       113.0x; 216.12.0x → 216.10/216.04/216.03). Cada parcialidad traspasa la
+                       parte proporcional (ImpPagado / Total del documento) de lo pendiente
+                       ORIGINAL, sin pasar de lo que quede; la que deja `ImpSaldoInsoluto = 0`
+                       traspasa TODO lo que quede, así no quedan residuos de redondeo. Lo
+                       pendiente se toma de la póliza de la factura si existe (respeta el IVA
+                       que se mandó a no deducibles) y lo que queda, de todos los movimientos
+                       con el UUID de la factura en esas cuentas; sin póliza, del CFDI en la
+                       bóveda; si tampoco está, de los Totales del complemento 2.0.
+                       La póliza lleva la fecha de `FechaPago` (ver generador.py).
+Nómina (N emitida):    Cargo sueldos (o asimilados) = TotalPercepciones; otros pagos por
+                       TipoOtroPago: 002/007/008 subsidio (110.01), 003 viáticos (107.01),
+                       001/004/005 reintegro de ISR (216.01), el resto (601.84); Abono ISR
+                       retenido (216.01/216.02); Abono cuota obrera IMSS (TipoDeduccion 001 →
+                       216.11 "Retenciones de IMSS a los trabajadores"); Abono otras deducciones
+                       (205.06); Abono bancos = neto.
+                       ALCANCE: las cuotas patronales (IMSS, RCV, Infonavit) y el impuesto
+                       sobre nómina NO vienen en el CFDI de nómina, así que no salen de aquí;
+                       su póliza (provisión 211.xx / 212.01 contra gasto) la hará P4 desde el
+                       cálculo de la nómina.
 
 MONEDA EXTRANJERA
 -----------------
@@ -165,6 +185,12 @@ def _rol_ingreso(concepto: dict[str, Any]) -> str:
 # ── facturas ──
 
 
+def retencion_al_pago(ef: ConfigEfectiva, comp: Comprobante, nota: bool) -> bool:
+    """¿Las retenciones de este CFDI van a "pendiente" hasta el pago? (PPD, no nota)."""
+    return (comp.metodo_pago == "PPD" and not nota
+            and getattr(ef.config, "retenciones_al_pago", True) is not False)
+
+
 def factura_emitida(comp: Comprobante, ef: ConfigEfectiva, *, nota: bool) -> Asiento:
     """Ingreso emitido (o nota de crédito emitida, que se invierte después)."""
     f = factor_moneda(comp.moneda, comp.tipo_cambio)
@@ -185,6 +211,7 @@ def factura_emitida(comp: Comprobante, ef: ConfigEfectiva, *, nota: bool) -> Asi
     banco = ef.cuenta_forma_pago(comp.forma_pago) if pue and ef.config.pue_registra_cobro else None
     asiento = Asiento("ingreso" if banco else "diario")
     contraparte = base + iva + ieps - ret_iva - ret_isr
+    pend = "_pendiente" if retencion_al_pago(ef, comp, nota) else ""
     kw = {"uuid": uuid, "rfc": rfc}
     asiento.cargo(ef.cuenta("clientes"), contraparte, concepto="Clientes", **kw)
     for rol, monto in repartir(dict(por_rol), base).items():
@@ -192,8 +219,10 @@ def factura_emitida(comp: Comprobante, ef: ConfigEfectiva, *, nota: bool) -> Asi
     sufijo = "cobrado" if pue else "no_cobrado"
     asiento.abono(ef.cuenta(f"iva_trasladado_{sufijo}"), iva, concepto="IVA trasladado", **kw)
     asiento.abono(ef.cuenta(f"ieps_trasladado_{sufijo}"), ieps, concepto="IEPS trasladado", **kw)
-    asiento.cargo(ef.cuenta("iva_retenido_por_clientes"), ret_iva, concepto="IVA retenido", **kw)
-    asiento.cargo(ef.cuenta("isr_retenido_por_clientes"), ret_isr, concepto="ISR retenido", **kw)
+    asiento.cargo(ef.cuenta(f"iva_retenido_por_clientes{pend}"), ret_iva,
+                  concepto="IVA retenido", **kw)
+    asiento.cargo(ef.cuenta(f"isr_retenido_por_clientes{pend}"), ret_isr,
+                  concepto="ISR retenido", **kw)
     if banco:
         asiento.cargo(banco, contraparte, concepto="Cobro", **kw)
         asiento.abono(ef.cuenta("clientes"), contraparte, concepto="Cobro", **kw)
@@ -270,9 +299,11 @@ def factura_recibida(comp: Comprobante, ef: ConfigEfectiva, existentes: set[str]
     for cuenta, monto in repartir(dict(gasto), base + iva + ieps).items():
         asiento.cargo(cuenta, monto, concepto="IVA acreditable" if cuenta == cuenta_iva
                       else "Gasto", **kw)
-    asiento.abono(ef.cuenta("iva_retenido_por_enterar"), ret_iva, concepto="IVA retenido", **kw)
+    pend = "_pendiente" if retencion_al_pago(ef, comp, nota) else ""
+    asiento.abono(ef.cuenta(f"iva_retenido_por_enterar{pend}"), ret_iva,
+                  concepto="IVA retenido", **kw)
     rol_isr = "isr_retenido_arrendamiento" if arrendamiento else "isr_retenido_honorarios"
-    asiento.abono(ef.cuenta(rol_isr), ret_isr, concepto="ISR retenido", **kw)
+    asiento.abono(ef.cuenta(f"{rol_isr}{pend}"), ret_isr, concepto="ISR retenido", **kw)
     asiento.abono(ef.cuenta("proveedores"), contraparte, concepto="Proveedores", **kw)
     if banco:
         asiento.cargo(ef.cuenta("proveedores"), contraparte, concepto="Pago", **kw)
@@ -285,6 +316,15 @@ def factura_recibida(comp: Comprobante, ef: ConfigEfectiva, existentes: set[str]
 
 
 # ── nómina ──
+
+
+# c_TipoOtroPago → rol de la cuenta (revisión P2). Lo que no está aquí → otros pagos distintos.
+ROL_OTRO_PAGO = {
+    "002": "otros_pagos_nomina", "007": "otros_pagos_nomina", "008": "otros_pagos_nomina",
+    "003": "viaticos_nomina",
+    "001": "reintegro_isr_nomina", "004": "reintegro_isr_nomina", "005": "reintegro_isr_nomina",
+}
+DEDUCCION_IMSS = "001"  # c_TipoDeduccion 001: seguridad social (cuota obrera IMSS)
 
 
 def nomina(comp: Comprobante, ef: ConfigEfectiva) -> Asiento:
@@ -301,10 +341,30 @@ def nomina(comp: Comprobante, ef: ConfigEfectiva) -> Asiento:
     asiento = Asiento("egreso")
     asiento.cargo(ef.cuenta("asimilados" if asimilado else "sueldos"), percepciones,
                   concepto="Percepciones", **kw)
-    asiento.cargo(ef.cuenta("otros_pagos_nomina"), otros, concepto="Otros pagos", **kw)
+    por_tipo = nom.get("otros_pagos_por_tipo")
+    if por_tipo is None:  # XML importado antes del desglose por tipo
+        por_rol = {ef.cuenta("otros_pagos_nomina"): otros}
+    else:
+        montos: dict[str, Decimal] = defaultdict(lambda: CERO)
+        for tipo, importe in por_tipo.items():
+            rol = ROL_OTRO_PAGO.get(tipo, "otros_pagos_distintos_nomina")
+            montos[ef.cuenta(rol)] += d(importe) * f
+        por_rol = repartir(dict(montos), otros) if montos else {
+            ef.cuenta("otros_pagos_nomina"): otros}
+    for cuenta, monto in por_rol.items():
+        asiento.cargo(cuenta, monto, concepto="Otros pagos", **kw)
     asiento.abono(ef.cuenta("isr_retenido_asimilados" if asimilado else "isr_retenido_salarios"),
                   isr, concepto="ISR retenido", **kw)
-    asiento.abono(ef.cuenta("otras_deducciones_nomina"), deducciones - isr,
+    por_deduccion = nom.get("deducciones_por_tipo")
+    if por_deduccion is None:
+        imss = CERO
+        asiento.advertencias.append(
+            "El XML se importó antes del desglose por tipo de deducción: la cuota obrera IMSS "
+            "quedó en otras deducciones. Vuelve a importar el XML para separarla.")
+    else:
+        imss = min(c(d(por_deduccion.get(DEDUCCION_IMSS)) * f), deducciones - isr)
+    asiento.abono(ef.cuenta("imss_obrero_nomina"), imss, concepto="Cuota obrera IMSS", **kw)
+    asiento.abono(ef.cuenta("otras_deducciones_nomina"), deducciones - isr - imss,
                   concepto="Otras deducciones", **kw)
     neto = percepciones + otros - deducciones
     asiento.abono(ef.cuenta("bancos"), neto, concepto="Pago de nómina", **kw)
@@ -316,35 +376,79 @@ def nomina(comp: Comprobante, ef: ConfigEfectiva) -> Asiento:
 
 
 @dataclass
+class Pendiente:
+    """Lo que una factura PPD dejó en una cuenta "pendiente" y que sus pagos traspasan."""
+
+    destino: str  # cuenta efectiva (208.01, 118.01, 113.01, 216.10…)
+    deudora: bool  # naturaleza de la cuenta pendiente (119/113.08.0x deudoras)
+    etiqueta: str
+    original: Decimal  # lo que dejó la póliza de la factura (base de la proporción)
+    restante: Decimal  # lo que queda hoy (factura − pagos − notas de crédito)
+
+
+@dataclass
 class DocumentoPagado:
     """Lo que el generador sabe de la factura que se paga (puede no estar en la bóveda)."""
 
     total: Decimal  # en la moneda del documento
-    iva_pendiente: Decimal  # IVA pendiente de la factura, en MXN (0 si era PUE)
-    ieps_pendiente: Decimal
+    pendientes: dict[str, Pendiente]  # cuenta pendiente (número) → saldos
     conocido: bool
 
+    @property
+    def iva_pendiente(self) -> Decimal:
+        return sum((p.original for p in self.pendientes.values() if "IVA" in p.etiqueta
+                    and "retenido" not in p.etiqueta), CERO)
 
-def pago(comp: Comprobante, ef: ConfigEfectiva,
-         documentos: dict[str, DocumentoPagado]) -> Asiento:
-    """Complemento de pago: mueve efectivo y traspasa el IVA a efectivamente cobrado/pagado."""
+
+# (rol pendiente, rol efectivo, la pendiente es deudora, etiqueta)
+PENDIENTES_EMITIDO = (
+    ("iva_trasladado_no_cobrado", "iva_trasladado_cobrado", False, "IVA cobrado"),
+    ("ieps_trasladado_no_cobrado", "ieps_trasladado_cobrado", False, "IEPS cobrado"),
+    ("iva_retenido_por_clientes_pendiente", "iva_retenido_por_clientes", True,
+     "IVA retenido al cobro"),
+    ("isr_retenido_por_clientes_pendiente", "isr_retenido_por_clientes", True,
+     "ISR retenido al cobro"),
+)
+PENDIENTES_RECIBIDO = (
+    ("iva_acreditable_pendiente", "iva_acreditable_pagado", True, "IVA pagado"),
+    ("iva_retenido_por_enterar_pendiente", "iva_retenido_por_enterar", False,
+     "IVA retenido al pago"),
+    ("isr_retenido_honorarios_pendiente", "isr_retenido_honorarios", False,
+     "ISR retenido al pago"),
+    ("isr_retenido_arrendamiento_pendiente", "isr_retenido_arrendamiento", False,
+     "ISR retenido al pago"),
+)
+
+
+def cuentas_pendientes(ef: ConfigEfectiva, emitido: bool) -> dict[str, tuple[str, bool, str]]:
+    """cuenta pendiente → (cuenta efectiva, es deudora, etiqueta) de una dirección."""
+    salida: dict[str, tuple[str, bool, str]] = {}
+    for rol_p, rol_d, deudora, etiqueta in (PENDIENTES_EMITIDO if emitido
+                                            else PENDIENTES_RECIBIDO):
+        pend, destino = ef.cuenta(rol_p), ef.cuenta(rol_d)
+        if pend and pend != destino and pend not in salida:
+            salida[pend] = (destino, deudora, etiqueta)
+    return salida
+
+
+def pago(comp: Comprobante, ef: ConfigEfectiva, documentos: dict[str, DocumentoPagado],
+         lista: list[dict[str, Any]] | None = None, *, usar_totales: bool = True) -> Asiento:
+    """
+    Complemento de pago: mueve efectivo y traspasa lo pendiente a efectivamente
+    cobrado/pagado. `lista` = los pagos del complemento que van en esta póliza (todos por
+    default; el generador parte por `FechaPago`). Muta `restante` de `documentos`.
+    """
     pagos = (comp.datos or {}).get("pagos") or {}
     emitido = comp.direccion == "emitido"
     rfc = comp.rfc_receptor if emitido else comp.rfc_emisor
     contra = ef.cuenta("clientes" if emitido else "proveedores")
-    if emitido:
-        pend, efec = ef.cuenta("iva_trasladado_no_cobrado"), ef.cuenta("iva_trasladado_cobrado")
-        pend_ieps = ef.cuenta("ieps_trasladado_no_cobrado")
-        efec_ieps = ef.cuenta("ieps_trasladado_cobrado")
-    else:
-        pend, efec = ef.cuenta("iva_acreditable_pendiente"), ef.cuenta("iva_acreditable_pagado")
-        pend_ieps = efec_ieps = ""
+    iva_pend = ef.cuenta("iva_trasladado_no_cobrado" if emitido else "iva_acreditable_pendiente")
     asiento = Asiento("ingreso" if emitido else "egreso")
     # Cobro: la cuenta de clientes se abona. Pago: la de proveedores se carga.
     aplicar = asiento.abono if emitido else asiento.cargo
     sin_documento: list[str] = []
     iva_traspasado = CERO
-    for p in pagos.get("pagos") or []:
+    for p in (pagos.get("pagos") or []) if lista is None else lista:
         tc = factor_moneda(p.get("MonedaP") or "MXN", p.get("TipoCambioP"))
         if (p.get("MonedaP") or "MXN").upper() not in ("MXN", "XXX"):
             asiento.advertencias.append(
@@ -364,12 +468,22 @@ def pago(comp: Comprobante, ef: ConfigEfectiva,
             if info is None or not info.conocido or info.total <= 0:
                 sin_documento.append(uuid_doc)
                 continue
+            # La última parcialidad (saldo insoluto 0) liquida TODO lo pendiente: sin residuos.
+            liquida = str(doc.get("ImpSaldoInsoluto") or "").strip() != "" and \
+                d(doc.get("ImpSaldoInsoluto")) == 0
             proporcion = min(pagado_dr / info.total, Decimal("1"))
-            iva = c(info.iva_pendiente * proporcion)
-            ieps = c(info.ieps_pendiente * proporcion) if pend_ieps else CERO
-            iva_traspasado += iva
-            _traspaso(asiento, emitido, pend, efec, iva, "IVA", kw)
-            _traspaso(asiento, emitido, pend_ieps, efec_ieps, ieps, "IEPS", kw)
+            for cuenta_p, pend in info.pendientes.items():
+                if pend.restante <= 0:
+                    continue
+                parte = pend.restante if liquida else min(c(pend.original * proporcion),
+                                                          pend.restante)
+                if parte <= 0:
+                    continue
+                pend.restante -= parte
+                if cuenta_p == iva_pend:
+                    iva_traspasado += parte
+                _traspaso(asiento, cuenta_p, pend.destino, pend.deudora, parte, pend.etiqueta,
+                          kw)
         kw = {"uuid": comp.uuid, "rfc": rfc}
         if emitido:
             asiento.cargo(banco, monto, concepto="Cobro", **kw)
@@ -382,21 +496,29 @@ def pago(comp: Comprobante, ef: ConfigEfectiva,
             asiento.advertencias.append(
                 f"El monto del pago ({monto}) no es igual a lo aplicado a documentos ({aplicado}).")
     if sin_documento:
-        _iva_desde_totales(asiento, pagos, emitido, pend, efec, sin_documento,
-                           comp, iva_traspasado)
+        if usar_totales:
+            efec = ef.cuenta("iva_trasladado_cobrado" if emitido else "iva_acreditable_pagado")
+            _iva_desde_totales(asiento, pagos, emitido, iva_pend, efec, sin_documento,
+                               comp, iva_traspasado)
+        else:
+            asiento.advertencias.append(
+                "Facturas pagadas que no están en la bóveda: el IVA no se traspasó a "
+                f"efectivamente {'cobrado' if emitido else 'pagado'} "
+                f"({', '.join(sin_documento)}).")
     return asiento
 
 
-def _traspaso(asiento: Asiento, emitido: bool, pendiente: str, efectivo: str, importe: Decimal,
-              etiqueta: str, kw: dict[str, str]) -> None:
+def _traspaso(asiento: Asiento, pendiente: str, efectiva: str, deudora: bool,
+              importe: Decimal, etiqueta: str, kw: dict[str, str]) -> None:
+    """De la cuenta pendiente a la efectiva, respetando su naturaleza."""
     if not importe or not pendiente:
         return
-    if emitido:  # 209 (acreedora) → 208
-        asiento.cargo(pendiente, importe, concepto=f"{etiqueta} cobrado", **kw)
-        asiento.abono(efectivo, importe, concepto=f"{etiqueta} cobrado", **kw)
-    else:  # 119 (deudora) → 118
-        asiento.cargo(efectivo, importe, concepto=f"{etiqueta} pagado", **kw)
-        asiento.abono(pendiente, importe, concepto=f"{etiqueta} pagado", **kw)
+    if deudora:  # 119 / 113.08.0x (deudoras) → 118 / 113.0x
+        asiento.cargo(efectiva, importe, concepto=etiqueta, **kw)
+        asiento.abono(pendiente, importe, concepto=etiqueta, **kw)
+    else:  # 209 / 216.12.0x (acreedoras) → 208 / 216.xx
+        asiento.cargo(pendiente, importe, concepto=etiqueta, **kw)
+        asiento.abono(efectiva, importe, concepto=etiqueta, **kw)
 
 
 def _iva_desde_totales(asiento: Asiento, pagos: dict[str, Any], emitido: bool, pend: str,
@@ -408,7 +530,8 @@ def _iva_desde_totales(asiento: Asiento, pagos: dict[str, Any], emitido: bool, p
         d(totales.get("TotalTrasladosImpuestoIVA8"))
     resto = c(iva_total - ya_traspasado)
     if pagos.get("version") == "2.0" and totales and resto > 0:
-        _traspaso(asiento, emitido, pend, efec, resto, "IVA",
+        _traspaso(asiento, pend, efec, not emitido, resto,
+                  "IVA cobrado" if emitido else "IVA pagado",
                   {"uuid": comp.uuid, "rfc": comp.rfc_receptor if emitido else comp.rfc_emisor})
         asiento.advertencias.append(
             "Facturas pagadas que no están en la bóveda: el IVA se tomó de los totales del "
@@ -417,3 +540,44 @@ def _iva_desde_totales(asiento: Asiento, pagos: dict[str, Any], emitido: bool, p
         asiento.advertencias.append(
             "Facturas pagadas que no están en la bóveda: el IVA no se traspasó a "
             f"efectivamente {'cobrado' if emitido else 'pagado'} ({', '.join(sin_documento)}).")
+
+
+# ── notas de crédito sobre PPD con saldo ──
+
+
+def redirigir_a_pendientes(asiento: Asiento,
+                           relacionados: list[tuple[str, dict[str, Pendiente]]]) -> None:
+    """
+    Nota de crédito (E) relacionada con facturas PPD que aún tienen impuestos pendientes:
+    lo que la nota revierte de IVA/IEPS/retenciones se mueve de la cuenta efectiva (o de la
+    pendiente con el UUID de la nota) a la cuenta PENDIENTE con el UUID de la factura,
+    hasta lo que le quede. Así la factura deja de tener ese pendiente y su último pago no
+    traspasa de más. Muta `restante`.
+    """
+    movido = False
+    for uuid_f, pendientes in relacionados:
+        for cuenta_p, pend in pendientes.items():
+            for r in list(asiento.renglones):
+                if pend.restante <= 0:
+                    break
+                if r.cuenta not in (pend.destino, cuenta_p) or r.uuid == uuid_f:
+                    continue
+                mover = min(r.cargo or r.abono, pend.restante)
+                if mover <= 0:
+                    continue
+                nuevo = Renglon(cuenta_p, concepto=f"{r.concepto} (factura PPD relacionada)",
+                                uuid=uuid_f, rfc=r.rfc)
+                if r.cargo:
+                    r.cargo -= mover
+                    nuevo.cargo = mover
+                else:
+                    r.abono -= mover
+                    nuevo.abono = mover
+                asiento.renglones.append(nuevo)
+                pend.restante -= mover
+                movido = True
+    if movido:
+        asiento.renglones = [r for r in asiento.renglones if r.cargo or r.abono]
+        asiento.advertencias.append(
+            "Nota de crédito sobre una factura PPD con impuestos pendientes: se revirtieron "
+            "contra las cuentas pendientes de la factura (no contra cobrado/pagado).")

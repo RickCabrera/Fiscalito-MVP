@@ -211,6 +211,23 @@ def test_extrae_el_paquete_en_streaming_sin_tenerlo_entero():
     assert destino.getvalue() == contenido
 
 
+def test_base64_de_un_paquete_grande_se_decodifica_rapido():
+    """Revisión P1: sin generador byte a byte. ~24 MB de base64 con saltos en < 3 s."""
+    import os
+    import time
+
+    contenido = os.urandom(18 * 1024 * 1024)
+    b64 = base64.b64encode(contenido).decode()
+    partido = "\r\n\t ".join(b64[i:i + 76] for i in range(0, len(b64), 76))
+    respuesta = plantilla("descarga.xml", CODIGO="5000", MENSAJE="Solicitud Aceptada",
+                          PAQUETE=f"<Paquete>{partido}</Paquete>").encode()
+    destino = io.BytesIO()
+    inicio = time.perf_counter()
+    r = sat_soap.extraer_paquete(io.BytesIO(respuesta), destino)
+    assert time.perf_counter() - inicio < 3
+    assert r.bytes_paquete == len(contenido) and destino.getvalue() == contenido
+
+
 def test_paquete_inexistente_trae_su_codigo():
     respuesta = plantilla("descarga.xml", CODIGO="5007", MENSAJE="No existe el paquete",
                           PAQUETE="<Paquete />").encode()

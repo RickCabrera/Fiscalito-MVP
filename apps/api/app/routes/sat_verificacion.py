@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.auditoria import registrar
+from app.contabilidad.polizas import TIPO_ALERTA_REVERSA
 from app.exceptions import FiscalAgentError
 from app.integraciones import registro
 from app.modelos.cfdi import Comprobante
@@ -118,8 +119,9 @@ def atender_alerta(clave: str, alerta_id: int, ctx: Contexto = Depends(contexto_
 
 def _ultimo_y_semaforo(ctx: Contexto, cliente_id: int, tipo: str) -> dict[str, Any]:
     ultimo = cumplimiento.ultimas(ctx.db, [cliente_id], tipo).get(cliente_id)
+    d = cumplimiento.detalle_semaforo(ultimo)
     return {"ultimo": cumplimiento.fila(ultimo) if ultimo else None,
-            "semaforo": cumplimiento.semaforo(ultimo)}
+            "semaforo": d["semaforo"], "origen": d["origen"], "marca": d["marca"]}
 
 
 def _historial(ctx: Contexto, clave: str, tipo: str) -> dict[str, Any]:
@@ -181,7 +183,8 @@ async def subir_pdf(
     registrar(ctx, "sat.cumplimiento_subir", "documento", doc.id,
               {"tipo": tipo, "resultado": doc.resultado}, cliente)
     return {"exito": True, "documento": cumplimiento.fila(doc),
-            "semaforo": cumplimiento.semaforo(doc) if tipo == "opinion" else None}
+            "semaforo": cumplimiento.semaforo(doc) if tipo == "opinion" else None,
+            "marca": cumplimiento.marca(doc) if tipo == "opinion" else None}
 
 
 @router.get("/clientes/{clave}/opinion/{doc_id}/pdf")
@@ -219,17 +222,24 @@ def semaforo_cartera(ctx: Contexto = Depends(contexto_actual)) -> dict[str, Any]
     clientes = clientes_visibles(ctx)
     ids = [c.id for c in clientes]
     ultimas = cumplimiento.ultimas(ctx.db, ids, "opinion")
-    abiertas: dict[int, int] = dict(ctx.db.execute(
-        select(AlertaRiesgo.cliente_id, func.count(AlertaRiesgo.id))
-        .where(AlertaRiesgo.cliente_id.in_(ids), AlertaRiesgo.atendida.is_(False),
-               AlertaRiesgo.nivel.in_(("alto", "medio")))
-        .group_by(AlertaRiesgo.cliente_id)).all()) if ids else {}
+    def abiertas(*cond: Any) -> dict[int, int]:
+        if not ids:
+            return {}
+        return dict(ctx.db.execute(
+            select(AlertaRiesgo.cliente_id, func.count(AlertaRiesgo.id))
+            .where(AlertaRiesgo.cliente_id.in_(ids), AlertaRiesgo.atendida.is_(False), *cond)
+            .group_by(AlertaRiesgo.cliente_id)).all())
+
+    riesgos = abiertas(AlertaRiesgo.nivel.in_(("alto", "medio")),
+                       AlertaRiesgo.tipo != TIPO_ALERTA_REVERSA)
+    contables = abiertas(AlertaRiesgo.tipo == TIPO_ALERTA_REVERSA)
     return {"exito": True, "clientes": [{
         "clave": c.clave,
         "opinion": {
-            "semaforo": cumplimiento.semaforo(ultimas.get(c.id)),
+            **cumplimiento.detalle_semaforo(ultimas.get(c.id)),
             "resultado": ultimas[c.id].resultado if c.id in ultimas else None,
             "fecha": ultimas[c.id].fecha.isoformat() if c.id in ultimas else None,
         },
-        "riesgos_69b": int(abiertas.get(c.id, 0)),
+        "riesgos_69b": int(riesgos.get(c.id, 0)),
+        "alertas_contables": int(contables.get(c.id, 0)),
     } for c in clientes]}

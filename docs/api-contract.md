@@ -1472,7 +1472,7 @@ Marca la alerta como atendida. `{"exito": true}`; 404 si no es de ese cliente.
 ### `GET /api/v1/sat/clientes/{clave}/opinion` · `GET /api/v1/sat/clientes/{clave}/constancia`
 
 ```json
-{ "exito": true, "tipo": "opinion", "semaforo": "verde",
+{ "exito": true, "tipo": "opinion", "semaforo": "verde", "origen": "portal_sat", "marca": null,
   "ultimo": { "id": 4, "tipo": "opinion", "fecha": "2026-10-03", "resultado": "positiva",
     "folio": "26NA…", "origen": "falso", "lectura": "pdf", "tamano": 900,
     "creado_en": "…", "aviso": null },
@@ -1481,7 +1481,10 @@ Marca la alerta como atendida. `{"exito": true}`; 404 si no es de ese cliente.
 ```
 
 `semaforo`: `verde` (positiva o sin obligaciones, ≤ `dias_vigencia` días) · `amarillo` (más
-vieja o sentido desconocido) · `rojo` (negativa) · `gris` (sin opinión). `resultado`:
+vieja o sentido desconocido) · `rojo` (negativa) · `gris` (sin opinión, **o la última es
+simulada**: `origen = "falso"` nunca pinta verde). `origen` (de la última, o null) y `marca`
+(revisión P1): `falso` → `"Simulado: …"`; `manual` → `"Según PDF subido, no verificado."`
+(el color sigue el sentido del PDF); otros → null. `resultado`:
 `positiva|negativa|sin_obligaciones|desconocido` (la constancia siempre `desconocido`).
 `origen`: `falso|portal_sat|proveedor|manual`. `lectura`: `adaptador|pdf|manual|sin_lectura`.
 `aviso`: texto si el RFC del PDF no es el del cliente. `via`: la vía configurada.
@@ -1496,7 +1499,7 @@ e.firma (404) o si el portal cambió (502).
 
 `multipart/form-data`: `archivo` (PDF ≤ 10 MB), `tipo` (`opinion` default | `constancia`),
 `resultado` opcional (lo indica el despacho si el PDF no se lee). Funciona con cualquier vía.
-`{"exito": true, "documento": {...}, "semaforo": "rojo" | null}`. El mismo PDF dos veces es
+`{"exito": true, "documento": {...}, "semaforo": "rojo" | null, "marca": str | null}`. El mismo PDF dos veces es
 un solo documento. No-PDF → 422.
 
 ### `GET /api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf`
@@ -1510,8 +1513,15 @@ cliente (default: automático el día 1, con constancia).
 
 ### `GET /api/v1/sat/cartera/semaforo`
 
-Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha"},
-"riesgos_69b": <alertas alto/medio sin atender>}`.
+Por cada cliente visible: `{"clave", "opinion": {"semaforo", "origen", "marca", "resultado",
+"fecha"}, "riesgos_69b": <alertas 69-B alto/medio sin atender>, "alertas_contables": <alertas
+`reversa_fallida` sin atender>}`.
+
+**Alertas `reversa_fallida`** (revisión P1): cuando un CFDI cancelado ante el SAT no puede
+cancelar ni revertir su póliza (p. ej. el mes de la reversa también está cerrado), queda una
+alerta en `GET …/riesgos-69b` → `alertas` con `tipo: "reversa_fallida"`, `lista:
+"contabilidad"`, `detalle: {"uuid", "error", "mensaje"}`; se atiende con el mismo `POST
+…/alertas/{id}/atender`. No cuenta en `riesgos_69b`.
 
 ### Programación (worker)
 
@@ -1526,6 +1536,20 @@ Autenticado; todo lo de `/contabilidad/clientes/{clave}/…` pasa por `contexto_
 buscan junto con el cliente: un id de otro cliente es **404**. Importes como texto con dos
 decimales (`"1160.00"`), en pesos. Código en `apps/api/app/contabilidad/`; esquemas de asiento
 en `asientos.py`.
+
+**Roles (revisión P2).** Escribir exige `dueno` o `contador` (**403** al `auxiliar`): sembrar y
+CRUD de cuentas, `PUT config`, reglas, pólizas manuales (crear, editar, cancelar), saldos
+iniciales, cerrar/reabrir mes, cierre anual y deshacerlo; en conciliación, crear/editar/borrar
+cuentas bancarias y plantillas, conciliar (automático y manual), deshacer y póliza desde un
+movimiento; en Anexo 24, `validar`, `zip` y `enviar`. El auxiliar lee todo, **genera las
+pólizas automáticas** (`POST …/polizas/generar`) e **importa estados de cuenta**. El 404 de
+otro despacho se evalúa antes que el 403.
+
+**Complementos de pago (§D-C1).** La póliza de un CFDI P lleva la fecha `FechaPago` de su
+complemento y entra al periodo por ella; si trae pagos de días distintos hay una póliza por
+día (`clave_origen` `cfdi:<UUID>@AAAA-MM-DD`). Lo mismo en
+`GET /boveda/clientes/{clave}/facturas-calculo`: cada documento pagado sale con `fecha` =
+su `FechaPago` y cae en el periodo de su pago.
 
 ### `GET /api/v1/contabilidad/codigo-agrupador`
 
@@ -1553,7 +1577,9 @@ El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
 
 - `GET …/config` → `{"config": {"automatica_ingresos", "automatica_egresos",
   "automatica_pagos", "automatica_nomina", "pue_registra_cobro", "uso_s01_no_deducible",
-  "efectivo_no_deducible", "tope_activo", "plantilla_concepto", "fecha_saldos_iniciales",
+  "efectivo_no_deducible", "retenciones_al_pago" (default true: retenciones de PPD en
+  cuentas pendientes 113.08.0x / 216.12.0x hasta el pago), "tope_activo",
+  "plantilla_concepto", "fecha_saldos_iniciales",
   "cuentas" (rol → número, con defaults), "cuentas_personalizadas", "roles": [{"rol",
   "default", "descripcion"}], "formas_pago" (c_FormaPago → número), "reglas": [...]}}`.
 - `PUT …/config` body con cualquiera de esos campos (excepto `roles`, `reglas` y
@@ -1861,7 +1887,9 @@ Código en `apps/api/app/contabilidad/anexo24/`; XSD 1.3 oficiales versionados (
 `apps/api/tests/xsd/contabilidad/README.md`).
 
 Body común (`SolicitudEntrada`): `{"documento": "catalogo"|"balanza"|"polizas"|
-"auxiliar_cuentas"|"auxiliar_folios", "anio" (≥ 2015), "mes" (1–12), "tipo_envio": "N"|"C",
+"auxiliar_cuentas"|"auxiliar_folios", "anio" (≥ 2015), "mes" (1–12; **13 = balanza de cierre
+del ejercicio**, sólo con `documento: "balanza"`: saldos al 31-dic antes del cierre + la póliza
+de cierre de resultados de P2-08; 409 sin cierre anual), "tipo_envio": "N"|"C",
 "fecha_mod_bal" (exigida con C), "tipo_solicitud": ""|"AF"|"FC"|"DE"|"CO" (exigida en pólizas
 y auxiliares), "num_orden" (AF/FC, `AAA0000000/00`), "num_tramite" (DE/CO,
 `AA000000000000`), "sellar": bool}`. `sellar: true` usa la e.firma activa del cliente (404 si
