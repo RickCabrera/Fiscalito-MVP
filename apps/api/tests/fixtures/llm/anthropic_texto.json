@@ -1,0 +1,26 @@
+{
+  "id": "msg_PRUEBA",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5-20251001",
+  "content": [
+    {
+      "type": "text",
+      "text": "Tu declaración ya quedó."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_PRUEBA",
+      "name": "buscar_cliente",
+      "input": {
+        "rfc": "XAXX010101AB1"
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 40,
+    "output_tokens": 9
+  }
+}

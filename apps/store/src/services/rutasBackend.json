@@ -55,6 +55,19 @@
       ]
     },
     {
+      "path": "/api/v1/clientes/{clave}/credenciales",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales/{credencial_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
       "path": "/api/v1/comparar-regimenes",
       "metodos": [
         "POST"
@@ -164,6 +177,12 @@
     },
     {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

@@ -123,6 +123,17 @@ vi.mock('../services/despachoApi', async () => {
   };
 });
 
+// P0-05: la sección de credenciales de la ficha habla con la bóveda vía `api.ts`, que
+// importa `./firebase` (y eso revienta sin llaves en CI). Esta pantalla se prueba sin ella;
+// la sección tiene sus propios tests en `components/cartera/CredencialesCliente.test.tsx`.
+vi.mock('../services/credencialesApi', async () => {
+  const real = await vi.importActual<typeof import('../services/credencialesApi')>(
+    '../services/credencialesApi',
+  );
+  return { ...real, listarCredenciales: vi.fn(async () => []) };
+});
+vi.mock('../services/api', () => ({ apiFetch: vi.fn(), apiArchivo: vi.fn() }));
+
 const { default: ClienteDetallePage } = await import('./ClienteDetallePage');
 
 function montar(id: string) {

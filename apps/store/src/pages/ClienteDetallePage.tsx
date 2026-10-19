@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import CredencialesCliente from '../components/cartera/CredencialesCliente';
 import DatosFiscalesFicha from '../components/cartera/DatosFiscalesFicha';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import { useCartera } from '../context/carteraStore';
@@ -214,6 +215,8 @@ export default function ClienteDetallePage() {
 
           {/* C-01: RFC, CP y entidad, con la edición del cliente. */}
           {deLaCartera && <DatosFiscalesFicha cliente={deLaCartera} />}
+          {/* P0-05: e.firma y CSD del cliente, contra la bóveda del backend. */}
+          {deLaCartera && <CredencialesCliente clave={deLaCartera.id} />}
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
             <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
