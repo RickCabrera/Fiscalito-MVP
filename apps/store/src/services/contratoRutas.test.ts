@@ -73,6 +73,8 @@ import * as bovedaApi from './bovedaApi';
 import * as credencialesApi from './credencialesApi';
 // P0-04 / P0-07: trabajos en segundo plano y bitácora de auditoría.
 import * as trabajosApi from './trabajosApi';
+// P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
+import * as satVerificacionApi from './satVerificacionApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -211,6 +213,20 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     encolarDiagnostico: () => trabajosApi.encolarDiagnostico('demo', 1),
     listarAuditoria: () => trabajosApi.listarAuditoria({ cliente: 'demo', pagina: 2 }),
   },
+  'satVerificacionApi.ts': {
+    verificarEstatus: () => satVerificacionApi.verificarEstatus('taller', '2026-10-01', '2026-10-31'),
+    riesgos69b: () => satVerificacionApi.riesgos69b('taller'),
+    atenderAlerta: () => satVerificacionApi.atenderAlerta('taller', 3),
+    estadoListas: () => satVerificacionApi.estadoListas(),
+    historialCumplimiento: () => satVerificacionApi.historialCumplimiento('taller', 'constancia'),
+    obtenerAhora: () => satVerificacionApi.obtenerAhora('taller', 'opinion'),
+    subirPdfCumplimiento: () =>
+      satVerificacionApi.subirPdfCumplimiento('taller', 'opinion', new File(['%PDF-'], 'o.pdf')),
+    descargarPdfCumplimiento: () => satVerificacionApi.descargarPdfCumplimiento('taller', 9),
+    guardarConfigCumplimiento: () =>
+      satVerificacionApi.guardarConfigCumplimiento('taller', { automatico: true, dia_del_mes: 1, constancia: true }),
+    semaforoCartera: () => satVerificacionApi.semaforoCartera(),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -247,6 +263,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'bovedaApi.ts': bovedaApi,
   'credencialesApi.ts': credencialesApi,
   'trabajosApi.ts': trabajosApi,
+  'satVerificacionApi.ts': satVerificacionApi,
 };
 
 /**

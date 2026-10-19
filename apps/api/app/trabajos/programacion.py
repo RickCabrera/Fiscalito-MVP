@@ -79,9 +79,27 @@ def _encolar_purga(db: Session, ranura: datetime) -> object:
     )
 
 
+def _sat(nombre: str) -> Callable[[Session, datetime], object]:
+    """Importación perezosa: `programacion` no arrastra los adaptadores al importarse."""
+
+    def encolar_sat(db: Session, ranura: datetime) -> object:
+        from app.sat_verificacion import trabajos as sat
+
+        return getattr(sat, nombre)(db, ranura)
+
+    return encolar_sat
+
+
 # La lista que revisa el worker. Cada dominio agrega aquí las suyas.
 TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("purgar_trabajos", _encolar_purga, hora=time(3, 0)),
+    # P1-03: estatus de CFDI — diario los del mes, semanal los del último año.
+    TareaRecurrente("sat_estatus_mes", _sat("encolar_estatus_mes"), hora=time(2, 0)),
+    TareaRecurrente("sat_estatus_anio", _sat("encolar_estatus_anio"), cada=timedelta(days=7)),
+    # P1-04: listas 69-B / 69, diario (el SAT las actualiza en días hábiles).
+    TareaRecurrente("sat_listas", _sat("encolar_listas"), hora=time(6, 30)),
+    # P1-05: opinión/constancia mensual; la revisión es diaria y cada cliente decide su día.
+    TareaRecurrente("sat_cumplimiento", _sat("encolar_cumplimiento_diario"), hora=time(7, 0)),
 ]
 
 

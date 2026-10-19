@@ -123,6 +123,16 @@ vi.mock('react-router-dom', async () => {
   return { ...real, useNavigate: () => navigate };
 });
 
+/**
+ * P1-05: la lista pinta el semáforo SAT por cliente, que viene de `/sat/cartera/semaforo`
+ * vía `services/api.ts` → `services/firebase.ts` (lanza sin llaves en CI). El doble trae
+ * un semáforo para `demo` y nada para los demás.
+ */
+const semaforo = { porClave: {} as Record<string, unknown> };
+vi.mock('../components/cartera/useSemaforoCartera', () => ({
+  useSemaforoCartera: () => ({ porClave: semaforo.porClave, error: null }),
+}));
+
 const { default: ClientesPage } = await import('./ClientesPage');
 
 function montar() {

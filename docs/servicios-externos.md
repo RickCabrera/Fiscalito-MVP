@@ -21,9 +21,9 @@ Para ver qué está configurado: `GET /health/integraciones`.
 | LLM | `FISCALITO_LLM` | falso, openai, anthropic | P0-06 hecho |
 | Almacenamiento | `FISCALITO_ALMACENAMIENTO` | — | otra tarea |
 | Descarga masiva SAT | `FISCALITO_SAT_DESCARGA` | — | P1 |
-| Estatus de CFDI | `FISCALITO_SAT_ESTATUS` | — | P1 |
-| Listas 69-B | `FISCALITO_LISTAS_69B` | — | P1 |
-| Opinión de cumplimiento | `FISCALITO_OPINION` | — | P1-05 |
+| Estatus de CFDI | `FISCALITO_SAT_ESTATUS` | falso, sat | P1-03 hecho |
+| Listas 69-B / 69 | `FISCALITO_SAT_LISTAS` | falso, sat | P1-04 hecho |
+| Opinión de cumplimiento | `FISCALITO_OPINION_CUMPLIMIENTO` | falso, portal_sat, proveedor, manual | P1-05 hecho |
 | PAC | `FISCALITO_PAC` | — | P4 |
 
 ---
@@ -188,19 +188,142 @@ usuario IAM limitado al bucket.
 cliente vía `app.credenciales.obtener_firmante(db, cliente, "efirma")`. Variable prevista:
 `FISCALITO_SAT_DESCARGA`.
 
-## Estatus de CFDI
+## Estatus de CFDI (`sat_estatus`) — P1-03
 
-*Pendiente (P1).* Web service público del SAT (consulta de estatus y cancelabilidad). Variable
-prevista: `FISCALITO_SAT_ESTATUS`.
+**Qué es.** El web service **público** del SAT `ConsultaCFDIService` (el de "Verificación de
+CFDI"): dice si un CFDI está Vigente, Cancelado o No encontrado, si es cancelable, si hay una
+cancelación "En proceso" y si el emisor está en la lista de EFOS. No pide e.firma ni contrato.
+Código: `apps/api/app/integraciones/sat_estatus.py` (adaptador) y
+`apps/api/app/sat_verificacion/estatus.py` (lotes y escritura en la bóveda).
 
-## Listas 69-B (EFOS/EDOS)
+- SOAP 1.1, `POST https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc`,
+  `SOAPAction: http://tempuri.org/IConsultaCFDIService/Consulta`, cuerpo
+  `<Consulta xmlns="http://tempuri.org/"><expresionImpresa>?re=…&rr=…&tt=…&id=…`.
+- `tt` (CFDI 3.3/4.0): seis decimales sin ceros sobrantes (`1160.00` → `1160.0`).
+- Respuesta `ConsultaResult`: `CodigoEstatus` ("S - …" encontrado / "N - 60x …"), `Estado`,
+  `EsCancelable`, `EstatusCancelacion`, `ValidacionEFOS` (200/201 = el emisor NO es EFOS).
 
-*Pendiente (P1).* Archivos públicos del SAT. Variable prevista: `FISCALITO_LISTAS_69B`.
+| Variable | Valores | Default | Para qué |
+|---|---|---|---|
+| `FISCALITO_SAT_ESTATUS` | `falso`, `sat` | `falso` (dev) | Elige la implementación |
+| `FISCALITO_SAT_ESTATUS_URL` | URL | la de producción del SAT | Otro endpoint (p. ej. el de pruebas `https://pruebacfdiconsultaqr.cloudapp.net/ConsultaCFDIService.svc`) |
+| `FISCALITO_SAT_ESTATUS_CONCURRENCIA` | entero | 4 | Consultas simultáneas por trabajo |
+| `FISCALITO_SAT_ESTATUS_POR_SEGUNDO` | número | 5 | Ritmo máximo (el SAT bloquea ráfagas; no publica límite) |
+| `FISCALITO_SAT_ESTATUS_LOTE` | entero | 1000 | CFDI por trabajo antes de encolar la continuación |
 
-## Opinión de cumplimiento
+**Qué hace la app.** `POST /sat/clientes/{clave}/verificar-estatus` y la programación (diaria
+los del mes, semanal los del último año, sólo no cancelados) encolan `sat.verificar_estatus`.
+Un CFDI cancelado se marca `estatus_sat = cancelado` y deja de contar:
+`app.boveda_cfdi.servicio.comprobantes_vigentes(consulta)` es el filtro para Fiscalito,
+Contabilito y la anual (P1-06). "No encontrado" NO cambia el estatus.
 
-*Pendiente (P1-05, DP-2).* Sin API oficial: proveedor de terceros, portal con e.firma o PDF que
-sube el despacho. Variable prevista: `FISCALITO_OPINION`.
+**Fuentes verificadas (2026-10-19).** README y código de
+[phpcfdi/sat-estado-cfdi](https://github.com/phpcfdi/sat-estado-cfdi) (URL, SOAPAction,
+namespaces, sobre, respuesta grabada y tabla de estados; enlaza el documento del SAT v1.4 de
+nov-2022) y `pacs/sat.py::status` de
+[SAT-CFDI/python-satcfdi](https://github.com/SAT-CFDI/python-satcfdi) (mismo contrato); formato
+de `tt` de [phpcfdi/cfdi-expresiones](https://github.com/phpcfdi/cfdi-expresiones).
+
+**Por confirmar con el servicio real.** El sandbox de desarrollo no resuelve `sat.gob.mx`:
+nunca se mandó una consulta real. Al encender `sat` en Railway, verificar un UUID conocido y
+ajustar `FISCALITO_SAT_ESTATUS_POR_SEGUNDO` si el SAT responde con errores de ritmo.
+
+**Cómo se prueba.** `apps/api/tests/plan_p/test_sat_estatus.py` con `httpx.MockTransport` y
+respuestas grabadas en `apps/api/tests/fixtures/sat_estatus/` (vigente, cancelado, no
+encontrado, en proceso, Fault).
+
+**A quién contratar.** Nadie: es público y gratuito.
+
+## Listas 69-B (EFOS/EDOS) y 69 (`sat_listas`) — P1-04
+
+**Qué es.** Los listados públicos del SAT en "Datos abiertos": el **69-B** (operaciones
+inexistentes: presuntos, definitivos, desvirtuados, sentencias favorables, en un solo CSV) y
+los del **69** (no localizados, créditos firmes, exigibles, cancelados, sentencias). Se
+descargan a diario (`sat.listas_actualizar`, 6:30 Ciudad de México), se guardan en
+`contribuyentes_lista_sat` y se cruzan con las contrapartes de cada cliente: emisores de sus
+CFDI recibidos (riesgo EDOS: rojo si definitivo o presunto), receptores de sus emitidos
+(informativo) y su propio RFC. Cada hallazgo nuevo es una `AlertaRiesgo`.
+
+| Variable | Valores | Default | Para qué |
+|---|---|---|---|
+| `FISCALITO_SAT_LISTAS` | `falso`, `sat` | `falso` (dev) | Elige la implementación |
+| `FISCALITO_SAT_LISTAS_ACTIVAS` | lista separada por comas | `69b` | Qué listas descargar (`69b`, `69_no_localizados`, `69_firmes`, `69_exigibles`, `69_cancelados`, `69_sentencias`) |
+| `FISCALITO_SAT_LISTA_<LISTA>_URL` | URL | ver abajo | URL vigente de cada lista (p. ej. `FISCALITO_SAT_LISTA_69B_URL`) |
+
+URL por default del 69-B: `http://omawww.sat.gob.mx/cifras_sat/Documents/Listado_Completo_69-B.csv`
+(es la que citan los scrapers públicos, p. ej. Apify `scrapers_lat/sat-69b-scraper`). **Las URL
+del art. 69 son POR CONFIRMAR** (nombres de archivo no verificados): por eso no están activas
+por default. Si el SAT responde HTML en vez de CSV, la carga falla diciendo qué variable
+corregir.
+
+**Parseo robusto.** UTF-8 con o sin BOM, si no cp1252/latin-1; renglones de título antes del
+encabezado; delimitador `,`, `;`, `|` o tabulador deducido del encabezado; columnas reconocidas
+por palabra clave sin acentos; RFC normalizado y renglones sin RFC válido descartados. Un
+archivo con menos del 50 % de los renglones de la carga anterior **no reemplaza** (parece
+truncado) y queda el error en `GET /sat/listas/estado`.
+
+**Cómo se prueba.** `apps/api/tests/plan_p/test_sat_listas.py` con un CSV sintético latin-1 en
+`apps/api/tests/fixtures/sat_listas/` (RFC inventados).
+
+**A quién contratar.** Nadie: son datos públicos. Antes de producción, abrir el portal de datos
+abiertos del SAT y confirmar las URL vigentes.
+
+## Opinión de cumplimiento y constancia (`opinion_cumplimiento`) — P1-05 (DP-2)
+
+**Qué es.** La opinión del cumplimiento de obligaciones fiscales (32-D) y la constancia de
+situación fiscal de cada cliente, con historial, PDF en el almacenamiento y semáforo para la
+cartera. **El SAT no tiene API oficial**; hay cuatro vías y la elección es de Ricardo (DP-2).
+En TODAS se puede subir el PDF a mano (`POST /sat/clientes/{clave}/opinion/pdf`).
+
+| Vía (`FISCALITO_OPINION_CUMPLIMIENTO`) | Qué hace | Riesgo |
+|---|---|---|
+| `falso` (dev) | PDF sintético positivo; pasa por el mismo lector que uno real | — |
+| `portal_sat` | Entra al portal del SAT con la **e.firma del cliente** (`obtener_firmante`) y descarga el PDF | Zona gris; frágil ante cambios del portal |
+| `proveedor` | Cliente HTTP genérico contra un proveedor externo | Costo por consulta |
+| `manual` | No consulta nada; "Obtener ahora" responde 409 | Trabajo manual del despacho |
+
+**`portal_sat`.** Flujo tomado de `satcfdi/portal/__init__.py` de
+[python-satcfdi](https://github.com/SAT-CFDI/python-satcfdi) (MIT): login FIEL en
+`loginda.siat.sat.gob.mx` con el formulario `certform` y un token
+`base64(base64("guid|rfc|serie") + "#" + base64(base64(firma SHA1withRSA)))`; 32-D en
+`ptsc32d.clouda.sat.gob.mx` (`RespuestaCompleta/ObtenerRespuestaCompletaPdf`, JSON con
+`ContenidoBase64`); constancia en `rfcampc.siat.sat.gob.mx` (`IdcGeneraConstancia.jsf`).
+**Cada paso lleva `# POR CONFIRMAR CON E.FIRMA REAL:`** en el código: se probó contra páginas
+simuladas, nunca contra el SAT. Si el portal cambia, el error dice en qué paso
+("El portal del SAT cambió en el paso 'login e.firma'…") y sugiere subir el PDF.
+
+**`proveedor`.** Todas `FISCALITO_OPINION_PROVEEDOR_*`:
+
+| Variable | Default | Para qué |
+|---|---|---|
+| `URL` | — (obligatoria) | Con `{rfc}` y `{tipo}` (`opinion`/`constancia`) |
+| `API_KEY` | — (obligatoria) | Credencial |
+| `ENCABEZADO` | `Authorization` | Con `Authorization` va `Bearer <key>`; con otro, la key sola |
+| `METODO` | `GET` | `POST` manda `{"rfc","tipo"}` en JSON |
+| `CAMPOS` | `{"pdf_base64":"pdf","resultado":"resultado","folio":"folio","fecha":"fecha"}` | JSON: ruta con puntos de cada dato en la respuesta |
+| `RESULTADOS` | `{}` | JSON: valor del proveedor → `positiva`/`negativa`/`sin_obligaciones` |
+
+Si el proveedor responde `application/pdf`, el cuerpo es el PDF y el sentido se lee del texto.
+
+**Otras variables.** `FISCALITO_OPINION_DIAS_VIGENCIA` (default 30): días tras los cuales una
+opinión positiva pasa a amarillo. **FUENTE POR CONFIRMAR**: regla 2.1.37 de la RMF (vigencia
+de 30 días naturales), no contrastada con la RMF 2026.
+
+**Lectura del PDF.** `pypdf` (dependencia nueva) extrae el texto y se buscan las frases "sentido
+POSITIVO/NEGATIVO" e "INSCRITO SIN OBLIGACIONES", el folio y la fecha de revisión. **Por
+confirmar con un PDF real**; si una opinión real sale "desconocido", el despacho puede indicar
+el resultado al subirla y hay que agregar la frase a `app/sat_verificacion/pdf.py`.
+
+**Programación.** Diario a las 7:00 se revisa qué clientes toca: por default cada cliente con
+RFC pide su opinión (y constancia) el día 1 de cada mes; se cambia por cliente con
+`PUT /sat/clientes/{clave}/opinion/config`.
+
+**Cómo se prueba.** `apps/api/tests/plan_p/test_opinion_cumplimiento.py`: falso, proveedor con
+`MockTransport`, portal con páginas simuladas y una e.firma de prueba, manual y rutas.
+
+**A quién contratar.** Depende de DP-2. Si es `proveedor`, alguien que entregue la 32-D por API
+con la autorización del contribuyente; con `portal_sat`, nadie, pero cada cliente necesita su
+e.firma vigente cargada.
 
 ## PAC (timbrado y cancelación)
 

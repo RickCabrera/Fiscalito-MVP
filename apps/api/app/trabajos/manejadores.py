@@ -54,3 +54,4 @@ def purgar_trabajos(db: Session, trabajo: Trabajo) -> dict[str, Any]:
 
 def cargar_manejadores() -> None:
     """Importa los módulos que registran manejadores. Agrega aquí los de cada dominio."""
+    import app.sat_verificacion.trabajos  # noqa: F401 — P1-03/04/05

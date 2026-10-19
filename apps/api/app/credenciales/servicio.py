@@ -51,6 +51,11 @@ class Firmante:
         """La firma en base64 (formato del atributo `Sello` y del SignatureValue)."""
         return base64.b64encode(self.firmar(datos)).decode("ascii")
 
+    def firmar_sha1(self, datos: bytes) -> bytes:
+        """SHA1withRSA (PKCS#1 v1.5). Sólo para el token del login con e.firma del portal
+        del SAT, que sigue pidiendo SHA-1 (P1-05); todo lo demás firma con SHA-256."""
+        return self._llave.sign(datos, padding.PKCS1v15(), hashes.SHA1())  # noqa: S303
+
     @property
     def certificado_der(self) -> bytes:
         return self._cer_der

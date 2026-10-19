@@ -35,6 +35,7 @@ from app.routes import (
     multi_periodo,
     nomina,
     retenciones,
+    sat_verificacion,
     trabajos,
 )
 
@@ -121,6 +122,8 @@ app.include_router(credenciales.router, prefix="/api/v1")
 # Plan P: trabajos en segundo plano (P0-04) y bitácora de auditoría (P0-07).
 app.include_router(trabajos.router, prefix="/api/v1")
 app.include_router(auditoria.router, prefix="/api/v1")
+# P1-03/04/05: estatus de CFDI, listas 69-B y opinión de cumplimiento.
+app.include_router(sat_verificacion.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

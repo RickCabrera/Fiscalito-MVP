@@ -18,6 +18,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CredencialesCliente from '../components/cartera/CredencialesCliente';
+// P1-05: opinión de cumplimiento, constancia y riesgos 69-B.
+import CumplimientoCliente from '../components/cartera/CumplimientoCliente';
 import DatosFiscalesFicha from '../components/cartera/DatosFiscalesFicha';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 // P0-04: procesos en segundo plano del cliente (demo de EstadoTrabajos).
@@ -384,6 +386,7 @@ export default function ClienteDetallePage() {
             )}
           </div>
 
+          {id && <CumplimientoCliente clave={id} />}
           {id && <ProcesosCliente cliente={id} />}
         </>
       )}

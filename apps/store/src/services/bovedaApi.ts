@@ -36,6 +36,11 @@ export interface ComprobanteBoveda {
   ieps: string;
   estatus_sat: EstatusSat;
   origen: 'manual' | 'sat';
+  /** P1-03: cuándo se consultó el SAT y si hay una cancelación "En proceso". */
+  fecha_estatus?: string | null;
+  estatus_cancelacion?: string;
+  /** P1-04: la contraparte está en un listado del SAT (69-B o 69). */
+  art_69b?: { lista: string; situacion: string; nivel: 'alto' | 'medio' | 'info' } | null;
 }
 
 export interface ReporteImportacion {

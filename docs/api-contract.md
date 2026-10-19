@@ -1081,8 +1081,14 @@ descendente.
     "isr_retenido": "0.00", "ieps": "0.00", "estatus_sat": "desconocido", "origen": "manual" }] }
 ```
 
-`estatus_sat` nace `desconocido`; lo llenará P1-03. `origen` es `manual` (subido) o `sat`
-(descarga masiva, P1-01).
+`estatus_sat` nace `desconocido` y P1-03 lo pone en `vigente` o `cancelado` (ver §Verificación
+SAT). `origen` es `manual` (subido) o `sat` (descarga masiva, P1-01).
+
+Desde P1-03/P1-04 cada comprobante trae además `fecha_estatus` (ISO o `null`: cuándo se
+consultó el SAT), `estatus_cancelacion` (texto del SAT, p. ej. `"En proceso"`, o `""`) y
+`art_69b`: `null` o `{"lista": "69b", "situacion": "definitivo", "nivel": "alto"}` si la
+**contraparte** está en un listado del SAT (`nivel` `alto`/`medio` = rojo, `info` =
+desvirtuado o sentencia favorable).
 
 ### `GET /api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml`
 
@@ -1219,3 +1225,99 @@ incluye clientes ya borrados), `accion` (exacta, o prefijo con `*`: `trabajo.*`)
                  "accion": "trabajo.reintentar", "entidad": "trabajo", "entidad_id": "7",
                  "detalle": {"tipo": "diagnostico.cliente"}, "ip": "201.0.0.1" } ] }
 ```
+
+## Verificación SAT — estatus de CFDI, listas 69-B y opinión de cumplimiento (P1-03/04/05)
+
+Autenticado; todo lo de `/sat/clientes/{clave}/…` pasa por `contexto_actual` + `cliente_o_404`
+(cliente de otro despacho = **404**). Las consultas al SAT corren en la cola de trabajos: las
+rutas que consultan **encolan** y devuelven `{"trabajo": {"id", "tipo", "estado"}}`; el avance
+se ve en `GET /api/v1/trabajos?cliente=…&tipo=…`. Servicios y variables en
+`docs/servicios-externos.md`.
+
+### `POST /api/v1/sat/clientes/{clave}/verificar-estatus`
+
+Body `{"desde": "AAAA-MM-DD", "hasta": "AAAA-MM-DD"}` (inclusivos, sobre `Fecha` del CFDI;
+`desde > hasta` o más de cinco años → 422). Encola `sat.verificar_estatus` para los CFDI **no
+cancelados** del rango (la misma petición viva no se duplica). Respuesta
+`{"exito": true, "trabajo": {...}, "comprobantes": 42}`. El trabajo procesa en lotes y deja
+`{"consultados", "vigentes", "cancelados", "nuevos_cancelados", "no_encontrados",
+"en_proceso", "errores", "pendientes"}` en su `resultado`. Un cancelado queda
+`estatus_sat = "cancelado"` en la bóveda y **deja de contar**: los cálculos usan
+`app.boveda_cfdi.servicio.comprobantes_vigentes(consulta)` (uso interno).
+
+### `GET /api/v1/sat/listas/estado`
+
+Datos públicos (no dependen del despacho). `{"exito": true, "listas": [{"lista": "69b",
+"descripcion", "registros", "cargada_en", "revisada_en", "url", "error"}]}`.
+
+### `GET /api/v1/sat/clientes/{clave}/riesgos-69b`
+
+```json
+{ "exito": true, "en_rojo": 1,
+  "riesgos": [{ "rfc": "EFO010101AA1", "nombre": "…", "lista": "69b", "situacion": "definitivo",
+    "situacion_texto": "Definitivo", "relacion": "proveedor", "nivel": "alto", "rojo": true,
+    "comprobantes": 2, "total": "2320.00", "fecha_publicacion_sat": "2026-05-10",
+    "fecha_publicacion_dof": "2026-05-15" }],
+  "alertas": [{ "id": 1, "tipo": "art69b", "rfc": "…", "nombre": "…", "lista": "69b",
+    "situacion": "definitivo", "relacion": "proveedor", "nivel": "alto", "atendida": false,
+    "creada_en": "…", "detalle": {"comprobantes": 2, "total": "2320.00"} }],
+  "listas": [ … como /sat/listas/estado … ] }
+```
+
+`relacion`: `proveedor` (emisor de recibidos), `cliente` (receptor de emitidos; nunca rojo) o
+`propio`. `situacion` 69-B: `definitivo` (alto) · `presunto` (medio) · `desvirtuado` y
+`sentencia_favorable` (info, no rojo, no alertan).
+
+### `POST /api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender`
+
+Marca la alerta como atendida. `{"exito": true}`; 404 si no es de ese cliente.
+
+### `GET /api/v1/sat/clientes/{clave}/opinion` · `GET /api/v1/sat/clientes/{clave}/constancia`
+
+```json
+{ "exito": true, "tipo": "opinion", "semaforo": "verde",
+  "ultimo": { "id": 4, "tipo": "opinion", "fecha": "2026-10-03", "resultado": "positiva",
+    "folio": "26NA…", "origen": "falso", "lectura": "pdf", "tamano": 900,
+    "creado_en": "…", "aviso": null },
+  "historial": [ … ], "via": "falso", "dias_vigencia": 30,
+  "config": { "automatico": true, "dia_del_mes": 1, "constancia": true } }
+```
+
+`semaforo`: `verde` (positiva o sin obligaciones, ≤ `dias_vigencia` días) · `amarillo` (más
+vieja o sentido desconocido) · `rojo` (negativa) · `gris` (sin opinión). `resultado`:
+`positiva|negativa|sin_obligaciones|desconocido` (la constancia siempre `desconocido`).
+`origen`: `falso|portal_sat|proveedor|manual`. `lectura`: `adaptador|pdf|manual|sin_lectura`.
+`aviso`: texto si el RFC del PDF no es el del cliente. `via`: la vía configurada.
+
+### `POST /api/v1/sat/clientes/{clave}/opinion/obtener?tipo=opinion|constancia`
+
+"Obtener ahora": encola `sat.cumplimiento_obtener`. **409** si la vía es `manual`; **422** si el
+cliente no tiene RFC. Con `portal_sat`, el trabajo falla con mensaje si el cliente no tiene
+e.firma (404) o si el portal cambió (502).
+
+### `POST /api/v1/sat/clientes/{clave}/opinion/pdf`
+
+`multipart/form-data`: `archivo` (PDF ≤ 10 MB), `tipo` (`opinion` default | `constancia`),
+`resultado` opcional (lo indica el despacho si el PDF no se lee). Funciona con cualquier vía.
+`{"exito": true, "documento": {...}, "semaforo": "rojo" | null}`. El mismo PDF dos veces es
+un solo documento. No-PDF → 422.
+
+### `GET /api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf`
+
+El PDF guardado (opinión o constancia), `application/pdf`, verificado contra su SHA-256.
+
+### `PUT /api/v1/sat/clientes/{clave}/opinion/config`
+
+Body `{"automatico": true, "dia_del_mes": 1-28, "constancia": true}`. Programación mensual del
+cliente (default: automático el día 1, con constancia).
+
+### `GET /api/v1/sat/cartera/semaforo`
+
+Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha"},
+"riesgos_69b": <alertas alto/medio sin atender>}`.
+
+### Programación (worker)
+
+`sat_estatus_mes` diario 2:00 (CFDI del mes) · `sat_estatus_anio` semanal (último año) ·
+`sat_listas` diario 6:30 · `sat_cumplimiento` diario 7:00 (encola a quien le toca su día).
+Hora de Ciudad de México.
