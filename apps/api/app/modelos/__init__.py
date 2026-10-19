@@ -12,3 +12,4 @@ from app.modelos import nucleo  # noqa: F401, I001
 from app.modelos import sat_descarga  # noqa: F401, I001
 from app.modelos import sat_verificacion  # noqa: F401, I001
 from app.modelos import trabajos  # noqa: F401, I001
+from app.modelos import contabilidad  # noqa: F401, I001

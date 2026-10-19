@@ -143,17 +143,21 @@ export interface CalendarioResponse {
   obligaciones: ObligacionFiscalSchema[];
 }
 
+export interface Cancelacion {
+  motivo?: string;
+}
+
 export interface CerrarPeriodoRequest {
   cliente: string;
   empleados: string[];
-  periodo: Periodo;
+  periodo: app__schemas__asistencia__Periodo;
   horario?: HorarioLaboral;
 }
 
 export interface CerrarPeriodoResponse {
   exito?: boolean;
   cliente: string;
-  periodo: Periodo;
+  periodo: PeriodoOutput;
   incidencias: IncidenciasEmpleado[];
   empleados_desconocidos?: string[];
 }
@@ -241,6 +245,24 @@ export interface CompararRegimenResponse {
 
 /** Tipo de contribuyente en el ecosistema Fiscalito. */
 export type ContributorType = "asalariado" | "independiente" | "arrendamiento" | "plataformas" | "pyme";
+
+export interface CuentaCambio {
+  numero?: string | null;
+  nombre?: string | null;
+  codigo_agrupador?: string | null;
+  naturaleza?: "deudora" | "acreedora" | null;
+  tipo?: "activo" | "pasivo" | "capital" | "ingreso" | "costo" | "gasto" | "orden" | null;
+}
+
+export interface CuentaEntrada {
+  numero: string;
+  nombre: string;
+  codigo_agrupador: string;
+  padre_id?: number | null;
+  nivel?: number | null;
+  naturaleza?: "deudora" | "acreedora" | null;
+  tipo?: "activo" | "pasivo" | "capital" | "ingreso" | "costo" | "gasto" | "orden" | null;
+}
 
 /** Un ramo calculado, con lo necesario para conciliarlo contra la EMA. */
 export interface CuotaRamoSchema {
@@ -665,6 +687,15 @@ export interface ListaTrabajos {
   trabajos: TrabajoSalida[];
 }
 
+export interface MovimientoEntrada {
+  cuenta_id: number;
+  cargo?: number | string;
+  abono?: number | string;
+  concepto?: string;
+  uuid?: string;
+  rfc?: string;
+}
+
 export interface MultiPeriodoCliente {
   periodo_year: number;
   incluir_explicacion?: boolean;
@@ -779,7 +810,7 @@ export interface PerfilContribuyente {
 export type PeriodicidadDeclaracion = "mensual" | "bimestral" | "anual";
 
 /** Periodo cerrado, inclusivo en los dos extremos. */
-export interface Periodo {
+export interface PeriodoOutput {
   inicio: string;
   fin: string;
 }
@@ -815,6 +846,19 @@ export interface PlantillaDemoResponse {
   clave_periodicidad: string;
   zona: ZonaSalarioMinimo;
   periodo_sugerido: PeriodoNomina;
+}
+
+export interface PolizaCambio {
+  fecha?: string | null;
+  concepto?: string | null;
+  movimientos?: MovimientoEntrada[] | null;
+}
+
+export interface PolizaEntrada {
+  tipo: "ingreso" | "egreso" | "diario";
+  fecha: string;
+  concepto?: string;
+  movimientos: MovimientoEntrada[];
 }
 
 /** Lo devengado en ESTE periodo por los ramos de una periodicidad de entero. */
@@ -896,6 +940,12 @@ export interface ProveedorDIOT {
   cantidad_facturas: number;
 }
 
+export interface Rango {
+  desde: string;
+  hasta: string;
+  segundo_plano?: boolean | null;
+}
+
 export interface RangoEntrada {
   desde: string;
   hasta: string;
@@ -941,6 +991,22 @@ export interface ReciboSchema {
 
 /** Qué regla de cómputo produjo la fecha límite. */
 export type RegimenDePlazo = "imss" | "imss_sin_prorroga" | "imss_aviso" | "sat" | "lft";
+
+export interface ReglaCambio {
+  criterio?: "rfc" | "clave" | "prefijo" | "uso" | "descripcion" | null;
+  valor?: string | null;
+  cuenta_numero?: string | null;
+  prioridad?: number | null;
+  activa?: boolean | null;
+}
+
+export interface ReglaEntrada {
+  criterio: "rfc" | "clave" | "prefijo" | "uso" | "descripcion";
+  valor: string;
+  cuenta_numero: string;
+  prioridad?: number;
+  activa?: boolean;
+}
 
 /** Resultado ISR estimado para un regimen fiscal especifico. */
 export interface ResultadoRegimen {
@@ -1002,6 +1068,16 @@ export interface SBCResponse {
   piso: string;
   tope: string;
   fundamento: string;
+}
+
+export interface SaldoEntrada {
+  cuenta_id: number;
+  deudor?: number | string;
+  acreedor?: number | string;
+}
+
+export interface SaldosEntrada {
+  saldos: SaldoEntrada[];
 }
 
 export interface Seleccion {
@@ -1093,6 +1169,26 @@ export interface _ConExplicacion {
   incluir_explicacion?: boolean;
 }
 
+export interface app__routes__contabilidad__ConfigEntrada {
+  automatica_ingresos?: boolean | null;
+  automatica_egresos?: boolean | null;
+  automatica_pagos?: boolean | null;
+  automatica_nomina?: boolean | null;
+  pue_registra_cobro?: boolean | null;
+  uso_s01_no_deducible?: boolean | null;
+  efectivo_no_deducible?: boolean | null;
+  tope_activo?: number | string | null;
+  plantilla_concepto?: string | null;
+  cuentas?: Record<string, string> | null;
+  formas_pago?: Record<string, string> | null;
+  fecha_saldos_iniciales?: string | null;
+}
+
+export interface app__routes__contabilidad__Periodo {
+  anio: number;
+  mes: number;
+}
+
 export interface app__routes__sat_descarga__ConfigEntrada {
   activa?: boolean | null;
   emitidos?: boolean | null;
@@ -1107,6 +1203,12 @@ export interface app__routes__sat_verificacion__ConfigEntrada {
   automatico?: boolean;
   dia_del_mes?: number;
   constancia?: boolean;
+}
+
+/** Periodo cerrado, inclusivo en los dos extremos. */
+export interface app__schemas__asistencia__Periodo {
+  inicio: string;
+  fin: string;
 }
 
 /** Toda ruta que publica la API. */
@@ -1138,6 +1240,22 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/credenciales"
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
   | "/api/v1/comparar-regimenes"
+  | "/api/v1/contabilidad/clientes/{clave}/balanza"
+  | "/api/v1/contabilidad/clientes/{clave}/config"
+  | "/api/v1/contabilidad/clientes/{clave}/cuentas"
+  | "/api/v1/contabilidad/clientes/{clave}/cuentas/sembrar"
+  | "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}"
+  | "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados"
+  | "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}"
+  | "/api/v1/contabilidad/clientes/{clave}/polizas"
+  | "/api/v1/contabilidad/clientes/{clave}/polizas/generar"
+  | "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}"
+  | "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar"
+  | "/api/v1/contabilidad/clientes/{clave}/reglas"
+  | "/api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}"
+  | "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales"
+  | "/api/v1/contabilidad/codigo-agrupador"
   | "/api/v1/deducciones-personales"
   | "/api/v1/despacho/calendario"
   | "/api/v1/despacho/clientes"
@@ -1320,6 +1438,102 @@ export interface OperacionesApi {
   "POST /api/v1/comparar-regimenes": {
     cuerpo: CompararRegimenRequest;
     respuesta: CompararRegimenResponse;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/balanza": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/config": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/contabilidad/clientes/{clave}/config": {
+    cuerpo: app__routes__contabilidad__ConfigEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/cuentas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/cuentas": {
+    cuerpo: CuentaEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/cuentas/sembrar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PATCH /api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}": {
+    cuerpo: CuentaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/periodos-cerrados": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/periodos-cerrados": {
+    cuerpo: app__routes__contabilidad__Periodo;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/polizas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/polizas": {
+    cuerpo: PolizaEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/polizas/generar": {
+    cuerpo: Rango;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PATCH /api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}": {
+    cuerpo: PolizaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar": {
+    cuerpo: Cancelacion;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/contabilidad/clientes/{clave}/reglas": {
+    cuerpo: ReglaEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PATCH /api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}": {
+    cuerpo: ReglaCambio;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/clientes/{clave}/saldos-iniciales": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/contabilidad/clientes/{clave}/saldos-iniciales": {
+    cuerpo: SaldosEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/contabilidad/codigo-agrupador": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
   };
   "POST /api/v1/deducciones-personales": {
     cuerpo: DeduccionesPersonalesRequest;

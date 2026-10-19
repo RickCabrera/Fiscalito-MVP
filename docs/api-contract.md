@@ -1518,3 +1518,97 @@ Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha
 `sat_estatus_mes` diario 2:00 (CFDI del mes) · `sat_estatus_anio` semanal (último año) ·
 `sat_listas` diario 6:30 · `sat_cumplimiento` diario 7:00 (encola a quien le toca su día).
 Hora de Ciudad de México.
+
+## Contabilidad — catálogo, pólizas automáticas, pólizas y balanza (P2-01/02/03/04)
+
+Autenticado; todo lo de `/contabilidad/clientes/{clave}/…` pasa por `contexto_actual` +
+`cliente_o_404` (cliente de otro despacho = **404**). Los ids de cuenta, regla y póliza se
+buscan junto con el cliente: un id de otro cliente es **404**. Importes como texto con dos
+decimales (`"1160.00"`), en pesos. Código en `apps/api/app/contabilidad/`; esquemas de asiento
+en `asientos.py`.
+
+### `GET /api/v1/contabilidad/codigo-agrupador`
+
+El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
+`{"fuente", "codigos": [{"codigo", "nivel" (0 encabezado | 1 | 2), "nombre", "naturaleza",
+"tipo", "nota"}]}`. Fuente versionada en `app/contabilidad/datos/codigo_agrupador.csv`.
+
+### Catálogo (P2-01)
+
+- `GET …/cuentas` → `{"cuentas": [{"id", "numero", "nombre", "nivel", "naturaleza", "tipo",
+  "padre_id", "codigo_agrupador", "afectable"}]}` ordenadas por número.
+- `POST …/cuentas/sembrar` → `{"creadas": n}`. Agrega las cuentas del catálogo base que falten
+  (idempotente; no toca las existentes).
+- `POST …/cuentas` (201) body `{"numero", "nombre", "codigo_agrupador", "padre_id"?, "nivel"?,
+  "naturaleza"?, "tipo"?}`. El nivel lo dicta el padre (uno incoherente → 422); naturaleza y tipo
+  se heredan del padre o del agrupador. Agrupador inexistente o encabezado → 422; número repetido
+  → 409; subcuenta a una cuenta con movimientos o saldo inicial → 409. El padre deja de ser
+  afectable.
+- `PATCH …/cuentas/{cuenta_id}` body `{"numero"?, "nombre"?, "codigo_agrupador"?,
+  "naturaleza"?, "tipo"?}`. Renumerar una cuenta que usa la configuración → 409.
+- `DELETE …/cuentas/{cuenta_id}`. Con subcuentas, con movimientos o usada por la configuración
+  (default o personalizada) o por una regla → 409.
+
+### Configuración de pólizas automáticas (P2-02)
+
+- `GET …/config` → `{"config": {"automatica_ingresos", "automatica_egresos",
+  "automatica_pagos", "automatica_nomina", "pue_registra_cobro", "uso_s01_no_deducible",
+  "efectivo_no_deducible", "tope_activo", "plantilla_concepto", "fecha_saldos_iniciales",
+  "cuentas" (rol → número, con defaults), "cuentas_personalizadas", "roles": [{"rol",
+  "default", "descripcion"}], "formas_pago" (c_FormaPago → número), "reglas": [...]}}`.
+- `PUT …/config` body con cualquiera de esos campos (excepto `roles`, `reglas` y
+  `cuentas_personalizadas`; `cuentas` sustituye las personalizadas). Cada cuenta debe existir y
+  ser afectable (422). `fecha_saldos_iniciales` debe ser día 1.
+- `POST …/reglas` (201) body `{"criterio": "rfc"|"clave"|"prefijo"|"uso"|"descripcion",
+  "valor", "cuenta_numero", "prioridad" (menor primero, default 100), "activa"}`;
+  `PATCH …/reglas/{regla_id}`; `DELETE …/reglas/{regla_id}`. Aplican a las pólizas NUEVAS.
+
+### Pólizas (P2-03)
+
+- `POST …/polizas/generar` body `{"desde", "hasta", "segundo_plano"?}`. Genera las pólizas
+  automáticas de los CFDI **vigentes** de la bóveda del rango que no tengan póliza (idempotente
+  por UUID; una póliza cancelada a mano no se regenera) y cancela/revierte las de CFDI ya
+  cancelados. Hasta 62 días corre en el request → `{"en_segundo_plano": false, "resultado":
+  {"generadas", "ya_existian", "omitidas", "canceladas", "revertidas", "errores": [{"uuid",
+  "error"}], "omitidas_detalle"}}`; más largo o `segundo_plano: true` encola
+  `contabilidad.generar_polizas` → `{"en_segundo_plano": true, "trabajo": {...}}`. Sin catálogo
+  → 409. Rango > 5 años → 422.
+- `GET …/polizas?desde&hasta&tipo&origen&estado&uuid&texto&pagina&por_pagina` →
+  `{"total", "pagina", "por_pagina", "polizas": [{"id", "folio" ("D-2026-03-0001"), "tipo",
+  "numero", "fecha", "concepto", "origen" (automatica|manual), "estado" (activa|cancelada),
+  "uuid_cfdi", "tipo_cfdi", "total_cargos", "total_abonos", "diferencia" (total del CFDI − lo
+  contabilizado contra la contraparte), "advertencias", "editada", "reversa_de_id",
+  "motivo_cancelacion", "cancelada_en"}]}`.
+- `GET …/polizas/{poliza_id}` → la póliza con `"movimientos": [{"id", "cuenta_id", "cuenta",
+  "nombre_cuenta", "concepto", "cargo", "abono", "uuid", "rfc"}]`.
+- `POST …/polizas` (201) body `{"tipo", "fecha", "concepto", "movimientos": [{"cuenta_id",
+  "cargo", "abono", "concepto"?, "uuid"?, "rfc"?}]}` (≥ 2). Cada movimiento lleva cargo o abono
+  (no los dos), cuentas afectables del cliente, Σ cargos = Σ abonos; si no → 422. Periodo
+  cerrado → 409. Folio consecutivo por tipo y mes.
+- `PATCH …/polizas/{poliza_id}` body `{"fecha"?, "concepto"?, "movimientos"?}` (mismas
+  validaciones; la fecha no puede salir del mes). Cancelada o periodo cerrado → 409.
+- `POST …/polizas/{poliza_id}/cancelar` body `{"motivo"}`. Periodo cerrado → 409.
+- `GET/POST …/periodos-cerrados` (body `{"anio", "mes"}`), `DELETE
+  …/periodos-cerrados/{anio}/{mes}`. Un mes cerrado no acepta pólizas nuevas, ediciones ni
+  cancelaciones. Un CFDI cancelado ante el SAT cuya póliza cae en mes cerrado genera una póliza
+  de **reversa** con fecha del día (P1-03 lo hace al detectar la cancelación).
+
+### Balanza, auxiliar y saldos iniciales (P2-04)
+
+- `GET …/balanza?desde&hasta&nivel&solo` (`solo`: `con_saldo_o_movimiento` default |
+  `con_movimiento` | `todas`) → `{"renglones": [{"cuenta_id", "numero", "nombre", "nivel",
+  "naturaleza", "tipo", "afectable", "codigo_agrupador", "padre_id", "saldo_inicial",
+  "saldo_final" (con signo: deudor +), "inicial_deudor", "inicial_acreedor", "cargos", "abonos",
+  "final_deudor", "final_acreedor"}], "totales": {...}, "cuadra", "diferencias":
+  {"saldo_inicial", "movimientos", "saldo_final"}}`. Sólo pólizas activas. Saldo inicial =
+  movimientos anteriores a `desde` + saldos iniciales capturados. Las cuentas acumulativas suman
+  a sus subcuentas.
+- `GET …/cuentas/{cuenta_id}/auxiliar?desde&hasta` → `{"cuenta", "saldo_inicial", "cargos",
+  "abonos", "saldo_final", "movimientos": [{"poliza_id", "folio", "fecha", "tipo_poliza",
+  "concepto", "cuenta", "cargo", "abono", "saldo" (corrido), "uuid", "rfc",
+  "xml_disponible"}], "truncado"}` (máx. 5,000 movimientos). Incluye las subcuentas. El XML se
+  baja con `GET /api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml`.
+- `GET …/saldos-iniciales` → `{"saldos": [{"cuenta_id", "numero", "nombre", "deudor",
+  "acreedor"}]}`; `PUT …/saldos-iniciales` body `{"saldos": [{"cuenta_id", "deudor",
+  "acreedor"}]}` (0 y 0 lo quita; cuenta no afectable → 422) → `{"totales": {"deudor",
+  "acreedor", "cuadra"}, "saldos"}`.

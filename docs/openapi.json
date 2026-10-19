@@ -5687,6 +5687,1849 @@
           }
         }
       }
+    },
+    "/api/v1/contabilidad/codigo-agrupador": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Codigo Agrupador",
+        "description": "El código agrupador del SAT completo, con su fuente.",
+        "operationId": "codigo_agrupador_api_v1_contabilidad_codigo_agrupador_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Codigo Agrupador Api V1 Contabilidad Codigo Agrupador Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cuentas": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Listar Cuentas",
+        "operationId": "listar_cuentas_api_v1_contabilidad_clientes__clave__cuentas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Cuentas Api V1 Contabilidad Clientes  Clave  Cuentas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Crear Cuenta",
+        "operationId": "crear_cuenta_api_v1_contabilidad_clientes__clave__cuentas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuentaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Cuenta Api V1 Contabilidad Clientes  Clave  Cuentas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cuentas/sembrar": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Sembrar",
+        "description": "Agrega el catálogo base (lo que falte). Idempotente.",
+        "operationId": "sembrar_api_v1_contabilidad_clientes__clave__cuentas_sembrar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sembrar Api V1 Contabilidad Clientes  Clave  Cuentas Sembrar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}": {
+      "patch": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cambiar Cuenta",
+        "operationId": "cambiar_cuenta_api_v1_contabilidad_clientes__clave__cuentas__cuenta_id__patch",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuentaCambio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Cuenta Api V1 Contabilidad Clientes  Clave  Cuentas  Cuenta Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Borrar Cuenta",
+        "operationId": "borrar_cuenta_api_v1_contabilidad_clientes__clave__cuentas__cuenta_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Cuenta Api V1 Contabilidad Clientes  Clave  Cuentas  Cuenta Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/config": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Leer Config",
+        "operationId": "leer_config_api_v1_contabilidad_clientes__clave__config_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Leer Config Api V1 Contabilidad Clientes  Clave  Config Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Guardar Config",
+        "operationId": "guardar_config_api_v1_contabilidad_clientes__clave__config_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routes__contabilidad__ConfigEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Config Api V1 Contabilidad Clientes  Clave  Config Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reglas": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Crear Regla",
+        "operationId": "crear_regla_api_v1_contabilidad_clientes__clave__reglas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Regla Api V1 Contabilidad Clientes  Clave  Reglas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}": {
+      "patch": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cambiar Regla",
+        "operationId": "cambiar_regla_api_v1_contabilidad_clientes__clave__reglas__regla_id__patch",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "regla_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Regla Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReglaCambio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Regla Api V1 Contabilidad Clientes  Clave  Reglas  Regla Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Borrar Regla",
+        "operationId": "borrar_regla_api_v1_contabilidad_clientes__clave__reglas__regla_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "regla_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Regla Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Regla Api V1 Contabilidad Clientes  Clave  Reglas  Regla Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/polizas/generar": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Generar Polizas",
+        "description": "Genera las pólizas automáticas del rango desde la bóveda. Rango corto: en el request;\nlargo (o `segundo_plano: true`): encola un trabajo.",
+        "operationId": "generar_polizas_api_v1_contabilidad_clientes__clave__polizas_generar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rango"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Generar Polizas Api V1 Contabilidad Clientes  Clave  Polizas Generar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/polizas": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Listar Polizas",
+        "operationId": "listar_polizas_api_v1_contabilidad_clientes__clave__polizas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ingreso",
+                    "egreso",
+                    "diario"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "origen",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "automatica",
+                    "manual"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origen"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "activa",
+                    "cancelada"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "uuid",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 36
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Uuid"
+            }
+          },
+          {
+            "name": "texto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Texto"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Por Pagina"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Polizas Api V1 Contabilidad Clientes  Clave  Polizas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Crear Poliza",
+        "operationId": "crear_poliza_api_v1_contabilidad_clientes__clave__polizas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolizaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Poliza Api V1 Contabilidad Clientes  Clave  Polizas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Detalle Poliza",
+        "operationId": "detalle_poliza_api_v1_contabilidad_clientes__clave__polizas__poliza_id__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "poliza_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poliza Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Detalle Poliza Api V1 Contabilidad Clientes  Clave  Polizas  Poliza Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Editar Poliza",
+        "operationId": "editar_poliza_api_v1_contabilidad_clientes__clave__polizas__poliza_id__patch",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "poliza_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poliza Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolizaCambio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Editar Poliza Api V1 Contabilidad Clientes  Clave  Polizas  Poliza Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar": {
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cancelar Poliza",
+        "operationId": "cancelar_poliza_api_v1_contabilidad_clientes__clave__polizas__poliza_id__cancelar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "poliza_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Poliza Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Cancelacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Poliza Api V1 Contabilidad Clientes  Clave  Polizas  Poliza Id  Cancelar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Periodos",
+        "operationId": "periodos_api_v1_contabilidad_clientes__clave__periodos_cerrados_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Periodos Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Cerrar",
+        "operationId": "cerrar_api_v1_contabilidad_clientes__clave__periodos_cerrados_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routes__contabilidad__Periodo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cerrar Api V1 Contabilidad Clientes  Clave  Periodos Cerrados Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}": {
+      "delete": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Abrir",
+        "operationId": "abrir_api_v1_contabilidad_clientes__clave__periodos_cerrados__anio___mes__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Abrir Api V1 Contabilidad Clientes  Clave  Periodos Cerrados  Anio   Mes  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/balanza": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Ver Balanza",
+        "operationId": "ver_balanza_api_v1_contabilidad_clientes__clave__balanza_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "nivel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 10,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Nivel"
+            }
+          },
+          {
+            "name": "solo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "con_movimiento",
+                "con_saldo_o_movimiento",
+                "todas"
+              ],
+              "type": "string",
+              "default": "con_saldo_o_movimiento",
+              "title": "Solo"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ver Balanza Api V1 Contabilidad Clientes  Clave  Balanza Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Ver Auxiliar",
+        "operationId": "ver_auxiliar_api_v1_contabilidad_clientes__clave__cuentas__cuenta_id__auxiliar_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cuenta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cuenta Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ver Auxiliar Api V1 Contabilidad Clientes  Clave  Cuentas  Cuenta Id  Auxiliar Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales": {
+      "get": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Leer Saldos",
+        "operationId": "leer_saldos_api_v1_contabilidad_clientes__clave__saldos_iniciales_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Leer Saldos Api V1 Contabilidad Clientes  Clave  Saldos Iniciales Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "contabilidad"
+        ],
+        "summary": "Guardar Saldos",
+        "operationId": "guardar_saldos_api_v1_contabilidad_clientes__clave__saldos_iniciales_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaldosEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Saldos Api V1 Contabilidad Clientes  Clave  Saldos Iniciales Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6373,6 +8216,18 @@
         "title": "CalendarioResponse",
         "description": "Respuesta con el calendario de obligaciones fiscales."
       },
+      "Cancelacion": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Cancelacion"
+      },
       "CerrarPeriodoRequest": {
         "properties": {
           "cliente": {
@@ -6388,7 +8243,7 @@
             "description": "employeeNo de los empleados del cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/Periodo"
+            "$ref": "#/components/schemas/app__schemas__asistencia__Periodo"
           },
           "horario": {
             "$ref": "#/components/schemas/HorarioLaboral"
@@ -6414,7 +8269,7 @@
             "title": "Cliente"
           },
           "periodo": {
-            "$ref": "#/components/schemas/Periodo"
+            "$ref": "#/components/schemas/Periodo-Output"
           },
           "incidencias": {
             "items": {
@@ -6879,6 +8734,171 @@
         ],
         "title": "ContributorType",
         "description": "Tipo de contribuyente en el ecosistema Fiscalito."
+      },
+      "CuentaCambio": {
+        "properties": {
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "codigo_agrupador": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Agrupador"
+          },
+          "naturaleza": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "deudora",
+                  "acreedora"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naturaleza"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "activo",
+                  "pasivo",
+                  "capital",
+                  "ingreso",
+                  "costo",
+                  "gasto",
+                  "orden"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo"
+          }
+        },
+        "type": "object",
+        "title": "CuentaCambio"
+      },
+      "CuentaEntrada": {
+        "properties": {
+          "numero": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Numero"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "codigo_agrupador": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Codigo Agrupador"
+          },
+          "padre_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Padre Id"
+          },
+          "nivel": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel"
+          },
+          "naturaleza": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "deudora",
+                  "acreedora"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naturaleza"
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "activo",
+                  "pasivo",
+                  "capital",
+                  "ingreso",
+                  "costo",
+                  "gasto",
+                  "orden"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numero",
+          "nombre",
+          "codigo_agrupador"
+        ],
+        "title": "CuentaEntrada"
       },
       "CuotaRamoSchema": {
         "properties": {
@@ -8978,6 +10998,63 @@
         ],
         "title": "ListaTrabajos"
       },
+      "MovimientoEntrada": {
+        "properties": {
+          "cuenta_id": {
+            "type": "integer",
+            "title": "Cuenta Id"
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cargo",
+            "default": "0"
+          },
+          "abono": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Abono",
+            "default": "0"
+          },
+          "concepto": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Concepto",
+            "default": ""
+          },
+          "uuid": {
+            "type": "string",
+            "maxLength": 36,
+            "title": "Uuid",
+            "default": ""
+          },
+          "rfc": {
+            "type": "string",
+            "maxLength": 13,
+            "title": "Rfc",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuenta_id"
+        ],
+        "title": "MovimientoEntrada"
+      },
       "MultiPeriodoCliente": {
         "properties": {
           "periodo_year": {
@@ -9569,7 +11646,7 @@
         ],
         "title": "PeriodicidadDeclaracion"
       },
-      "Periodo": {
+      "Periodo-Output": {
         "properties": {
           "inicio": {
             "type": "string",
@@ -9719,6 +11796,92 @@
         ],
         "title": "PlantillaDemoResponse",
         "description": "Todo lo que la pantalla de la demo necesita y **no puede inventarse**.\n\nExiste para que el front no escriba ni una constante fiscal. Sin este\nendpoint tendría que hardcodear los nueve empleados y la prima de riesgo\n—que tiene fundamento legal (Art. 72/74 LSS) y dueño en `demo_nomina.py`—\nen TypeScript, donde ningún test verifica que no diverjan.\n\n`periodo_sugerido` sale de la **regla de quincena real**, no de las fechas\nde las checadas: deducirlo de la primera y la última da 15 días donde la\nquincena tiene 16 —el día 16 cae en fin de semana— y ese día de menos\nentra a `DiasDelPeriodo` y a los días pagados, o sea a las cuotas y al ISR."
+      },
+      "PolizaCambio": {
+        "properties": {
+          "fecha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha"
+          },
+          "concepto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concepto"
+          },
+          "movimientos": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MovimientoEntrada"
+                },
+                "type": "array",
+                "maxItems": 500,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movimientos"
+          }
+        },
+        "type": "object",
+        "title": "PolizaCambio"
+      },
+      "PolizaEntrada": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "ingreso",
+              "egreso",
+              "diario"
+            ],
+            "title": "Tipo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "concepto": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Concepto",
+            "default": ""
+          },
+          "movimientos": {
+            "items": {
+              "$ref": "#/components/schemas/MovimientoEntrada"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 2,
+            "title": "Movimientos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "fecha",
+          "movimientos"
+        ],
+        "title": "PolizaEntrada"
       },
       "PorcionConsolidada": {
         "properties": {
@@ -10116,6 +12279,37 @@
         "title": "ProveedorDIOT",
         "description": "Detalle de un proveedor en el DIOT."
       },
+      "Rango": {
+        "properties": {
+          "desde": {
+            "type": "string",
+            "format": "date",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "format": "date",
+            "title": "Hasta"
+          },
+          "segundo_plano": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segundo Plano"
+          }
+        },
+        "type": "object",
+        "required": [
+          "desde",
+          "hasta"
+        ],
+        "title": "Rango"
+      },
       "RangoEntrada": {
         "properties": {
           "desde": {
@@ -10341,6 +12535,124 @@
         ],
         "title": "RegimenDePlazo",
         "description": "Qué regla de cómputo produjo la fecha límite.\n\nViaja como **dato** hasta la respuesta HTTP, no como comentario: el doc 25\n§4 advierte que juntar obligaciones del IMSS y del SAT en una vista \"sin\ndistinguir su regla es un bug esperando\".\n\n`IMSS_SIN_PRORROGA` existe porque `IMSS` promete una prórroga que la\ndeclaración anual de prima de RT no recibe (§D23). Etiquetarla `IMSS`\npondría el sábado 28-feb-2026 bajo el rótulo \"se corre al siguiente hábil\"."
+      },
+      "ReglaCambio": {
+        "properties": {
+          "criterio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "rfc",
+                  "clave",
+                  "prefijo",
+                  "uso",
+                  "descripcion"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criterio"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "cuenta_numero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cuenta Numero"
+          },
+          "prioridad": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prioridad"
+          },
+          "activa": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activa"
+          }
+        },
+        "type": "object",
+        "title": "ReglaCambio"
+      },
+      "ReglaEntrada": {
+        "properties": {
+          "criterio": {
+            "type": "string",
+            "enum": [
+              "rfc",
+              "clave",
+              "prefijo",
+              "uso",
+              "descripcion"
+            ],
+            "title": "Criterio"
+          },
+          "valor": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Valor"
+          },
+          "cuenta_numero": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Cuenta Numero"
+          },
+          "prioridad": {
+            "type": "integer",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Prioridad",
+            "default": 100
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "criterio",
+          "valor",
+          "cuenta_numero"
+        ],
+        "title": "ReglaEntrada"
       },
       "ResultadoRegimen": {
         "properties": {
@@ -10675,6 +12987,62 @@
         ],
         "title": "SBCResponse",
         "description": "El SBC integrado, con todo lo que la pantalla necesita para explicarlo.\n\nLas banderas del clamp **no son adorno**: `piso_aplicado` es el único camino\npor el que un SBC llega a ser exactamente 1 salario mínimo, que es el\nsupuesto del Art. 36 LSS (el patrón absorbe la cuota obrera) y el renglón de\n3.150% de la tabla de CEAV. Acotar en silencio escondería eso."
+      },
+      "SaldoEntrada": {
+        "properties": {
+          "cuenta_id": {
+            "type": "integer",
+            "title": "Cuenta Id"
+          },
+          "deudor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deudor",
+            "default": "0"
+          },
+          "acreedor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Acreedor",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuenta_id"
+        ],
+        "title": "SaldoEntrada"
+      },
+      "SaldosEntrada": {
+        "properties": {
+          "saldos": {
+            "items": {
+              "$ref": "#/components/schemas/SaldoEntrada"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Saldos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "saldos"
+        ],
+        "title": "SaldosEntrada"
       },
       "Seleccion": {
         "properties": {
@@ -11095,6 +13463,178 @@
         ],
         "title": "_ConExplicacion"
       },
+      "app__routes__contabilidad__ConfigEntrada": {
+        "properties": {
+          "automatica_ingresos": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automatica Ingresos"
+          },
+          "automatica_egresos": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automatica Egresos"
+          },
+          "automatica_pagos": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automatica Pagos"
+          },
+          "automatica_nomina": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automatica Nomina"
+          },
+          "pue_registra_cobro": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pue Registra Cobro"
+          },
+          "uso_s01_no_deducible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uso S01 No Deducible"
+          },
+          "efectivo_no_deducible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Efectivo No Deducible"
+          },
+          "tope_activo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tope Activo"
+          },
+          "plantilla_concepto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plantilla Concepto"
+          },
+          "cuentas": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cuentas"
+          },
+          "formas_pago": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formas Pago"
+          },
+          "fecha_saldos_iniciales": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Saldos Iniciales"
+          }
+        },
+        "type": "object",
+        "title": "ConfigEntrada"
+      },
+      "app__routes__contabilidad__Periodo": {
+        "properties": {
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Anio"
+          },
+          "mes": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio",
+          "mes"
+        ],
+        "title": "Periodo"
+      },
       "app__routes__sat_descarga__ConfigEntrada": {
         "properties": {
           "activa": {
@@ -11202,6 +13742,27 @@
         },
         "type": "object",
         "title": "ConfigEntrada"
+      },
+      "app__schemas__asistencia__Periodo": {
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          },
+          "fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inicio",
+          "fin"
+        ],
+        "title": "Periodo",
+        "description": "Periodo cerrado, inclusivo en los dos extremos."
       }
     }
   }

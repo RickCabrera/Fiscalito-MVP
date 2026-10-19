@@ -28,6 +28,7 @@ from app.routes import (
     calendario,
     cartera,
     comparador,
+    contabilidad,
     credenciales,
     declaraciones,
     despacho,
@@ -137,6 +138,7 @@ ROUTERS_PROTEGIDOS = (
     sat_descarga.router,
     sat_verificacion.router,
     calculos_cliente.router,
+    contabilidad.router,
 )
 
 app.include_router(health.router)

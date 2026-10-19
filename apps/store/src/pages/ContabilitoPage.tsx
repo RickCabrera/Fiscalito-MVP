@@ -1,50 +1,36 @@
 /**
- * Contabilito — cascarón de contabilidad electrónica (T7).
+ * Contabilito — la contabilidad del CLIENTE ACTIVO (plan P, P2-01 a P2-04).
  *
- * QUÉ HACE: toma los CFDI que ya sabe leer `cfdiParser.ts`, los convierte en
- * pólizas de partida doble contra el código agrupador del SAT y suma la
- * balanza. Todo en el navegador: **no llama al API**, y no tiene por qué —
- * ningún importe se calcula aquí, se acomodan los que el XML ya trae.
+ * QUÉ CAMBIÓ CONTRA EL CASCARÓN DE T7: ya no se suben XML ni se arman pólizas
+ * en el navegador. El backend es el dueño del catálogo, de la configuración de
+ * pólizas automáticas, de las pólizas (generadas desde la bóveda de CFDI, una
+ * por UUID) y de la balanza, que se agrega en SQL. Esta página sólo elige el
+ * tab y le pasa la clave del cliente activo a cada uno.
  *
- * QUÉ NO HACE: no guarda pólizas. Desde P1-06 los comprobantes del mes elegido
- * salen por defecto de la BÓVEDA del cliente activo (`useFuenteFacturas`); los
- * archivos sueltos siguen disponibles y se pueden mandar a la bóveda con un clic.
- * Persistir la contabilidad (pólizas) es P2-03.
+ * DE QUIÉN ES LA CONTABILIDAD: del cliente activo del selector superior. Ya no
+ * hay RFC que teclear: la bóveda clasificó cada CFDI como emitido o recibido
+ * con el RFC del cliente al importarlo. Al cambiar de cliente el contenido se
+ * REMONTA (`key`), para que nada de un cliente se pinte sobre otro.
  *
- * DE QUIÉN ES LA CONTABILIDAD QUE SE ESTÁ VIENDO
- * ---------------------------------------------
- * De quien diga el RFC de arriba, y esa pregunta no es cosmética: el mismo CFDI
- * es un ingreso para quien lo emitió y un gasto para quien lo recibió, así que
- * **el RFC decide de qué lado de la póliza cae cada cuenta**. Se resuelve en
- * este orden: lo tecleado a mano, el RFC de la ficha —el del contribuyente, o
- * desde C-02 el del **cliente activo** si quien mira es un despacho— y, si no
- * hay ninguno, el que más se repite entre los comprobantes cargados. Se enseña y se puede corregir a mano: una
- * suposición que no se ve es una suposición que nadie desmiente.
+ * El tab Buzón se queda como estaba hasta P2-07 (contabilidad electrónica).
  */
 
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, FileStack, Scale, Inbox } from 'lucide-react';
-import { useProfile } from '../context/ProfileContext';
+import { ArrowLeft, BookOpen, FileStack, Inbox, Scale, Settings2 } from 'lucide-react';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
-import { esContador } from '../services/navigation';
-import { usePerfilFiscal } from '../context/usePerfilFiscal';
-import FuenteFacturasPanel from '../components/fiscalito/FuenteFacturasPanel';
-import PeriodSelector from '../components/fiscalito/PeriodSelector';
-import { useFuenteFacturas } from '../components/fiscalito/useFuenteFacturas';
-import CatalogoTab from '../components/contabilidad/CatalogoTab';
-import PolizasTab from '../components/contabilidad/PolizasTab';
-import BalanzaTab from '../components/contabilidad/BalanzaTab';
+import CatalogoCuentas from '../components/contabilidad/CatalogoCuentas';
+import ConfigPolizas from '../components/contabilidad/ConfigPolizas';
+import PolizasCliente from '../components/contabilidad/PolizasCliente';
+import BalanzaCliente from '../components/contabilidad/BalanzaCliente';
 import BuzonTab from '../components/contabilidad/BuzonTab';
-import { generarPolizas, inferirRfcPropio } from '../services/contabilidad/polizas';
-import { generarBalanza } from '../services/contabilidad/balanza';
-import type { CFDI } from '../services/fiscalAgentApi';
-import { labelStyle } from '../utils/styles';
+import SinClienteActivo from '../components/common/SinClienteActivo';
 
-type TabContabilito = 'catalogo' | 'polizas' | 'balanza' | 'buzon';
+type TabContabilito = 'catalogo' | 'config' | 'polizas' | 'balanza' | 'buzon';
 
 const TABS: { id: TabContabilito; label: string; icon: React.ReactNode }[] = [
   { id: 'catalogo', label: 'Catálogo', icon: <BookOpen size={16} /> },
+  { id: 'config', label: 'Configuración', icon: <Settings2 size={16} /> },
   { id: 'polizas', label: 'Pólizas', icon: <FileStack size={16} /> },
   { id: 'balanza', label: 'Balanza', icon: <Scale size={16} /> },
   { id: 'buzon', label: 'Buzón', icon: <Inbox size={16} /> },
@@ -52,61 +38,27 @@ const TABS: { id: TabContabilito; label: string; icon: React.ReactNode }[] = [
 
 const IDS_TAB = TABS.map((t) => t.id);
 
-/**
- * C-02: el contenido se REMONTA al cambiar de cliente activo. Los comprobantes
- * y el RFC tecleado son de un sujeto; sin la `key`, un RFC escrito a mano para
- * el cliente A seguiría pisando al de B y sus XML se contabilizarían como de B.
- */
 export default function ContabilitoPage() {
-  const { clienteId } = usePerfilFiscal();
-  return <ContabilitoDelSujeto key={clienteId ?? 'propio'} />;
+  const activo = useContext(ClienteActivoContext);
+  const clave = activo?.clienteId ?? null;
+  if (!clave) {
+    return (
+      <SinClienteActivo
+        titulo="Contabilito"
+        explicacion="La contabilidad es de un cliente: su catálogo, sus pólizas y su balanza. Elige uno en el selector de arriba."
+      />
+    );
+  }
+  return <ContabilidadDelCliente key={clave} clave={clave} nombre={activo?.cliente?.nombre ?? clave} />;
 }
 
-function ContabilitoDelSujeto() {
-  const { profile } = useProfile();
-  const perfilFiscal = usePerfilFiscal();
-  const clienteActivo = useContext(ClienteActivoContext);
+function ContabilidadDelCliente({ clave, nombre }: { clave: string; nombre: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [manual, setManual] = useState<CFDI[]>([]);
-  const [anio, setAnio] = useState(() => new Date().getFullYear());
-  const [mes, setMes] = useState(() => new Date().getMonth() + 1);
-  /**
-   * P1-06: las pólizas salen por defecto de la bóveda del cliente activo para el mes
-   * elegido (sin cancelados; la nómina se cuenta aparte). Subir XML sigue disponible.
-   * Sin los PPD de otros meses: aquí se contabiliza el periodo, no se cruzan pagos.
-   */
-  const fuente = useFuenteFacturas({ clave: perfilFiscal.clienteId, anio, mes, manual });
-  const facturas = fuente.delPeriodo;
-  /** RFC tecleado a mano. Vacío = manda el resuelto. */
-  const [rfcManual, setRfcManual] = useState('');
-
-  const esDespacho = esContador(profile.contributorType);
-  const cliente = esDespacho ? clienteActivo?.cliente ?? null : null;
-
-  const rfcInferido = useMemo(() => inferirRfcPropio(facturas), [facturas]);
-  /**
-   * El RFC capturado que sirve para ESTA pantalla.
-   *
-   * Para un contador es el del CLIENTE ACTIVO (C-02), nunca `profile.rfc`: ése
-   * es el del DESPACHO, y usarlo clasificaría todas las facturas del cliente
-   * como ajenas y voltearía cada póliza — la misma trampa que T6 documentó con
-   * `profile.regimen`. Un cliente sin RFC capturado deja esto vacío, y manda
-   * el deducido.
-   */
-  const rfcDeLaFicha = esDespacho ? perfilFiscal.rfc : (profile.rfc || '').toUpperCase();
-  const rfcPropio = (rfcManual || rfcDeLaFicha || rfcInferido).toUpperCase();
-  /** El RFC en uso no salió de una ficha: se dedujo de los comprobantes. */
-  const rfcDeducido = !rfcManual && !rfcDeLaFicha && rfcInferido !== '';
-
-  const { polizas, recibosNomina, sinEfecto } = useMemo(
-    () => generarPolizas(facturas, rfcPropio),
-    [facturas, rfcPropio],
-  );
-  const balanza = useMemo(() => generarBalanza(polizas), [polizas]);
+  const [polizaAbierta, setPolizaAbierta] = useState<number | null>(null);
 
   const tabParam = searchParams.get('tab') as TabContabilito | null;
-  const activeTab: TabContabilito =
-    tabParam && IDS_TAB.includes(tabParam) ? tabParam : 'polizas';
+  const activeTab: TabContabilito = tabParam && IDS_TAB.includes(tabParam) ? tabParam : 'polizas';
+  const irA = (tab: TabContabilito) => setSearchParams({ tab }, { replace: true });
 
   return (
     <div className="page-container">
@@ -131,39 +83,7 @@ function ContabilitoDelSujeto() {
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: -0.5 }}>Contabilito</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            {cliente
-              ? `Pólizas y balanza de ${cliente.nombre}`
-              : 'Pólizas y balanza desde tus CFDI'}
-          </p>
-        </div>
-      </div>
-
-      {/* Carga de comprobantes + de quién son. Va arriba de los tabs porque los
-          tres primeros dependen de esto y el cuarto no depende de nada. */}
-      <div className="card animate-in" style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <PeriodSelector year={anio} month={mes} onYearChange={setAnio} onMonthChange={setMes} />
-        <FuenteFacturasPanel fuente={fuente} clave={perfilFiscal.clienteId} manual={manual} onManual={setManual} />
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 }}>
-          <div style={{ minWidth: 220 }}>
-            <label style={labelStyle} htmlFor="rfc-contabilito">
-              RFC del contribuyente
-            </label>
-            <input
-              id="rfc-contabilito"
-              className="input-field"
-              value={rfcManual || rfcPropio}
-              placeholder="Sin RFC"
-              onChange={(e) => setRfcManual(e.target.value.toUpperCase().trim())}
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            />
-          </div>
-          <p style={{ margin: 0, flex: 1, minWidth: 260, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {rfcPropio === ''
-              ? 'Sin RFC, cada comprobante se clasifica por su tipo: los de Ingreso se toman como emitidos. Captúralo para que sea el RFC quien decida.'
-              : rfcDeducido
-                ? 'Deducido de los comprobantes cargados: es el RFC que aparece en todos. Corrígelo si no es el tuyo.'
-                : 'Decide de qué lado cae cada póliza: lo que emitiste es ingreso, lo que recibiste es gasto.'}
+            Catálogo, pólizas y balanza de {nombre}, desde su bóveda de CFDI
           </p>
         </div>
       </div>
@@ -172,7 +92,7 @@ function ContabilitoDelSujeto() {
         animationDelay: '0.1s', overflowX: 'auto', marginBottom: 28,
         WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
       }}>
-        <div style={{
+        <div role="tablist" style={{
           display: 'flex', gap: 6, padding: 4, background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-full)', border: '1px solid var(--border)',
           width: 'fit-content', minWidth: '100%',
@@ -180,7 +100,9 @@ function ContabilitoDelSujeto() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSearchParams({ tab: tab.id }, { replace: true })}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => irA(tab.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 'var(--radius-full)',
@@ -198,11 +120,14 @@ function ContabilitoDelSujeto() {
       </div>
 
       <div className="animate-in" style={{ animationDelay: '0.15s' }}>
-        {activeTab === 'catalogo' && <CatalogoTab />}
+        {activeTab === 'catalogo' && <CatalogoCuentas clave={clave} />}
+        {activeTab === 'config' && <ConfigPolizas clave={clave} />}
         {activeTab === 'polizas' && (
-          <PolizasTab polizas={polizas} recibosNomina={recibosNomina} sinEfecto={sinEfecto} />
+          <PolizasCliente key={polizaAbierta ?? 'lista'} clave={clave} polizaInicial={polizaAbierta} />
         )}
-        {activeTab === 'balanza' && <BalanzaTab balanza={balanza} />}
+        {activeTab === 'balanza' && (
+          <BalanzaCliente clave={clave} onAbrirPoliza={(id) => { setPolizaAbierta(id); irA('polizas'); }} />
+        )}
         {activeTab === 'buzon' && <BuzonTab />}
       </div>
     </div>

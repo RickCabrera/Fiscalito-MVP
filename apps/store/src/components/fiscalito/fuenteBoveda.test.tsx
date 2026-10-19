@@ -225,15 +225,9 @@ describe('P1-06 · Cada tab usa la bóveda por defecto', () => {
     expect(pedidasALaBoveda()[0].url).toContain('/boveda/clientes/taller/facturas-calculo');
   });
 
-  it('Contabilito contabiliza el mes de la bóveda sin subir archivos', async () => {
+  it('Contabilito no pide archivos: sus pólizas salen del backend desde la bóveda (P2-03)', async () => {
     montar(<ContabilitoPage />);
-    expect(await screen.findByText(/3 CFDI de .* en la bóveda/)).toBeTruthy();
-    // Una póliza por CFDI del periodo (venta, compra, cobro); el PPD de otro mes
-    // no se contabiliza aquí: es la venta de ESE mes, no de éste.
-    expect(await screen.findByText('Venta — Servicio')).toBeTruthy();
-    expect(screen.getByText('Compra — Servicio')).toBeTruthy();
-    expect(screen.getByText('Cobro de cliente — Servicio')).toBeTruthy();
-    expect(screen.getAllByText(/^Venta/)).toHaveLength(1);
+    expect(await screen.findByRole('tab', { name: /Pólizas/ })).toBeTruthy();
     expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 });
