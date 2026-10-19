@@ -12,7 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { useCartera } from '../context/carteraStore';
 import TarjetaPlan from '../components/perfil/TarjetaPlan';
-import { Save, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ScrollText, Save, User } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -56,6 +57,19 @@ export default function ProfilePage() {
       </div>
 
       <TarjetaPlan plan={profile.plan} clientes={cartera.clientes.length} />
+
+      {/* P0-07: la bitácora se entra desde aquí, no desde el sidebar (como Planes). */}
+      <Link
+        to="/app/auditoria"
+        className="card animate-in"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: 'var(--text-primary)' }}
+      >
+        <ScrollText size={18} color="var(--accent-active)" />
+        <span style={{ fontWeight: 600 }}>Bitácora de auditoría</span>
+        <span style={{ fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
+          Quién hizo cada cambio en el despacho, a qué cliente y cuándo.
+        </span>
+      </Link>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
         <div className="card animate-in" style={{ animationDelay: '0.1s' }}>

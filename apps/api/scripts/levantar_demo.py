@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 import threading
 import time as espera
@@ -106,10 +107,40 @@ ESPERA_MAXIMA_S = 10.0
 INTERVALO_SONDEO_S = 0.05
 
 
+def emitir_tokens_demo(
+    despacho_id: str, clientes: Sequence[ClienteSembrable] = CLIENTES_DEMO
+) -> dict[str, str]:
+    """
+    Un token de dispositivo por cliente de la demo, del despacho `despacho_id`. (P0-02)
+
+    La API ya no acepta checadas anonimas. Este script corre la API en el mismo proceso,
+    asi que emite los tokens directo en la base —sin sesion de Firebase— y siembra con
+    ellos, igual que lo haria el aparato. `despacho_id` es el uid de Firebase del dueño:
+    sus checadas solo las ve ese despacho.
+    """
+    from app.acceso import dispositivos
+    from app.db.session import SesionLocal
+    from app.modelos.nucleo import Despacho
+
+    tokens: dict[str, str] = {}
+    with SesionLocal() as db:
+        if db.get(Despacho, despacho_id) is None:
+            db.add(Despacho(id=despacho_id))
+            db.flush()
+        for cliente in clientes:
+            emitido = dispositivos.emitir(
+                db, despacho_id, cliente.cliente_id, None, None, "levantar_demo", "script"
+            )
+            tokens[cliente.cliente_id] = emitido.token
+        db.commit()
+    return tokens
+
+
 def sembrar_todo(
     api: str,
     clientes: Sequence[ClienteSembrable] = CLIENTES_DEMO,
     poster: Callable[[str, dict, dict], object] | None = None,
+    tokens: dict[str, str] | None = None,
 ) -> list[tuple[str, int, int]]:
     """
     Siembra la quincena de cada cliente contra una API que ya esta viva.
@@ -144,6 +175,7 @@ def sembrar_todo(
             cliente.cliente_id,
             _sim.FuenteChecada.SIMULADO.value,
             poster=poster,
+            token=(tokens or {}).get(cliente.cliente_id),
         )
         if not recibidos:
             raise FiscalValidationError(
@@ -197,6 +229,13 @@ def _argumentos(argv: Sequence[str] | None) -> argparse.Namespace:
         default=",".join(c.cliente_id for c in CLIENTES_DEMO),
         help="Ids separados por coma. Por defecto, los tres de la demo.",
     )
+    # P0-02: de quien son las checadas. Es el uid de Firebase del dueño del despacho; sin
+    # el no hay a quien atribuirlas y la API las rechazaria.
+    parser.add_argument(
+        "--despacho",
+        default=os.environ.get("FISCALITO_DESPACHO_DEMO"),
+        help="uid de Firebase del despacho dueño de la demo (o FISCALITO_DESPACHO_DEMO).",
+    )
     return parser.parse_args(argv)
 
 
@@ -219,6 +258,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         seleccion = _seleccionar(args.clientes)
     except FiscalValidationError as exc:
         print(f"No se pudo elegir los clientes: {exc}", file=sys.stderr)
+        return 2
+    if not args.sin_sembrar and not args.despacho:
+        print(
+            "Falta --despacho (uid de Firebase del despacho dueño de la demo). Las "
+            "checadas ya no son anonimas (P0-02): sin despacho no hay quien las vea.",
+            file=sys.stderr,
+        )
         return 2
 
     config = uvicorn.Config(
@@ -246,7 +292,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("--sin-sembrar: no se siembra nada.", flush=True)
     else:
         try:
-            for cliente_id, recibidos, duplicados in sembrar_todo(api, seleccion):
+            tokens = emitir_tokens_demo(args.despacho, seleccion)
+            for cliente_id, recibidos, duplicados in sembrar_todo(
+                api, seleccion, tokens=tokens
+            ):
                 print(
                     f"cliente {cliente_id} | recibidos={recibidos} duplicados={duplicados}",
                     flush=True,

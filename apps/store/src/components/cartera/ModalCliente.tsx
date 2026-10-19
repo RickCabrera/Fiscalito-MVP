@@ -102,10 +102,9 @@ export default function ModalCliente({
    * Los dos datos del IMSS, contra lo que el backend acepta (O-cierre).
    *
    * `schemas/cartera.py` los declara `^\d{0,5}$` (guía) y 11 caracteres
-   * (registro patronal). Esta pantalla los creó y no los validaba: hoy no
-   * revienta porque el interruptor de R-07 está apagado, pero con
-   * `VITE_CARTERA_BACKEND=1` es un 422 al guardar, sobre un campo que el
-   * operador ya dio por bueno. Es la misma asimetría que el techo de vacaciones
+   * (registro patronal). Esta pantalla los creó y no los validaba, y desde P0-01
+   * todo guardado va por el backend: sin esto sería un 422 al guardar, sobre un
+   * campo que el operador ya dio por bueno. Es la misma asimetría que el techo de vacaciones
    * de `validacionEmpresa.ts`, que esta corrida acaba de cerrar del otro lado.
    *
    * Los dos son OPCIONALES: vacío es válido —el resto de la nómina y el PDF

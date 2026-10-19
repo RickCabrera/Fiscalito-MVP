@@ -144,11 +144,11 @@ fiscalito-store-app/
 │   │   ├── historial/           # HistorialCard, HistorialFilters, ExpandedDetail
 │   │   ├── onboarding/          # Step{Tipo,DatosFiscales,DatosPersonales,Confirmar} + WizardProgress + styles.ts
 │   │   ├── voice/               # useVoiceChat (hook: STT/Chat/TTS + VAD) + VoiceChatUI
-│   │   ├── contabilidad/        # Tabs de Contabilito (T7)
-│   │   │   ├── CatalogoTab.tsx        # Codigo agrupador SAT (PORVALIDAR)
-│   │   │   ├── PolizasTab.tsx         # Una poliza por CFDI, expandible a sus movimientos
-│   │   │   ├── BalanzaTab.tsx         # Balanza de comprobacion del lote + cuadre
-│   │   │   └── BuzonTab.tsx           # "Requiere e.firma — proximamente"
+│   │   ├── contabilidad/        # Tabs de Contabilito (P2): CatalogoCuentas, ConfigPolizas,
+│   │   │                        # ReglasEgreso, PolizasCliente, DetallePoliza, FormPoliza,
+│   │   │                        # BalanzaCliente, AuxiliarCuenta, SaldosIniciales, BuzonTab,
+│   │   │                        # ReportesContables, FiltrosReportes, TablaEstadoFinanciero (P2-05),
+│   │   │                        # PeriodosContables, ValidacionPeriodo, CierreAnual (P2-08)
 │   │   └── fiscalito/           # Tabs del servicio Fiscalito
 │   │       ├── PreDeclaracionTab.tsx      # Upload XML + calculo pre-declaracion
 │   │       ├── DeclaracionAnualTab.tsx    # T3: ejercicio completo + deducciones personales
@@ -203,10 +203,7 @@ fiscalito-store-app/
 │   │   ├── pdfExportRetenciones.ts  # PDF de retenciones
 │   │   ├── pdfExportMulti.ts        # PDF multi-periodo
 │   │   ├── pdfExportEstado.ts       # PDF estado de cuenta
-│   │   ├── contabilidad/            # Contabilito (T7) — 100% front, no toca el API
-│   │   │   ├── catalogoSAT.ts       # ~28 cuentas del codigo agrupador SAT (PORVALIDAR)
-│   │   │   ├── polizas.ts           # CFDI -> partida doble (cuadra por construccion)
-│   │   │   └── balanza.ts           # Suma por cuenta y comprueba el cuadre
+│   │   ├── contabilidadApi.ts       # Contabilito (P2): catalogo, config, polizas, balanza (API)
 │   │   ├── deduccionesPersonales.ts # Campos y clasificacion por ClaveProdServ (compartido)
 │   │   ├── pdfUtils.ts              # Helpers compartidos para exports PDF (colores, tablas)
 │   │   └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
@@ -544,38 +541,39 @@ suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` 
   `SelectorCliente` —que lo recibe **como prop desde `AppLayout`**, no del contexto— y junto al
   boton de alta en `ClientesPage`.
 
-### Contabilito — contabilidad electronica (T7, CASCARON)
+### Contabilito — contabilidad del cliente activo (P2-01 a P2-04)
+
+> **P1-06:** Contabilito y los tabs de Fiscalito toman por defecto los CFDI del periodo de la
+> **bóveda del cliente activo** (`GET /boveda/clientes/{clave}/facturas-calculo`, vía
+> `components/fiscalito/useFuenteFacturas.ts` + `FuenteFacturasPanel.tsx`; sin cancelados ni
+> nómina). Subir XML sigue como "Usar archivos sueltos", con "Guardar en la bóveda". Lo de
+> "sin una sola llamada al API" de abajo es historia: las pólizas se arman en el front, pero
+> los comprobantes ya vienen de la API.
 
 `/app/store/contabilito/use`. **100% front y sin una sola llamada al API**, y puede serlo
 porque aqui no se calcula ningun impuesto: los importes (subtotal, descuento, IVA trasladado,
 retenciones) ya vienen leidos del XML por `cfdiParser.ts` y solo se acomodan en los dos lados
 de una partida doble. Nada se guarda: los comprobantes viven en el estado de la pantalla.
+`/app/store/contabilito/use`. **El cascaron de T7 se retiro**: ya no se suben XML ni se
+arman polizas en el navegador (`services/contabilidad/*` y los tabs viejos se borraron). El
+backend es dueño de todo (`/api/v1/contabilidad/clientes/{clave}/...`, ver
+`docs/api-contract.md` §Contabilidad) y la pantalla opera sobre el **cliente activo**: sin
+cliente, `SinClienteActivo`; al cambiar de cliente se remonta (`key`).
 
-- **`catalogoSAT.ts`** — subconjunto de ~28 cuentas de primer nivel del codigo agrupador del
-  SAT (Anexo 24 de la RMF). **Marcado `PORVALIDAR`, con banner en el tab Catalogo**: los ocho
-  codigos que usan las polizas (101, 102, 105, 118, 201, 208, 401, 601) venian dados por la
-  tarea; el resto de codigos y TODOS los nombres se escribieron sin el Anexo 24 enfrente. Misma
-  politica que el layout de la DIOT en T5.
-- **`polizas.ts`** — una poliza por CFDI fiscal. Emitido: cargo 105 Clientes + 107
-  Contribuciones a favor / abono 401 Ingresos + 208 IVA trasladado. Recibido: cargo 601 Gastos
-  + 118 IVA acreditable / abono 201 Proveedores + 216 Retenciones por enterar. Un Egreso (E)
-  invierte cargos y abonos; un Pago (P) mueve 102 Bancos contra 105/201; un Traslado (T) no
-  mueve nada. **Los recibos de nomina se excluyen** (`facturasFiscales`, T4) y se cuentan
-  aparte.
-- **La contraparte (105/201) se CALCULA, no se copia de `total`**: `base + IVA trasladado −
-  retenciones`. Asi la poliza cuadra por construccion aunque el CFDI traiga impuestos que el
-  parser no lee (IEPS). Cuando el `total` del CFDI y lo contabilizado difieren, la diferencia
-  se guarda en `diferenciaConTotal` y la fila la marca — no se cuadra a la fuerza.
-- **El RFC decide de que lado cae cada poliza** y por eso se pinta editable arriba. Para un
-  **contador NO se usa `profile.rfc`**: ese es el del DESPACHO, no el del cliente, y usarlo
-  voltearia todas las polizas — la misma trampa que T6 documento con `profile.regimen`.
-  Desde C-02 el default es el **RFC del cliente activo** (`usePerfilFiscal`); si el cliente no
-  lo tiene capturado se deduce: el RFC que aparece en mas comprobantes es el propio (esta en
-  todos, de emisor o de receptor). La pantalla dice cuando lo dedujo. Lo tecleado a mano manda
-  sobre los dos, y la pantalla se remonta al cambiar de cliente para que no se herede.
-- **Balanza sin saldos iniciales**: es la del lote cargado, no la del ejercicio, y lo dice.
-- **Tab Buzon**: pantalla de "Requiere e.firma — proximamente" con la lista de lo que falta. Sin
-  boton: el envio de contabilidad electronica se firma y se sella, y nada de eso existe.
+- Tabs: **Catalogo** (`CatalogoCuentas`, arbol editable + sembrar catalogo base), **Configuracion**
+  (`ConfigPolizas` + `ReglasEgreso`, como la de Contadigital), **Polizas** (`PolizasCliente`:
+  generar del periodo desde la boveda, lista, `DetallePoliza`, `FormPoliza` manual), **Balanza**
+  (`BalanzaCliente` → `AuxiliarCuenta` → poliza / XML; `SaldosIniciales`) y **Buzon** (sin
+  cambios hasta P2-07).
+- Servicio: `services/contabilidadApi.ts` (tipos en `contabilidadTipos.ts`). Los importes viajan
+  como texto; el front no decide el cuadre, lo pinta.
+- **Reportes** (P2-05, `ReportesContables`): estado de resultados, balance general, balanza,
+  auxiliar e impresión de pólizas, con filtros de ejercicio/periodo, cuentas, nivel,
+  agrupación, moneda + tipo de cambio, idioma y comparativo. Excel lo genera el backend; PDF
+  `services/pdfExportContabilidad.ts` (jspdf) transcribiendo la misma respuesta.
+- **Periodos** (P2-08, `PeriodosContables`): estado por mes, cerrar con la validación del
+  backend (lista de CFDI sin póliza; forzar con motivo), reabrir con motivo, cierre anual
+  (`CierreAnual`) y bitácora.
 
 ### Constancias de retencion y DIOT .txt (T5)
 
@@ -610,26 +608,18 @@ DB: Firestore
 - `VITE_FISCAL_AGENT_URL` — URL del Fiscal Agent API (default: `http://localhost:8000`)
 - `VITE_OPENAI_API_KEY` — API key de OpenAI para voice chat (Whisper + GPT-4o-mini + TTS). **NOTA**: esta key se expone en el bundle del cliente; aceptable para demo/hackathon, no para produccion.
 
-#### Flags (viene APAGADO; ver `.env.example`)
+#### La cartera va por la API (P0-01)
 
-Los dos se leen con la misma regla (`services/flagEncendido.ts`): encienden `1`,
-`true`, `on`, `yes`, `si` y `sí`; **cualquier otra cosa, y la variable ausente,
-dejan el flag apagado**. Un valor que no se entiende no enciende nada y tampoco
-avisa, así que escribe uno de esos seis.
+Clientes, empleados y dispositivos **no se guardan en Firestore**: van SIEMPRE por
+`/api/v1/cartera/*` (`services/cartera.ts`, `services/dispositivos.ts`, con `apiFetch` de
+`services/api.ts`, que adjunta el ID token). El backend los guarda en SQL y filtra por
+despacho; **ninguna llamada manda uid**. El flag `VITE_CARTERA_BACKEND` y los módulos
+`carteraFirestore.ts` / `carteraBackend.ts` / `dispositivosFirestore.ts` se retiraron. Lo
+que una cuenta tenía en Firestore se trae con `apps/api/scripts/migrar_firestore.py`. Los
+empleados que el backend no puede leer llegan en `ilegibles` con su razón y se pintan en la
+ficha (`EmpleadosIlegibles`, R-10). El contrato vive en `docs/api-contract.md`.
 
-- `VITE_CARTERA_BACKEND` (R-07, T2) — **quién es el dueño de la cartera**
-  (clientes y empleados), y se decide una vez al cargar la app, en
-  `services/cartera.ts`. Apagado (**default**): todo el CRUD va por
-  `services/carteraFirestore.ts`, o sea Firestore desde el navegador.
-  Encendido: va por `services/carteraBackend.ts` contra `/api/v1/cartera/*`.
-  **El backend existe y está probado, pero exige credenciales de GCP**
-  (`GOOGLE_APPLICATION_CREDENTIALS` o ADC) en `apps/api`; sin ellas responde
-  **503 a todo el CRUD**, que no se ve como un problema de configuración sino
-  como una app que dejó de guardar clientes. Enciéndelo sólo después de
-  comprobar que `GET /api/v1/cartera/clientes` responde 200. **No hay migración
-  de datos**: las rutas de Firestore (`users/{uid}/clientes/{id}/empleados/{id}`)
-  son las mismas de los dos lados, así que apagarlo tampoco mueve nada. El
-  contrato vive en `docs/api-contract.md`, y R-07 sigue ABIERTA en `backlog.md`.
+Firestore sigue guardando el **perfil** (`users/{uid}`) y el **historial de declaraciones**.
 
 ### Estructura Firestore:
 

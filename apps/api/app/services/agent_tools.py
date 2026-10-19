@@ -136,8 +136,12 @@ class RequestContext:
         historial: list[DeclaracionHistorialItem],
         periodo_year: int,
         periodo_month: int | None,
+        despacho_id: str | None = None,
     ) -> None:
         self.contribuyente = contribuyente
+        # P0-02: el despacho autenticado. La tool de nómina lee las checadas de ESTE
+        # despacho (`llave_almacen`); sin él no se puede saber de quién son.
+        self.despacho_id = despacho_id
         self.facturas = facturas
         self.historial = historial
         self.periodo_year = periodo_year
@@ -355,6 +359,7 @@ def ejecutar_tool(
     if tool_name == "calcular_nomina_periodo":
         # No usa `ctx`: la nomina de la demo sale del almacen de asistencia
         # y de la plantilla del servidor, no del perfil fiscal del request.
-        return calcular_nomina_periodo(tool_input), None
+        despacho_id = ctx.despacho_id if ctx is not None else None
+        return calcular_nomina_periodo(tool_input, despacho_id), None
 
     return json.dumps({"error": f"Tool desconocida: {tool_name}"}), None

@@ -130,7 +130,17 @@ function arbol(
   );
 }
 
+/**
+ * P1-06: con cliente activo la fuente por defecto es su bóveda; estos casos prueban
+ * el camino de archivos sueltos, que sigue disponible con un clic.
+ */
+function usarArchivosSueltos() {
+  const opcion = screen.queryByRole('radio', { name: /Usar archivos sueltos/ });
+  if (opcion) fireEvent.click(opcion);
+}
+
 async function subirYCalcular() {
+  usarArchivosSueltos();
   const input = document.querySelector('input[type="file"]') as HTMLInputElement;
   fireEvent.change(input, { target: { files: demoXmls() } });
   await screen.findByText(/DEMO0001|ingreso-001|15,000/i, undefined, { timeout: 3000 }).catch(() => null);
@@ -200,6 +210,7 @@ describe('C-02 · contador con cliente activo', () => {
     vista.rerender(arbol(activo(OTRO), <FiscalitoServicePage />));
     // Ni el resultado ni las facturas del Taller sobreviven al cambio.
     expect(screen.queryByRole('button', { name: /Descargar PDF/ })).toBeNull();
+    usarArchivosSueltos();
     fireEvent.click(screen.getByRole('button', { name: /Calcular pre-declaración/ }));
     expect(screen.getByText('Sube al menos una factura XML.')).toBeTruthy();
     expect(api.calcularPreDeclaracion).toHaveBeenCalledTimes(1);
@@ -222,7 +233,7 @@ describe('C-02 · contador con cliente activo', () => {
   it('con la cartera escribible, el acceso abre la edición del cliente ahí mismo', () => {
     const completo: ClienteCartera = { ...TALLER, rfc: undefined, empleados: [] } as unknown as ClienteCartera;
     const cartera = {
-      clientes: [completo], loading: false, origen: 'firestore', soloLectura: false, error: null,
+      clientes: [completo], loading: false, origen: 'propia', soloLectura: false, error: null,
       clientePorId: (id: string) => (id === 'taller' ? completo : null),
       guardarCliente: vi.fn(async () => {}),
     } as unknown as CarteraContextType;
@@ -260,22 +271,44 @@ describe('C-02 · calendario del cliente activo', () => {
 });
 
 describe('C-02 · Contabilito', () => {
-  it('el RFC por default es el del cliente activo', () => {
-    render(arbol(activo(TALLER), <ContabilitoPage />));
-    expect((screen.getByLabelText('RFC del contribuyente') as HTMLInputElement).value).toBe(RFC_DEMO);
+  /**
+   * Desde P2 la contabilidad vive en el backend y ya no hay RFC que teclear: la
+   * bóveda clasificó cada CFDI con el RFC del cliente al importarlo. Lo que
+   * queda de C-02 es que la pantalla pida los datos del CLIENTE ACTIVO y que
+   * cambiar de cliente no herede nada del anterior.
+   */
+  const urls: string[] = [];
+  beforeEach(async () => {
+    urls.length = 0;
+    // `apiFetch` pide el ID token antes de llamar a `fetch`.
+    const { auth } = await import('../services/firebase');
+    Object.assign(auth, { currentUser: { uid: 'uid-demo', getIdToken: async () => 'tk' } });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(url);
+      return Response.json({ exito: true, total: 0, pagina: 1, por_pagina: 50, polizas: [] });
+    }));
   });
 
-  it('un RFC tecleado para un cliente no se hereda al siguiente', () => {
-    const vista = render(arbol(activo(TALLER), <ContabilitoPage />));
-    fireEvent.change(screen.getByLabelText('RFC del contribuyente'), { target: { value: 'AAA010101AAA' } });
-    expect((screen.getByLabelText('RFC del contribuyente') as HTMLInputElement).value).toBe('AAA010101AAA');
-
-    vista.rerender(arbol(activo(OTRO), <ContabilitoPage />));
-    expect((screen.getByLabelText('RFC del contribuyente') as HTMLInputElement).value).toBe('XIQB891116QE4');
+  it('pide las pólizas del cliente activo', async () => {
+    render(arbol(activo(TALLER), <ContabilitoPage />, undefined, '/app/store/contabilito/use'));
+    await waitFor(() => expect(urls.some((u) => u.includes('/contabilidad/clientes/taller/polizas'))).toBe(true));
   });
 
-  it('un cliente sin RFC cae al deducido de los comprobantes, como respaldo', () => {
-    render(arbol(activo({ ...TALLER, rfc: undefined }), <ContabilitoPage />));
-    expect((screen.getByLabelText('RFC del contribuyente') as HTMLInputElement).value).toBe('');
+  it('al cambiar de cliente pide los datos del nuevo', async () => {
+    const vista = render(arbol(activo(TALLER), <ContabilitoPage />, undefined, '/app/store/contabilito/use'));
+    await waitFor(() => expect(urls.length).toBeGreaterThan(0));
+    vista.rerender(arbol(activo(OTRO), <ContabilitoPage />, undefined, '/app/store/contabilito/use'));
+    await waitFor(() => expect(urls.some((u) => u.includes('/contabilidad/clientes/otro/polizas'))).toBe(true));
+  });
+
+  afterEach(async () => {
+    const { auth } = await import('../services/firebase');
+    Object.assign(auth, { currentUser: undefined });
+  });
+
+  it('sin cliente activo no pide nada y lo dice', () => {
+    render(arbol(activo(null), <ContabilitoPage />, undefined, '/app/store/contabilito/use'));
+    expect(screen.getByText(/Elige uno en el selector/)).toBeTruthy();
+    expect(urls).toEqual([]);
   });
 });

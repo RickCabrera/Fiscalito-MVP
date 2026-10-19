@@ -33,9 +33,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.asistencia.almacen import almacen
+from app.asistencia.almacen import almacen, llave_almacen
 from app.constants import CLIENTE_DEMO
 from app.exceptions import FiscalValidationError
+from tests.conftest import UID_PRUEBA
 from tests.nomina_inventario import EMPLEADOS_SINTETICOS
 
 
@@ -89,7 +90,8 @@ def test_siembra_los_tres_clientes_y_cada_uno_queda_con_checadas_suyas(poster):
         assert recibidos > 0, f"{cliente_id} no recibio ninguna checada"
         assert duplicados == 0, f"{cliente_id} sembro duplicados en un almacen limpio"
         # El efecto, que es lo que importa: quedaron EN EL ALMACEN, bajo SU cliente.
-        assert almacen.total(cliente_id) == recibidos
+        # P0-02: el almacén se indexa por despacho; el de la sesión de prueba es su uid.
+        assert almacen.total(llave_almacen(UID_PRUEBA, cliente_id)) == recibidos
 
 
 def test_cada_cliente_recibe_solo_sus_propias_checadas(poster):
@@ -103,7 +105,10 @@ def test_cada_cliente_recibe_solo_sus_propias_checadas(poster):
     """
     levantar_demo.sembrar_todo("http://testserver", poster=poster)
 
-    totales = {c.cliente_id: almacen.total(c.cliente_id) for c in levantar_demo.CLIENTES_DEMO}
+    totales = {
+        c.cliente_id: almacen.total(llave_almacen(UID_PRUEBA, c.cliente_id))
+        for c in levantar_demo.CLIENTES_DEMO
+    }
     assert all(t > 0 for t in totales.values()), totales
     # Las plantillas tienen tamanos distintos (9, 4 y 12 empleados), asi que dos
     # totales iguales delatarian que se sembro lo mismo dos veces.
@@ -189,3 +194,33 @@ def test_los_serial_base_no_se_pisan_entre_clientes():
     """
     seriales = [c.serial_base for c in levantar_demo.CLIENTES_DEMO]
     assert len(set(seriales)) == len(seriales)
+
+
+def test_sembrar_exige_despacho(capsys, monkeypatch):
+    """P0-02: sin despacho no hay a quién atribuir las checadas; no se levanta nada."""
+    monkeypatch.delenv("FISCALITO_DESPACHO_DEMO", raising=False)
+    assert levantar_demo.main([]) == 2
+    assert "--despacho" in capsys.readouterr().err
+
+
+def test_con_tokens_de_dispositivo_siembra_sin_sesion_bajo_su_despacho(api):
+    """El camino real del script: un token por cliente y POST sin sesión de Firebase."""
+    from app.main import app
+
+    dueno = api("uid-dueno")
+    tokens = {
+        c.cliente_id: dueno.post(
+            "/api/v1/asistencia/tokens", json={"cliente": c.cliente_id}
+        ).json()["token"]
+        for c in levantar_demo.CLIENTES_DEMO
+    }
+    anonimo = TestClient(app)
+
+    def poster(url, params, payload):
+        ruta = url.split("://", 1)[-1].split("/", 1)[-1]
+        return anonimo.post(f"/{ruta}", params=params, json=payload)
+
+    resultados = levantar_demo.sembrar_todo("http://testserver", poster=poster, tokens=tokens)
+    for cliente_id, recibidos, _ in resultados:
+        assert recibidos > 0
+        assert almacen.total(llave_almacen("uid-dueno", cliente_id)) == recibidos

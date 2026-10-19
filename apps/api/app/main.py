@@ -14,15 +14,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.acceso.dependencias import PROTEGIDO
+from app.auditoria import AuditoriaMiddleware
 from app.config import settings
-from app.exceptions import FiscalAgentError
+from app.exceptions import FiscalAgentError, LimiteExcedido
 from app.logging_config import setup_logging
 from app.routes import (
     agente,
     asistencia,
+    auditoria,
+    boveda,
+    calculos_cliente,
     calendario,
     cartera,
     comparador,
+    conciliacion,
+    contabilidad,
+    contabilidad_electronica,
+    contabilidad_reportes,
+    credenciales,
     declaraciones,
     despacho,
     diot,
@@ -31,6 +41,9 @@ from app.routes import (
     multi_periodo,
     nomina,
     retenciones,
+    sat_descarga,
+    sat_verificacion,
+    trabajos,
 )
 
 # Inicializar logging estructurado al arrancar la aplicacion
@@ -72,6 +85,8 @@ cors_origins: list[str] = [
 ]
 
 app.add_middleware(RequestLoggingMiddleware)
+# P0-07: renglón de auditoría por cada escritura autenticada (red de seguridad).
+app.add_middleware(AuditoriaMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -80,32 +95,72 @@ app.add_middleware(
     # falla en el PREFLIGHT, y eso no se ve como un problema de permisos: se ve
     # como red caída, que manda a buscar el bug al lugar equivocado.
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    # P0-02: el checador puede mandar su token en `X-Token-Dispositivo`.
+    allow_headers=["Content-Type", "Authorization", "X-Token-Dispositivo"],
+    # Que el front pueda leer cuánto esperar tras un 429.
+    expose_headers=["Retry-After"],
 )
 
 @app.exception_handler(FiscalAgentError)
 async def fiscal_error_handler(request: Request, exc: FiscalAgentError) -> JSONResponse:
     """Manejador global para excepciones de dominio fiscal."""
+    encabezados = (
+        {"Retry-After": str(exc.reintentar_en)} if isinstance(exc, LimiteExcedido) else None
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content={"exito": False, "error": exc.message},
+        headers=encabezados,
     )
 
 
+# P0-02: TODO /api/v1 exige la sesión de Firebase (y el límite por usuario). Un router nuevo
+# se agrega a esta lista y queda protegido; `tests/test_acceso_rutas.py` recorre todas las
+# rutas y falla si alguna responde sin token. Las excepciones públicas se declaran en
+# `app/acceso/dependencias.RUTAS_PUBLICAS` y se montan abajo, aparte.
+ROUTERS_PROTEGIDOS = (
+    declaraciones.router,
+    calendario.router,
+    comparador.router,
+    diot.router,
+    retenciones.router,
+    multi_periodo.router,
+    estado_cuenta.router,
+    agente.router,
+    asistencia.router,
+    nomina.router,
+    despacho.router,
+    # R-07: la cartera ya exigía su propio token; aquí además entra al límite por usuario.
+    cartera.router,
+    # Plan P: bóveda de CFDI (P0-03), e.firma/CSD (P0-05), trabajos (P0-04), auditoría (P0-07).
+    boveda.router,
+    credenciales.router,
+    trabajos.router,
+    auditoria.router,
+    # P1: descarga masiva del SAT (P1-01/02) y verificaciones SAT (P1-03/04/05).
+    sat_descarga.router,
+    sat_verificacion.router,
+    calculos_cliente.router,
+    contabilidad.router,
+    # P2-05/P2-08: reportes contables y cierre de periodo y de ejercicio.
+    contabilidad_reportes.router,
+    # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).
+    conciliacion.router,
+    contabilidad_electronica.router,
+)
+
 app.include_router(health.router)
-app.include_router(declaraciones.router, prefix="/api/v1")
-app.include_router(calendario.router, prefix="/api/v1")
-app.include_router(comparador.router, prefix="/api/v1")
-app.include_router(diot.router, prefix="/api/v1")
-app.include_router(retenciones.router, prefix="/api/v1")
-app.include_router(multi_periodo.router, prefix="/api/v1")
-app.include_router(estado_cuenta.router, prefix="/api/v1")
-app.include_router(agente.router, prefix="/api/v1")
-app.include_router(asistencia.router, prefix="/api/v1")
-app.include_router(nomina.router, prefix="/api/v1")
-app.include_router(despacho.router, prefix="/api/v1")
-# R-07: el único router del repo que EXIGE autenticación. El resto de /api/v1
-# sigue abierto (S-00b) y eso no cambia aquí.
-app.include_router(cartera.router, prefix="/api/v1")
+for _router in ROUTERS_PROTEGIDOS:
+    app.include_router(_router, prefix="/api/v1", dependencies=PROTEGIDO)
+
+# Públicas (sin sesión de Firebase): cada una se autentica por dentro.
+# - El push del checador: token de dispositivo (o la sesión, para el simulador).
+app.include_router(asistencia.router_publico, prefix="/api/v1")
+
+# Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
+if settings.ENTORNO != "produccion":
+    from app.db.session import crear_tablas
+
+    crear_tablas()
 
 logger.info("Fiscal Agent API inicializada correctamente")

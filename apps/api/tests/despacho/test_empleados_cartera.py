@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.despacho_demo import CLIENTES
-from app.main import app
 from app.schemas.empleado import (
     EmpleadoCarteraSchema,
     EstatusEnrolamiento,
@@ -25,10 +24,7 @@ from app.schemas.empleado import (
 )
 from app.schemas.nomina import EmpleadoNominaSchema
 
-
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 def semilla(cliente_http: TestClient, cliente_id: str = "demo") -> dict:
