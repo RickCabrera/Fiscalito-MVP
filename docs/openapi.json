@@ -11142,6 +11142,363 @@
           }
         }
       }
+    },
+    "/api/v1/impuestos/clientes/{clave}/pm/datos/{anio}": {
+      "get": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Leer Datos Pm",
+        "description": "Datos anuales capturados de la persona moral (defaults si no hay).",
+        "operationId": "leer_datos_pm_api_v1_impuestos_clientes__clave__pm_datos__anio__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Leer Datos Pm Api V1 Impuestos Clientes  Clave  Pm Datos  Anio  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Guardar Datos Pm",
+        "description": "Guarda (reemplaza) los datos anuales de la persona moral.",
+        "operationId": "guardar_datos_pm_api_v1_impuestos_clientes__clave__pm_datos__anio__put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "anio",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Anio"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatosAnualesPMSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Datos Pm Api V1 Impuestos Clientes  Clave  Pm Datos  Anio  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales": {
+      "post": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Pagos Provisionales Pm",
+        "description": "Pagos provisionales de enero al mes pedido, con cada paso del cálculo.",
+        "operationId": "pagos_provisionales_pm_api_v1_impuestos_clientes__clave__pm_pagos_provisionales_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagosProvisionalesPMRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pagos Provisionales Pm Api V1 Impuestos Clientes  Clave  Pm Pagos Provisionales Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/anual": {
+      "post": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Anual",
+        "description": "Cálculo anual del cliente según su régimen, con el detalle mes a mes.",
+        "operationId": "anual_api_v1_impuestos_clientes__clave__anual_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnualRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Anual Api V1 Impuestos Clientes  Clave  Anual Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/impuestos/clientes/{clave}/anual/papeles": {
+      "post": {
+        "tags": [
+          "impuestos"
+        ],
+        "summary": "Papeles",
+        "description": "Papeles de trabajo de la anual (xlsx), del mismo cálculo que `/anual`.",
+        "operationId": "papeles_api_v1_impuestos_clientes__clave__anual_papeles_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnualRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11379,6 +11736,37 @@
         ],
         "title": "AguinaldoRequest",
         "description": "`POST /calculadoras/aguinaldo`."
+      },
+      "AnualRequest": {
+        "properties": {
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2020.0,
+            "title": "Anio"
+          },
+          "pagos_provisionales": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Pagos Provisionales",
+            "description": "Personas físicas: pagos realmente presentados por mes (vacío = los determinados por el sistema). Personas morales: se capturan en sus datos anuales."
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio"
+        ],
+        "title": "AnualRequest",
+        "description": "`POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`."
       },
       "Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post": {
         "properties": {
@@ -13260,6 +13648,265 @@
         "title": "DIOTResponse",
         "description": "Respuesta del endpoint DIOT."
       },
+      "DatosAnualesPMSchema": {
+        "properties": {
+          "coeficiente_utilidad": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coeficiente Utilidad"
+          },
+          "utilidad_fiscal_base": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utilidad Fiscal Base"
+          },
+          "ingresos_nominales_base": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingresos Nominales Base"
+          },
+          "anticipos_miembros_base": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Anticipos Miembros Base",
+            "default": "0"
+          },
+          "ptu_pagada": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Ptu Pagada",
+            "default": "0"
+          },
+          "mes_pago_ptu": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes Pago Ptu",
+            "default": 5
+          },
+          "perdidas": {
+            "items": {
+              "$ref": "#/components/schemas/PerdidaSchema"
+            },
+            "type": "array",
+            "title": "Perdidas"
+          },
+          "retenciones_bancarias": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Retenciones Bancarias"
+          },
+          "pagos_efectuados": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Pagos Efectuados"
+          },
+          "saldos_creditos": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Saldos Creditos"
+          },
+          "saldos_deudas": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Saldos Deudas"
+          },
+          "cuentas_creditos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cuentas Creditos"
+          },
+          "cuentas_deudas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cuentas Deudas"
+          },
+          "cuentas_no_deducibles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cuentas No Deducibles"
+          },
+          "deduccion_inversiones": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deduccion Inversiones",
+            "default": "0"
+          },
+          "deducciones_adicionales": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Deducciones Adicionales",
+            "default": "0"
+          },
+          "no_deducibles_adicionales": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "No Deducibles Adicionales",
+            "default": "0"
+          },
+          "ingresos_adicionales": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Ingresos Adicionales",
+            "default": "0"
+          },
+          "estimulos": {
+            "items": {
+              "$ref": "#/components/schemas/EstimuloSchema"
+            },
+            "type": "array",
+            "title": "Estimulos"
+          },
+          "fuente": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "contabilidad",
+              "boveda"
+            ],
+            "title": "Fuente",
+            "default": "auto"
+          },
+          "factor_exentos_nomina": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Factor Exentos Nomina",
+            "default": "0.47"
+          },
+          "aai_en_resico": {
+            "type": "boolean",
+            "title": "Aai En Resico",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "DatosAnualesPMSchema",
+        "description": "Datos de un cliente persona moral para un ejercicio (P3-01).\n\n- `coeficiente_utilidad`: el que se aplica en los pagos de ESTE ejercicio (el de la anual\n  del anterior, Art. 14 fr. I). Vacío: se calcula con `utilidad_fiscal_base` /\n  `ingresos_nominales_base` si se capturan, o con la anual que el sistema pueda armar de\n  los cinco ejercicios anteriores.\n- `ptu_pagada` y `mes_pago_ptu` (default mayo): Art. 14 fr. II / Art. 211.\n- `perdidas`: pendientes al inicio del ejercicio (Art. 57).\n- `retenciones_bancarias`: ISR retenido por el sistema financiero por mes (Art. 54).\n- `pagos_efectuados`: lo realmente pagado por mes; vacío = el determinado por el sistema.\n- `saldos_creditos` / `saldos_deudas`: 12 saldos de fin de mes para el ajuste anual por\n  inflación cuando no hay contabilidad (Arts. 44-46).\n- `cuentas_creditos` / `cuentas_deudas`: códigos agrupadores (prefijos) que cuentan como\n  créditos y deudas cuando sí hay contabilidad; vacío = el default documentado en\n  `app/impuestos/personas_morales.py` (criterio del despacho).\n- `cuentas_no_deducibles`: prefijos de código agrupador o números de cuenta adicionales que\n  no son deducibles.\n- `deduccion_inversiones`: deducción fiscal de inversiones del ejercicio (Arts. 31-38 o\n  209); la depreciación contable no se deduce.\n- `deducciones_adicionales` / `no_deducibles_adicionales` / `ingresos_adicionales`:\n  ajustes de conciliación contable-fiscal (p. ej. Art. 28 fr. XXX).\n- `fuente`: de dónde salen ingresos y deducciones: `auto` (contabilidad si hay pólizas en\n  el ejercicio; si no, bóveda), `contabilidad` o `boveda`.\n- `factor_exentos_nomina` (default 0.47): parte deducible de los pagos exentos al\n  trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).\n- `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM."
+      },
       "DatosPatronCFDI": {
         "properties": {
           "rfc": {
@@ -14734,6 +15381,53 @@
         "title": "EstatusEnrolamiento",
         "description": "Si la persona ya tiene su rostro dado de alta en el checador.\n\n**El rostro se captura en el aparato, no en la app** (menú Usuario → Agregar,\no HikConnect Teams; ver `docs/D-DEMO-CHECADOR.md`). Aquí sólo se guarda que\nya se hizo, para que el despacho sepa a quién le falta."
       },
+      "EstimuloSchema": {
+        "properties": {
+          "concepto": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Concepto"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          },
+          "fundamento": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Fundamento",
+            "default": ""
+          },
+          "desde_mes": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Desde Mes",
+            "default": 1
+          },
+          "en_provisionales": {
+            "type": "boolean",
+            "title": "En Provisionales",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "concepto",
+          "importe"
+        ],
+        "title": "EstimuloSchema",
+        "description": "Disminución configurable de la utilidad (estímulo), con fundamento."
+      },
       "EventoChecada": {
         "properties": {
           "empleado_no": {
@@ -15875,6 +16569,29 @@
         ],
         "title": "PaginaAuditoria"
       },
+      "PagosProvisionalesPMRequest": {
+        "properties": {
+          "anio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2020.0,
+            "title": "Anio"
+          },
+          "mes": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Mes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "anio",
+          "mes"
+        ],
+        "title": "PagosProvisionalesPMRequest",
+        "description": "`POST /impuestos/clientes/{clave}/pm/pagos-provisionales`."
+      },
       "ParametrosPatron": {
         "properties": {
           "prima_riesgo": {
@@ -16139,6 +16856,48 @@
         ],
         "title": "PercepcionEntrada",
         "description": "Una percepción (clave c_TipoPercepcion) para el ISN."
+      },
+      "PerdidaSchema": {
+        "properties": {
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Ejercicio"
+          },
+          "remanente": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Remanente"
+          },
+          "actualizada_a": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizada A",
+            "description": "Mes de su última actualización. Vacío: el monto es el histórico."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ejercicio",
+          "remanente"
+        ],
+        "title": "PerdidaSchema",
+        "description": "Pérdida fiscal pendiente (Art. 57). `actualizada_a` 'AAAA-MM' o vacío si es histórica."
       },
       "PerfilContribuyente": {
         "properties": {

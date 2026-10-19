@@ -260,9 +260,10 @@ export type TabFiscalito =
  * que pintar en ellas para una moral.
  */
 const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
-  'pagospm', 'calendario', 'declaracion',
-  // P3-02: el resumen de impuestos sí aplica a una moral (retenciones, IVA; su ISR
-  // propio sale en cero con nota hasta que exista el motor PM).
+  // P3-01/P3-06: con el motor PM, `pagospm` ya calcula en el backend y la moral
+  // tiene su anual (ajuste por inflación, PTU, pérdidas, papeles de trabajo).
+  'pagospm', 'anual', 'calendario', 'declaracion',
+  // P3-02: el resumen de impuestos; su ISR propio sale del motor PM (P3-01).
   'resumen',
 ]);
 
@@ -294,8 +295,13 @@ function tabsCompletos(): TabFiscalito[] {
  * Sin cliente elegido (`regimen` vacío) no hay tabs: la pantalla pinta el estado
  * vacío con el selector en vez de tabs sobre un cliente inexistente.
  */
-export function getTabsForProfile(regimen: string | null): TabFiscalito[] {
+export function getTabsForProfile(regimen: string | null, rfc?: string | null): TabFiscalito[] {
   if (!regimen) return [];
+  // P3-01: un 626 con RFC de persona moral (12 caracteres) es RESICO PM (Arts. 206-215
+  // LISR): su ISR es el del motor de morales, no el RESICO de personas físicas.
+  if (regimen === '626' && (rfc ?? '').trim().length === 12) {
+    return ['pagospm', 'anual', 'calendario', 'resumen'];
+  }
   return tabsPorRegimenDeCliente(regimen);
 }
 

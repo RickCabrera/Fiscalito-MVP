@@ -545,6 +545,18 @@
       ]
     },
     {
+      "path": "/api/v1/impuestos/clientes/{clave}/anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/anual/papeles",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/impuestos/clientes/{clave}/config",
       "metodos": [
         "GET",
@@ -559,6 +571,19 @@
     },
     {
       "path": "/api/v1/impuestos/clientes/{clave}/iva",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/pm/datos/{anio}",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales",
       "metodos": [
         "POST"
       ]

@@ -12,7 +12,7 @@ rigen los defaults documentados en ese esquema.
 
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey
+from sqlalchemy import JSON, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, ConMarcasDeTiempo
@@ -26,4 +26,21 @@ class ConfigImpuestosCliente(ConMarcasDeTiempo, Base):
     cliente_id: Mapped[int] = mapped_column(
         ForeignKey("clientes.id", ondelete="CASCADE"), primary_key=True
     )
+    datos: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class DatosAnualesPM(ConMarcasDeTiempo, Base):
+    """
+    Datos de una persona moral por ejercicio que no salen de la bóveda ni de la contabilidad
+    (P3-01): coeficiente de utilidad, PTU pagada, pérdidas, retenciones del sistema financiero,
+    pagos efectuados, saldos para el ajuste anual por inflación. `datos` es un
+    `DatosAnualesPMSchema` (`app/schemas/personas_morales.py`) serializado.
+    """
+
+    __tablename__ = "datos_anuales_pm"
+
+    cliente_id: Mapped[int] = mapped_column(
+        ForeignKey("clientes.id", ondelete="CASCADE"), primary_key=True
+    )
+    anio: Mapped[int] = mapped_column(Integer, primary_key=True)
     datos: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

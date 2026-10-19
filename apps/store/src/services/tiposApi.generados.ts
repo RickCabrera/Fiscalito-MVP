@@ -51,6 +51,12 @@ export interface AguinaldoRequest {
   zona?: "general" | "zlfn";
 }
 
+/** `POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`. */
+export interface AnualRequest {
+  anio: number;
+  pagos_provisionales?: Record<string, number | string>;
+}
+
 export interface Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post {
   archivos: string[];
 }
@@ -394,6 +400,32 @@ export interface DIOTResponse {
   explicacion?: string | null;
 }
 
+/** Datos de un cliente persona moral para un ejercicio (P3-01). */
+export interface DatosAnualesPMSchema {
+  coeficiente_utilidad?: number | string | null;
+  utilidad_fiscal_base?: number | string | null;
+  ingresos_nominales_base?: number | string | null;
+  anticipos_miembros_base?: number | string;
+  ptu_pagada?: number | string;
+  mes_pago_ptu?: number;
+  perdidas?: PerdidaSchema[];
+  retenciones_bancarias?: Record<string, number | string>;
+  pagos_efectuados?: Record<string, number | string>;
+  saldos_creditos?: (number | string)[];
+  saldos_deudas?: (number | string)[];
+  cuentas_creditos?: string[];
+  cuentas_deudas?: string[];
+  cuentas_no_deducibles?: string[];
+  deduccion_inversiones?: number | string;
+  deducciones_adicionales?: number | string;
+  no_deducibles_adicionales?: number | string;
+  ingresos_adicionales?: number | string;
+  estimulos?: EstimuloSchema[];
+  fuente?: "auto" | "contabilidad" | "boveda";
+  factor_exentos_nomina?: number | string;
+  aai_en_resico?: boolean;
+}
+
 /** El emisor. Ver `24_cfdi_nomina_12.md` §2. */
 export interface DatosPatronCFDI {
   rfc: string;
@@ -681,6 +713,15 @@ export interface EstadoCuentaResponse {
 /** Si la persona ya tiene su rostro dado de alta en el checador. */
 export type EstatusEnrolamiento = "pendiente" | "enrolado";
 
+/** Disminución configurable de la utilidad (estímulo), con fundamento. */
+export interface EstimuloSchema {
+  concepto: string;
+  importe: number | string;
+  fundamento?: string;
+  desde_mes?: number;
+  en_provisionales?: boolean;
+}
+
 /** Una checada normalizada. */
 export interface EventoChecada {
   empleado_no: string;
@@ -901,6 +942,12 @@ export interface PaginaAuditoria {
   por_pagina: number;
 }
 
+/** `POST /impuestos/clientes/{clave}/pm/pagos-provisionales`. */
+export interface PagosProvisionalesPMRequest {
+  anio: number;
+  mes: number;
+}
+
 /** Parámetros de la empresa que el motor necesita y no puede adivinar. */
 export interface ParametrosPatron {
   prima_riesgo: number | string;
@@ -941,6 +988,13 @@ export interface PercepcionEntrada {
   clave: string;
   importe: number | string;
   descripcion?: string;
+}
+
+/** Pérdida fiscal pendiente (Art. 57). `actualizada_a` 'AAAA-MM' o vacío si es histórica. */
+export interface PerdidaSchema {
+  ejercicio: number;
+  remanente: number | string;
+  actualizada_a?: string | null;
 }
 
 /** Datos del contribuyente necesarios para calcular declaraciones. */
@@ -1495,9 +1549,13 @@ export type RutaApi =
   | "/api/v1/despacho/primas-de-riesgo"
   | "/api/v1/diot"
   | "/api/v1/estado-cuenta"
+  | "/api/v1/impuestos/clientes/{clave}/anual"
+  | "/api/v1/impuestos/clientes/{clave}/anual/papeles"
   | "/api/v1/impuestos/clientes/{clave}/config"
   | "/api/v1/impuestos/clientes/{clave}/isn"
   | "/api/v1/impuestos/clientes/{clave}/iva"
+  | "/api/v1/impuestos/clientes/{clave}/pm/datos/{anio}"
+  | "/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales"
   | "/api/v1/impuestos/clientes/{clave}/resumen"
   | "/api/v1/multi-periodo"
   | "/api/v1/nomina/calcular-periodo"
@@ -1958,6 +2016,14 @@ export interface OperacionesApi {
     cuerpo: EstadoCuentaRequest;
     respuesta: EstadoCuentaResponse;
   };
+  "POST /api/v1/impuestos/clientes/{clave}/anual": {
+    cuerpo: AnualRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/impuestos/clientes/{clave}/anual/papeles": {
+    cuerpo: AnualRequest;
+    respuesta: unknown;
+  };
   "GET /api/v1/impuestos/clientes/{clave}/config": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -1972,6 +2038,18 @@ export interface OperacionesApi {
   };
   "POST /api/v1/impuestos/clientes/{clave}/iva": {
     cuerpo: IvaPeriodoRequest;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/impuestos/clientes/{clave}/pm/datos/{anio}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/impuestos/clientes/{clave}/pm/datos/{anio}": {
+    cuerpo: DatosAnualesPMSchema;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales": {
+    cuerpo: PagosProvisionalesPMRequest;
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/impuestos/clientes/{clave}/resumen": {

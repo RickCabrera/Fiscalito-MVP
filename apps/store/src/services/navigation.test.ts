@@ -192,8 +192,13 @@ describe('getTabsForProfile (régimen del cliente activo)', () => {
     expect(getTabsForProfile('612')).not.toEqual(getTabsForProfile('626'));
   });
 
-  it('un cliente persona moral (601) abre en pagos provisionales PM', () => {
-    expect(getTabsForProfile('601')).toEqual(['pagospm', 'calendario', 'declaracion', 'resumen']);
+  it('un cliente persona moral (601) abre en pagos provisionales PM y tiene su anual (P3-01)', () => {
+    expect(getTabsForProfile('601')).toEqual(['pagospm', 'anual', 'calendario', 'declaracion', 'resumen']);
+  });
+
+  it('un 626 con RFC de persona moral es RESICO PM: pagos provisionales PM, sin pre-declaración PF', () => {
+    expect(getTabsForProfile('626', 'PMS010101AB1')).toEqual(['pagospm', 'anual', 'calendario', 'resumen']);
+    expect(getTabsForProfile('626', 'XEXX010101AB1')).toEqual(getTabsForProfile('626'));
   });
 
   it('sin cliente elegido no hay tabs', () => {

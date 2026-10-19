@@ -40,6 +40,7 @@ from app.routes import (
     estado_cuenta,
     health,
     impuestos,
+    impuestos_anual,
     multi_periodo,
     nomina,
     retenciones,
@@ -151,6 +152,8 @@ ROUTERS_PROTEGIDOS = (
     # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).
     conciliacion.router,
     contabilidad_electronica.router,
+    # P3-01 personas morales y P3-06 anual con papeles de trabajo.
+    impuestos_anual.router,
 )
 
 app.include_router(health.router)

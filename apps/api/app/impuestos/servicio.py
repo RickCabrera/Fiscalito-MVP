@@ -166,13 +166,13 @@ CLAVE_ISR_POR_REGIMEN = {
 
 def isr_propio(db: Session, cliente: Cliente, anio: int, mes: int) -> list[ImporteSistema]:
     """Renglón de ISR propio según el régimen del cliente, con el motor existente."""
+    # P3-01: personas morales (601) y RESICO PM con su motor (Art. 14 / Art. 211 LISR).
+    from app.impuestos.personas_morales import isr_del_mes  # importa este módulo
+
+    pm = isr_del_mes(db, cliente, anio, mes)
+    if pm is not None:
+        return [pm]
     regimen = regimen_de(cliente)
-    if regimen == "601":
-        return [ImporteSistema("isr_pm", CERO, "Motor de personas morales en desarrollo "
-                               "(P3-06): captura el importe a pagar.")]
-    if regimen == "626" and len(cliente.rfc or "") == 12:
-        return [ImporteSistema("isr_resico_pm", CERO, "RESICO personas morales "
-                               "(Arts. 206-215 LISR) sin motor todavía: captura el importe.")]
     clave = CLAVE_ISR_POR_REGIMEN.get(regimen)
     if clave is None:
         return []

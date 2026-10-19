@@ -31,8 +31,16 @@ router = APIRouter(tags=["Declaraciones"])
 # frente. `calculadora.py` solo conoce personas fisicas: sin este guard el 601
 # cae en la rama por defecto y sale un ISR de persona fisica, creible y
 # equivocado, sobre los ingresos de una moral.
+#
+# P3-01: el motor de personas morales ya existe, pero vive en otra puerta
+# (`/impuestos/clientes/{clave}/pm/pagos-provisionales` y `.../anual`, que leen la
+# bóveda, la contabilidad y los datos anuales del cliente). Esta puerta sigue siendo
+# la de `calculadora.py`, que sólo sabe de personas físicas: el 400 se queda y
+# ahora dice a dónde ir.
 REGIMENES_SIN_MOTOR: dict[str, str] = {
-    "601": "Motor de personas morales en desarrollo",
+    "601": "Personas morales (601): el ISR se calcula en Pagos provisionales PM y en la "
+           "Anual del cliente (/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales "
+           "y /anual); esta pre-declaración es de personas físicas.",
 }
 
 

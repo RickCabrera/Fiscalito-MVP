@@ -166,7 +166,7 @@ fiscalito-store-app/
 │   │       ├── RetencionesTab.tsx         # Retenciones a terceros
 │   │       ├── MultiPeriodoTab.tsx        # Analisis multi-periodo
 │   │       ├── EstadoCuentaTab.tsx        # Estado de cuenta y proyeccion anual
-│   │       ├── PagosProvisionalesPMTab.tsx # T6: estimacion ISR personas morales (601)
+│   │       ├── PagosProvisionalesPMTab.tsx # P3-01: pagos provisionales PM (motor del backend)
 │   │       └── DeduccionesPersonalesTab.tsx # Deducciones personales (asalariados)
 │   ├── pages/
 │   │   ├── LandingPage.tsx          # Pagina publica (hero, stats, preview servicios)
@@ -259,28 +259,21 @@ El filtro por año lo hace el front porque el endpoint anual **no filtra**: suma
 llega. RESICO (626) no captura deducciones personales ahi — el estimador usa la tarifa general
 del Art. 152, no la del 113-E (DECISION PROVISIONAL, pendiente con la contadora).
 
-### Regimen 601 — Personas Morales (T6, CASCARON)
+### Regimen 601 y RESICO PM — Personas Morales (P3-01, P3-06)
 
-El 601 se ofrece en el onboarding de `pyme` y en el alta de cliente del despacho
-(`REGIMENES_DE_CLIENTE`), pero **no tiene motor**: `POST /api/v1/pre-declaracion` y
-`/pre-declaracion-anual` lo rechazan con `400 "Motor de personas morales en desarrollo"` antes
-de llegar a `calculadora.py`. Lo que ve es:
+Persona moral = regimen `601`, o `626` con RFC de 12 caracteres (RESICO PM;
+`getTabsForProfile(regimen, rfc)`). El motor vive en el backend (`/impuestos/clientes/{clave}/pm/*`
+y `/anual`, `src/services/anualApi.ts`); la pantalla **no calcula**:
 
-- **`PagosProvisionalesPMTab`** (`pagospm`, el tab por DEFECTO): `ingresos nominales x
-  coeficiente de utilidad x 30%` (Arts. 9 y 14 LISR) calculado **en el navegador**, con banner
-  amarillo "Estimacion — motor PM en desarrollo". **No llama al API**, y lista en pantalla lo
-  que la estimacion NO resta (pagos provisionales anteriores, retenciones, PTU, perdidas,
-  ajuste anual por inflacion).
-- **Pre-declaracion**: el tab se queda en la tira y `FiscalitoServicePage` lo reemplaza por un
-  aviso. Deshabilitado con mensaje, no escondido: escondido, nadie sabe si es que la moral no
-  declara o es que el producto no puede. **El corte vive en la pagina y no en
-  `PreDeclaracionTab`**, porque el tab leia (hasta C-02) `profile.regimen` —el del DESPACHO, vacio desde
-  E-05— y la pagina ya resolvio `regimenEnUso` (el del cliente activo o el del contribuyente).
-- **Calendario**: reusa `generar_calendario()` sin cambios, o sea el de `pyme`. **Su anual sale
-  al 30 de abril y una moral la presenta en marzo** (Art. 76 LISR): deuda declarada en
-  `docs/api-contract.md`, no corregida, porque tocar `fiscal_engine` estaba prohibido en T6.
-- Fuera: anual, comparar regimenes, DIOT, retenciones, multi-periodo y estado de cuenta. Todos
-  salen del motor de persona fisica.
+- **`PagosProvisionalesPMTab`** (`pagospm`, tab por defecto): pide los pagos de enero al mes
+  (Art. 14 LISR; RESICO PM Art. 211) y pinta el mes a mes (`TablaMeses`). `DatosPMForm` captura
+  lo que no sale de la boveda: coeficiente, PTU pagada, perdidas, retenciones bancarias, pagos
+  presentados, fuente (contabilidad/boveda).
+- **`anual`** (`AnualClienteTab`): calculo anual del backend y boton "Generar archivo" (Excel de
+  papeles de trabajo, del mismo calculo). Para una PF va arriba de `DeclaracionAnualTab`.
+- **Pre-declaracion**: sigue reemplazada por `AvisoMotorPM` (la de `calculadora.py` es de PF y
+  el API rechaza el 601 con 400), que manda a los dos tabs anteriores.
+- **Calendario**: la anual de una moral vence el 31 de marzo (corregido en P3-01).
 
 ### De quien es el RFC con que se calcula (C-02)
 

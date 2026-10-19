@@ -79,6 +79,7 @@ import * as satVerificacionApi from './satVerificacionApi';
 import * as contabilidadApi from './contabilidadApi';
 // P3-02/03/07/08: impuestos del cliente y calculadoras fiscales.
 import * as impuestosApi from './impuestosApi';
+import * as anualApi from './anualApi';
 import * as conciliacionApi from './conciliacionApi';
 import * as contabilidadElectronicaApi from './contabilidadElectronicaApi';
 import type { ClienteDetalle } from './despachoApi';
@@ -333,6 +334,13 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     tasasIsn: () => impuestosApi.tasasIsn('2026-03-01'),
     fechaLimite: () => impuestosApi.fechaLimite(2026, 1),
   },
+  'anualApi.ts': {
+    obtenerDatosPM: () => anualApi.obtenerDatosPM('moral', 2026),
+    guardarDatosPM: () => anualApi.guardarDatosPM('moral', 2026, {}),
+    pagosProvisionalesPM: () => anualApi.pagosProvisionalesPM('moral', 2026, 3),
+    calcularAnual: () => anualApi.calcularAnual('moral', 2025),
+    papelesAnual: () => anualApi.papelesAnual('moral', 2025),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -375,6 +383,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'satVerificacionApi.ts': satVerificacionApi,
   'contabilidadApi.ts': contabilidadApi,
   'impuestosApi.ts': impuestosApi,
+  'anualApi.ts': anualApi,
   'conciliacionApi.ts': conciliacionApi,
   'contabilidadElectronicaApi.ts': contabilidadElectronicaApi,
 };

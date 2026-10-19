@@ -1076,8 +1076,9 @@ ninguna prueba pega a uno.
 ## Declaraciones — regímenes sin motor (T6)
 
 `POST /api/v1/pre-declaracion` y `POST /api/v1/pre-declaracion-anual` **rechazan el régimen
-601 (General de Ley Personas Morales)** con `400 {"detail": "Motor de personas morales en
-desarrollo"}`.
+601 (General de Ley Personas Morales)** con `400`. Desde P3-01 el `detail` dice a dónde ir: el
+motor PM vive en `/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales` y `.../anual`
+(§Personas morales y anual); esta puerta sigue siendo la de `calculadora.py` (personas físicas).
 
 - **El corte va ANTES que cualquier otra validación**, incluida la de "se requiere al menos una
   factura": un 601 sin facturas tiene que enterarse de que no hay motor, no de que le falta un
@@ -1086,15 +1087,14 @@ desarrollo"}`.
   físicas y su rama por defecto no falla: devolvería un ISR de persona física, creíble y
   equivocado, calculado sobre los ingresos de una moral. El guard es lo único que separa un 400
   honesto de ese número.
-- La lista vive en `REGIMENES_SIN_MOTOR` (`app/routes/declaraciones.py`), no dispersa en `if`s:
-  el día que exista el motor PM se borra una línea.
+- La lista vive en `REGIMENES_SIN_MOTOR` (`app/routes/declaraciones.py`), no dispersa en `if`s.
 - **El 601 SÍ es un valor conocido del catálogo** —`RegimenFiscal.GENERAL_LEY_PM` en
   `app/schemas/fiscal.py` y `NOMBRES_REGIMEN` en `app/constants.py`—, y el resto de los
   endpoints **no lo rechazan**. En particular `POST /api/v1/calendario` lo acepta y le devuelve
-  el calendario de `contributor_type: "pyme"` (mensual + DIOT + anual), que T6 reusó tal cual:
-  **su declaración anual sale al 30 de abril y una persona moral la presenta en marzo**
-  (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, que T6 tenía prohibido
-  tocar. Queda como deuda escrita, no como sorpresa.
+  el calendario de `contributor_type: "pyme"` (mensual + DIOT + anual). **Corregido en P3-01:**
+  la anual de una persona moral (601, o 626 con RFC de 12 caracteres) vence el **31 de marzo**
+  del año siguiente (Arts. 9 último párrafo y 76 fr. V LISR; `fecha_limite_anual` en
+  `fiscal_engine/calendario.py`); las personas físicas siguen en abril (Art. 150).
 
 ---
 
@@ -1656,6 +1656,56 @@ aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`.
 ### `GET /api/v1/impuestos/clientes/{clave}/isn?anio&mes`
 
 ISN del mes con los CFDI de nómina emitidos (por `FechaPago`) y la `clave_entidad` del cliente.
+
+## Personas morales y anual del cliente (P3-01, P3-06)
+
+Router `app/routes/impuestos_anual.py`; motor `app/fiscal_engine/personas_morales.py` (601 y
+RESICO PM) y `anual_pf.py` (PF); fuentes en `apps/api/knowledge_base/16_personas_morales.md`.
+Persona moral = régimen `601`, o `626` con RFC de 12 caracteres (RESICO PM). Las rutas `/pm/*`
+dan **422** si el cliente no lo es; cliente de otro despacho = **404**. En el resumen de
+impuestos, `isr_pm` / `isr_resico_pm` traen ya el pago provisional del mes (antes en cero).
+
+### `GET|PUT /api/v1/impuestos/clientes/{clave}/pm/datos/{anio}`
+
+`DatosAnualesPMSchema` (tabla `datos_anuales_pm`, por cliente y ejercicio; sin renglón rigen
+los defaults): `coeficiente_utilidad` (el que se aplica en ese ejercicio; null = calcularlo con
+`utilidad_fiscal_base`/`ingresos_nominales_base` o con la anual del sistema de hasta cinco
+ejercicios atrás), `anticipos_miembros_base`, `ptu_pagada` + `mes_pago_ptu` (5), `perdidas`
+`[{ejercicio, remanente, actualizada_a: "AAAA-MM"|null}]`, `retenciones_bancarias` y
+`pagos_efectuados` (`{mes: importe}`), `saldos_creditos`/`saldos_deudas` (12 saldos de fin de
+mes si no hay contabilidad), `cuentas_creditos`/`cuentas_deudas`/`cuentas_no_deducibles`
+(prefijos de código agrupador), `deduccion_inversiones`, `deducciones_adicionales`,
+`no_deducibles_adicionales`, `ingresos_adicionales`, `estimulos` `[{concepto, importe,
+fundamento, desde_mes, en_provisionales}]`, `fuente` (`auto`|`contabilidad`|`boveda`),
+`factor_exentos_nomina` (0.47), `aai_en_resico` (false). Respuesta `{"anio", "datos"}`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales`
+
+Body `{"anio", "mes"}`. Pagos de enero a `mes`: 601 por el Art. 14 LISR (coeficiente × ingresos
+nominales acumulados − PTU en octavos de mayo a diciembre − estímulos − pérdidas, × 30 %, −
+pagos anteriores − retenciones Art. 54); RESICO PM por el Art. 211 (cobrado − pagado − PTU −
+pérdidas). Respuesta `{"tipo": "pm"|"resico_pm", "fuente", "coeficiente",
+"origen_coeficiente", "tasa", "fecha_limite", "pagos": [{"mes", "ingresos_mes",
+"ingresos_acumulados", "deducciones_acumuladas", "coeficiente", "utilidad_estimada",
+"ptu_disminuida", "estimulos", "perdidas", "base", "isr_causado", "pagos_anteriores",
+"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado", "a_pagar_pesos"}],
+"notas"}`.
+
+### `POST /api/v1/impuestos/clientes/{clave}/anual` · `POST .../anual/papeles`
+
+Body `{"anio", "pagos_provisionales"?: {mes: importe}}` (sólo PF: pagos realmente
+presentados; la PM los captura en sus datos). Régimen 612/606/625/626 (PF) → `{"tipo": "pf",
+"renglones", "meses": [{"mes", "ingresos", "deducciones", "base", "isr_causado",
+"retenciones", "pago_determinado", "pago_efectuado", "pago_capturado"}], "notas"}`. 601 y
+RESICO PM → `{"tipo": "pm"|"resico_pm", "fuente", "renglones", "meses": [{"mes", "ingresos",
+"deducciones", "no_deducibles", "retenciones", "pago_provisional"}], "ajustes", "cuentas",
+"pagos_provisionales", "coeficiente": {"aplicado", "origen", "siguiente", "utilidad_fiscal",
+"ingresos_nominales", "anticipos_miembros"}, "aai": {saldos, promedios, factor, acumulable,
+deducible}|null, "origen_saldos", "ptu": {"renta_gravable", "porcentaje", "a_repartir",
+"pagada_en_el_ejercicio"}, "perdidas", "notas"}`. Cada renglón: `{"clave", "concepto",
+"importe", "fundamento"}`. Otro régimen → 422. `/anual/papeles` devuelve el `.xlsx` (hojas PF:
+Cálculo ISR, Mes a mes, Notas; PM: Cálculo ISR, Ingresos, Deducciones, Ajuste por inflación,
+Coeficiente [601], PTU, Pérdidas, Pagos provisionales, Notas) armado del MISMO diccionario.
 
 ### `POST /api/v1/calculadoras/actualizacion-recargos`
 
