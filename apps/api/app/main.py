@@ -27,6 +27,7 @@ from app.routes import (
     auditoria,
     boveda,
     calculadoras,
+    calculadoras_laborales,
     calculos_cliente,
     calendario,
     cartera,
@@ -46,6 +47,10 @@ from app.routes import (
     impuestos_anual,
     multi_periodo,
     nomina,
+    nomina_anual,
+    nomina_calculos,
+    nomina_historial,
+    nomina_periodo,
     retenciones,
     retenciones_cfdi,
     sat_descarga,
@@ -86,9 +91,7 @@ app = FastAPI(
 )
 
 cors_origins: list[str] = [
-    origin.strip()
-    for origin in settings.CORS_ORIGINS.split(",")
-    if origin.strip()
+    origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()
 ]
 
 app.add_middleware(RequestLoggingMiddleware)
@@ -107,6 +110,7 @@ app.add_middleware(
     # Que el front pueda leer cuánto esperar tras un 429.
     expose_headers=["Retry-After"],
 )
+
 
 @app.exception_handler(FiscalAgentError)
 async def fiscal_error_handler(request: Request, exc: FiscalAgentError) -> JSONResponse:
@@ -136,6 +140,11 @@ ROUTERS_PROTEGIDOS = (
     agente.router,
     asistencia.router,
     nomina.router,
+    # P4: nómina con plantilla de la cartera, historial y extraordinarias.
+    nomina_periodo.router,
+    nomina_historial.router,
+    nomina_calculos.router,
+    nomina_anual.router,
     despacho.router,
     # R-07: la cartera ya exigía su propio token; aquí además entra al límite por usuario.
     cartera.router,
@@ -151,6 +160,7 @@ ROUTERS_PROTEGIDOS = (
     contabilidad.router,
     impuestos.router,
     calculadoras.router,
+    calculadoras_laborales.router,
     # P2-05/P2-08: reportes contables y cierre de periodo y de ejercicio.
     contabilidad_reportes.router,
     # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).

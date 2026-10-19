@@ -178,5 +178,18 @@ class FiniquitoRequest(BaseModel):
     prima_vacacional: Decimal = Field(default=Decimal("0.25"), ge=Decimal("0.25"), le=1)
     dias_vacaciones_pendientes: Decimal = Field(default=Decimal("0"), ge=0)
     dias_pendientes_de_pago: Decimal = Field(default=Decimal("0"), ge=0)
-    tipo: Literal["renuncia", "despido_injustificado"] = "renuncia"
+    tipo: Literal[
+        "renuncia", "despido_justificado", "despido_injustificado", "muerte", "termino_contrato"
+    ] = "renuncia"
     zona: Literal["general", "zlfn"] = "general"
+    salario_diario_integrado: Decimal | None = Field(
+        default=None,
+        gt=0,
+        description="SDI para las indemnizaciones (Art. 84 LFT). Sin él, se integra con el "
+        "factor de prestaciones mínimas de ley a la antigüedad cumplida.",
+    )
+    incluir_20_dias: bool = Field(
+        default=False,
+        description="20 días por año (Art. 50 fr. II): sólo si el patrón se niega a reinstalar "
+        "(Art. 49) o el trabajador rescinde (Art. 52).",
+    )

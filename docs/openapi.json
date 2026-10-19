@@ -1272,66 +1272,6 @@
         }
       }
     },
-    "/api/v1/nomina/calcular-periodo": {
-      "post": {
-        "tags": [
-          "Nómina (demo)"
-        ],
-        "summary": "DEMO — no desplegar. Calcular la nómina de un periodo",
-        "description": "DEMO — no desplegar. Recibe la plantilla y las incidencias del checador y devuelve los recibos y las cuotas por ramo. `porcion_mensual` y `porcion_bimestral` son lo DEVENGADO en este periodo, no el entero del Art. 39 LSS.",
-        "operationId": "calcular_api_v1_nomina_calcular_periodo_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CalcularPeriodoRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CalcularPeriodoResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/nomina/sbc": {
       "post": {
         "tags": [
@@ -1438,6 +1378,891 @@
                 }
               }
             }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/calcular-periodo": {
+      "post": {
+        "tags": [
+          "Nómina"
+        ],
+        "summary": "Calcular (y guardar) la nómina de un periodo del cliente",
+        "description": "La plantilla sale de la cartera del cliente (P4-01); `empleados` del cuerpo se ignora. Aplica los criterios del cliente (§D26/§D27/§D28), las variables capturadas (P4-05) y, con `tipo=asimilados`, el Art. 94 LISR sin IMSS ni subsidio (P4-04). Guarda el periodo en el historial (P4-02) salvo `guardar=false`.",
+        "operationId": "calcular_api_v1_nomina_calcular_periodo_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalcularPeriodoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalcularPeriodoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/criterios": {
+      "get": {
+        "tags": [
+          "Nómina"
+        ],
+        "summary": "Opciones de los criterios de nómina, con su explicación y default",
+        "operationId": "criterios_disponibles_api_v1_nomina_criterios_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CriteriosResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/historial": {
+      "get": {
+        "tags": [
+          "Nómina — historial"
+        ],
+        "summary": "Historial de nóminas del cliente",
+        "operationId": "listar_historial_api_v1_nomina_clientes__cliente_id__historial_get",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistorialResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}": {
+      "get": {
+        "tags": [
+          "Nómina — historial"
+        ],
+        "summary": "Abrir un periodo guardado, idéntico a como se calculó",
+        "operationId": "abrir_periodo_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__get",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodoGuardadoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar": {
+      "post": {
+        "tags": [
+          "Nómina — historial"
+        ],
+        "summary": "Cerrar un periodo: ya no se puede recalcular",
+        "operationId": "cerrar_periodo_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__cerrar_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeriodoGuardadoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/comparar": {
+      "get": {
+        "tags": [
+          "Nómina — historial"
+        ],
+        "summary": "Comparar dos periodos guardados (b − a)",
+        "operationId": "comparar_api_v1_nomina_clientes__cliente_id__comparar_get",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "a",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "A"
+            }
+          },
+          {
+            "name": "b",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "B"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparacionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/aguinaldo": {
+      "post": {
+        "tags": [
+          "Nómina — extraordinarias"
+        ],
+        "summary": "Aguinaldo del ejercicio (Art. 87 LFT, 30 UMA exentas, Art. 96 o 174 RLISR)",
+        "operationId": "aguinaldo_api_v1_nomina_clientes__cliente_id__aguinaldo_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__schemas__nomina_p4__AguinaldoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/finiquito": {
+      "post": {
+        "tags": [
+          "Nómina — extraordinarias"
+        ],
+        "summary": "Finiquito o liquidación (LFT 48-50, 79, 87, 162; LISR 93 fr. XIII, 95, 96)",
+        "operationId": "finiquito_api_v1_nomina_clientes__cliente_id__finiquito_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__schemas__nomina_p4__FiniquitoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/ptu": {
+      "post": {
+        "tags": [
+          "Nómina — anuales"
+        ],
+        "summary": "Reparto de utilidades (Arts. 117-127 LFT; 15 UMA exentas)",
+        "operationId": "ptu_api_v1_nomina_clientes__cliente_id__ptu_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PTURequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/ajuste-anual": {
+      "post": {
+        "tags": [
+          "Nómina — anuales"
+        ],
+        "summary": "Cálculo anual del ISR de sueldos (Art. 97 LISR, tarifa del Art. 152)",
+        "operationId": "ajuste_api_v1_nomina_clientes__cliente_id__ajuste_anual_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjusteAnualRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "422": {
             "content": {
@@ -8146,7 +8971,7 @@
           "calculadoras"
         ],
         "summary": "Aguinaldo",
-        "description": "Aguinaldo proporcional y su ISR (versión mínima, P4 la reemplaza).",
+        "description": "Aguinaldo proporcional (Art. 87 LFT), 30 UMA exentas y su ISR (Art. 96 LISR).",
         "operationId": "aguinaldo_api_v1_calculadoras_aguinaldo_post",
         "parameters": [
           {
@@ -8171,7 +8996,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AguinaldoRequest"
+                "$ref": "#/components/schemas/app__schemas__impuestos__AguinaldoRequest"
               }
             }
           }
@@ -8208,7 +9033,7 @@
           "calculadoras"
         ],
         "summary": "Ptu",
-        "description": "PTU de un trabajador y su ISR (versión mínima, P4 la reemplaza).",
+        "description": "PTU de un trabajador con los totales de la empresa (Arts. 123 y 127 LFT) y su ISR.",
         "operationId": "ptu_api_v1_calculadoras_ptu_post",
         "parameters": [
           {
@@ -8270,7 +9095,7 @@
           "calculadoras"
         ],
         "summary": "Finiquito",
-        "description": "Finiquito o liquidación y su ISR (versión mínima, P4 la reemplaza).",
+        "description": "Finiquito o liquidación con el motor de P4 (Arts. 48-50, 79, 87, 162 LFT; 93, 95, 96 LISR).\n\nSin SDI capturado se integra con el factor de prestaciones mínimas de ley a la\nantigüedad cumplida: la indemnización va con salario integrado (Art. 84 LFT), no con\nel diario.",
         "operationId": "finiquito_api_v1_calculadoras_finiquito_post",
         "parameters": [
           {
@@ -8295,7 +9120,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FiniquitoRequest"
+                "$ref": "#/components/schemas/app__schemas__impuestos__FiniquitoRequest"
               }
             }
           }
@@ -13385,55 +14210,129 @@
         "title": "AgentePreDeclaracionResponse",
         "description": "Respuesta del agente de pre-declaraciones."
       },
-      "AguinaldoRequest": {
+      "AjusteAnualRequest": {
         "properties": {
-          "salario_diario": {
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2026.0,
+            "title": "Ejercicio"
+          },
+          "trabajadores": {
+            "items": {
+              "$ref": "#/components/schemas/AjusteAnualTrabajador"
+            },
+            "type": "array",
+            "title": "Trabajadores",
+            "description": "Acumulados capturados. Vacío = se suman del historial de nóminas ordinarias guardadas del ejercicio.",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "ejercicio"
+        ],
+        "title": "AjusteAnualRequest"
+      },
+      "AjusteAnualTrabajador": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "ingresos_gravados": {
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "minimum": 0.0
               },
               {
                 "type": "string"
               }
             ],
-            "title": "Salario Diario"
+            "title": "Ingresos Gravados"
           },
-          "dias_aguinaldo": {
-            "type": "integer",
-            "minimum": 15.0,
-            "title": "Dias Aguinaldo",
-            "default": 15
-          },
-          "dias_trabajados_en_el_anio": {
-            "type": "integer",
-            "maximum": 366.0,
-            "minimum": 0.0,
-            "title": "Dias Trabajados En El Anio",
-            "default": 365
-          },
-          "fecha_pago": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha Pago"
-          },
-          "zona": {
-            "type": "string",
-            "enum": [
-              "general",
-              "zlfn"
+          "ingresos_exentos": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
             ],
-            "title": "Zona",
-            "default": "general"
+            "title": "Ingresos Exentos",
+            "default": "0"
+          },
+          "isr_retenido": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Isr Retenido"
+          },
+          "subsidio_correspondido": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Subsidio Correspondido",
+            "default": "0"
+          },
+          "comunico_que_declara": {
+            "type": "boolean",
+            "title": "Comunico Que Declara",
+            "default": false
+          },
+          "impuesto_local_retenido": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Impuesto Local Retenido",
+            "description": "Impuesto local a los ingresos por salarios retenido en el año: se resta de la base (Art. 97 LISR) si su tasa no excede del 5 %.",
+            "default": "0"
+          },
+          "tasa_impuesto_local": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasa Impuesto Local"
           }
         },
         "type": "object",
         "required": [
-          "salario_diario",
-          "fecha_pago"
+          "empleado_no",
+          "ingresos_gravados",
+          "isr_retenido"
         ],
-        "title": "AguinaldoRequest",
-        "description": "`POST /calculadoras/aguinaldo`."
+        "title": "AjusteAnualTrabajador"
       },
       "AnualRequest": {
         "properties": {
@@ -13843,7 +14742,33 @@
               }
             ],
             "title": "Empleados",
-            "description": "Omitirlo usa la plantilla de la demo, y SÓLO es válido para el cliente `demo`: calcularle a un cliente real la nómina de otras 9 personas sería peor que fallar."
+            "description": "P4-01: SE IGNORA. La plantilla sale de la cartera del cliente en el backend; si viene, la respuesta lo advierte y no cambia nada."
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "ordinaria",
+              "extraordinaria",
+              "asimilados"
+            ],
+            "title": "Tipo",
+            "description": "`asimilados` calcula sólo a los empleados con régimen 05-11 (Art. 94 LISR); `ordinaria` y `extraordinaria`, a los de sueldos (02).",
+            "default": "ordinaria"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/VariablesEmpleadoSchema"
+            },
+            "type": "array",
+            "title": "Variables",
+            "description": "Variables e incidencias capturadas por empleado (P4-05).",
+            "default": []
+          },
+          "guardar": {
+            "type": "boolean",
+            "title": "Guardar",
+            "description": "Guarda el periodo en el historial (P4-02).",
+            "default": true
           },
           "incluir_explicacion": {
             "type": "boolean",
@@ -13855,8 +14780,7 @@
         "required": [
           "cliente",
           "periodo",
-          "incidencias",
-          "parametros"
+          "incidencias"
         ],
         "title": "CalcularPeriodoRequest"
       },
@@ -13931,6 +14855,35 @@
               }
             ],
             "title": "Explicacion"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo",
+            "default": "ordinaria"
+          },
+          "periodo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Id",
+            "description": "Id en el historial (P4-02)."
+          },
+          "criterios": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Criterios"
+          },
+          "clave_periodicidad": {
+            "type": "string",
+            "title": "Clave Periodicidad",
+            "default": ""
           }
         },
         "type": "object",
@@ -13948,6 +14901,50 @@
         ],
         "title": "CalcularPeriodoResponse",
         "description": "El resultado del periodo.\n\nLOS TRES TOTALES SON EL ANCLA DEL CUADRE DE O-04\n------------------------------------------------\n`ResultadoPeriodo` ya los calculaba —los usa `_resumen_para_llm`— y **no\nviajaban**. El front los recomponía sumando los recibos para el PDF, y O-04\niba a hacer lo mismo para los TXT.\n\nUn revisor lo llamó por su nombre: comparar el PDF contra los TXT cuando los\ndos derivan del mismo módulo del front es **tautológico**. Sólo puede fallar\nsi un generador escribe el campo en la posición equivocada; un error en la\nsuma pasa verde en los dos lados.\n\nCon estos tres campos el cuadre tiene un tercer punto que no depende del\nnavegador: los bytes emitidos se parsean de vuelta y se comparan **contra el\nmotor**. Las cuotas obrera y patronal ya eran derivables de\n`porcion_mensual` / `porcion_bimestral`, así que no se duplican aquí."
+      },
+      "CalculoResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "periodo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo Id"
+          },
+          "resultado": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Resultado"
+          },
+          "advertencias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advertencias",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "resultado"
+        ],
+        "title": "CalculoResponse",
+        "description": "Respuesta genérica de las calculadoras: el resultado con su desglose."
       },
       "CalendarioPatronalResponse": {
         "properties": {
@@ -14382,6 +15379,10 @@
             "$ref": "#/components/schemas/ParametrosSalarialesSchema",
             "description": "Prestaciones y horario del patrón (O-03). Con default completo: una cartera escrita antes de O-03 no lo trae y tiene que seguir leyéndose — el default es el mínimo de ley, que es lo que la app aplicaba hasta ahora."
           },
+          "criterios_nomina": {
+            "$ref": "#/components/schemas/CriteriosNominaSchema",
+            "description": "Criterios del despacho para este cliente (§D26, §D27, §D28, Art. 174 RLISR, remanente de PTU). Con default completo: un cliente guardado antes de P4 no lo trae y se lee con los defaults."
+          },
           "periodo_sugerido": {
             "anyOf": [
               {
@@ -14599,6 +15600,50 @@
           "clientes"
         ],
         "title": "ClientesResponse"
+      },
+      "ComparacionResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "a": {
+            "$ref": "#/components/schemas/ResumenPeriodoSchema"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ResumenPeriodoSchema"
+          },
+          "diferencia_neto": {
+            "type": "string",
+            "title": "Diferencia Neto"
+          },
+          "diferencia_isr": {
+            "type": "string",
+            "title": "Diferencia Isr"
+          },
+          "diferencia_percepciones": {
+            "type": "string",
+            "title": "Diferencia Percepciones"
+          },
+          "por_empleado": {
+            "items": {
+              "$ref": "#/components/schemas/DiferenciaEmpleado"
+            },
+            "type": "array",
+            "title": "Por Empleado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "diferencia_neto",
+          "diferencia_isr",
+          "diferencia_percepciones",
+          "por_empleado"
+        ],
+        "title": "ComparacionResponse"
       },
       "CompararRegimenRequest": {
         "properties": {
@@ -14996,6 +16041,91 @@
         ],
         "title": "ContributorType",
         "description": "Tipo de contribuyente en el ecosistema Fiscalito."
+      },
+      "CriteriosNominaSchema": {
+        "properties": {
+          "parcial": {
+            "type": "string",
+            "enum": [
+              "tarifa_proporcional",
+              "tarifa_periodo"
+            ],
+            "title": "Parcial",
+            "default": "tarifa_proporcional"
+          },
+          "febrero": {
+            "type": "string",
+            "enum": [
+              "quince_siempre",
+              "dias_calendario"
+            ],
+            "title": "Febrero",
+            "default": "quince_siempre"
+          },
+          "prestaciones": {
+            "type": "string",
+            "enum": [
+              "mayor",
+              "ficha"
+            ],
+            "title": "Prestaciones",
+            "default": "mayor"
+          },
+          "isr_extraordinario": {
+            "type": "string",
+            "enum": [
+              "art_96",
+              "art_174"
+            ],
+            "title": "Isr Extraordinario",
+            "default": "art_96"
+          },
+          "ptu_remanente": {
+            "type": "string",
+            "enum": [
+              "no_se_reparte",
+              "redistribuir",
+              "sumar_siguiente_ejercicio"
+            ],
+            "title": "Ptu Remanente",
+            "default": "no_se_reparte"
+          }
+        },
+        "type": "object",
+        "title": "CriteriosNominaSchema",
+        "description": "Criterios de nómina del cliente (P4, DP-3). Opciones y explicación en\n`app/nomina_engine/criterios.py:OPCIONES`; los defaults son los documentados ahí."
+      },
+      "CriteriosResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Defaults"
+          },
+          "opciones": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Opciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "defaults",
+          "opciones"
+        ],
+        "title": "CriteriosResponse"
       },
       "CuentaBancariaCambio": {
         "properties": {
@@ -16398,6 +17528,53 @@
         "title": "DiaTrabajado",
         "description": "Detalle de un dia del periodo, para que la pantalla pueda explicarlo."
       },
+      "DiferenciaEmpleado": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "neto_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neto A"
+          },
+          "neto_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Neto B"
+          },
+          "diferencia": {
+            "type": "string",
+            "title": "Diferencia"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "nombre",
+          "neto_a",
+          "neto_b",
+          "diferencia"
+        ],
+        "title": "DiferenciaEmpleado"
+      },
       "DispositivoGuardadoResponse": {
         "properties": {
           "exito": {
@@ -16709,6 +17886,26 @@
             "title": "Fecha Alta",
             "description": "`null` cuando no se conoce, y NO se inventa (§D9)."
           },
+          "fecha_baja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Baja",
+            "description": "P4-03: fecha de baja. Un periodo que la contiene se calcula PARCIAL con el criterio §D26 del cliente; los periodos posteriores ya no lo incluyen."
+          },
+          "tipo_regimen": {
+            "type": "string",
+            "pattern": "^(02|05|06|07|08|09|10|11)$",
+            "title": "Tipo Regimen",
+            "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
+            "default": "02"
+          },
           "tipo_contrato": {
             "$ref": "#/components/schemas/TipoContrato",
             "default": "indeterminado"
@@ -16812,6 +18009,26 @@
             ],
             "title": "Fecha Alta",
             "description": "`null` cuando no se conoce, y NO se inventa (§D9)."
+          },
+          "fecha_baja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Baja",
+            "description": "P4-03: fecha de baja. Un periodo que la contiene se calcula PARCIAL con el criterio §D26 del cliente; los periodos posteriores ya no lo incluyen."
+          },
+          "tipo_regimen": {
+            "type": "string",
+            "pattern": "^(02|05|06|07|08|09|10|11)$",
+            "title": "Tipo Regimen",
+            "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
+            "default": "02"
           },
           "tipo_contrato": {
             "$ref": "#/components/schemas/TipoContrato",
@@ -17522,104 +18739,6 @@
         ],
         "title": "EventosResponse"
       },
-      "FiniquitoRequest": {
-        "properties": {
-          "salario_diario": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Salario Diario"
-          },
-          "fecha_ingreso": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha Ingreso"
-          },
-          "fecha_baja": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha Baja"
-          },
-          "dias_aguinaldo": {
-            "type": "integer",
-            "minimum": 15.0,
-            "title": "Dias Aguinaldo",
-            "default": 15
-          },
-          "prima_vacacional": {
-            "anyOf": [
-              {
-                "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.25
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Prima Vacacional",
-            "default": "0.25"
-          },
-          "dias_vacaciones_pendientes": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Dias Vacaciones Pendientes",
-            "default": "0"
-          },
-          "dias_pendientes_de_pago": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0.0
-              },
-              {
-                "type": "string"
-              }
-            ],
-            "title": "Dias Pendientes De Pago",
-            "default": "0"
-          },
-          "tipo": {
-            "type": "string",
-            "enum": [
-              "renuncia",
-              "despido_injustificado"
-            ],
-            "title": "Tipo",
-            "default": "renuncia"
-          },
-          "zona": {
-            "type": "string",
-            "enum": [
-              "general",
-              "zlfn"
-            ],
-            "title": "Zona",
-            "default": "general"
-          }
-        },
-        "type": "object",
-        "required": [
-          "salario_diario",
-          "fecha_ingreso",
-          "fecha_baja"
-        ],
-        "title": "FiniquitoRequest",
-        "description": "`POST /calculadoras/finiquito`."
-      },
       "FuenteChecada": {
         "type": "string",
         "enum": [
@@ -17696,6 +18815,32 @@
         ],
         "title": "HealthResponse",
         "description": "Modelo de respuesta del endpoint de salud."
+      },
+      "HistorialResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "periodos": {
+            "items": {
+              "$ref": "#/components/schemas/ResumenPeriodoSchema"
+            },
+            "type": "array",
+            "title": "Periodos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cliente",
+          "periodos"
+        ],
+        "title": "HistorialResponse"
       },
       "HistoricaEntrada": {
         "properties": {
@@ -17816,6 +18961,32 @@
         "title": "HorarioSchema",
         "description": "El horario contra el que el checador mide retardos y faltas. (O-03)\n\nEs el mismo `HorarioLaboral` de `schemas/asistencia.py`, con los mismos\ndefaults (08:00-17:00, 15 minutos de tolerancia, lunes a viernes). Vive\naparte porque **aquel es de transporte y éste es de almacenamiento**: el del\ncierre viaja en un request y se descarta; éste se guarda con la empresa y\ntiene que sobrevivir a un reinicio.\n\n`dias_laborables` usa la convención de `datetime.weekday()`: 0 = lunes."
       },
+      "IncapacidadSchema": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "01",
+              "02",
+              "03"
+            ],
+            "title": "Tipo",
+            "description": "c_TipoIncapacidad: 01 riesgo de trabajo, 02 enfermedad general, 03 maternidad."
+          },
+          "dias": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 0.0,
+            "title": "Dias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "dias"
+        ],
+        "title": "IncapacidadSchema"
+      },
       "IncidenciasEmpleado": {
         "properties": {
           "empleado_no": {
@@ -17914,6 +19085,52 @@
         ],
         "title": "IncidenciasEmpleadoSchema",
         "description": "Incidencias de un empleado, tal como las devuelve `cerrar-periodo`.\n\n`dias_periodo` son **días naturales**, no laborables ni cotizados.\n`dias_ausentismo` alimenta `DiasDelPeriodo`; `faltas` descuenta días\npagados. Hoy son el mismo número; en F1-09 divergen."
+      },
+      "InfonavitSchema": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "porcentaje",
+              "cuota_fija",
+              "factor"
+            ],
+            "title": "Tipo"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Valor"
+          },
+          "valor_unidad_diario": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Unidad Diario",
+            "description": "Valor diario de la VSM/UMI vigente para el descuento por factor. FUENTE POR CONFIRMAR: lo publica el Infonavit; el motor no lo trae."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "valor"
+        ],
+        "title": "InfonavitSchema"
       },
       "IsnRequest": {
         "properties": {
@@ -18532,6 +19749,114 @@
         ],
         "title": "OperacionResponse"
       },
+      "PTURequest": {
+        "properties": {
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2020.0,
+            "title": "Ejercicio",
+            "description": "Ejercicio de la utilidad."
+          },
+          "renta_gravable": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Renta Gravable",
+            "description": "Dato capturado (Art. 120 LFT)."
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "trabajadores": {
+            "items": {
+              "$ref": "#/components/schemas/PTUTrabajadorSchema"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Trabajadores"
+          },
+          "guardar": {
+            "type": "boolean",
+            "title": "Guardar",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "ejercicio",
+          "renta_gravable",
+          "fecha_pago",
+          "trabajadores"
+        ],
+        "title": "PTURequest"
+      },
+      "PTUTrabajadorSchema": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "dias_trabajados": {
+            "type": "integer",
+            "maximum": 366.0,
+            "minimum": 0.0,
+            "title": "Dias Trabajados"
+          },
+          "salarios_devengados": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salarios Devengados"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "planta",
+              "sindicalizado",
+              "eventual",
+              "confianza",
+              "director"
+            ],
+            "title": "Tipo",
+            "default": "planta"
+          },
+          "promedio_ptu_3_anios": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Promedio Ptu 3 Anios",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "dias_trabajados",
+          "salarios_devengados"
+        ],
+        "title": "PTUTrabajadorSchema"
+      },
       "PaginaAuditoria": {
         "properties": {
           "exito": {
@@ -18602,16 +19927,25 @@
               },
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Prima Riesgo",
             "description": "Prima de RT autodeterminada (Art. 72 LSS): entre 0.005 y 0.15. No es tasa de ley y no tiene default. El motor también la valida; aquí se acota para responder 422 en la frontera en vez de 500 desde el motor."
           },
           "clave_periodicidad": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Clave Periodicidad",
-            "description": "Clave de c_PeriodicidadPago. 01 diaria, 02 semanal, 04 quincenal, 05 mensual. Catorcenal (03) y decenal (10) responden 422: nadie publica su tarifa verificada (§D10).",
-            "default": "04"
+            "description": "Clave de c_PeriodicidadPago. 01 diaria, 02 semanal, 03 catorcenal (tarifa DERIVADA, §D10), 04 quincenal, 05 mensual, 10 decenal. Sin ella, la de la ficha del cliente."
           },
           "dias_pagados": {
             "anyOf": [
@@ -18628,11 +19962,8 @@
           }
         },
         "type": "object",
-        "required": [
-          "prima_riesgo"
-        ],
         "title": "ParametrosPatron",
-        "description": "Parámetros de la empresa que el motor necesita y no puede adivinar."
+        "description": "Parámetros de la empresa. P4-01: si no vienen, se toman de la ficha del cliente."
       },
       "ParametrosSalarialesSchema": {
         "properties": {
@@ -18823,6 +20154,82 @@
         ],
         "title": "PartidaSchema"
       },
+      "PensionSchema": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "porcentaje",
+              "monto"
+            ],
+            "title": "Tipo"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Valor"
+          },
+          "base": {
+            "type": "string",
+            "enum": [
+              "neto",
+              "bruto"
+            ],
+            "title": "Base",
+            "default": "neto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "valor"
+        ],
+        "title": "PensionSchema"
+      },
+      "PercepcionCapturadaSchema": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "enum": [
+              "002",
+              "010",
+              "038",
+              "049"
+            ],
+            "title": "Clave"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          },
+          "concepto": {
+            "type": "string",
+            "title": "Concepto",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "importe"
+        ],
+        "title": "PercepcionCapturadaSchema"
+      },
       "PercepcionEntrada": {
         "properties": {
           "clave": {
@@ -19005,6 +20412,42 @@
         ],
         "title": "Periodo",
         "description": "Periodo cerrado, inclusivo en los dos extremos."
+      },
+      "PeriodoGuardadoResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "periodo": {
+            "$ref": "#/components/schemas/ResumenPeriodoSchema"
+          },
+          "criterios": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Criterios"
+          },
+          "parametros": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parametros"
+          },
+          "resultado": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Resultado",
+            "description": "La respuesta del cálculo TAL COMO SALIÓ. No se recalcula al abrir."
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "criterios",
+          "parametros",
+          "resultado"
+        ],
+        "title": "PeriodoGuardadoResponse"
       },
       "PeriodoNomina": {
         "properties": {
@@ -19974,6 +21417,59 @@
             },
             "type": "array",
             "title": "Ramos"
+          },
+          "tipo_regimen": {
+            "type": "string",
+            "title": "Tipo Regimen",
+            "default": "02"
+          },
+          "dias_en_periodo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias En Periodo"
+          },
+          "dias_incapacidad": {
+            "type": "integer",
+            "title": "Dias Incapacidad",
+            "default": 0
+          },
+          "parcial": {
+            "type": "boolean",
+            "title": "Parcial",
+            "default": false
+          },
+          "tarifa": {
+            "type": "string",
+            "title": "Tarifa",
+            "default": ""
+          },
+          "isr_causado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isr Causado"
+          },
+          "subsidio_causado": {
+            "type": "string",
+            "title": "Subsidio Causado",
+            "default": "0.00"
+          },
+          "sbc_variable_integrable": {
+            "type": "string",
+            "title": "Sbc Variable Integrable",
+            "description": "Lo que este periodo aporta al SBC variable del bimestre siguiente (Art. 30 fr. II LSS). No cambia el SBC de este periodo.",
+            "default": "0.00"
           }
         },
         "type": "object",
@@ -20248,6 +21744,77 @@
         ],
         "title": "ResultadoRegimen",
         "description": "Resultado ISR estimado para un regimen fiscal especifico."
+      },
+      "ResumenPeriodoSchema": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "periodicidad": {
+            "type": "string",
+            "title": "Periodicidad"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          },
+          "fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fin"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "empleados": {
+            "type": "integer",
+            "title": "Empleados"
+          },
+          "total_percepciones": {
+            "type": "string",
+            "title": "Total Percepciones"
+          },
+          "total_deducciones": {
+            "type": "string",
+            "title": "Total Deducciones"
+          },
+          "total_isr": {
+            "type": "string",
+            "title": "Total Isr"
+          },
+          "total_neto": {
+            "type": "string",
+            "title": "Total Neto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "periodicidad",
+          "inicio",
+          "fin",
+          "fecha_pago",
+          "estado",
+          "empleados",
+          "total_percepciones",
+          "total_deducciones",
+          "total_isr",
+          "total_neto"
+        ],
+        "title": "ResumenPeriodoSchema"
       },
       "ResumenRequest": {
         "properties": {
@@ -21249,6 +22816,194 @@
         ],
         "title": "ValidationError"
       },
+      "VariablesEmpleadoSchema": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "horas_dobles": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Horas Dobles",
+            "default": "0"
+          },
+          "horas_triples": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Horas Triples",
+            "default": "0"
+          },
+          "horas_jornada": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Horas Jornada",
+            "default": "8"
+          },
+          "domingos_trabajados": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Domingos Trabajados",
+            "default": 0
+          },
+          "prima_dominical": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.25
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Dominical",
+            "default": "0.25"
+          },
+          "dias_vacaciones": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Dias Vacaciones",
+            "default": 0
+          },
+          "prima_vacacional": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.25
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Vacacional",
+            "default": "0.25"
+          },
+          "incapacidades": {
+            "items": {
+              "$ref": "#/components/schemas/IncapacidadSchema"
+            },
+            "type": "array",
+            "title": "Incapacidades",
+            "default": []
+          },
+          "faltas_adicionales": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Faltas Adicionales",
+            "default": 0
+          },
+          "percepciones": {
+            "items": {
+              "$ref": "#/components/schemas/PercepcionCapturadaSchema"
+            },
+            "type": "array",
+            "title": "Percepciones",
+            "default": []
+          },
+          "infonavit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InfonavitSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fonacot": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Fonacot",
+            "default": "0"
+          },
+          "prestamo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prestamo",
+            "default": "0"
+          },
+          "pension": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PensionSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "viaticos_comprobados": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Viaticos Comprobados",
+            "default": "0"
+          },
+          "prima_vacacional_exenta_previa": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Vacacional Exenta Previa",
+            "description": "Prima vacacional ya exenta en el año fuera del historial (15 UMA anuales).",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no"
+        ],
+        "title": "VariablesEmpleadoSchema",
+        "description": "Incidencias y variables capturadas por periodo (P4-05)."
+      },
       "ZonaSalarioMinimo": {
         "type": "string",
         "enum": [
@@ -21612,6 +23367,304 @@
         },
         "type": "object",
         "title": "ConfigEntrada"
+      },
+      "app__schemas__impuestos__AguinaldoRequest": {
+        "properties": {
+          "salario_diario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Diario"
+          },
+          "dias_aguinaldo": {
+            "type": "integer",
+            "minimum": 15.0,
+            "title": "Dias Aguinaldo",
+            "default": 15
+          },
+          "dias_trabajados_en_el_anio": {
+            "type": "integer",
+            "maximum": 366.0,
+            "minimum": 0.0,
+            "title": "Dias Trabajados En El Anio",
+            "default": 365
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "zona": {
+            "type": "string",
+            "enum": [
+              "general",
+              "zlfn"
+            ],
+            "title": "Zona",
+            "default": "general"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salario_diario",
+          "fecha_pago"
+        ],
+        "title": "AguinaldoRequest",
+        "description": "`POST /calculadoras/aguinaldo`."
+      },
+      "app__schemas__impuestos__FiniquitoRequest": {
+        "properties": {
+          "salario_diario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Salario Diario"
+          },
+          "fecha_ingreso": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Ingreso"
+          },
+          "fecha_baja": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Baja"
+          },
+          "dias_aguinaldo": {
+            "type": "integer",
+            "minimum": 15.0,
+            "title": "Dias Aguinaldo",
+            "default": 15
+          },
+          "prima_vacacional": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.25
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Vacacional",
+            "default": "0.25"
+          },
+          "dias_vacaciones_pendientes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dias Vacaciones Pendientes",
+            "default": "0"
+          },
+          "dias_pendientes_de_pago": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dias Pendientes De Pago",
+            "default": "0"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "renuncia",
+              "despido_justificado",
+              "despido_injustificado",
+              "muerte",
+              "termino_contrato"
+            ],
+            "title": "Tipo",
+            "default": "renuncia"
+          },
+          "zona": {
+            "type": "string",
+            "enum": [
+              "general",
+              "zlfn"
+            ],
+            "title": "Zona",
+            "default": "general"
+          },
+          "salario_diario_integrado": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salario Diario Integrado",
+            "description": "SDI para las indemnizaciones (Art. 84 LFT). Sin él, se integra con el factor de prestaciones mínimas de ley a la antigüedad cumplida."
+          },
+          "incluir_20_dias": {
+            "type": "boolean",
+            "title": "Incluir 20 Dias",
+            "description": "20 días por año (Art. 50 fr. II): sólo si el patrón se niega a reinstalar (Art. 49) o el trabajador rescinde (Art. 52).",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "salario_diario",
+          "fecha_ingreso",
+          "fecha_baja"
+        ],
+        "title": "FiniquitoRequest",
+        "description": "`POST /calculadoras/finiquito`."
+      },
+      "app__schemas__nomina_p4__AguinaldoRequest": {
+        "properties": {
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2025.0,
+            "title": "Ejercicio"
+          },
+          "fecha_pago": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Pago"
+          },
+          "empleados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Empleados",
+            "description": "Vacío = toda la plantilla de sueldos (régimen 02).",
+            "default": []
+          },
+          "exento_ya_aplicado": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Exento Ya Aplicado",
+            "description": "Exento de aguinaldo ya aplicado en el año (anticipos)."
+          },
+          "guardar": {
+            "type": "boolean",
+            "title": "Guardar",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "ejercicio",
+          "fecha_pago"
+        ],
+        "title": "AguinaldoRequest"
+      },
+      "app__schemas__nomina_p4__FiniquitoRequest": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "fecha_baja": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Baja"
+          },
+          "causa": {
+            "type": "string",
+            "enum": [
+              "renuncia",
+              "despido_justificado",
+              "despido_injustificado",
+              "muerte",
+              "termino_contrato"
+            ],
+            "title": "Causa"
+          },
+          "dias_salario_pendientes": {
+            "type": "integer",
+            "maximum": 31.0,
+            "minimum": 0.0,
+            "title": "Dias Salario Pendientes",
+            "default": 0
+          },
+          "dias_vacaciones_pendientes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Dias Vacaciones Pendientes",
+            "default": "0"
+          },
+          "aguinaldo_ya_pagado": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Aguinaldo Ya Pagado",
+            "default": "0"
+          },
+          "incluir_20_dias": {
+            "type": "boolean",
+            "title": "Incluir 20 Dias",
+            "description": "20 días por año (Art. 50 fr. II LFT): sólo si el patrón se niega a reinstalar (Art. 49) o el trabajador rescinde (Art. 52).",
+            "default": false
+          },
+          "guardar": {
+            "type": "boolean",
+            "title": "Guardar",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "fecha_baja",
+          "causa"
+        ],
+        "title": "FiniquitoRequest"
       }
     }
   }

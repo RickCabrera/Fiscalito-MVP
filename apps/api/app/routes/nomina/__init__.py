@@ -2,7 +2,9 @@
 Rutas de nómina (F1-07, hecho en P0-08): un paquete en vez de un archivo de 550 líneas.
 
 - `periodo.py` — `GET /nomina/periodo-sugerido`, `GET /nomina/demo/plantilla`,
-  `POST /nomina/calcular-periodo`, `POST /nomina/sbc`.
+  `POST /nomina/sbc`.
+  `POST /nomina/calcular-periodo` vive en `routes/nomina_periodo.py` (P4-01: plantilla
+  de la cartera).
 - `cfdi.py` — `POST /nomina/cfdi` (pre-recibo sin timbrar).
 
 Mismas URLs, mismo orden de registro y mismo comportamiento que `routes/nomina.py`: el

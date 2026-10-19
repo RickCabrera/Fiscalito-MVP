@@ -177,7 +177,7 @@ class TestLoQueNO_valida:
     distintos para la misma causa, y el de alla es el que explica el porque.
     """
 
-    @pytest.mark.parametrize("clave", ["03", "10", "06", "07", "08", "09", "99"])
+    @pytest.mark.parametrize("clave", ["06", "07", "08", "09", "99"])
     def test_las_claves_sin_tarifa_no_se_validan_por_duracion(self, clave):
         validar_duracion_periodo(clave, 14)  # no levanta: lo hace el motor de tarifas
 
@@ -185,5 +185,23 @@ class TestLoQueNO_valida:
         """Para que 'lo hace el otro' no sea una promesa sin medir."""
         from app.nomina_engine.tablas_isr_periodicas import tarifa_por_periodicidad
 
+        with pytest.raises(FiscalValidationError, match="bimestral"):
+            tarifa_por_periodicidad("06", date(2026, 9, 15))
+
+
+class TestCatorcenalYDecenal:
+    """P4-03: las dos claves ganaron tarifa, y con ella su guarda de duración."""
+
+    def test_catorcenal_son_14_dias_exactos(self):
+        validar_duracion_periodo("03", 14)
         with pytest.raises(FiscalValidationError, match="catorcenal"):
-            tarifa_por_periodicidad("03", date(2026, 9, 15))
+            validar_duracion_periodo("03", 15)
+
+    @pytest.mark.parametrize("dias", [8, 9, 10, 11])
+    def test_decenal_admite_las_decenas_de_calendario(self, dias):
+        validar_duracion_periodo("10", dias)
+
+    @pytest.mark.parametrize("dias", [7, 12, 14])
+    def test_decenal_rechaza_lo_que_no_es_decena(self, dias):
+        with pytest.raises(FiscalValidationError, match="decenal"):
+            validar_duracion_periodo("10", dias)

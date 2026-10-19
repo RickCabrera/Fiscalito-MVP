@@ -1,76 +1,36 @@
 /**
- * Estado del flujo de nómina de un cliente (extraído de `NominaClientePage` en
- * E-06). DEMO: se borra en F2 con la épica.
+ * Estado del flujo de nómina de un cliente (extraído de `NominaClientePage` en E-06).
  *
- * Todo lo que la pantalla SABE vive aquí; la pantalla sólo lo pinta. La razón
- * de partirlo no es sólo el tope de 300 líneas de `apps/store/CLAUDE.md`: las
- * reglas de abajo son invariantes de datos y se entienden mejor lejos del JSX.
+ * Todo lo que la pantalla SABE vive aquí; la pantalla sólo lo pinta. Las acciones
+ * (cerrar, calcular) viven en `useAccionesNomina` desde P4, por el tope de 300 líneas.
  *
- * LA RUTA ES LA FUENTE DE VERDAD DEL CLIENTE
- * ------------------------------------------
- * El id viene de la ruta y **el contexto se sincroniza a ella**, nunca al
- * revés. Al revés, entrar por `/app/clientes/demo/nomina` con `taller` guardado
- * en `localStorage` dejaría el selector del header diciendo "Taller" y la
- * pantalla calculando `demo`.
+ * LA RUTA ES LA FUENTE DE VERDAD DEL CLIENTE: el contexto se sincroniza a ella, nunca al
+ * revés — si no, el header diría un cliente y la pantalla calcularía otro.
  *
- * CADA DATO VIAJA CON EL CLIENTE QUE LO PRODUJO
- * ---------------------------------------------
- * Nada se limpia en un efecto: todo se **deriva** comparando contra el id de la
- * ruta. Un efecto de limpieza puede olvidarse de una pieza nueva; la derivación
- * no. Sin esto, entre el cambio de ruta y la llegada de la ficha nueva los
- * botones siguen habilitados sobre los datos del cliente anterior, y "Cerrar
- * quincena" en esa ventana cierra el periodo de quien no es.
+ * CADA DATO VIAJA CON EL CLIENTE QUE LO PRODUJO (`DeCliente`): nada se limpia en un
+ * efecto, todo se DERIVA comparando contra el id de la ruta. Un efecto de limpieza puede
+ * olvidarse de una pieza nueva; la derivación no.
  *
- * NO HAY NI UNA CONSTANTE FISCAL AQUÍ
- * -----------------------------------
- * Empleados, prima de riesgo, periodicidad y periodo salen de
- * `GET /despacho/clientes/{id}`. **El periodo NO se deduce de las checadas**:
- * del 16 al 31 de agosto son 16 días naturales y la primera checada es del 17
- * (el 16 es domingo), así que `min`/`max` daría 15 — un día menos de base para
- * las cuotas del IMSS y un día menos pagado.
+ * NO HAY NI UNA CONSTANTE FISCAL AQUÍ. El periodo no se deduce de las checadas: del 16 al
+ * 31 de agosto son 16 días y la primera checada es del 17 — `min`/`max` daría 15.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  calcularNomina,
-  cerrarPeriodo,
-  type EmpleadoNominaRequest,
   obtenerEventos,
   type CierrePeriodo,
+  type EmpleadoNominaRequest,
   type EventoChecada,
-  type NominaPeriodo,
 } from '../../services/nominaDemoApi';
+import type { NominaCalculada, TipoNomina, VariablesEmpleado } from '../../services/nominaApi';
 import { useCartera } from '../../context/carteraStore';
 import { plantillaDeNomina } from './plantillaDeNomina';
-import { incidenciasConLlaveDeCalculo, llavesParaElCierre } from './llavesDelCierre';
-import { contarSinVincular, type EmpleadoCartera } from '../../services/carteraApi';
+import { contarSinVincular } from '../../services/carteraApi';
 import { obtenerCliente, type ClienteDetalle } from '../../services/despachoApi';
 import { useClienteActivo } from '../../context/clienteActivoStore';
+import { useAccionesNomina, type DeCliente } from './useAccionesNomina';
 
 const MS_POLLING = 3000;
-
-/**
- * Qué fecha de pago mandar.
- *
- * Los dos inputs de fecha son libres, así que el operador puede mover el
- * periodo a otro mes. Mandar la `fecha_pago` de la quincena sugerida en ese
- * caso sería calcular un periodo con la vigencia de otro: de esa fecha dependen
- * la UMA, el salario mínimo, la tarifa del Anexo 8 y el transitorio de enero
- * del subsidio (§D18).
- *
- * Cuando el periodo cambió se manda `null` y **lo resuelve el backend**. No se
- * replica aquí el default (`fecha_pago ?? fin`): esa regla vive en un solo
- * lugar, y la respuesta trae `fecha_pago_efectiva` para que la pantalla y el
- * PDF impriman lo que el motor usó.
- */
-function fechaDePago(cliente: ClienteDetalle, inicio: string, fin: string): string | null {
-  const sugerido = cliente.periodo_sugerido;
-  const sinTocar = inicio === sugerido.inicio && fin === sugerido.fin;
-  return sinTocar ? sugerido.fecha_pago : null;
-}
-
-/** Un dato que pertenece a UN cliente. Si no trae su id, no se pinta. */
-type DeCliente<T> = { id: string; valor: T };
 
 function suyo<T>(dato: DeCliente<T> | null, clienteId: string, vacio: T): T {
   return dato && dato.id === clienteId ? dato.valor : vacio;
@@ -81,49 +41,26 @@ export function useNominaCliente(clienteId: string) {
   const [cargada, setCargada] = useState<DeCliente<ClienteDetalle> | null>(null);
   const [eventosDe, setEventosDe] = useState<DeCliente<EventoChecada[]> | null>(null);
   const [cierreDe, setCierreDe] = useState<DeCliente<CierrePeriodo | null> | null>(null);
-  const [nominaDe, setNominaDe] = useState<DeCliente<NominaPeriodo | null> | null>(null);
-  /**
-   * El periodo PERTENECE A UN CLIENTE, con el mismo patrón `DeCliente` que ya
-   * usan la ficha, las checadas, el cierre y la nómina de este archivo.
-   *
-   * Eran dos `useState` sueltos, y funcionaba **por accidente**: durante la
-   * ventana en que la ficha del cliente nuevo viajaba, `cliente` valía `null`
-   * —la cartera venía vacía en ese camino— y el botón quedaba deshabilitado por
-   * esa otra razón. R-06 puebla la cartera, así que `cliente` ya resuelve al
-   * instante desde ella y esa protección de rebote desapareció: quedaban las
-   * fechas del cliente ANTERIOR con el botón vivo, y cerrar ahí habría cerrado
-   * el periodo equivocado. Lo cazó el test de navegación entre clientes, que
-   * existe justo para esto.
-   */
+  const [nominaDe, setNominaDe] = useState<DeCliente<NominaCalculada | null> | null>(null);
+  /** El periodo PERTENECE A UN CLIENTE: con dos `useState` sueltos quedaban las fechas
+   *  del cliente anterior con el botón vivo (lo cazó el test de navegación). */
   const [periodoDe, setPeriodoDe] = useState<DeCliente<{ inicio: string; fin: string }> | null>(null);
+  const [tipoDe, setTipoDe] = useState<DeCliente<TipoNomina> | null>(null);
+  const [variablesDe, setVariablesDe] = useState<DeCliente<Record<string, VariablesEmpleado>> | null>(null);
   const [errorPanel, setErrorPanel] = useState<string | null>(null);
   const [errorDe, setErrorDe] = useState<DeCliente<string | null> | null>(null);
-  /**
-   * El error de CARGAR la ficha, aparte del de las operaciones.
-   *
-   * Compartir estado con `errorDe` haría que anular el de carga —cuando el
-   * cliente sí está en la cartera— tapara también un fallo real de cerrar o
-   * calcular. Son dos cosas distintas y sólo una se puede descartar.
-   */
+  /** El error de CARGAR la ficha, aparte del de las operaciones: sólo uno se descarta. */
   const [errorCargaDe, setErrorCargaDe] = useState<DeCliente<string | null> | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  // La confirmación es estado, no `window.confirm`. Guarda el id del cliente al
-  // que corresponde, para que no sobreviva a un cambio de cliente.
   const [confirmarPara, setConfirmarPara] = useState<string | null>(null);
   const cartera = useCartera();
-  // El efecto de carga NO puede depender de `cartera`: el valor del contexto
-  // cambia de identidad en cada render, así que el efecto volvería a correr y
-  // **revertiría las fechas que el operador acaba de mover** — lo cazó el test
-  // de la fecha de pago. Se lee por ref, y el ref se actualiza en un efecto y
-  // no durante el render: tocar `.current` mientras se renderiza es lo que
-  // hace que un componente no se actualice como se espera.
+  // El efecto de carga NO depende de `cartera` (cambia de identidad en cada render y
+  // revertiría las fechas que el operador movió): se lee por ref.
   const carteraRef = useRef(cartera);
   useEffect(() => {
     carteraRef.current = cartera;
   });
 
-  // El contexto SIGUE a la ruta. Al revés, el header afirmaría un cliente y la
-  // pantalla calcularía otro.
   useEffect(() => {
     if (clienteId && clienteId !== activo) setClienteId(clienteId);
   }, [clienteId, activo, setClienteId]);
@@ -135,123 +72,60 @@ export function useNominaCliente(clienteId: string) {
       .then((c) => {
         if (cancelado) return;
         setCargada({ id: clienteId, valor: c });
-        // Se limpia el error de carga: navegar A → B → A tras un reinicio de la
-        // API dejaba pintado el error viejo de A aunque la ficha ya llegó bien.
         setErrorCargaDe(null);
-        setPeriodoDe({
-          id: clienteId,
-          valor: { inicio: c.periodo_sugerido.inicio, fin: c.periodo_sugerido.fin },
-        });
+        setPeriodoDe({ id: clienteId, valor: { inicio: c.periodo_sugerido.inicio, fin: c.periodo_sugerido.fin } });
       })
       .catch((e: Error) => {
         if (cancelado) return;
-        // Un cliente dado de alta por el contador **no tiene ficha en el
-        // backend**: `GET /despacho/clientes/{id}` sólo conoce los tres de
-        // demostración. Antes de G-03 eso era imposible; ahora es lo normal.
-        //
-        // El error se GUARDA siempre y se DECIDE al leer (ver `error`, abajo).
-        // Consultar la cartera aquí dejaba el error latcheado para siempre
-        // cuando el 404 ganaba la carrera —lo normal en una recarga directa: el
-        // 404 es un round-trip local y la cartera es Firestore con 2500 ms de
-        // tope—, porque el efecto no vuelve a correr cuando la cartera llega.
+        // Un cliente del contador no tiene ficha en el backend de demo: es lo normal.
+        // El error se GUARDA siempre y se DECIDE al leer (ver `error`).
         const suyoEnCartera = carteraRef.current.clientePorId(clienteId);
         if (suyoEnCartera) {
           setPeriodoDe({
             id: clienteId,
-            valor: {
-              inicio: suyoEnCartera.periodo_sugerido.inicio,
-              fin: suyoEnCartera.periodo_sugerido.fin,
-            },
+            valor: { inicio: suyoEnCartera.periodo_sugerido.inicio, fin: suyoEnCartera.periodo_sugerido.fin },
           });
         }
         setErrorCargaDe({ id: clienteId, valor: e.message });
       });
-    return () => { cancelado = true; };
-  }, [clienteId]);
-
-  const refrescar = useCallback(() => {
-    if (!clienteId) return;
-    obtenerEventos(clienteId)
-      .then((r) => {
-        setEventosDe({ id: clienteId, valor: r.eventos });
-        setErrorPanel(null);
-      })
-      .catch((e: Error) => setErrorPanel(e.message));
+    return () => {
+      cancelado = true;
+    };
   }, [clienteId]);
 
   useEffect(() => {
+    if (!clienteId) return;
+    const refrescar = () =>
+      obtenerEventos(clienteId)
+        .then((r) => {
+          setEventosDe({ id: clienteId, valor: r.eventos });
+          setErrorPanel(null);
+        })
+        .catch((e: Error) => setErrorPanel(e.message));
     refrescar();
     const id = setInterval(refrescar, MS_POLLING);
     return () => clearInterval(id);
-  }, [refrescar]);
+  }, [clienteId]);
 
   const fichaBackend = suyo(cargada, clienteId, null);
 
-  /**
-   * El cliente con el que se calcula.
-   *
-   * La ficha del backend cuando existe —trae `fecha_referencia` y los factores
-   * observados que la pantalla Plantilla enseña—, y si no, la de la cartera. Un
-   * cliente dado de alta por el contador sólo existe en la cartera, y tiene que
-   * poder correr su nómina igual.
-   */
+  /** La ficha del backend cuando existe; si no, la de la cartera. */
   const cliente: ClienteDetalle | null = useMemo(() => {
     if (fichaBackend) return fichaBackend;
     const c = clienteId ? cartera.clientePorId(clienteId) : null;
     if (!c) return null;
     return {
-      id: c.id,
-      nombre: c.nombre,
-      giro: c.giro,
-      origen: c.origen,
-      num_empleados: c.empleados.length,
-      prima_riesgo: c.prima_riesgo,
-      clase_riesgo: c.clase_riesgo,
-      clave_periodicidad: c.clave_periodicidad,
-      zona: c.zona,
-      periodo_sugerido: c.periodo_sugerido,
-      // No hay fecha de referencia: este cliente no se midió contra ninguna.
-      fecha_referencia: '',
-      empleados: [],
+      id: c.id, nombre: c.nombre, giro: c.giro, origen: c.origen,
+      num_empleados: c.empleados.length, prima_riesgo: c.prima_riesgo,
+      clase_riesgo: c.clase_riesgo, clave_periodicidad: c.clave_periodicidad, zona: c.zona,
+      periodo_sugerido: c.periodo_sugerido, fecha_referencia: '', empleados: [],
     };
   }, [fichaBackend, clienteId, cartera]);
 
-  // G-01/G-02: los empleados del CÁLCULO salen de la cartera del uid, no de la
-  // ficha del backend. Si esto siguiera leyendo `cliente.empleados`, un alta
-  // nueva no entraría a la nómina y el criterio de G-01 fallaría en silencio.
-  //
-  // Y sólo entran los VINCULADOS: sin `employee_no` no hay checadas que
-  // atribuirle, y mandarlo al cierre con una llave vacía lo haría colisionar
-  // con cualquier otro sin vincular. Los excluidos NO desaparecen callados —
-  // `sinVincular` los cuenta y la pantalla lo dice.
-  // **Mientras la cartera carga no se decide nada.** Sin esta guardia,
-  // `clientePorId` devuelve `null`, la plantilla cae a la ficha del backend
-  // —con todos, vinculados o no— y `sinVincular` vale 0, así que tampoco sale
-  // el aviso. Entrar directo a la nómina con el proveedor frío y cerrar en esa
-  // ventana calcularía una plantilla distinta a la de un segundo después.
-  // R-06: SON TRES ESTADOS, NO DOS. Hasta aquí se distinguía "cargando" de
-  // "cargada", y con el fallback de G-03 daba igual: `clientePorId('demo')`
-  // siempre devolvía algo porque el catálogo del backend poblaba la cartera.
-  //
-  // Quitado ese fallback, aparece el tercero: **cargada, y el cliente NO está
-  // en ella**. Entrar por URL a `/app/clientes/demo/nomina` desde una cuenta
-  // cuya cartera no tiene `demo` daba `clientePorId → null`, y entonces
-  // `plantillaDeNomina` caía a `deLaFicha` — la ficha COMPLETA del backend, sin
-  // filtrar `estaVinculado`— con `sinVincular` en 0, así que **el aviso tampoco
-  // salía**. Un conjunto distinto de empleados entrando a
-  // `POST /nomina/calcular-periodo`, en silencio.
-  //
-  // No es hipotético: es el modo de falla que el comentario de arriba describe
-  // y que la guarda de `cartera.loading` existía para evitar, reaparecido por
-  // otra puerta.
+  // R-06: TRES estados — cargando, cargada con el cliente, cargada SIN él. Mientras
+  // carga no se decide nada; sin él, no se calcula (otro conjunto de empleados en silencio).
   const carteraLista = Boolean(clienteId) && !cartera.loading;
   const deLaCartera = carteraLista ? cartera.clientePorId(clienteId as string) : null;
-  /**
-   * El cliente no es de esta cuenta. **No se calcula.**
-   *
-   * Distinto de "la cartera está cargando" (ahí se espera) y de "el cliente
-   * está y no tiene empleados" (ahí se calcula con cero, que es correcto).
-   */
   const ajenoALaCartera = carteraLista && deLaCartera === null;
   const empleadosCartera = deLaCartera?.empleados ?? null;
   const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
@@ -259,234 +133,46 @@ export function useNominaCliente(clienteId: string) {
   const { inicio, fin } = suyo(periodoDe, clienteId, { inicio: '', fin: '' });
   const setInicio = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio: v, fin } });
   const setFin = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio, fin: v } });
+  const tipo = suyo(tipoDe, clienteId, 'ordinaria' as TipoNomina);
+  const variablesPorEmpleado = suyo(variablesDe, clienteId, {} as Record<string, VariablesEmpleado>);
 
   const eventos = suyo(eventosDe, clienteId, [] as EventoChecada[]);
   const cierre = suyo(cierreDe, clienteId, null);
   const nomina = suyo(nominaDe, clienteId, null);
-  /**
-   * **Derivado, no latcheado.** El error de CARGA sólo cuenta si el cliente
-   * tampoco está en la cartera: si la cartera llega después del 404 —lo normal
-   * en una recarga directa, porque el 404 es un round-trip local y la cartera
-   * es Firestore con 2500 ms de tope—, esto se auto-sana. Guardarlo ya resuelto
-   * lo dejaba pegado para siempre, porque el efecto no vuelve a correr.
-   *
-   * El error de las OPERACIONES (cerrar, calcular) no se descarta nunca.
-   */
+  /** Derivado: el error de CARGA sólo cuenta si el cliente tampoco está en la cartera. */
   const error =
     suyo(errorDe, clienteId, null) ??
-    // `cartera.loading` cuenta como "todavía no se sabe": sin esto, una recarga
-    // directa sobre un cliente propio pintaba el 404 en rojo hasta 2500 ms y
-    // luego lo quitaba solo.
     (deLaCartera || cartera.loading ? null : suyo(errorCargaDe, clienteId, null));
 
-  /**
-   * Checadas que caen DENTRO del periodo que se va a cerrar.
-   *
-   * No basta con `eventos.length === 0`: `obtenerEventos` no manda `desde` —a
-   * propósito, ver `nominaDemoApi`— así que el panel trae todo lo que haya en
-   * memoria. Sembrar el día 15 y demostrar el 16 son **dos quincenas
-   * distintas** (lo advierte `demo_nomina.quincena()`): habría checadas en el
-   * panel, ninguna en el periodo, y `cerrar_periodo` marcaría falta todos los
-   * días sin que nadie preguntara nada.
-   */
+  /** Checadas DENTRO del periodo: el panel trae todo lo que hay en memoria. */
   const sinChecadasEnElPeriodo = !eventos.some((e) => {
     const dia = e.timestamp.slice(0, 10);
     return dia >= inicio && dia <= fin;
   });
 
-  // La decisión de quién entra vive en `plantillaDeNomina`, que se prueba
-  // directo: es la que carga los dos criterios de la épica.
+  // Quién entra al CIERRE (G-01/G-02). El cálculo ya no la manda (P4-01): la lee el backend.
   const plantilla: EmpleadoNominaRequest[] = useMemo(
     () => plantillaDeNomina(cliente?.empleados ?? [], empleadosCartera),
     [cliente, empleadosCartera],
   );
 
-  /**
-   * El cierre vuelve con la llave del checador; los recibos se indexan por la
-   * del cálculo. Sin cartera no hay con qué traducir y se deja tal cual: es el
-   * camino del catálogo de demostración, donde las dos llaves coinciden.
-   */
-  const incidenciasDelCierre = (
-    resultado: CierrePeriodo,
-    deLaCarteraAhora: EmpleadoCartera[] | null,
-  ): CierrePeriodo =>
-    deLaCarteraAhora
-      ? {
-          ...resultado,
-          incidencias: incidenciasConLlaveDeCalculo(resultado.incidencias, deLaCarteraAhora),
-        }
-      : resultado;
-
-  /**
-   * O-03: LA GUARDA DE PERIODICIDAD SE FUE AL MOTOR, Y AQUÍ NO QUEDA COPIA.
-   *
-   * Vivía aquí, con sus propios umbrales hardcodeados (`['01','02','05']` y
-   * `dias >= 14 && dias <= 17`), y era la ÚNICA defensa contra el agujero de
-   * `backlog.md` §G puntos 3 y 6: un patrón Mensual con base de quincena
-   * recibiendo la tarifa mensual del Art. 96 —ISR subestimado con recibo
-   * creíble— y el simétrico, que además no cubría.
-   *
-   * Ahora la tiene `nomina_engine/duracion_periodo.py`, que corre en
-   * `calcular_periodo` y por lo tanto **no se puede saltar desde el navegador**.
-   * Dejar esta copia habría sido peor que quitarla: sus umbrales y los del
-   * motor discrepaban en los bordes —el rango real de una quincena es 13 a 16
-   * días, no 14 a 17— así que en el borde uno callaba y el otro rechazaba, o al
-   * revés. Dos verdades sobre la misma regla fiscal.
-   *
-   * El 422 del motor llega a la pantalla por el mismo camino que cualquier otro
-   * error de cálculo, y su mensaje distingue las dos causas —clave equivocada o
-   * periodo parcial— que es más de lo que decía éste.
-   */
-
-  const cerrar = async () => {
-    if (!cliente) return;
-    // **La guarda va AQUÍ, no en el badge del paso.** `PasoNomina` es
-    // presentacional: pinta `bloqueado` en gris y renderiza `{children}` sin
-    // condición, así que el botón seguía vivo. Y `disabled` es una propiedad
-    // del DOM, no una garantía del handler.
-    //
-    // Cerrar mientras la cartera carga usaría las llaves del CATÁLOGO en vez de
-    // las del aparato: cero checadas encontradas para quien tenga número
-    // propio, y cuando la cartera llegue la plantilla vuelve a cuadrar por
-    // `empleado_no`, así que nada levanta — recibo con faltas de más y en
-    // silencio. Es el bug de G-02 entrando por la puerta del tiempo.
-    // SON TRES PUERTAS, NO DOS, y este comentario decía que eran dos.
-    // `cerrar` se exporta y el diálogo de confirmación la llama DIRECTO
-    // ("Cerrar de todos modos"), sin pasar por `pedirCierre`. El camino es
-    // real: se pide el cierre con el cliente presente, la cartera se recarga
-    // sin él —otra pestaña lo borró, o `recargar()`—, `confirmarPara` sigue
-    // apuntando al mismo id y el diálogo sigue en pantalla. El clic mandaba al
-    // backend la ficha COMPLETA del catálogo, sin filtrar vinculados.
-    //
-    // No produce un recibo con ISR mal —esa puerta sí estaba cerrada— pero sí
-    // un cierre con el conjunto de empleados equivocado, que es el insumo del
-    // cálculo.
-    if (cartera.loading || ajenoALaCartera) return;
-    /**
-     * La llave es `clienteId`, no `cliente.id`. (F-02)
-     *
-     * **Esto NO arregla un error invisible, y decir lo contrario mandaría al
-     * siguiente lector a construir sobre una premisa falsa.** Hoy los dos
-     * valores son el mismo string por las dos únicas vías que producen
-     * `cliente`: `cliente_por_id` es un lookup exacto de diccionario en el
-     * backend, y `clientePorId` compara con igualdad estricta en la cartera.
-     * El error de operación SÍ se pintaba. El modo de falla real de F-02 era el
-     * mensaje mudo —un 422 que decía "Extra inputs are not permitted" sin
-     * nombrar el campo—, y ése se arregla en `errorApi.ts`.
-     *
-     * Se fija en el parámetro del hook porque este `id` hace dos cosas: es la
-     * llave con la que `suyo()` decide si el dato es de este cliente, **y viaja
-     * al backend** como argumento de `cerrarPeriodo`/`calcularNomina`. Anclar
-     * las dos en el parámetro —y no en un dato derivado que llega por la red—
-     * es la misma disciplina que ya siguen `setPeriodoDe`, `setCargada` y
-     * `setEventosDe` en este archivo.
-     */
-    const id = clienteId;
-    setConfirmarPara(null);
-    setOcupado(true);
-    setErrorDe(null);
-    try {
-      setNominaDe({ id, valor: null });
-      setCierreDe({
-        id,
-        // **La llave del CHECADOR**, no la del cálculo: `cerrar_periodo` casa
-        // `evento.empleado_no` —el `employeeNoString` del aparato— contra esta
-        // lista. Mandar la interna hacía que un empleado con llaves distintas
-        // no encontrara ni una de sus checadas: falta todo el periodo, menos
-        // días pagados y menores cuotas, en silencio.
-        valor: incidenciasDelCierre(
-          await cerrarPeriodo(
-            id,
-            llavesParaElCierre(plantilla, empleadosCartera),
-            { inicio, fin },
-          ),
-          empleadosCartera,
-        ),
-      });
-    } catch (e) {
-      setErrorDe({ id, valor: (e as Error).message });
-    } finally {
-      setOcupado(false);
-    }
-  };
-
-  const calcular = async () => {
-    if (!cliente || !cierre) return;
-    // R-06. Misma guarda que en `pedirCierre`, y no es redundante: se puede
-    // llegar aquí con un cierre viejo en estado y la cartera ya resuelta a "no
-    // es tuyo". Cerrar una sola de las dos puertas deja la otra abierta.
-    if (ajenoALaCartera) {
-      setErrorDe({
-        // F-02: ver la nota de `clienteId` en `cerrar`.
-        id: clienteId,
-        valor:
-          'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
-          'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
-          'Ábrelo desde tu lista de clientes.',
-      });
-      return;
-    }
-    // F-02: `clienteId`, no `cliente.id`. Ver la nota en `cerrar`.
-    const id = clienteId;
-    setOcupado(true);
-    setErrorDe(null);
-    try {
-      // Las incidencias van verbatim: `dias_periodo`, `faltas` y
-      // `dias_ausentismo` alimentan la base de cuotas y los días pagados.
-      setNominaDe({
-        id,
-        valor: await calcularNomina(
-          id,
-          { inicio, fin, fecha_pago: fechaDePago(cliente, inicio, fin) },
-          cierre.incidencias,
-          cliente,
-          // La plantilla va aparte y explícita: es lo que hace que un empleado
-          // dado de alta hoy aparezca en los recibos de hoy, sin tener que
-          // fabricar una ficha con campos inventados.
-          plantilla,
-        ),
-      });
-    } catch (e) {
-      setErrorDe({ id, valor: (e as Error).message });
-    } finally {
-      setOcupado(false);
-    }
-  };
+  const acciones = useAccionesNomina({
+    clienteId, cliente, cierre, carteraCargando: cartera.loading, ajenoALaCartera, plantilla,
+    empleadosCartera, inicio, fin, sinChecadasEnElPeriodo, tipo,
+    variables: Object.values(variablesPorEmpleado),
+    setCierreDe, setNominaDe, setErrorDe, setOcupado, setConfirmarPara,
+  });
 
   return {
     cliente,
     /** Empleados de la cartera que NO están vinculados al checador (G-02). */
     sinVincular,
-    /**
-     * Los empleados de la CARTERA, para los exportadores de O-04.
-     *
-     * El recibo no trae NSS, ni apellidos por separado, ni fecha de alta:
-     * `ReciboNomina` tiene `empleado_no` y `nombre`. El layout del IMSS pide
-     * los tres apellidos en campos distintos y el NSS con su verificador, así
-     * que hay que cruzar por `empleado_no`.
-     */
+    /** Los empleados de la CARTERA, para los exportadores de O-04 y la captura de P4-05. */
     empleadosDeLaCartera: empleadosCartera ?? [],
-    /**
-     * Registro patronal y guía de la subdelegación.
-     *
-     * Vacíos cuando no se han capturado, y **el exportador levanta en vez de
-     * emitir un archivo con el registro patronal en blanco** — que el IMSS
-     * rechazaría sin decir cuál de los dos faltaba.
-     *
-     * Son **de cada cliente**: cada patrón tiene su propio registro patronal
-     * ante el IMSS, y usar el de otro presentaría los movimientos afiliatorios
-     * bajo el patrón equivocado.
-     */
+    /** Registro patronal y guía: de CADA cliente; vacíos hacen levantar al exportador. */
     registroPatronal: deLaCartera?.registro_patronal ?? '',
     guiaSubdelegacion: deLaCartera?.guia_subdelegacion ?? '',
-    /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
     carteraCargando: cartera.loading,
-    /**
-     * R-06: el cliente no está en la cartera de esta cuenta. **No se calcula.**
-     * Sin esto, la plantilla caía a la ficha del backend sin filtrar
-     * vinculados y con el aviso apagado — otro conjunto de empleados entrando
-     * al cálculo, en silencio.
-     */
     ajenoALaCartera,
     eventos,
     cierre,
@@ -498,25 +184,22 @@ export function useNominaCliente(clienteId: string) {
     setInicio,
     fin,
     setFin,
+    /** P4: tipo de nómina y variables capturadas por empleado. */
+    tipo,
+    setTipo: (t: TipoNomina) => {
+      setTipoDe({ id: clienteId, valor: t });
+      setNominaDe({ id: clienteId, valor: null });
+    },
+    variables: variablesPorEmpleado,
+    setVariables: (v: VariablesEmpleado) =>
+      setVariablesDe({ id: clienteId, valor: { ...variablesPorEmpleado, [v.empleado_no]: v } }),
     cargandoCliente: cliente === null && error === null,
     confirmarCierre: confirmarPara === clienteId,
     cancelarConfirmacion: () => setConfirmarPara(null),
-    // Sin checadas EN EL PERIODO el cálculo NO sale en ceros: cada quien cobra
-    // los días no laborables, así que la nómina se ve completa y creíble con la
-    // ausencia escondida. Mejor preguntar que enseñar eso enfrente de alguien.
-    pedirCierre: () => {
-      // La guarda va en la ACCIÓN, no en el badge del paso. En la corrida G se
-      // puso en el letrero y el botón quedó vivo, en gris, sin impedir nada.
-      if (!cliente || cartera.loading || ajenoALaCartera) return;
-      if (sinChecadasEnElPeriodo) setConfirmarPara(cliente.id);
-      else void cerrar();
-    },
-    cerrar,
-    calcular,
-    // Empleados sin UNA SOLA checada: es "a este cliente nadie le sembró", no
-    // "ausentismo prolongado". Los dos se ven igual en la tabla de incidencias.
-    ausentesTotales: (cierre?.incidencias ?? [])
-      .filter((i) => i.dias_trabajados === 0)
-      .map((i) => i.empleado_no),
+    pedirCierre: acciones.pedirCierre,
+    cerrar: acciones.cerrar,
+    calcular: acciones.calcular,
+    // Sin UNA checada: "a este cliente nadie le sembró", no "ausentismo prolongado".
+    ausentesTotales: (cierre?.incidencias ?? []).filter((i) => i.dias_trabajados === 0).map((i) => i.empleado_no),
   };
 }

@@ -140,6 +140,15 @@ se generó desde la fórmula porque las tablas periódicas de este módulo son l
 únicamente por estar validadas contra literales publicados. Agregarla es transcribir sus 22
 celdas con su cita.
 
+**Actualización P4-03 (2026-10-19).** La **decenal** ya se entrega: sus 11 renglones se
+transcribieron del Anexo 8 RMF 2026 (rubro B, "pagos que correspondan a un periodo de 10 días")
+como literales en `tests/nomina/test_p4_motor.py` y la regla de derivación los reproduce al
+centavo. La **catorcenal** se entrega **DERIVADA** (diaria del Anexo 8 × 14, la misma regla que
+reproduce las publicadas de 7, 10 y 15 días), marcada en `TARIFAS_DERIVADAS`; la respuesta del
+endpoint lo advierte en cada cálculo. **FUENTE POR CONFIRMAR** con la contadora: ni el Anexo 8 ni
+el RLISR publican tarifa de 14 días. La guarda de duración se conserva: catorcenal = 14 días
+exactos; decenal = 8 a 11 (decenas de calendario).
+
 ## D11 · Base mensual del tope del subsidio en nóminas sub-mensuales — ABIERTA
 
 El decreto fija el tope del subsidio en **$11,492.66 mensuales**, y el caso real es de nómina
@@ -908,6 +917,23 @@ parcial y el motor aplica la regla elegida.
 
 ---
 
+### Resuelta como criterio configurable (P4-03, 2026-10-19)
+
+Ya no se bloquea. Cada cliente elige en `criterios_nomina.parcial`:
+
+- **`tarifa_proporcional` (DEFAULT)** — tarifa del Art. 96 derivada a los días con relación
+  laboral (opción 3 de arriba generalizada: diaria × días). **Por qué es la conservadora:** con
+  8 días de sueldo la tarifa quincenal completa coloca el ingreso en renglones más bajos y
+  retiene de menos (el error que la guarda vino a cerrar); el patrón responde solidariamente por
+  lo no retenido (Art. 26 fr. I CFF) y retener de más se corrige en el ajuste anual (Art. 97).
+  Medido: alta el 24-ago, 8 días de $500 → $378.59 proporcional contra $258.11 con la quincenal.
+- **`tarifa_periodo`** — la opción 1 (lo que hacía la app antes de O-03).
+
+El periodo parcial se declara con `fecha_alta` / `fecha_baja` en la ficha del empleado; el
+periodo se sigue calculando completo (la guarda de duración no se toca). Los días cotizados son
+los días con relación laboral. **Límite conocido:** el cierre del checador no conoce la fecha de
+alta y puede marcar falta los días previos; si pasa, el operador corrige las faltas.
+
 ## D27 · La quincena de 13 días de febrero: ¿se pagan 13 o 15? — ABIERTA, para la contadora
 
 **Lo levantó el revisor de motor de O-03**, y es una pregunta que ninguna decisión previa
@@ -945,6 +971,15 @@ caso: ahí el periodo es corto porque la persona no estuvo todo el periodo. Aqu�
 y el periodo mismo es corto.
 
 ---
+
+### Resuelta como criterio configurable (P4-03, 2026-10-19)
+
+`criterios_nomina.febrero`: **`quince_siempre` (DEFAULT, lo pidió Ricardo como práctica
+mexicana)** paga 15 días por quincena **completa** aunque el periodo natural mida 13, 14 o 16;
+`dias_calendario` paga los días naturales. Las cuotas del IMSS y el prorrateo del subsidio
+siguen contando días naturales (Art. 31 LSS). El periodo parcial (§D26) siempre paga sus días
+reales. **Mueve números existentes:** una quincena de 16 días con el default paga 15 (el test
+de "sin checadas" pasó de 5 a 4 días pagados por esto, no por §D17).
 
 ## D28 · Reintegrar la plantilla: ¿manda el patrón o la prestación negociada? — ABIERTA, para la contadora
 
@@ -1004,3 +1039,81 @@ aviso de modificación de salario ante el IMSS (movimiento 07)**. La app lo dice
 no lo puede generar: O-04 dejó el 07 abierto por falta de dato (no hay historial de SBC en el
 modelo). O sea, hoy la app te ayuda a saber **que** el aviso hace falta y no a presentarlo.
 Ésa es otra decisión, y es de las caras.
+
+### Resuelta como criterio configurable (P4, 2026-10-19)
+
+`criterios_nomina.prestaciones`: **`mayor` (DEFAULT, lo que ya hacía la app)** integra con
+`max(patrón, ficha)`; `ficha` usa la del empleado. Lo consumen hoy las calculadoras de aguinaldo
+y finiquito (`criterios.prestacion_efectiva`). El reintegro de la plantilla vive en el front y no
+se tocó en P4.
+
+---
+
+## D33 · Decisiones provisionales del motor de P4 — para la contadora
+
+Todas marcadas `# DECISIÓN PROVISIONAL (nocturno)` o `# FUENTE POR CONFIRMAR` en el código.
+
+1. **ISR extraordinario (aguinaldo, PTU):** default Art. 96 LISR; Art. 174 RLISR como opción
+   del cliente. "Ingreso ordinario mensual" = salario diario × 30.4. La tasa del 174 se usa con
+   precisión completa.
+2. **Aguinaldo proporcional:** días trabajados ÷ 365 aun en año bisiesto.
+3. **PTU:** 10 % (Resolución de la Sexta Comisión Nacional para la PTU, DOF 18-09-2020; antecedente: Quinta Comisión, DOF 03-02-2009). Fuente única en código: `nomina_engine/ptu.PORCENTAJE_PTU`. "Tres meses de salario" = 90 días de
+   cuota diaria (Guía STPS) — FUENTE POR CONFIRMAR. El remanente que deja el tope **no se
+   reparte** por default — FUENTE POR CONFIRMAR. El centavo de redondeo se ajusta en el de mayor
+   salario para no exceder el 10 %.
+4. **Finiquito:** "3 meses" = 90 días de SDI — FUENTE POR CONFIRMAR; prima de antigüedad con
+   salario topado a 2 SM (Arts. 485-486); último sueldo mensual ordinario = salario × 30.
+5. **Ajuste anual:** el tope de $400,000 del Art. 97 fr. II se compara contra ingresos totales
+   (gravados + exentos).
+6. **Infonavit:** porcentaje × SBC × días cotizados; cuota fija y factor mensuales ÷ 30.4 × días
+   naturales. El valor de la VSM/UMI **no está en el motor**: llega capturado — FUENTE POR
+   CONFIRMAR.
+7. **Pensión alimenticia sobre neto** = percepciones − ISR − cuota obrera.
+8. **Asimilados:** sin IMSS, sin exenciones del Art. 93, sin subsidio. El consejero (régimen 07)
+   sólo se advierte: la retención mínima con tasa máxima del Art. 96 no se aplica.
+9. **Horas extra:** salario por hora = diario ÷ 8 (jornada capturable). Las triples (Art. 68
+   LFT) se gravan al 100 % e integran al SBC.
+
+---
+
+## D34 · Correcciones del revisor de motor sobre P4 y dos decisiones abiertas — para Ricardo y la contadora
+
+**Corregido (2026-10-19), cada punto con su test en `tests/nomina/test_p4_revisor.py`:**
+
+- **Tope de horas extra por fecha** (`nomina_engine/jornada.py`): Art. 66 LFT reformado y
+  Transitorio Cuarto del Decreto DOF 01-05-2026 — 9 horas por semana en 2026 y 2027, 10 en 2028,
+  11 en 2029 y 12 desde 2030. Las dobles que pasan del tope se pagan triples (Art. 68) y van
+  100 % gravadas.
+- **Finiquito con el ingreso del mes:** lo ordinario gravado se apila sobre salario × 30.4
+  (igual que aguinaldo y PTU).
+- **Consejeros (régimen 07):** retención a la tasa máxima del Art. 152 sobre todo el monto
+  (Art. 96 LISR), si es mayor que la de tarifa.
+- **Prima vacacional:** las 15 UMA exentas son **por año calendario**. Se descuenta lo ya
+  exento en el historial del año (y lo que se capture como `prima_vacacional_exenta_previa`).
+- **Confianza en PTU (Art. 127 fr. II):** el tope sale del sindicalizado de más alto salario o,
+  a falta de éste, del de planta. Los eventuales no cuentan.
+- **Impuesto local sobre salarios en el ajuste anual:** se resta de la base si su tasa no excede
+  del 5 % (Art. 97 LISR).
+- **El 10 % de la PTU** se cita en un solo lugar (`nomina_engine/ptu.PORCENTAJE_PTU`):
+  Resolución de la Sexta Comisión Nacional para la PTU, DOF 18-09-2020 (antecedente: Quinta
+  Comisión, DOF 03-02-2009). La cita anterior ("Sexta Resolución, DOF 28-02-2009") era errónea.
+- **Las calculadoras sueltas** `/calculadoras/{aguinaldo,ptu,finiquito}` usan el motor de P4. La
+  versión mínima de P3 (`fiscal_engine/calculadoras_laborales.py`) se retiró: indemnizaba con
+  salario diario en vez de SDI y no apilaba lo ordinario con la separación.
+
+**Abierto — O4: los 20 días por año en la liquidación.** Ahora van **apagados por default**. El
+Art. 50 fr. II los da cuando el patrón se niega a reinstalar (Art. 49) o el trabajador rescinde
+por causa imputable al patrón (Art. 52). En un despido injustificado con reinstalación ofrecida
+no proceden. La respuesta lo avisa. **Pregunta:** ¿el despacho los incluye siempre en la
+liquidación negociada (práctica común en convenios) o sólo en esos supuestos?
+
+**Abierto — O5: el remanente de la PTU que deja el tope del Art. 127.** Hay tres opciones por
+cliente (`criterios_nomina.ptu_remanente`):
+- `no_se_reparte` (default): se reporta y no se entrega.
+- `redistribuir`: se reparte entre quienes no llegaron a su tope.
+- `sumar_siguiente_ejercicio`: se reporta para sumarlo a la utilidad repartible del año siguiente
+  (criterio IDC, por analogía con el Art. 122 LFT).
+
+La LFT no lo resuelve expresamente. **Pregunta:** ¿qué hace el despacho con ese remanente?
+**FUENTE POR CONFIRMAR** también: la numeración de las fracciones del Art. 127 tras la reforma
+de 2021 no se pudo cotejar contra el DOF.

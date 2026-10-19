@@ -42,13 +42,20 @@ export interface AgentePreDeclaracionResponse {
   herramientas_usadas?: string[];
 }
 
-/** `POST /calculadoras/aguinaldo`. */
-export interface AguinaldoRequest {
-  salario_diario: number | string;
-  dias_aguinaldo?: number;
-  dias_trabajados_en_el_anio?: number;
-  fecha_pago: string;
-  zona?: "general" | "zlfn";
+export interface AjusteAnualRequest {
+  ejercicio: number;
+  trabajadores?: AjusteAnualTrabajador[];
+}
+
+export interface AjusteAnualTrabajador {
+  empleado_no: string;
+  ingresos_gravados: number | string;
+  ingresos_exentos?: number | string;
+  isr_retenido: number | string;
+  subsidio_correspondido?: number | string;
+  comunico_que_declara?: boolean;
+  impuesto_local_retenido?: number | string;
+  tasa_impuesto_local?: number | string | null;
 }
 
 /** `POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`. */
@@ -126,8 +133,11 @@ export interface CalcularPeriodoRequest {
   cliente: string;
   periodo: PeriodoNomina;
   incidencias: IncidenciasEmpleadoSchema[];
-  parametros: ParametrosPatron;
+  parametros?: ParametrosPatron;
   empleados?: EmpleadoNominaSchema[] | null;
+  tipo?: "ordinaria" | "extraordinaria" | "asimilados";
+  variables?: VariablesEmpleadoSchema[];
+  guardar?: boolean;
   incluir_explicacion?: boolean;
 }
 
@@ -146,6 +156,19 @@ export interface CalcularPeriodoResponse {
   total_isr: string;
   advertencias?: string[];
   explicacion?: string | null;
+  tipo?: string;
+  periodo_id?: number | null;
+  criterios?: Record<string, string>;
+  clave_periodicidad?: string;
+}
+
+/** Respuesta genérica de las calculadoras: el resultado con su desglose. */
+export interface CalculoResponse {
+  exito?: boolean;
+  tipo: string;
+  periodo_id?: number | null;
+  resultado: Record<string, unknown>;
+  advertencias?: string[];
 }
 
 /** Calendario patronal de toda la cartera, ordenado por fecha límite. */
@@ -234,6 +257,7 @@ export interface ClienteCarteraSchema {
   clave_periodicidad?: string;
   zona?: ZonaSalarioMinimo;
   parametros?: ParametrosSalarialesSchema;
+  criterios_nomina?: CriteriosNominaSchema;
   periodo_sugerido?: PeriodoNomina | null;
 }
 
@@ -276,6 +300,16 @@ export interface ClientesCarteraResponse {
 export interface ClientesResponse {
   exito?: boolean;
   clientes: ClienteResumen[];
+}
+
+export interface ComparacionResponse {
+  exito?: boolean;
+  a: ResumenPeriodoSchema;
+  b: ResumenPeriodoSchema;
+  diferencia_neto: string;
+  diferencia_isr: string;
+  diferencia_percepciones: string;
+  por_empleado: DiferenciaEmpleado[];
 }
 
 /** Request para comparar todos los regimenes fiscales entre si. */
@@ -341,6 +375,21 @@ export interface Contrapartida {
 
 /** Tipo de contribuyente en el ecosistema Fiscalito. */
 export type ContributorType = "asalariado" | "independiente" | "arrendamiento" | "plataformas" | "pyme";
+
+/** Criterios de nómina del cliente (P4, DP-3). Opciones y explicación en */
+export interface CriteriosNominaSchema {
+  parcial?: "tarifa_proporcional" | "tarifa_periodo";
+  febrero?: "quince_siempre" | "dias_calendario";
+  prestaciones?: "mayor" | "ficha";
+  isr_extraordinario?: "art_96" | "art_174";
+  ptu_remanente?: "no_se_reparte" | "redistribuir" | "sumar_siguiente_ejercicio";
+}
+
+export interface CriteriosResponse {
+  exito?: boolean;
+  defaults: Record<string, string>;
+  opciones: Record<string, Record<string, string>>;
+}
 
 export interface CuentaBancariaCambio {
   banco?: string | null;
@@ -566,6 +615,14 @@ export interface DiaTrabajado {
   primera_entrada?: string | null;
 }
 
+export interface DiferenciaEmpleado {
+  empleado_no: string;
+  nombre: string;
+  neto_a: string | null;
+  neto_b: string | null;
+  diferencia: string;
+}
+
 export interface DispositivoGuardadoResponse {
   exito?: boolean;
   id: string;
@@ -620,6 +677,8 @@ export interface EmpleadoCarteraSchemaInput {
   salario_diario_integrado: number | string;
   zona?: ZonaSalarioMinimo;
   fecha_alta?: string | null;
+  fecha_baja?: string | null;
+  tipo_regimen?: string;
   tipo_contrato?: TipoContrato;
   prestaciones?: PrestacionesSchemaInput;
   nss?: string;
@@ -639,6 +698,8 @@ export interface EmpleadoCarteraSchemaOutput {
   salario_diario_integrado: string;
   zona?: ZonaSalarioMinimo;
   fecha_alta?: string | null;
+  fecha_baja?: string | null;
+  tipo_regimen?: string;
   tipo_contrato?: TipoContrato;
   prestaciones?: PrestacionesSchemaOutput;
   nss?: string;
@@ -789,19 +850,6 @@ export interface EventosResponse {
   eventos: EventoChecada[];
 }
 
-/** `POST /calculadoras/finiquito`. */
-export interface FiniquitoRequest {
-  salario_diario: number | string;
-  fecha_ingreso: string;
-  fecha_baja: string;
-  dias_aguinaldo?: number;
-  prima_vacacional?: number | string;
-  dias_vacaciones_pendientes?: number | string;
-  dias_pendientes_de_pago?: number | string;
-  tipo?: "renuncia" | "despido_injustificado";
-  zona?: "general" | "zlfn";
-}
-
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
 
@@ -821,6 +869,12 @@ export interface HealthResponse {
   status: string;
   service: string;
   version: string;
+}
+
+export interface HistorialResponse {
+  exito?: boolean;
+  cliente: string;
+  periodos: ResumenPeriodoSchema[];
 }
 
 export interface HistoricaEntrada {
@@ -845,6 +899,11 @@ export interface HorarioSchema {
   dias_laborables?: number[];
 }
 
+export interface IncapacidadSchema {
+  tipo: "01" | "02" | "03";
+  dias: number;
+}
+
 /** Incidencias de un empleado en el periodo. */
 export interface IncidenciasEmpleado {
   empleado_no: string;
@@ -865,6 +924,12 @@ export interface IncidenciasEmpleadoSchema {
   faltas: number;
   dias_ausentismo: number;
   dias_incapacidad?: number;
+}
+
+export interface InfonavitSchema {
+  tipo: "porcentaje" | "cuota_fija" | "factor";
+  valor: number | string;
+  valor_unidad_diario?: number | string | null;
 }
 
 /** `POST /calculadoras/isn`. */
@@ -980,6 +1045,22 @@ export interface OperacionResponse {
   mensaje: string;
 }
 
+export interface PTURequest {
+  ejercicio: number;
+  renta_gravable: number | string;
+  fecha_pago: string;
+  trabajadores: PTUTrabajadorSchema[];
+  guardar?: boolean;
+}
+
+export interface PTUTrabajadorSchema {
+  empleado_no: string;
+  dias_trabajados: number;
+  salarios_devengados: number | string;
+  tipo?: "planta" | "sindicalizado" | "eventual" | "confianza" | "director";
+  promedio_ptu_3_anios?: number | string;
+}
+
 export interface PaginaAuditoria {
   exito?: boolean;
   eventos: EventoSalida[];
@@ -994,10 +1075,10 @@ export interface PagosProvisionalesPMRequest {
   mes: number;
 }
 
-/** Parámetros de la empresa que el motor necesita y no puede adivinar. */
+/** Parámetros de la empresa. P4-01: si no vienen, se toman de la ficha del cliente. */
 export interface ParametrosPatron {
-  prima_riesgo: number | string;
-  clave_periodicidad?: string;
+  prima_riesgo?: number | string | null;
+  clave_periodicidad?: string | null;
   dias_pagados?: number | null;
 }
 
@@ -1027,6 +1108,18 @@ export interface PartidaSchemaOutput {
   gravado?: string | null;
   exento?: string | null;
   subsidio_causado?: string | null;
+}
+
+export interface PensionSchema {
+  tipo: "porcentaje" | "monto";
+  valor: number | string;
+  base?: "neto" | "bruto";
+}
+
+export interface PercepcionCapturadaSchema {
+  clave: "002" | "010" | "038" | "049";
+  importe: number | string;
+  concepto?: string;
 }
 
 /** Una percepción (clave c_TipoPercepcion) para el ISN. */
@@ -1063,6 +1156,14 @@ export type PeriodicidadDeclaracion = "mensual" | "bimestral" | "anual";
 export interface Periodo {
   inicio: string;
   fin: string;
+}
+
+export interface PeriodoGuardadoResponse {
+  exito?: boolean;
+  periodo: ResumenPeriodoSchema;
+  criterios: Record<string, unknown>;
+  parametros: Record<string, unknown>;
+  resultado: Record<string, unknown>;
 }
 
 /** Periodo de nómina, inclusivo en los dos extremos. */
@@ -1259,6 +1360,14 @@ export interface ReciboSchema {
   cuota_patronal: string;
   absorbio_cuota_obrera: boolean;
   ramos: CuotaRamoSchema[];
+  tipo_regimen?: string;
+  dias_en_periodo?: number | null;
+  dias_incapacidad?: number;
+  parcial?: boolean;
+  tarifa?: string;
+  isr_causado?: string | null;
+  subsidio_causado?: string;
+  sbc_variable_integrable?: string;
 }
 
 /** Qué regla de cómputo produjo la fecha límite. */
@@ -1297,6 +1406,21 @@ export interface ResultadoRegimen {
   isr_mensual: number;
   disponible: boolean;
   notas?: string[];
+}
+
+export interface ResumenPeriodoSchema {
+  id: number;
+  tipo: string;
+  periodicidad: string;
+  inicio: string;
+  fin: string;
+  fecha_pago: string;
+  estado: string;
+  empleados: number;
+  total_percepciones: string;
+  total_deducciones: string;
+  total_isr: string;
+  total_neto: string;
 }
 
 /** `POST /impuestos/clientes/{clave}/resumen`. */
@@ -1481,6 +1605,27 @@ export interface ValidationError {
   ctx?: Record<string, unknown>;
 }
 
+/** Incidencias y variables capturadas por periodo (P4-05). */
+export interface VariablesEmpleadoSchema {
+  empleado_no: string;
+  horas_dobles?: number | string;
+  horas_triples?: number | string;
+  horas_jornada?: number | string;
+  domingos_trabajados?: number;
+  prima_dominical?: number | string;
+  dias_vacaciones?: number;
+  prima_vacacional?: number | string;
+  incapacidades?: IncapacidadSchema[];
+  faltas_adicionales?: number;
+  percepciones?: PercepcionCapturadaSchema[];
+  infonavit?: InfonavitSchema | null;
+  fonacot?: number | string;
+  prestamo?: number | string;
+  pension?: PensionSchema | null;
+  viaticos_comprobados?: number | string;
+  prima_vacacional_exenta_previa?: number | string;
+}
+
 /** Zona geografica que determina el salario minimo aplicable. */
 export type ZonaSalarioMinimo = "general" | "zlfn";
 
@@ -1531,6 +1676,49 @@ export interface app__routes__sat_verificacion__ConfigEntrada {
   automatico?: boolean;
   dia_del_mes?: number;
   constancia?: boolean;
+}
+
+/** `POST /calculadoras/aguinaldo`. */
+export interface app__schemas__impuestos__AguinaldoRequest {
+  salario_diario: number | string;
+  dias_aguinaldo?: number;
+  dias_trabajados_en_el_anio?: number;
+  fecha_pago: string;
+  zona?: "general" | "zlfn";
+}
+
+/** `POST /calculadoras/finiquito`. */
+export interface app__schemas__impuestos__FiniquitoRequest {
+  salario_diario: number | string;
+  fecha_ingreso: string;
+  fecha_baja: string;
+  dias_aguinaldo?: number;
+  prima_vacacional?: number | string;
+  dias_vacaciones_pendientes?: number | string;
+  dias_pendientes_de_pago?: number | string;
+  tipo?: "renuncia" | "despido_justificado" | "despido_injustificado" | "muerte" | "termino_contrato";
+  zona?: "general" | "zlfn";
+  salario_diario_integrado?: number | string | null;
+  incluir_20_dias?: boolean;
+}
+
+export interface app__schemas__nomina_p4__AguinaldoRequest {
+  ejercicio: number;
+  fecha_pago: string;
+  empleados?: string[];
+  exento_ya_aplicado?: Record<string, number | string>;
+  guardar?: boolean;
+}
+
+export interface app__schemas__nomina_p4__FiniquitoRequest {
+  empleado_no: string;
+  fecha_baja: string;
+  causa: "renuncia" | "despido_justificado" | "despido_injustificado" | "muerte" | "termino_contrato";
+  dias_salario_pendientes?: number;
+  dias_vacaciones_pendientes?: number | string;
+  aguinaldo_ya_pagado?: number | string;
+  incluir_20_dias?: boolean;
+  guardar?: boolean;
 }
 
 /** Toda ruta que publica la API. */
@@ -1653,6 +1841,15 @@ export type RutaApi =
   | "/api/v1/multi-periodo"
   | "/api/v1/nomina/calcular-periodo"
   | "/api/v1/nomina/cfdi"
+  | "/api/v1/nomina/clientes/{cliente_id}/aguinaldo"
+  | "/api/v1/nomina/clientes/{cliente_id}/ajuste-anual"
+  | "/api/v1/nomina/clientes/{cliente_id}/comparar"
+  | "/api/v1/nomina/clientes/{cliente_id}/finiquito"
+  | "/api/v1/nomina/clientes/{cliente_id}/historial"
+  | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}"
+  | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar"
+  | "/api/v1/nomina/clientes/{cliente_id}/ptu"
+  | "/api/v1/nomina/criterios"
   | "/api/v1/nomina/demo/plantilla"
   | "/api/v1/nomina/periodo-sugerido"
   | "/api/v1/nomina/sbc"
@@ -1786,7 +1983,7 @@ export interface OperacionesApi {
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/calculadoras/aguinaldo": {
-    cuerpo: AguinaldoRequest;
+    cuerpo: app__schemas__impuestos__AguinaldoRequest;
     respuesta: Record<string, unknown>;
   };
   "GET /api/v1/calculadoras/fecha-limite": {
@@ -1794,7 +1991,7 @@ export interface OperacionesApi {
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/calculadoras/finiquito": {
-    cuerpo: FiniquitoRequest;
+    cuerpo: app__schemas__impuestos__FiniquitoRequest;
     respuesta: Record<string, unknown>;
   };
   "POST /api/v1/calculadoras/isn": {
@@ -2252,6 +2449,42 @@ export interface OperacionesApi {
   "POST /api/v1/nomina/cfdi": {
     cuerpo: CFDINominaRequest;
     respuesta: CFDINominaResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/aguinaldo": {
+    cuerpo: app__schemas__nomina_p4__AguinaldoRequest;
+    respuesta: CalculoResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/ajuste-anual": {
+    cuerpo: AjusteAnualRequest;
+    respuesta: CalculoResponse;
+  };
+  "GET /api/v1/nomina/clientes/{cliente_id}/comparar": {
+    cuerpo: never;
+    respuesta: ComparacionResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/finiquito": {
+    cuerpo: app__schemas__nomina_p4__FiniquitoRequest;
+    respuesta: CalculoResponse;
+  };
+  "GET /api/v1/nomina/clientes/{cliente_id}/historial": {
+    cuerpo: never;
+    respuesta: HistorialResponse;
+  };
+  "GET /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}": {
+    cuerpo: never;
+    respuesta: PeriodoGuardadoResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar": {
+    cuerpo: never;
+    respuesta: PeriodoGuardadoResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/ptu": {
+    cuerpo: PTURequest;
+    respuesta: CalculoResponse;
+  };
+  "GET /api/v1/nomina/criterios": {
+    cuerpo: never;
+    respuesta: CriteriosResponse;
   };
   "GET /api/v1/nomina/demo/plantilla": {
     cuerpo: never;

@@ -24,7 +24,11 @@ from app.schemas.empleado import (
 )
 from app.schemas.nomina import EmpleadoNominaSchema
 
-# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
+
+@pytest.fixture
+def cliente_http(http_nomina) -> TestClient:
+    """P4-01: autenticado y con la cartera sembrada; la nómina lee de ahí."""
+    return http_nomina
 
 
 def semilla(cliente_http: TestClient, cliente_id: str = "demo") -> dict:

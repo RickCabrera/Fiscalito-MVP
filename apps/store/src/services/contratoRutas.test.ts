@@ -57,6 +57,7 @@ vi.mock('./firebase', () => ({
 
 import * as despachoApi from './despachoApi';
 import * as nominaDemoApi from './nominaDemoApi';
+import * as nominaApi from './nominaApi';
 import * as fiscalAgentApi from './fiscalAgentApi';
 import * as carteraApi from './carteraApi';
 // P0-01: la cartera y los dispositivos van SIEMPRE por la API. Se registran aquí
@@ -179,14 +180,30 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     obtenerEventos: () => nominaDemoApi.obtenerEventos('demo'),
     cerrarPeriodo: () =>
       nominaDemoApi.cerrarPeriodo('demo', ['E-01'], { inicio: '2026-08-16', fin: '2026-08-31' }),
+  },
+  // P4: nómina autenticada — cálculo sin plantilla, historial y extraordinarias.
+  'nominaApi.ts': {
     calcularNomina: () =>
-      nominaDemoApi.calcularNomina(
+      nominaApi.calcularNomina(
         'demo',
         { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: null },
         [],
         FICHA_VACIA,
-        [],
       ),
+    listarHistorial: () => nominaApi.listarHistorial('demo', 'ordinaria'),
+    abrirPeriodo: () => nominaApi.abrirPeriodo('demo', 3),
+    cerrarPeriodoNomina: () => nominaApi.cerrarPeriodoNomina('demo', 3),
+    compararPeriodos: () => nominaApi.compararPeriodos('demo', 1, 2),
+    obtenerCriterios: () => nominaApi.obtenerCriterios(),
+    calcularAguinaldo: () =>
+      nominaApi.calcularAguinaldo('demo', { ejercicio: 2026, fecha_pago: '2026-12-15' }),
+    calcularPTU: () =>
+      nominaApi.calcularPTU('demo', {
+        ejercicio: 2025, renta_gravable: '1', fecha_pago: '2026-05-29', trabajadores: [],
+      }),
+    calcularFiniquito: () =>
+      nominaApi.calcularFiniquito('demo', { empleado_no: 'E-01', fecha_baja: '2026-06-30', causa: 'renuncia' }),
+    calcularAjusteAnual: () => nominaApi.calcularAjusteAnual('demo', 2026),
   },
   'cartera.ts': {
     cargarCartera: () => cartera.cargarCartera('uid-1'),
@@ -370,6 +387,7 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
 const MODULOS: Record<string, Record<string, unknown>> = {
   'despachoApi.ts': despachoApi,
   'nominaDemoApi.ts': nominaDemoApi,
+  'nominaApi.ts': nominaApi,
   'fiscalAgentApi.ts': fiscalAgentApi,
   'carteraApi.ts': carteraApi,
   'cartera.ts': cartera,

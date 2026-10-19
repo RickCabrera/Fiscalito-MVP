@@ -235,3 +235,16 @@ def api(sesionador: sessionmaker) -> Iterator[Callable[[str], object]]:
         app.dependency_overrides.pop(obtener_db, None)
         app.dependency_overrides.pop(usuario_actual, None)
         registro.limpiar_cache()
+
+
+@pytest.fixture
+def http_nomina(api):  # noqa: ANN001
+    """
+    P4-01: `TestClient` autenticado con los tres clientes del catálogo sembrados en
+    su cartera. La nómina ya no acepta la plantilla del cuerpo: la lee de aquí.
+    """
+    from tests.nomina.cartera_sembrada import UID, sembrar_catalogo
+
+    cliente = api(UID)
+    sembrar_catalogo(cliente)
+    return cliente

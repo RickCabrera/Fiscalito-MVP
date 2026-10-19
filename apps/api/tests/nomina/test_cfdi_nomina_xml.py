@@ -586,9 +586,9 @@ class TestEndpointCFDI:
     """
 
     @pytest.fixture(autouse=True)
-    def _sesion(self, cliente_http) -> None:
-        # P0-02: el endpoint exige sesión; `cliente_http` (tests/conftest.py) la trae.
-        self._http = cliente_http
+    def _con_cartera(self, http_nomina) -> None:
+        """P4-01: la nómina se calcula con la plantilla de la cartera, autenticado."""
+        self._http = http_nomina
 
     def _cliente(self) -> TestClient:
         return self._http
