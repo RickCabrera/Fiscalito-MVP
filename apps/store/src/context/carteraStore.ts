@@ -33,12 +33,12 @@
 import { createContext, useContext } from 'react';
 import type { EmpleadoCartera } from '../services/carteraApi';
 import type { ClienteCartera } from '../services/carteraApi';
-import type { OrigenCartera } from '../services/carteraFirestore';
+import type { OrigenCartera } from '../services/cartera';
 
 export interface CarteraContextType {
   clientes: ClienteCartera[];
   loading: boolean;
-  /** `backend` = se está viendo el catálogo de demostración, sin escritura. */
+  /** `catalogo` = todavía no hay cartera propia cargada: sin escritura. */
   origen: OrigenCartera;
   /** `true` cuando no se puede escribir: la cartera no es del usuario. */
   soloLectura: boolean;
@@ -51,7 +51,7 @@ export interface CarteraContextType {
   borrarEmpleado: (clienteId: string, empleadoNo: string) => Promise<void>;
   /**
    * Copia los 3 clientes de demostración a la cuenta. **Explícito a propósito**:
-   * escribe salarios de terceros en Firestore, y esa escalada no debe ocurrir
+   * escribe salarios de terceros en la cartera, y esa escalada no debe ocurrir
    * como efecto colateral del primer login. Ver `CarteraContext`.
    */
   sembrar: () => Promise<void>;

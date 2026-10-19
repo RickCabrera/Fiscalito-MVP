@@ -14,23 +14,21 @@ audiencia y la expiración contra las llaves públicas de Google.
 privilegiadas. Las reglas que desplegó R-01 siguen protegiendo el acceso directo
 desde el navegador. La defensa de ESTE camino es este archivo, y no hay otra.
 
-CREDENCIALES: LO QUE FALTA PARA QUE R-07 QUEDE CERRADA
-------------------------------------------------------
-`firebase-admin` necesita una de estas, y **en la máquina donde se escribió esto
-no había ninguna**:
+CREDENCIALES: REQUISITO DE DESPLIEGUE
+-------------------------------------
+`firebase-admin` necesita una de estas para verificar el ID token:
 
 1. `GOOGLE_APPLICATION_CREDENTIALS` apuntando a un JSON de service account, o
 2. Application Default Credentials (`gcloud auth application-default login`), o
 3. correr dentro de GCP, donde las toma del metadata server.
 
-Por eso R-07 se entrega con el interruptor del front **apagado**
-(`VITE_CARTERA_BACKEND`) y la tarea queda ABIERTA: encender el front sin
-credenciales daría 503 en todo el CRUD, o sea una app rota a sabiendas. Lo que
-falta es una acción de Ricardo, no código.
+Desde P0-01 la cartera va SIEMPRE por la API (ya no hay interruptor en el front), así
+que **sin credenciales todo `/api/v1/cartera/*` responde 503** con el mensaje de
+`CredencialesFaltantes`. Ya no hacen falta para LEER la cartera (vive en SQL); sólo
+para verificar quién llama, y para `scripts/migrar_firestore.py`.
 
-Mientras tanto **sí hay cobertura real**: `FIRESTORE_EMULATOR_HOST` levanta el
-emulador de Firestore, que no pide autenticación, y contra él corren los mismos
-casos que contra el doble en memoria (`pytest -m emulador`).
+Los tests no las necesitan: `tests/conftest.py` sustituye `usuario_actual` y conserva
+las reglas de formato del encabezado (`token_del_encabezado`).
 """
 
 from __future__ import annotations
@@ -203,6 +201,26 @@ def uid_del_token(token: str) -> str:
         ) from exc
 
 
+def token_del_encabezado(authorization: str | None) -> str:
+    """
+    El token de `Authorization: Bearer <token>`, o 401 si falta o está mal formado.
+
+    Separado de `usuario_actual` para que los tests (`tests/conftest.py`) puedan
+    sustituir SÓLO la verificación criptográfica y conservar estas reglas: un
+    doble que aceptara cualquier encabezado dejaría sin probar los 401.
+    """
+    if not authorization:
+        raise FiscalAgentError(
+            "Falta el encabezado Authorization con tu sesión de Firebase.", status_code=401
+        )
+    partes = authorization.split(None, 1)
+    if len(partes) != 2 or partes[0].lower() != "bearer" or not partes[1].strip():
+        raise FiscalAgentError(
+            "El encabezado Authorization debe ser 'Bearer <ID token>'.", status_code=401
+        )
+    return partes[1].strip()
+
+
 def usuario_actual(authorization: str | None = Header(default=None)) -> str:
     """
     Dependencia de FastAPI: el uid de quien hace el request.
@@ -215,13 +233,4 @@ def usuario_actual(authorization: str | None = Header(default=None)) -> str:
     Sin encabezado, o con uno mal formado, es **401 y no 403**: 403 diría "sé
     quién eres y no puedes", y aquí no se sabe quién es.
     """
-    if not authorization:
-        raise FiscalAgentError(
-            "Falta el encabezado Authorization con tu sesión de Firebase.", status_code=401
-        )
-    partes = authorization.split(None, 1)
-    if len(partes) != 2 or partes[0].lower() != "bearer" or not partes[1].strip():
-        raise FiscalAgentError(
-            "El encabezado Authorization debe ser 'Bearer <ID token>'.", status_code=401
-        )
-    return uid_del_token(partes[1].strip())
+    return uid_del_token(token_del_encabezado(authorization))

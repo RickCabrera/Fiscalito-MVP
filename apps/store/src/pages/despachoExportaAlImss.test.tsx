@@ -72,7 +72,7 @@ const FICHA: Omit<ClienteCartera, 'empleados'> = {
 vi.mock('../services/cartera', () => ({
   cargarCartera: async () => ({
     clientes: [{ ...FICHA, empleados: [EMPLEADO] } as ClienteCartera],
-    origen: 'firestore' as const,
+    origen: 'propia' as const,
     error: null,
   }),
   guardarCliente: vi.fn(),

@@ -42,6 +42,20 @@
       ]
     },
     {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
       "path": "/api/v1/cartera/clientes/{cliente_id}/empleados",
       "metodos": [
         "GET"
@@ -164,6 +178,12 @@
     },
     {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

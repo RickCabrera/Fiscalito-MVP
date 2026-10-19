@@ -18,7 +18,8 @@ El Fiscal Agent API es el "cerebro contable" del ecosistema Fiscalito. Es un mic
 - **Stateless, con UNA excepción declarada (R-07)**: el motor fiscal no guarda nada — todo
   viene en el request, se procesa, se responde. La excepción es `/api/v1/cartera/*`, donde
   Ricardo decidió que el backend fuera **dueño del dato** de la cartera del despacho
-  (`firebase-admin` sobre `users/{uid}/clientes/...`). La razón: había dos dueños del mismo
+  (desde P0-01 en SQL — `app/almacen_cartera.py` sobre `app/modelos/nucleo.py`, filtrado por
+  despacho con `app/tenancy.py`; Firestore sólo lo lee `scripts/migrar_firestore.py`). La razón: había dos dueños del mismo
   dato —el front escribía Firestore directo y el backend calculaba sobre la plantilla que el
   front le mandaba en el body—, y con la plantilla viajando por el cliente, *afirmar un
   cliente y calcular otro* cabe en un JSON. **Ningún cálculo fiscal guarda nada**: la

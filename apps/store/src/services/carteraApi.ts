@@ -202,6 +202,19 @@ export interface ClienteCartera {
   parametros?: ParametrosSalariales;
   periodo_sugerido: { inicio: string; fin: string; fecha_pago: string | null };
   empleados: EmpleadoCartera[];
+  /**
+   * Empleados guardados que **no pasan la validación actual** del backend y por eso no
+   * vienen en `empleados` ni entran al cálculo (R-10). Se pintan en la ficha con su
+   * razón, como los "no vinculados". Sólo de lectura: no se guarda con el cliente.
+   */
+  ilegibles?: EmpleadoIlegible[];
+}
+
+/** Un empleado guardado que el backend no pudo leer, y por qué (R-10). */
+export interface EmpleadoIlegible {
+  empleado_no: string;
+  nombre: string;
+  razon: string;
 }
 
 export interface EmpleadosSemilla {

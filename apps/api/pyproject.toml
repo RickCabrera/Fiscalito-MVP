@@ -58,15 +58,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-# `-m "not emulador"` deja fuera los tests que necesitan el emulador de
-# Firestore corriendo. NO se saltan —no se ejecutan, que es distinto y honesto—
-# así que `pytest -q` mantiene el "cero skips" que pide el CLAUDE.md raíz y el
-# conteo limpio. Se corren aparte con `pytest -m emulador` tras levantar
-# `firebase emulators:start --only firestore` desde `apps/store`.
-addopts = "-v --tb=short -m \"not emulador\""
-markers = [
-    "emulador: necesita el emulador de Firestore en FIRESTORE_EMULATOR_HOST",
-]
+# P0-01: ya no hay tests marcados `emulador` (la cartera vive en SQL y se prueba en
+# CI contra la base de verdad), así que el filtro `-m "not emulador"` se retiró y
+# `pytest -q` vuelve a significar "toda la suite corrió".
+addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
