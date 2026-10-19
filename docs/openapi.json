@@ -14838,11 +14838,18 @@
             ],
             "title": "Saldo Favor Iva Inicial",
             "default": "0"
+          },
+          "iva_no_objeto_excluidos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Iva No Objeto Excluidos"
           }
         },
         "type": "object",
         "title": "ConfigImpuestosSchema",
-        "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-C, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
+        "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-B, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `iva_no_objeto_excluidos` (default vacío): UUID de CFDI emitidos cuyo valor no objeto NO\n  entra al denominador de la proporción (no es acto del Art. 4o.-A o es concepto del Art.\n  5o.-C LIVA, p. ej. dividendos). Por default todo el no objeto cobrado entra (Art. 5o.\n  fr. V c), reforma 2022).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
       },
       "ConfigProveedorDiotSchema": {
         "properties": {
@@ -15739,11 +15746,33 @@
             "type": "boolean",
             "title": "Aai En Resico",
             "default": false
+          },
+          "no_deducibles_art28_xxx": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Deducibles Art28 Xxx"
+          },
+          "cuentas_art28_xxx": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cuentas Art28 Xxx"
           }
         },
         "type": "object",
         "title": "DatosAnualesPMSchema",
-        "description": "Datos de un cliente persona moral para un ejercicio (P3-01).\n\n- `coeficiente_utilidad`: el que se aplica en los pagos de ESTE ejercicio (el de la anual\n  del anterior, Art. 14 fr. I). Vacío: se calcula con `utilidad_fiscal_base` /\n  `ingresos_nominales_base` si se capturan, o con la anual que el sistema pueda armar de\n  los cinco ejercicios anteriores.\n- `ptu_pagada` y `mes_pago_ptu` (default mayo): Art. 14 fr. II / Art. 211.\n- `perdidas`: pendientes al inicio del ejercicio (Art. 57).\n- `retenciones_bancarias`: ISR retenido por el sistema financiero por mes (Art. 54).\n- `pagos_efectuados`: lo realmente pagado por mes; vacío = el determinado por el sistema.\n- `saldos_creditos` / `saldos_deudas`: 12 saldos de fin de mes para el ajuste anual por\n  inflación cuando no hay contabilidad (Arts. 44-46).\n- `cuentas_creditos` / `cuentas_deudas`: códigos agrupadores (prefijos) que cuentan como\n  créditos y deudas cuando sí hay contabilidad; vacío = el default documentado en\n  `app/impuestos/personas_morales.py` (criterio del despacho).\n- `cuentas_no_deducibles`: prefijos de código agrupador o números de cuenta adicionales que\n  no son deducibles.\n- `deduccion_inversiones`: deducción fiscal de inversiones del ejercicio (Arts. 31-38 o\n  209); la depreciación contable no se deduce.\n- `deducciones_adicionales` / `no_deducibles_adicionales` / `ingresos_adicionales`:\n  ajustes de conciliación contable-fiscal (p. ej. Art. 28 fr. XXX).\n- `fuente`: de dónde salen ingresos y deducciones: `auto` (contabilidad si hay pólizas en\n  el ejercicio; si no, bóveda), `contabilidad` o `boveda`.\n- `factor_exentos_nomina` (default 0.47): parte deducible de los pagos exentos al\n  trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).\n- `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM."
+        "description": "Datos de un cliente persona moral para un ejercicio (P3-01).\n\n- `coeficiente_utilidad`: el que se aplica en los pagos de ESTE ejercicio (el de la anual\n  del anterior, Art. 14 fr. I). Vacío: se calcula con `utilidad_fiscal_base` /\n  `ingresos_nominales_base` si se capturan, o con la anual que el sistema pueda armar de\n  los cinco ejercicios anteriores.\n- `ptu_pagada` y `mes_pago_ptu` (default mayo): Art. 14 fr. II / Art. 211.\n- `perdidas`: pendientes al inicio del ejercicio (Art. 57).\n- `retenciones_bancarias`: ISR retenido por el sistema financiero por mes (Art. 54).\n- `pagos_efectuados`: lo realmente pagado por mes; vacío = el determinado por el sistema.\n- `saldos_creditos` / `saldos_deudas`: 12 saldos de fin de mes para el ajuste anual por\n  inflación cuando no hay contabilidad (Arts. 44-46).\n- `cuentas_creditos` / `cuentas_deudas`: códigos agrupadores (prefijos) que cuentan como\n  créditos y deudas cuando sí hay contabilidad; vacío = el default documentado en\n  `app/impuestos/personas_morales.py` (criterio del despacho).\n- `cuentas_no_deducibles`: prefijos de código agrupador o números de cuenta adicionales que\n  no son deducibles.\n- `deduccion_inversiones`: deducción fiscal de inversiones del ejercicio (Arts. 31-38 o\n  209); la depreciación contable no se deduce.\n- `deducciones_adicionales` / `no_deducibles_adicionales` / `ingresos_adicionales`:\n  ajustes de conciliación contable-fiscal (p. ej. Art. 28 fr. XXX).\n- `fuente`: de dónde salen ingresos y deducciones: `auto` (contabilidad si hay pólizas en\n  el ejercicio; si no, bóveda), `contabilidad` o `boveda`.\n- `factor_exentos_nomina` (default 0.47): parte deducible de los pagos exentos al\n  trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).\n- `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM.\n- `no_deducibles_art28_xxx`: parte no deducible de los pagos exentos al trabajador (Art. 28\n  fr. XXX) que el Art. 9 cuarto párrafo resta de los ingresos para la renta gravable de PTU\n  (sólo ahí). Vacío = se deriva: con contabilidad, de `cuentas_art28_xxx` (las cuentas\n  donde el despacho registra ese no deducible; también se tratan como no deducibles); con\n  bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina emitida. Con contabilidad y\n  sin esas cuentas queda en cero y se avisa (no se baja la PTU sin dato)."
       },
       "DatosPatronCFDI": {
         "properties": {

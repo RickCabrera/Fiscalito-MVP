@@ -118,6 +118,7 @@ def config_iva(cfg: ConfigImpuestosSchema) -> motor_iva.ConfigIVA:
     return motor_iva.ConfigIVA(
         region_fronteriza=cfg.region_fronteriza, proporcion_modo=cfg.proporcion_iva_modo,
         proporcion_fija=cfg.proporcion_iva_fija, modo_corte=cfg.modo_factor,
+        no_objeto_excluidos=frozenset(cfg.iva_no_objeto_excluidos),
     )
 
 

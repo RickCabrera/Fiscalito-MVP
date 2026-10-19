@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { Calculator, Loader } from 'lucide-react';
 import { calcular, type ResultadoCalculadora } from '../../services/impuestosApi';
 import { cuerpoDe, type DefinicionCalculadora } from './definiciones';
+import AvisoPorConfirmar from '../fiscalito/AvisoPorConfirmar';
+import { fuentesPorConfirmar } from '../fiscalito/porConfirmar';
 
 const ETIQUETA: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.78rem',
@@ -90,6 +92,7 @@ export default function TarjetaCalculadora({ def }: { def: DefinicionCalculadora
           ))}
         </dl>
       )}
+      <AvisoPorConfirmar fuentes={fuentesPorConfirmar(resultado)} />
       {notas.length > 0 && (
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.75rem', color: 'var(--warning)' }}>
           {notas.map((n) => <li key={n}>{n}</li>)}

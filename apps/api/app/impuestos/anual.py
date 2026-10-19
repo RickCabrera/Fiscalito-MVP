@@ -49,14 +49,8 @@ def anual_persona_moral(db: Session, cliente: Cliente, anio: int, tipo: str) -> 
     pagos, coef, origen, b = pm.pagos_provisionales(db, cliente, anio, 12, tipo)
     pagado = sum((p.pago_efectuado for p in pagos), CERO)
     retenciones = pagos[-1].retenciones
-    ingresos = sum(b.ingresos_mes.values(), CERO)
-    deducciones = sum(b.deducciones_mes.values(), CERO)
-    r = motor.anual_pm(motor.EntradaAnual(
-        anio, ingresos + d.ingresos_adicionales,
-        deducciones + d.deduccion_inversiones + d.deducciones_adicionales
-        - d.no_deducibles_adicionales,
-        b.aai, d.ptu_pagada, pm.perdidas_de(d), pm.estimulos_de(d), pagado, retenciones,
-        d.anticipos_miembros_base, modo), resico=tipo == "resico")
+    r = motor.anual_pm(pm.entrada_anual(b, d, anio, modo, pagado, retenciones),
+                       resico=tipo == "resico")
     ret_mes = d.retenciones_bancarias
     meses = [{
         "mes": m, "ingresos": _t(b.ingresos_mes[m]), "deducciones": _t(b.deducciones_mes[m]),
@@ -65,6 +59,12 @@ def anual_persona_moral(db: Session, cliente: Cliente, anio: int, tipo: str) -> 
         "pago_provisional": _t(pagos[m - 1].pago_efectuado),
     } for m in range(1, 13)]
     notas = b.notas + r.notas + pm.notas_provisionales(tipo, coef, origen, 12)
+    # O12: INPC de fuente secundaria en el ajuste por inflación, las pérdidas o los pagos.
+    fuentes = list(dict.fromkeys(
+        [*r.fuentes_por_confirmar, *(x for p in pagos for x in p.fuentes_por_confirmar)]))
+    if fuentes:
+        notas.append("Hay INPC de fuente secundaria sin cotejar con el boletín del INEGI "
+                     "(FUENTE POR CONFIRMAR): " + "; ".join(fuentes) + ".")
     if b.origen_saldos == "contabilidad":
         notas.append("La cuenta 213 puede incluir ISR propio por pagar, que no es deuda para "
                      "el ajuste (Art. 46): revísalo o captura las cuentas de deudas.")
@@ -92,11 +92,17 @@ def anual_persona_moral(db: Session, cliente: Cliente, anio: int, tipo: str) -> 
         },
         "aai": motor.aai_dict(b.aai) if b.aai else None,
         "origen_saldos": b.origen_saldos,
-        "ptu": {"renta_gravable": _t(r.renta_gravable_ptu),
+        "ptu": {"utilidad_antes_ptu": _t(r.importe("utilidad_antes_ptu")),
+                "no_deducibles_art28_xxx": _t(r.no_deducibles_art28_xxx),
+                "origen_art28_xxx": b.origen_art28_xxx,
+                "renta_gravable": _t(r.renta_gravable_ptu),
                 "porcentaje": f"{motor.PORCENTAJE_PTU:.2f}",
+                "fundamento": motor.FUNDAMENTO_PTU,
                 "a_repartir": _t(r.ptu_a_repartir), "pagada_en_el_ejercicio": _t(d.ptu_pagada)},
         "perdidas": [motor.perdida_dict(p) for p in r.perdidas],
         "notas": notas,
+        "por_confirmar": bool(fuentes),
+        "fuentes_por_confirmar": fuentes,
     }
 
 

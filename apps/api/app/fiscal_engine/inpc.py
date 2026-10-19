@@ -15,6 +15,9 @@ trazabilidad:
   contra el DOF o el BIE del INEGI; las filas cotejadas contra boletín coinciden al milésimo
   con esas mismas tablas, lo que da confianza en la serie, pero no sustituye el cotejo.
 
+Todo cálculo que use un índice no verificado lo dice en su respuesta (`por_confirmar` y
+`fuentes_por_confirmar`, ver `ValorINPC.aviso_por_confirmar`).
+
 AGREGAR UN MES
 --------------
 Se agrega una fila al CSV con su boletín. Nunca se extrapola: si el mes que el cálculo pide
@@ -33,6 +36,9 @@ from pathlib import Path
 from app.exceptions import FiscalValidationError
 
 ARCHIVO_INPC = Path(__file__).parent / "datos" / "inpc.csv"
+# Única marca de la columna `verificacion` que cuenta como verificada (O12: el resto se
+# propaga a la respuesta como `por_confirmar`).
+VERIFICADO = "boletin_inegi"
 
 
 @dataclass(frozen=True)
@@ -44,6 +50,19 @@ class ValorINPC:
     valor: Decimal
     verificacion: str
     fuente: str
+
+    @property
+    def verificado(self) -> bool:
+        """True sólo si el valor se cotejó contra el boletín del INEGI (`boletin_inegi`)."""
+        return self.verificacion == VERIFICADO
+
+    @property
+    def aviso_por_confirmar(self) -> str | None:
+        """Texto para la respuesta cuando el índice viene de fuente secundaria; None si no."""
+        if self.verificado:
+            return None
+        return (f"INPC {self.anio}-{self.mes:02d} ({self.valor}): tablas secundarias, sin "
+                f"cotejar con el boletín del INEGI")
 
 
 @lru_cache(maxsize=1)
