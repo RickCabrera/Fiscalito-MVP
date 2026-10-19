@@ -16,7 +16,12 @@ RFC_COMPRADOR = "COM010101BB2"
 
 def uuid_n(n: int, prefijo: str = "AAAAAAAA") -> str:
     """UUID sintético determinístico."""
-    return f"{prefijo}-0000-4000-8000-{n:012d}"
+    # El parser exige un UUID hexadecimal (revisor P0): letras fuera de A-F del prefijo
+    # mnemotécnico ("P1000000", "N6000000") se traducen a un dígito hex determinístico.
+    hexa = "".join(
+        c if c in "0123456789ABCDEF" else format(ord(c) % 16, "X") for c in prefijo.upper()
+    )
+    return f"{hexa}-0000-4000-8000-{n:012d}"
 
 
 def cfdi(
