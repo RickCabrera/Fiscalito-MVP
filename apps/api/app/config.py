@@ -23,7 +23,12 @@ class Settings:
     # Llave maestra (Fernet, base64 de 32 bytes) con la que se cifran e.firma y CSD.
     LLAVE_MAESTRA: str = os.getenv("FISCALITO_LLAVE_MAESTRA", "")
     # Entorno: "desarrollo" permite atajos locales; "produccion" los prohíbe todos.
-    ENTORNO: str = os.getenv("FISCALITO_ENTORNO", "desarrollo")
+    # Falla cerrado: con Postgres y sin la variable, se asume producción (sin atajos, sin
+    # implementaciones falsas, sin llave efímera, sin create_all).
+    ENTORNO: str = os.getenv(
+        "FISCALITO_ENTORNO",
+        "produccion" if os.getenv("DATABASE_URL", "").startswith("postgres") else "desarrollo",
+    )
 
 
 settings = Settings()

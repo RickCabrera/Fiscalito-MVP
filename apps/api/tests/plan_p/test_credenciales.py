@@ -264,3 +264,15 @@ def test_api_sin_token_401(api):
     from app.main import app
 
     assert TestClient(app).get("/api/v1/clientes/taller/credenciales").status_code == 401
+
+
+def test_la_credencial_reemplazada_no_conserva_sus_secretos(db_sesion, cliente):
+    """Revisor P0: al subir una e.firma nueva, la anterior queda sin llave ni contraseña."""
+    vieja = servicio.guardar(
+        db_sesion, cliente, "efirma", *(lambda p: (p.cer, p.key, p.password))(certs_sat.generar()),
+        "uid-a",
+    )
+    par = certs_sat.generar()
+    servicio.guardar(db_sesion, cliente, "efirma", par.cer, par.key, par.password, "uid-a")
+    db_sesion.refresh(vieja)
+    assert not vieja.activo and vieja.key_cifrada == b"" and vieja.password_cifrada == b""

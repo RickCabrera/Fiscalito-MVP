@@ -196,6 +196,12 @@ async def recibir_eventos(
     )
 
 
+def _exigir_asignado(ctx: Contexto, clave: str) -> None:
+    """Un auxiliar sólo ve checadas de clientes que tiene asignados (revisor P0)."""
+    if ctx.es_auxiliar:
+        cliente_o_404(ctx, clave)
+
+
 @router.get(
     "/asistencia/eventos",
     response_model=EventosResponse,
@@ -210,6 +216,7 @@ async def consultar_eventos(
     desde: datetime | None = Query(default=None, description="Inclusivo"),
     ctx: Contexto = Depends(contexto_actual),
 ) -> EventosResponse:
+    _exigir_asignado(ctx, cliente)
     llave = llave_almacen(ctx.despacho_id, cliente)
     return EventosResponse(cliente=cliente, eventos=almacen.eventos(llave, desde))
 
@@ -226,6 +233,7 @@ async def consultar_eventos(
 async def cerrar(
     req: CerrarPeriodoRequest, ctx: Contexto = Depends(contexto_actual)
 ) -> CerrarPeriodoResponse:
+    _exigir_asignado(ctx, req.cliente)
     incidencias, desconocidos = cerrar_periodo(
         almacen.eventos(llave_almacen(ctx.despacho_id, req.cliente)),
         req.empleados,
