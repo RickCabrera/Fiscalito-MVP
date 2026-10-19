@@ -193,11 +193,11 @@ def api(sesionador: sessionmaker) -> Iterator[Callable[[str], object]]:
     from fastapi import Header
 
     def _usuario(authorization: str | None = Header(default=None)) -> str:
-        from app.exceptions import FiscalAgentError
+        # Mismas reglas de formato que producción (401 sin encabezado o mal
+        # formado); sólo se salta la verificación criptográfica del token.
+        from app.auth_firebase import token_del_encabezado
 
-        if not authorization or not authorization.lower().startswith("bearer "):
-            raise FiscalAgentError("Falta el encabezado Authorization.", status_code=401)
-        return authorization.split(None, 1)[1].strip()
+        return token_del_encabezado(authorization)
 
     app.dependency_overrides[usuario_actual] = _usuario
     registro.limpiar_cache()

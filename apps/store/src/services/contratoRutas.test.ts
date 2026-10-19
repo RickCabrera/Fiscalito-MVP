@@ -42,7 +42,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import rutasBackend from './rutasBackend.json';
 /**
- * R-07: `carteraBackend` pide el ID token ANTES de llamar a `fetch`, así que sin
+ * R-07/P0-01: `cartera` y `dispositivos` piden el ID token ANTES de llamar a `fetch`, así que sin
  * sesión no llega a construir ninguna URL y este archivo no podría medirla.
  *
  * El doble también resuelve el otro problema: `services/firebase.ts` llama a
@@ -59,13 +59,13 @@ import * as despachoApi from './despachoApi';
 import * as nominaDemoApi from './nominaDemoApi';
 import * as fiscalAgentApi from './fiscalAgentApi';
 import * as carteraApi from './carteraApi';
-// R-07: el cliente del CRUD con el backend como dueño. Un revisor lo encontró
-// AUSENTE de este archivo — un módulo entero con cinco funciones que pegan al
-// backend entró por debajo del test que existe para impedir exactamente eso.
-import * as carteraBackend from './carteraBackend';
-// T4: el CFDI de nómina sin timbrar. Se registra el mismo día que nace, para
-// que no repita lo de `carteraBackend` — un módulo entero que pegaba al backend
-// y entró por debajo del test que existe para impedirlo.
+// P0-01: la cartera y los dispositivos van SIEMPRE por la API. Se registran aquí
+// el mismo día que nacen: en R-07 un módulo entero de cartera entró por debajo de
+// este test, que existe para impedir exactamente eso.
+import * as cartera from './cartera';
+import * as dispositivos from './dispositivos';
+import * as semillaDemo from './semillaDemo';
+// T4: el CFDI de nómina sin timbrar. Se registra el mismo día que nace.
 import * as cfdiNominaApi from './cfdiNominaApi';
 // P0-03: la bóveda de CFDI. Se registra el día que nace.
 import * as bovedaApi from './bovedaApi';
@@ -171,14 +171,23 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
         [],
       ),
   },
-  'carteraBackend.ts': {
-    cargarCartera: () => carteraBackend.cargarCartera('uid-1'),
-    guardarCliente: () =>
-      carteraBackend.guardarCliente('uid-1', { id: 'mio' } as never),
-    borrarCliente: () => carteraBackend.borrarCliente('uid-1', 'mio'),
-    guardarEmpleado: () =>
-      carteraBackend.guardarEmpleado('uid-1', 'mio', { empleado_no: 'E-01' } as never),
-    borrarEmpleado: () => carteraBackend.borrarEmpleado('uid-1', 'mio', 'E-01'),
+  'cartera.ts': {
+    cargarCartera: () => cartera.cargarCartera('uid-1'),
+    guardarCliente: () => cartera.guardarCliente({ id: 'mio' } as never),
+    borrarCliente: () => cartera.borrarCliente('mio'),
+    guardarEmpleado: () => cartera.guardarEmpleado('mio', { empleado_no: 'E-01' } as never),
+    borrarEmpleado: () => cartera.borrarEmpleado('mio', 'E-01'),
+    // Lo primero que pide es la cartera propia (para no sembrar sobre ella).
+    sembrarDemo: () => cartera.sembrarDemo(),
+  },
+  'semillaDemo.ts': {
+    sembrarDemo: () => semillaDemo.sembrarDemo(),
+    carteraDelCatalogo: () => semillaDemo.carteraDelCatalogo(),
+  },
+  'dispositivos.ts': {
+    listarDispositivos: () => dispositivos.listarDispositivos('mio'),
+    guardarDispositivo: () => dispositivos.guardarDispositivo('mio', { id: '' } as never),
+    borrarDispositivo: () => dispositivos.borrarDispositivo('mio', 'd1'),
   },
   'carteraApi.ts': {
     obtenerEmpleadosSemilla: () => carteraApi.obtenerEmpleadosSemilla('demo'),
@@ -242,7 +251,9 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'nominaDemoApi.ts': nominaDemoApi,
   'fiscalAgentApi.ts': fiscalAgentApi,
   'carteraApi.ts': carteraApi,
-  'carteraBackend.ts': carteraBackend,
+  'cartera.ts': cartera,
+  'semillaDemo.ts': semillaDemo,
+  'dispositivos.ts': dispositivos,
   'cfdiNominaApi.ts': cfdiNominaApi,
   'bovedaApi.ts': bovedaApi,
   'credencialesApi.ts': credencialesApi,
@@ -281,21 +292,10 @@ const HELPERS_PUROS = new Set([
 ]);
 
 /**
- * Exenciones **por módulo**, no por nombre.
- *
- * `HELPERS_PUROS` es global, así que eximir `sembrarDemo` ahí lo eximía en
- * TODOS los módulos — y `carteraFirestore.sembrarDemo` **sí** pega al backend,
- * vía `carteraDelBackend`. Hoy no rompe nada porque ese módulo no está en
- * `MODULOS`, pero es exactamente la "heurística por nombre" que el docstring de
- * arriba rechaza, y el día que alguien agregue `carteraFirestore.ts` aquí, la
- * función que sí pega entraría exenta.
+ * Exenciones **por módulo**, no por nombre: `HELPERS_PUROS` es global, y eximir ahí
+ * un nombre lo eximiría en todos los módulos. Hoy no hay ninguna.
  */
-const PUROS_POR_MODULO: Record<string, Set<string>> = {
-  // Del backend LANZA a propósito: no existe ese endpoint, y darle uno que copia
-  // salarios de terceros a la cuenta de quien llame sería la escalada que R-06
-  // vino a cerrar.
-  'carteraBackend.ts': new Set(['sembrarDemo']),
-};
+const PUROS_POR_MODULO: Record<string, Set<string>> = {};
 
 function funcionesQueDeberianPegar(
   modulo: Record<string, unknown>,

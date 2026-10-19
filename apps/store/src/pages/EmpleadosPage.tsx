@@ -53,6 +53,7 @@ export default function EmpleadosPage() {
       <div className="card" style={{ padding: 'var(--space-lg)' }}>
         <EmpleadosTab
           empleados={empleados}
+          ilegibles={clienteId ? cartera.clientePorId(clienteId)?.ilegibles ?? [] : []}
           soloLectura={cartera.soloLectura}
           onGuardar={(e) => cartera.guardarEmpleado(clienteId as string, e)}
           onBorrar={(no) => cartera.borrarEmpleado(clienteId as string, no)}

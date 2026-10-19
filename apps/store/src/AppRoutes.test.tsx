@@ -39,7 +39,7 @@ vi.mock('./context/carteraStore', async () => {
     useCartera: () =>
       carteraDePrueba({
         clientes: CLIENTES,
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         clientePorId: (id: string) => CLIENTES.find((c) => c.id === id) ?? null,
       }),

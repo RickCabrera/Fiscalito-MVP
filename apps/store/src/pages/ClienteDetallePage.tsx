@@ -247,6 +247,7 @@ export default function ClienteDetallePage() {
               <div className="card" style={{ padding: 'var(--space-lg)' }}>
                 <EmpleadosTab
                   empleados={empleadosCartera}
+                  ilegibles={deLaCartera?.ilegibles ?? []}
                   soloLectura={cartera.soloLectura}
                   onGuardar={(e) => cartera.guardarEmpleado(id as string, e)}
                   onBorrar={(no) => cartera.borrarEmpleado(id as string, no)}

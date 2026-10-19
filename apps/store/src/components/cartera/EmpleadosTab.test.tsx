@@ -178,3 +178,35 @@ describe('EmpleadosTab · el NSS por verificar se VE (R-03)', () => {
     expect(screen.queryByText(/Por verificar/i)).toBeNull();
   });
 });
+
+describe('EmpleadosTab · ilegibles con su razón (R-10)', () => {
+  /**
+   * El backend reporta los empleados guardados que ya no pasan la validación en vez de
+   * tumbar la plantilla. Hasta P0-01 el front tiraba esa lista: el empleado quedaba
+   * fuera del cálculo sin que el contador lo viera.
+   */
+  const ILEGIBLE = { empleado_no: 'E-99', nombre: 'BETO RUIZ', razon: 'nss: debe tener 11 dígitos' };
+
+  it('se pintan en la ficha con número, nombre y razón', () => {
+    render(
+      <EmpleadosTab
+        empleados={[emp()]}
+        ilegibles={[ILEGIBLE]}
+        soloLectura={false}
+        onGuardar={vi.fn()}
+        onBorrar={vi.fn()}
+      />,
+    );
+    const aviso = screen.getByRole('alert', { name: 'Empleados que no se pudieron leer' });
+    expect(within(aviso).getByText(/1 empleado guardado no se pudo leer/)).toBeTruthy();
+    expect(within(aviso).getByText('E-99')).toBeTruthy();
+    expect(aviso.textContent).toContain('BETO RUIZ');
+    expect(aviso.textContent).toContain('nss: debe tener 11 dígitos');
+    expect(aviso.textContent).toContain('no entra al cálculo');
+  });
+
+  it('sin ilegibles no hay aviso (un aviso siempre encendido se ignora)', () => {
+    pintar([emp()]);
+    expect(screen.queryByRole('alert', { name: 'Empleados que no se pudieron leer' })).toBeNull();
+  });
+});

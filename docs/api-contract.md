@@ -435,22 +435,30 @@ F1-09 registre RFC, entidad y personalidad.
 
 ---
 
-## Cartera del despacho — el backend como dueño del dato (R-07)
+## Cartera del despacho — el backend como único dueño del dato (R-07 → P0-01)
 
-**El único grupo de rutas del repo que EXIGE autenticación.** El resto de
-`/api/v1` sigue abierto (S-00b) y eso no cambia aquí.
+**Desde P0-01 la cartera vive en SQL** (`app/modelos/nucleo.py`: `clientes`, `empleados`,
+`dispositivos`, con el documento en `datos` JSON) y el front la lee y escribe **sólo por
+aquí**: ya no hay Firestore para la cartera ni interruptor `VITE_CARTERA_BACKEND`. Lo que
+había en Firestore se trae una vez con `apps/api/scripts/migrar_firestore.py` (ver abajo).
 
-`Authorization: Bearer <ID token de Firebase>`. **No hay parámetro de uid en
-ninguna ruta**: pasarlo por el cuerpo o por la URL haría que cualquiera leyera la
-cartera de cualquiera cambiando un renglón, y esta cartera guarda el salario y el
-NSS de trabajadores de terceros. El uid sale del token verificado.
+`Authorization: Bearer <ID token de Firebase>`. **No hay parámetro de uid ni de despacho en
+ninguna ruta**: el despacho sale del token verificado (`app/tenancy.contexto_actual`; la
+primera vez que entra un uid se le crea su despacho con id = uid). Toda ruta obtiene el
+cliente con `cliente_o_404`: **un cliente de otro despacho es 404, nunca 403** (un 403
+confirmaría que existe). Un usuario con rol `auxiliar` sólo ve sus clientes asignados.
+
+Guardar es **merge**: un `PUT` conserva los campos guardados que el esquema actual no
+conoce (p. ej. traídos por la migración) y sobrescribe los que sí manda.
 
 | Código | Cuándo |
 |---|---|
 | 401 | falta `Authorization`, está mal formado, o el token no es válido |
-| 404 | el cliente no está en **tu** cartera |
-| 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL) |
-| 503 | **el backend no tiene credenciales de Firebase.** El mensaje dice qué falta |
+| 403 | un `auxiliar` intenta dar de alta un cliente |
+| 404 | el cliente (o el dispositivo) no está en **tu** despacho |
+| 409 | tope de altas: 500 clientes por despacho; 2,000 empleados o 100 dispositivos por cliente (editar nunca rebota) |
+| 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL, IP inválida, serial repetido) |
+| 503 | **el backend no tiene credenciales de Firebase** para verificar el token. El mensaje dice qué falta |
 
 ### `GET /api/v1/cartera/clientes`
 Los clientes de quien hace el request. `{exito, total, clientes[]}`.
@@ -473,8 +481,8 @@ por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más
 - Vacío significa que **no se pueden emitir movimientos afiliatorios**, y el exportador lo dice
   en vez de emitirlos mal.
 
-En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
-empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
+(El modo empresa única, que usaba el cliente `empresa` como Configuración de empresa, se
+retiró en K.)
 
 #### `regimen` — el régimen fiscal del CLIENTE (T1)
 
@@ -495,10 +503,8 @@ calendario manejan para persona física.
 **Vacío significa "no capturado", y el front lo dice en pantalla** en vez de suponerlo en
 silencio: aplica el 612 (el set completo) y avisa de dónde salió ese valor.
 
-El campo existe en `ClienteCarteraSchema` **aunque hoy el dueño del dato siga siendo Firestore**
-(R-07 continúa apagada): sin declararlo, encender R-07 borraría el régimen de cada cliente en el
-primer guardado, porque pydantic descarta lo que no conoce. No hay migración: los documentos sin
-la llave se leen igual.
+El campo está declarado en `ClienteCarteraSchema`: sin declararlo, cada guardado por la API
+(el único camino desde P0-01) lo escribiría vacío. Los documentos sin la llave se leen igual.
 
 #### `rfc`, `codigo_postal` y `clave_entidad` — los datos fiscales del cliente (C-01)
 
@@ -524,12 +530,11 @@ cliente de demostración o uno guardado antes de C-01 se sigue guardando sin ell
 **En `GET /cartera/clientes`** vienen cuando el documento los tiene y **faltan** cuando no (la
 lectura no tipa estricto): el front lee ausente como "Sin capturar".
 
-**ABIERTO — el `PUT` escribe el documento completo.** `guardar_cliente` hace `model_dump` de
-todo el schema, defaults incluidos, así que un `PUT` que no mande `codigo_postal` o
-`clave_entidad` los escribe **vacíos** aunque el merge de Firestore conserve lo demás. Hoy nadie
-lo dispara: la Configuración de empresa (O-01, modo empresa única) no los manda, pero sólo pasa
-por aquí con `VITE_CARTERA_BACKEND` encendido, y R-07 sigue apagada. Es el mismo comportamiento
-que ya tenía `regimen`. Con Firestore (el default) `setDoc(merge: true)` los conserva.
+**ABIERTO — el `PUT` escribe todos los campos del esquema.** `guardar_cliente` hace
+`model_dump` de todo el schema, defaults incluidos, así que un `PUT` que no mande
+`codigo_postal` o `clave_entidad` los escribe **vacíos** (el merge sólo conserva los campos
+que el esquema NO conoce). El formulario de cliente siempre los manda, así que hoy nadie lo
+dispara; es el mismo comportamiento que ya tenía `regimen`.
 
 #### `guia_subdelegacion` — el número que asigna el IMSS (O-04)
 
@@ -575,23 +580,23 @@ URL: adivinar cuál vale escribiría el cliente equivocado. El `id` no se guarda
 dentro del documento — ya es su nombre.
 
 ### `DELETE /api/v1/cartera/clientes/{cliente_id}`
-**Borra en cascada.** Firestore no lo hace solo: sin esto los empleados quedarían
-huérfanos —con su salario y su NSS— y reaparecerían al recrear un cliente con el
-mismo id. Hay un test contra el emulador que lo fija, y el doble en memoria **no
-puede** cazar ese bug.
+**Borra en cascada** empleados y dispositivos: sin esto quedarían huérfanos —con su
+salario y su NSS— y reaparecerían al recrear un cliente con el mismo id. 404 si el
+cliente no está en tu despacho.
 
 ### `GET /api/v1/cartera/clientes/{cliente_id}/empleados`
 La plantilla del cliente, leída de la cartera que este CRUD escribe. Distinta de
 `/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la
-cartera de nadie. `{exito, cliente_id, total, sin_vincular, ilegibles[], empleados[]}`.
+cartera de nadie. `{exito, cliente_id, total, sin_vincular, ilegibles[], ilegibles_detalle[], empleados[]}`.
 
 `ilegibles[]` son los `empleado_no` de documentos guardados que **no pasan la
 validación actual** —un NSS de una versión anterior, un campo que falta— y que
 por eso **no vienen en `empleados`** ni cuentan en `total`. Se reportan en vez de
 tumbar la respuesta con un 500: como el front pide los empleados de todos los
 clientes en paralelo, un solo documento legado dejaba la cartera **completa** en
-cero. **Hoy el front no los pinta**; pintarlos es tarea pendiente, y hasta
-entonces ese empleado queda fuera del cálculo sin que el contador lo vea.
+cero. `ilegibles_detalle[]` trae lo mismo con `{empleado_no, nombre, razon}` (P0-01,
+R-10): la ficha del cliente los pinta con su razón, junto al aviso de "no vinculados".
+`ilegibles[]` se conserva como lista de `empleado_no` por compatibilidad.
 
 > **Todavía nadie la consume para calcular.** Una versión anterior de este
 > documento decía "ésta es la fuente que el cálculo de nómina lee, y es lo que
@@ -611,24 +616,44 @@ exigir el dígito verificador** (§D25 de `docs/decisiones-nomina.md`). Vacío
 siempre se acepta, y eso es lo que hace seguro bloquear por longitud.
 
 ### `DELETE /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}`
+Idempotente: borrar uno que no existe responde 200; un cliente de otro despacho, 404.
 
-### Estado: **el interruptor está APAGADO**
+### Dispositivos del cliente (R-09 → P0-01)
 
-El front sigue escribiendo Firestore directo. Lo que falta para encenderlo no es
-código: son **credenciales** (`GOOGLE_APPLICATION_CREDENTIALS` o ADC), y
-encenderlo sin ellas daría 503 en todo el CRUD. Se enciende con
-`VITE_CARTERA_BACKEND=1` en `apps/store/.env` **después** de comprobar que
-`GET /api/v1/cartera/clientes` responde 200. **No hay migración de datos**: las
-rutas de Firestore son las mismas de los dos lados.
+Checadores biométricos. Mismo modelo que `DispositivoChecador` del front
+(`dispositivosApi.ts`) y las mismas reglas que su `validarDispositivo`. La IP se
+**registra, no se consulta**: nada del backend se conecta al aparato. `employee_nos` son
+llaves del **checador** (`employee_no`), no del cálculo.
 
-T2 le dio al flag la misma lectura que a `VITE_MODO_EMPRESA_UNICA`
-(`services/flagEncendido.ts`): además de `1` encienden `true`, `on`, `yes`, `si`
-y `sí`, y todo lo demás lo deja apagado. Antes sólo valía `=== '1'`, así que un
-`.env` con `VITE_CARTERA_BACKEND=true` dejaba el backend apagado sin decirlo.
+Cuerpo (`DispositivoSchema`): `{nombre (1-120, obligatorio), ip (IPv4 o ""), puerto
+(1-65535, default 80), marca, modelo, serial, employee_nos[], notas}`. Se limpian espacios;
+`employee_nos` se guarda sin vacíos ni repetidos. Un `serial` no vacío que ya tenga OTRO
+dispositivo del mismo cliente es 422.
 
-**Dispositivos NO están aquí.** R-04 los dejó viviendo en Firestore escritos por
-el front; meterlos en la misma corrida haría nacer la colección con dos dueños
-dentro del mismo día, que es el problema que R-07 cierra. Es tarea propia.
+- **`GET /api/v1/cartera/clientes/{cliente_id}/dispositivos`** →
+  `{exito, cliente_id, total, dispositivos[]}`, cada uno con su `id`. Lectura laxa.
+- **`POST /api/v1/cartera/clientes/{cliente_id}/dispositivos`** → **201**
+  `{exito, id, mensaje}`. El `id` lo genera el backend: nombre y serial son editables y
+  repetibles, y un id derivado de ellos convertiría un cambio de nombre en un aparato nuevo.
+- **`PUT /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}`** →
+  `{exito, id, mensaje}`. 404 si no existe en ese cliente (las altas van por POST). Merge.
+- **`DELETE /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}`** →
+  `{exito, mensaje}`. Idempotente. No borra a nadie de la plantilla ni del aparato.
+
+### Migración única desde Firestore (`apps/api/scripts/migrar_firestore.py`)
+
+`users/{uid}/clientes/{id}`, `.../empleados/{no}` y `.../dispositivos/{id}` → despacho
+`id = uid`. Copia cada documento **tal cual** a `datos` (sin validar: un legado se migra y
+la API lo reporta en `ilegibles`). **Idempotente**: lo que ya existe en SQL no se toca (ni
+se duplica ni se pisa con la copia vieja); lo que falta se agrega. `--dry-run` reporta lo
+que haría sin escribir; `--uid` (repetible) limita a esas cuentas. Un id más largo que la
+columna se reporta como omitido en vez de truncarse. **No migra** el perfil (`users/{uid}`)
+ni el historial de declaraciones: siguen en Firestore hasta tener tabla.
+
+    cd apps/api && python -m scripts.migrar_firestore --dry-run
+
+> **Todavía nadie la consume para calcular.** `POST /nomina/calcular-periodo` sigue
+> recibiendo `empleados` en el cuerpo (R-08 → P4-01).
 
 ## Nómina (épica D — demo)
 

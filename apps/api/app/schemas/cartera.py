@@ -287,6 +287,14 @@ class ClientesCarteraResponse(BaseModel):
     )
 
 
+class EmpleadoIlegible(BaseModel):
+    """Un empleado guardado que no pasa la validación actual, y por qué (R-10)."""
+
+    empleado_no: str
+    nombre: str = Field(default="", description="El nombre guardado, si lo tiene.")
+    razon: str = Field(description="Primera causa del rechazo, legible: `nss: ...`.")
+
+
 class EmpleadosCarteraResponse(BaseModel):
     exito: bool = True
     cliente_id: str
@@ -301,6 +309,11 @@ class EmpleadosCarteraResponse(BaseModel):
         "reportan en vez de tumbar la respuesta: un documento legado dejaba la cartera "
         "completa en cero. Y se reportan en vez de esconderse, porque un empleado que queda "
         "fuera del cálculo en silencio es el modo de falla que la épica G viene evitando.",
+    )
+    ilegibles_detalle: tuple[EmpleadoIlegible, ...] = Field(
+        default=(),
+        description="Los mismos `ilegibles`, con nombre y razón para pintarlos en la ficha "
+        "(R-10). `ilegibles` se conserva como lista de `empleado_no` por compatibilidad.",
     )
     empleados: tuple[EmpleadoCarteraSchema, ...]
 
