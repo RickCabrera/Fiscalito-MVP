@@ -352,11 +352,6 @@ describe('contrato de rutas front ↔ backend', () => {
         it(`${nombre} manda la sesión si pega a /api/v1 (P0-02)`, async () => {
           const { path, encabezados } = await urlDe(llamar);
           if (!path.startsWith('/api/v1/')) return; // `/health` es público
-          // PENDIENTE (P0-02): `carteraApi.ts` lo está migrando otra tarea en paralelo y
-          // esta no lo toca para no chocar. Sus tres llamadas (semilla, SBC y primas)
-          // responden 401 hasta que esa tarea las pase por `encabezadoAuth`. Quitar esta
-          // línea al integrar las dos ramas.
-          if (modulo === 'carteraApi.ts') return;
           expect(
             encabezados.authorization,
             `${nombre} pide ${path} SIN Authorization: el backend responde 401. ` +

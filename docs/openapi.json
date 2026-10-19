@@ -1781,7 +1781,7 @@
           "Cartera del despacho"
         ],
         "summary": "Los clientes del despacho autenticado",
-        "description": "Los clientes de **quien hace el request**, resueltos desde el ID token de Firebase. No hay parámetro de uid: pasarlo por el cuerpo o por la URL haría que cualquiera leyera la cartera de cualquiera cambiando un renglón.",
+        "description": "Los clientes del despacho de **quien hace el request**, resuelto desde el ID token. Los documentos van tal como están guardados (no se tipan estricto al leer).",
         "operationId": "listar_clientes_api_v1_cartera_clientes_get",
         "parameters": [
           {
@@ -1822,16 +1822,6 @@
             },
             "description": "Unauthorized"
           },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Service Unavailable"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1851,7 +1841,7 @@
           "Cartera del despacho"
         ],
         "summary": "Alta o edición de un cliente",
-        "description": "Idempotente: el mismo `cliente_id` sobrescribe. El cuerpo se valida contra `ClienteCarteraSchema`, así que una prima de riesgo fuera del Art. 72 o una periodicidad desconocida se rechazan aquí y no tres pantallas después.",
+        "description": "Idempotente: el mismo `cliente_id` sobrescribe (merge: los campos que este esquema no conoce se conservan). El cuerpo se valida contra `ClienteCarteraSchema`.",
         "operationId": "guardar_cliente_api_v1_cartera_clientes__cliente_id__put",
         "parameters": [
           {
@@ -1911,6 +1901,26 @@
             },
             "description": "Unauthorized"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1927,8 +1937,8 @@
         "tags": [
           "Cartera del despacho"
         ],
-        "summary": "Baja de un cliente, con sus empleados",
-        "description": "**Borra en cascada.** Firestore no lo hace solo: sin esto los empleados quedarían huérfanos —con su salario y su NSS— y reaparecerían al recrear un cliente con el mismo id.",
+        "summary": "Baja de un cliente, con sus empleados y dispositivos",
+        "description": "Borra en cascada (llaves foráneas `ON DELETE CASCADE`): sin esto los empleados quedarían huérfanos y reaparecerían al recrear un cliente con el mismo id.",
         "operationId": "borrar_cliente_api_v1_cartera_clientes__cliente_id__delete",
         "parameters": [
           {
@@ -1978,6 +1988,16 @@
             },
             "description": "Unauthorized"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1997,7 +2017,7 @@
           "Cartera del despacho"
         ],
         "summary": "La plantilla de un cliente del despacho",
-        "description": "La plantilla del cliente, leída de la cartera que este mismo CRUD escribe. Distinta de `/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la cartera de nadie. **Todavía NADIE la consume para calcular.** `POST /nomina/calcular-periodo` sigue recibiendo la plantilla en el cuerpo, así que el tercer criterio de R-07 —*el cálculo lee la misma fuente*— **no se cumple**. Es tarea propia, y está anotada.",
+        "description": "Lectura laxa: un empleado guardado que ya no pasa la validación actual NO tumba la respuesta; va en `ilegibles` con su razón.",
         "operationId": "listar_empleados_api_v1_cartera_clientes__cliente_id__empleados_get",
         "parameters": [
           {
@@ -2076,7 +2096,7 @@
           "Cartera del despacho"
         ],
         "summary": "Alta o edición de un empleado",
-        "description": "El `empleado_no` de la URL es la llave del CÁLCULO. `employee_no`, en el cuerpo, es la del CHECADOR y puede ser nula — son distintas y fundirlas es el defecto que G-02 vino a arreglar. El NSS se valida aquí igual que en el front: 11 dígitos o vacío, sin exigir el verificador (§D25).",
+        "description": "El `empleado_no` de la URL es la llave del CÁLCULO; `employee_no`, en el cuerpo, es la del CHECADOR y puede ser nula. NSS: 11 dígitos o vacío (§D25).",
         "operationId": "guardar_empleado_api_v1_cartera_clientes__cliente_id__empleados__empleado_no__put",
         "parameters": [
           {
@@ -2155,6 +2175,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -2172,6 +2202,7 @@
           "Cartera del despacho"
         ],
         "summary": "Baja de un empleado",
+        "description": "Idempotente: borrar uno que no existe responde 200.",
         "operationId": "borrar_empleado_api_v1_cartera_clientes__cliente_id__empleados__empleado_no__delete",
         "parameters": [
           {
@@ -2229,6 +2260,385 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cartera/clientes/{cliente_id}/dispositivos": {
+      "get": {
+        "tags": [
+          "Cartera del despacho"
+        ],
+        "summary": "Los checadores de un cliente",
+        "operationId": "listar_dispositivos_api_v1_cartera_clientes__cliente_id__dispositivos_get",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositivosResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Cartera del despacho"
+        ],
+        "summary": "Alta de un checador",
+        "description": "El id lo genera el backend: el nombre y el serial son editables y repetibles, y un id derivado de ellos convertiría un cambio de nombre en un dispositivo nuevo con el anterior huérfano.",
+        "operationId": "crear_dispositivo_api_v1_cartera_clientes__cliente_id__dispositivos_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispositivoSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositivoGuardadoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}": {
+      "put": {
+        "tags": [
+          "Cartera del despacho"
+        ],
+        "summary": "Edición de un checador",
+        "description": "404 si el dispositivo no existe en ese cliente: las altas van por POST.",
+        "operationId": "editar_dispositivo_api_v1_cartera_clientes__cliente_id__dispositivos__dispositivo_id__put",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "dispositivo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispositivo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispositivoSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositivoGuardadoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Cartera del despacho"
+        ],
+        "summary": "Baja de un checador",
+        "description": "Idempotente. No borra a nadie de la plantilla ni del aparato físico.",
+        "operationId": "borrar_dispositivo_api_v1_cartera_clientes__cliente_id__dispositivos__dispositivo_id__delete",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "dispositivo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dispositivo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperacionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "422": {
             "description": "Validation Error",
@@ -5520,6 +5930,125 @@
         "title": "DiaTrabajado",
         "description": "Detalle de un dia del periodo, para que la pantalla pueda explicarlo."
       },
+      "DispositivoGuardadoResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "mensaje"
+        ],
+        "title": "DispositivoGuardadoResponse"
+      },
+      "DispositivoSchema": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "ip": {
+            "type": "string",
+            "maxLength": 15,
+            "title": "Ip",
+            "description": "IPv4 o vacío (no se conoce).",
+            "default": ""
+          },
+          "puerto": {
+            "type": "integer",
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Puerto",
+            "default": 80
+          },
+          "marca": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Marca",
+            "default": "Hikvision"
+          },
+          "modelo": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Modelo",
+            "default": ""
+          },
+          "serial": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Serial",
+            "default": ""
+          },
+          "employee_nos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Employee Nos",
+            "description": "`employee_no` (llave del CHECADOR) de quienes están enrolados."
+          },
+          "notas": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Notas",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "DispositivoSchema",
+        "description": "Un checador tal como lo captura el despacho. El `id` va en la URL, no aquí."
+      },
+      "DispositivosResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "cliente_id": {
+            "type": "string",
+            "title": "Cliente Id"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "dispositivos": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Dispositivos",
+            "description": "Los dispositivos tal como están guardados, con su `id`. No se tipan estrictamente al leer, por la misma razón que los clientes: uno traído de Firestore por la migración puede tener campos que este modelo no conoce."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cliente_id",
+          "total",
+          "dispositivos"
+        ],
+        "title": "DispositivosResponse"
+      },
       "EmitirTokenRequest": {
         "properties": {
           "cliente": {
@@ -5874,6 +6403,32 @@
         "title": "EmpleadoDemoSchema",
         "description": "Un empleado de la plantilla de demostración, **sin salarios**.\n\nEl front sólo necesita el número y el nombre: los importes vienen en los\nrecibos. Menos superficie es menos que pueda salir por donde no debe."
       },
+      "EmpleadoIlegible": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre",
+            "description": "El nombre guardado, si lo tiene.",
+            "default": ""
+          },
+          "razon": {
+            "type": "string",
+            "title": "Razon",
+            "description": "Primera causa del rechazo, legible: `nss: ...`."
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "razon"
+        ],
+        "title": "EmpleadoIlegible",
+        "description": "Un empleado guardado que no pasa la validación actual, y por qué (R-10)."
+      },
       "EmpleadoNominaSchema": {
         "properties": {
           "empleado_no": {
@@ -5950,6 +6505,15 @@
             "type": "array",
             "title": "Ilegibles",
             "description": "Empleados guardados que **no pasan la validación actual** —un NSS de una versión anterior, un campo que falta— y por eso NO vienen en `empleados`. Se reportan en vez de tumbar la respuesta: un documento legado dejaba la cartera completa en cero. Y se reportan en vez de esconderse, porque un empleado que queda fuera del cálculo en silencio es el modo de falla que la épica G viene evitando.",
+            "default": []
+          },
+          "ilegibles_detalle": {
+            "items": {
+              "$ref": "#/components/schemas/EmpleadoIlegible"
+            },
+            "type": "array",
+            "title": "Ilegibles Detalle",
+            "description": "Los mismos `ilegibles`, con nombre y razón para pintarlos en la ficha (R-10). `ilegibles` se conserva como lista de `empleado_no` por compatibilidad.",
             "default": []
           },
           "empleados": {

@@ -387,6 +387,31 @@ export interface DiaTrabajado {
   primera_entrada?: string | null;
 }
 
+export interface DispositivoGuardadoResponse {
+  exito?: boolean;
+  id: string;
+  mensaje: string;
+}
+
+/** Un checador tal como lo captura el despacho. El `id` va en la URL, no aquí. */
+export interface DispositivoSchema {
+  nombre: string;
+  ip?: string;
+  puerto?: number;
+  marca?: string;
+  modelo?: string;
+  serial?: string;
+  employee_nos?: string[];
+  notas?: string;
+}
+
+export interface DispositivosResponse {
+  exito?: boolean;
+  cliente_id: string;
+  total: number;
+  dispositivos: Record<string, unknown>[];
+}
+
 export interface EmitirTokenRequest {
   cliente: string;
   etiqueta?: string;
@@ -451,6 +476,13 @@ export interface EmpleadoDemoSchema {
   nombre: string;
 }
 
+/** Un empleado guardado que no pasa la validación actual, y por qué (R-10). */
+export interface EmpleadoIlegible {
+  empleado_no: string;
+  nombre?: string;
+  razon: string;
+}
+
 /** Un empleado de la plantilla. El SDI es dato de entrada (§D9). */
 export interface EmpleadoNominaSchema {
   empleado_no: string;
@@ -466,6 +498,7 @@ export interface EmpleadosCarteraResponse {
   total: number;
   sin_vincular: number;
   ilegibles?: string[];
+  ilegibles_detalle?: EmpleadoIlegible[];
   empleados: EmpleadoCarteraSchemaOutput[];
 }
 
@@ -1010,6 +1043,8 @@ export type RutaApi =
   | "/api/v1/calendario"
   | "/api/v1/cartera/clientes"
   | "/api/v1/cartera/clientes/{cliente_id}"
+  | "/api/v1/cartera/clientes/{cliente_id}/dispositivos"
+  | "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}"
   | "/api/v1/cartera/clientes/{cliente_id}/empleados"
   | "/api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}"
   | "/api/v1/clientes/{clave}/credenciales"
@@ -1109,6 +1144,22 @@ export interface OperacionesApi {
   "PUT /api/v1/cartera/clientes/{cliente_id}": {
     cuerpo: ClienteCarteraSchema;
     respuesta: OperacionResponse;
+  };
+  "GET /api/v1/cartera/clientes/{cliente_id}/dispositivos": {
+    cuerpo: never;
+    respuesta: DispositivosResponse;
+  };
+  "POST /api/v1/cartera/clientes/{cliente_id}/dispositivos": {
+    cuerpo: DispositivoSchema;
+    respuesta: DispositivoGuardadoResponse;
+  };
+  "DELETE /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}": {
+    cuerpo: never;
+    respuesta: OperacionResponse;
+  };
+  "PUT /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}": {
+    cuerpo: DispositivoSchema;
+    respuesta: DispositivoGuardadoResponse;
   };
   "GET /api/v1/cartera/clientes/{cliente_id}/empleados": {
     cuerpo: never;
