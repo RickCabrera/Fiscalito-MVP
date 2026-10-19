@@ -67,6 +67,8 @@ import * as carteraBackend from './carteraBackend';
 // que no repita lo de `carteraBackend` — un módulo entero que pegaba al backend
 // y entró por debajo del test que existe para impedirlo.
 import * as cfdiNominaApi from './cfdiNominaApi';
+// P0-04 / P0-07: trabajos en segundo plano y bitácora de auditoría.
+import * as trabajosApi from './trabajosApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -182,6 +184,14 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
   'cfdiNominaApi.ts': {
     generarCFDINomina: () => cfdiNominaApi.generarCFDINomina({} as never),
   },
+  'trabajosApi.ts': {
+    listarTrabajos: () => trabajosApi.listarTrabajos({ cliente: 'demo', estado: 'fallido' }),
+    obtenerTrabajo: () => trabajosApi.obtenerTrabajo(7),
+    reintentarTrabajo: () => trabajosApi.reintentarTrabajo(7),
+    cancelarTrabajo: () => trabajosApi.cancelarTrabajo(7),
+    encolarDiagnostico: () => trabajosApi.encolarDiagnostico('demo', 1),
+    listarAuditoria: () => trabajosApi.listarAuditoria({ cliente: 'demo', pagina: 2 }),
+  },
   'fiscalAgentApi.ts': {
     healthCheck: () => fiscalAgentApi.healthCheck(),
     calcularPreDeclaracion: () => fiscalAgentApi.calcularPreDeclaracion({} as never),
@@ -215,6 +225,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'carteraApi.ts': carteraApi,
   'carteraBackend.ts': carteraBackend,
   'cfdiNominaApi.ts': cfdiNominaApi,
+  'trabajosApi.ts': trabajosApi,
 };
 
 /**
@@ -242,6 +253,8 @@ const HELPERS_PUROS = new Set([
   'contarNomina',
   'faltantesParaCFDI',
   'reciboParaCFDI',
+  // P0-04: etiqueta del estado de un trabajo. Un mapeo, no pega al backend.
+  'etiquetaEstado',
 ]);
 
 /**

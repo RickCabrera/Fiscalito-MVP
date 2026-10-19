@@ -130,18 +130,18 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 @pytest.fixture
 def sesionador() -> Iterator[sessionmaker]:
     """Fábrica de sesiones sobre un SQLite en memoria con el esquema completo."""
-    from sqlalchemy import create_engine, event
+    from sqlalchemy import create_engine
 
     import app.modelos  # noqa: F401
     from app.db.base import Base
+    from app.db.session import preparar_sqlite
 
     motor = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 
-    @event.listens_for(motor, "connect")
-    def _fk(conexion, _registro):  # type: ignore[no-untyped-def]
-        conexion.execute("PRAGMA foreign_keys=ON")
+    # Mismas reglas que el motor de la app: llaves foráneas y savepoints que sí se revierten.
+    preparar_sqlite(motor)
 
     Base.metadata.create_all(motor)
     yield sessionmaker(bind=motor, autoflush=False, expire_on_commit=False)

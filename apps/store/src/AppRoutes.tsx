@@ -23,6 +23,8 @@ import ServiceDetailPage from './pages/ServiceDetailPage';
 import ProfilePage from './pages/ProfilePage';
 // T8: planes de la cuenta. Se entra desde Perfil, no desde el sidebar.
 import PlanesPage from './pages/PlanesPage';
+// P0-07: bitácora de auditoría. Se entra desde Perfil, no desde el sidebar.
+import AuditoriaPage from './pages/AuditoriaPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
@@ -91,6 +93,7 @@ export default function AppRoutes() {
             diaria por una pantalla que se visita una vez. Se llega desde la
             tarjeta de plan del Perfil. */}
         <Route path="planes" element={<PlanesPage />} />
+        <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
             y los enlaces viejos apuntan ahí. */}

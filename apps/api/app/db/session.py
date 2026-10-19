@@ -15,17 +15,34 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import settings
 
 
+def preparar_sqlite(motor: Engine) -> None:
+    """
+    Llaves foráneas y transacciones de verdad en SQLite.
+
+    pysqlite no emite `BEGIN` antes de un `SAVEPOINT`, así que un `begin_nested()` al
+    principio de una transacción se confirmaba solo al liberarse y el `rollback()` de
+    afuera ya no lo deshacía (P0-04: la cola y el programador usan savepoints). La receta
+    de SQLAlchemy: apagar el manejo propio del driver y emitir `BEGIN` nosotros.
+    """
+
+    @event.listens_for(motor, "connect")
+    def _conectar(conexion, _registro):  # type: ignore[no-untyped-def]
+        conexion.isolation_level = None
+        cursor = conexion.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    @event.listens_for(motor, "begin")
+    def _begin(conexion):  # type: ignore[no-untyped-def]
+        conexion.exec_driver_sql("BEGIN")
+
+
 def crear_motor(url: str) -> Engine:
     """Crea el engine. En SQLite activa llaves foráneas y permite uso entre hilos."""
     if url.startswith("sqlite"):
         motor = create_engine(url, connect_args={"check_same_thread": False})
 
-        @event.listens_for(motor, "connect")
-        def _fk(conexion, _registro):  # type: ignore[no-untyped-def]
-            cursor = conexion.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-
+        preparar_sqlite(motor)
         return motor
     return create_engine(url, pool_pre_ping=True)
 

@@ -23,6 +23,12 @@
       ]
     },
     {
+      "path": "/api/v1/auditoria",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
@@ -163,7 +169,43 @@
       ]
     },
     {
+      "path": "/api/v1/trabajos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/clientes/{clave}/diagnostico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/reintentar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

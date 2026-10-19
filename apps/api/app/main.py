@@ -14,12 +14,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.auditoria import AuditoriaMiddleware
 from app.config import settings
 from app.exceptions import FiscalAgentError
 from app.logging_config import setup_logging
 from app.routes import (
     agente,
     asistencia,
+    auditoria,
     calendario,
     cartera,
     comparador,
@@ -31,6 +33,7 @@ from app.routes import (
     multi_periodo,
     nomina,
     retenciones,
+    trabajos,
 )
 
 # Inicializar logging estructurado al arrancar la aplicacion
@@ -72,6 +75,8 @@ cors_origins: list[str] = [
 ]
 
 app.add_middleware(RequestLoggingMiddleware)
+# P0-07: renglón de auditoría por cada escritura autenticada (red de seguridad).
+app.add_middleware(AuditoriaMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -107,6 +112,9 @@ app.include_router(despacho.router, prefix="/api/v1")
 # R-07: el único router del repo que EXIGE autenticación. El resto de /api/v1
 # sigue abierto (S-00b) y eso no cambia aquí.
 app.include_router(cartera.router, prefix="/api/v1")
+# Plan P: trabajos en segundo plano (P0-04) y bitácora de auditoría (P0-07).
+app.include_router(trabajos.router, prefix="/api/v1")
+app.include_router(auditoria.router, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":
