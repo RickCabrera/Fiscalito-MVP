@@ -108,4 +108,10 @@ app.include_router(despacho.router, prefix="/api/v1")
 # sigue abierto (S-00b) y eso no cambia aquí.
 app.include_router(cartera.router, prefix="/api/v1")
 
+# Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
+if settings.ENTORNO != "produccion":
+    from app.db.session import crear_tablas
+
+    crear_tablas()
+
 logger.info("Fiscal Agent API inicializada correctamente")

@@ -19,6 +19,18 @@ dependencies = [
     # R-07: el backend deja de ser stateless y se vuelve dueño de la cartera.
     # Es dependencia de RUNTIME: sin ella `/api/v1/cartera/*` no puede existir.
     "firebase-admin>=6.5.0",
+    # Plan P (DP-1): persistencia relacional. Postgres en Railway, SQLite en dev/tests.
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    # Cifrado de e.firma y CSD (Fernet) y firma de solicitudes al SAT.
+    "cryptography>=42.0",
+    # Parser XML de la bóveda de CFDI y del web service del SAT.
+    "lxml>=5.0",
+    # Adaptador de almacenamiento S3/R2 para XML y PDF.
+    "boto3>=1.34",
+    # Exportar papeles de trabajo y reportes a Excel.
+    "openpyxl>=3.1",
 ]
 
 [tool.setuptools.packages.find]

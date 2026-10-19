@@ -16,6 +16,14 @@ class Settings:
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
+    # Plan P — persistencia relacional (DP-1). Railway inyecta DATABASE_URL de Postgres.
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./fiscalito.db").replace(
+        "postgres://", "postgresql+psycopg://", 1
+    ).replace("postgresql://", "postgresql+psycopg://", 1)
+    # Llave maestra (Fernet, base64 de 32 bytes) con la que se cifran e.firma y CSD.
+    LLAVE_MAESTRA: str = os.getenv("FISCALITO_LLAVE_MAESTRA", "")
+    # Entorno: "desarrollo" permite atajos locales; "produccion" los prohíbe todos.
+    ENTORNO: str = os.getenv("FISCALITO_ENTORNO", "desarrollo")
 
 
 settings = Settings()
