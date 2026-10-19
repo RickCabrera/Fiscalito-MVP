@@ -206,6 +206,8 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     descargarXml: () => bovedaApi.descargarXml('taller', 'AAAA-BBBB'),
     borrarCfdi: () => bovedaApi.borrarCfdi('taller', 'AAAA-BBBB'),
     resumenBoveda: () => bovedaApi.resumenBoveda('taller'),
+    // P1-06: los CFDI del periodo en la forma de los cálculos.
+    facturasParaCalculo: () => bovedaApi.facturasParaCalculo('taller', { desde: '2026-03-01', hasta: '2026-03-31' }),
   },
   'satDescargaApi.ts': {
     obtenerConfigSat: () => satDescargaApi.obtenerConfigSat('taller'),

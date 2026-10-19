@@ -48,6 +48,12 @@
       ]
     },
     {
+      "path": "/api/v1/boveda/clientes/{clave}/facturas-calculo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/boveda/clientes/{clave}/resumen",
       "metodos": [
         "GET"
@@ -97,6 +103,42 @@
       "metodos": [
         "DELETE",
         "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/diot",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/estado-cuenta",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/multi-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/retenciones-terceros",
+      "metodos": [
+        "POST"
       ]
     },
     {

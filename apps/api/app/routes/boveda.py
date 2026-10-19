@@ -12,7 +12,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import Response
 
-from app.boveda_cfdi import servicio
+from app.boveda_cfdi import calculo, servicio
 from app.exceptions import FiscalAgentError
 from app.modelos.cfdi import Comprobante
 from app.sat_verificacion import estatus, listas
@@ -122,6 +122,45 @@ def borrar_cfdi(clave: str, uuid: str, ctx: Contexto = Depends(contexto_actual))
     cliente = cliente_o_404(ctx, clave)
     servicio.borrar(ctx.db, cliente, uuid)
     return {"exito": True, "uuid": uuid.strip().upper()}
+
+
+@router.get("/clientes/{clave}/facturas-calculo")
+def facturas_calculo(
+    clave: str,
+    desde: date = Query(..., description="Fecha inicial (inclusive), AAAA-MM-DD"),
+    hasta: date = Query(..., description="Fecha final (inclusive), AAAA-MM-DD"),
+    tipos: str | None = Query(
+        None, max_length=20, description="Tipos separados por coma (I,E,P,T). Default: todos."
+    ),
+    ctx: Contexto = Depends(contexto_actual),
+) -> dict[str, Any]:
+    """
+    Los CFDI vigentes del periodo en la forma del esquema `CFDI` de los cálculos (P1-06).
+
+    Sin cancelados ni nómina; los pagos salen uno por documento relacionado. Ver
+    `app/boveda_cfdi/calculo.py`.
+    """
+    cliente = cliente_o_404(ctx, clave)
+    if desde > hasta:
+        raise FiscalAgentError("'desde' no puede ser posterior a 'hasta'.", status_code=422)
+    lista = [t.strip().upper() for t in tipos.split(",") if t.strip()] if tipos else None
+    if lista is not None:
+        invalidos = sorted(set(lista) - set(calculo.TIPOS_CALCULO))
+        if invalidos or not lista:
+            raise FiscalAgentError(
+                f"Tipos no válidos para cálculo: {', '.join(invalidos) or '(vacío)'}. "
+                "Se aceptan I, E, P y T (la nómina no entra a los cálculos fiscales).",
+                status_code=422,
+            )
+    r = calculo.facturas_para_calculo(
+        ctx.db, cliente, desde, hasta, lista or calculo.TIPOS_CALCULO
+    )
+    return {
+        "exito": True, "desde": desde.isoformat(), "hasta": hasta.isoformat(),
+        "facturas": [f.model_dump(mode="json") for f in r.facturas],
+        "relacionados": [f.model_dump(mode="json") for f in r.relacionados],
+        "resumen": r.resumen, "advertencias": r.advertencias,
+    }
 
 
 @router.get("/clientes/{clave}/resumen")

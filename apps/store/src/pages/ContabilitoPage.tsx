@@ -6,10 +6,10 @@
  * balanza. Todo en el navegador: **no llama al API**, y no tiene por qué —
  * ningún importe se calcula aquí, se acomodan los que el XML ya trae.
  *
- * QUÉ NO HACE: no guarda nada. Los comprobantes viven en el estado de esta
- * pantalla y se van al salir, igual que en los tabs de Fiscalito. Persistir la
- * contabilidad de un cliente es tarea propia, no un efecto secundario de un
- * cascarón.
+ * QUÉ NO HACE: no guarda pólizas. Desde P1-06 los comprobantes del mes elegido
+ * salen por defecto de la BÓVEDA del cliente activo (`useFuenteFacturas`); los
+ * archivos sueltos siguen disponibles y se pueden mandar a la bóveda con un clic.
+ * Persistir la contabilidad (pólizas) es P2-03.
  *
  * DE QUIÉN ES LA CONTABILIDAD QUE SE ESTÁ VIENDO
  * ---------------------------------------------
@@ -29,7 +29,9 @@ import { useProfile } from '../context/ProfileContext';
 import { ClienteActivoContext } from '../context/clienteActivoStore';
 import { esContador } from '../services/navigation';
 import { usePerfilFiscal } from '../context/usePerfilFiscal';
-import XMLUploader from '../components/fiscalito/XMLUploader';
+import FuenteFacturasPanel from '../components/fiscalito/FuenteFacturasPanel';
+import PeriodSelector from '../components/fiscalito/PeriodSelector';
+import { useFuenteFacturas } from '../components/fiscalito/useFuenteFacturas';
 import CatalogoTab from '../components/contabilidad/CatalogoTab';
 import PolizasTab from '../components/contabilidad/PolizasTab';
 import BalanzaTab from '../components/contabilidad/BalanzaTab';
@@ -65,7 +67,16 @@ function ContabilitoDelSujeto() {
   const perfilFiscal = usePerfilFiscal();
   const clienteActivo = useContext(ClienteActivoContext);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [facturas, setFacturas] = useState<CFDI[]>([]);
+  const [manual, setManual] = useState<CFDI[]>([]);
+  const [anio, setAnio] = useState(() => new Date().getFullYear());
+  const [mes, setMes] = useState(() => new Date().getMonth() + 1);
+  /**
+   * P1-06: las pólizas salen por defecto de la bóveda del cliente activo para el mes
+   * elegido (sin cancelados; la nómina se cuenta aparte). Subir XML sigue disponible.
+   * Sin los PPD de otros meses: aquí se contabiliza el periodo, no se cruzan pagos.
+   */
+  const fuente = useFuenteFacturas({ clave: perfilFiscal.clienteId, anio, mes, manual });
+  const facturas = fuente.delPeriodo;
   /** RFC tecleado a mano. Vacío = manda el resuelto. */
   const [rfcManual, setRfcManual] = useState('');
 
@@ -130,7 +141,8 @@ function ContabilitoDelSujeto() {
       {/* Carga de comprobantes + de quién son. Va arriba de los tabs porque los
           tres primeros dependen de esto y el cuarto no depende de nada. */}
       <div className="card animate-in" style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <XMLUploader facturas={facturas} onChange={setFacturas} />
+        <PeriodSelector year={anio} month={mes} onYearChange={setAnio} onMonthChange={setMes} />
+        <FuenteFacturasPanel fuente={fuente} clave={perfilFiscal.clienteId} manual={manual} onManual={setManual} />
 
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12 }}>
           <div style={{ minWidth: 220 }}>
