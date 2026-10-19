@@ -23,6 +23,56 @@
       ]
     },
     {
+      "path": "/api/v1/asistencia/tokens",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/tokens/{token_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/auditoria",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/facturas-calculo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/resumen",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
@@ -42,6 +92,20 @@
       ]
     },
     {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
       "path": "/api/v1/cartera/clientes/{cliente_id}/empleados",
       "metodos": [
         "GET"
@@ -52,6 +116,55 @@
       "metodos": [
         "DELETE",
         "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/diot",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/estado-cuenta",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/multi-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/retenciones-terceros",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales/{credencial_id}",
+      "metodos": [
+        "DELETE"
       ]
     },
     {
@@ -163,7 +276,140 @@
       ]
     },
     {
+      "path": "/api/v1/sat/cartera/semaforo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/bitacora",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/constancia",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/descargar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/historica",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/config",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/obtener",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/pdf",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/riesgos-69b",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/solicitudes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/verificar-estatus",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/listas/estado",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/clientes/{clave}/diagnostico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/reintentar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

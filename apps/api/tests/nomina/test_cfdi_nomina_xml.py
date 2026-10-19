@@ -26,7 +26,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.constants import CLIENTE_DEMO
-from app.main import app
 from app.nomina_engine.cfdi_nomina_xml import (
     ATRIBUTO_ANTIGUEDAD,
     NO_CERTIFICADO_SIN_TIMBRAR,
@@ -586,9 +585,13 @@ class TestEndpointCFDI:
     endpoints se separa, aquí truena.
     """
 
-    @staticmethod
-    def _cliente() -> TestClient:
-        return TestClient(app)
+    @pytest.fixture(autouse=True)
+    def _sesion(self, cliente_http) -> None:
+        # P0-02: el endpoint exige sesión; `cliente_http` (tests/conftest.py) la trae.
+        self._http = cliente_http
+
+    def _cliente(self) -> TestClient:
+        return self._http
 
     @staticmethod
     def _recibo_del_motor(cliente: TestClient) -> dict:

@@ -49,7 +49,7 @@ vi.mock('../context/carteraStore', async () => {
   return {
     useCartera: () =>
       carteraDePrueba({
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         // 'fantasma' NO está en la cartera a propósito: es el único id con el que
     // se puede ejercitar el camino del 404 que la cartera no rescata, y desde

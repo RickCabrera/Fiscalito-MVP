@@ -9,8 +9,8 @@
  * test que lo importe —directa o transitivamente— revienta antes de su primer
  * `it`, y el error no se parece en nada a lo que se estaba probando.
  *
- * Pasó en R-07: `cartera.test.ts` importaba el despachador, que importa
- * `carteraBackend`, que importa `auth`. Local verde, CI rojo con un
+ * Pasó en R-07: `cartera.test.ts` importaba el despachador, que importaba el
+ * cliente del backend, que importa `auth`. Local verde, CI rojo con un
  * `FirebaseError` que no menciona ninguno de los tres archivos.
  *
  * Es exactamente la clase de bug que la entrada de X-01 del `nocturno-log`
@@ -28,6 +28,10 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// P0-02: `src/test/setup.ts` dobla `./firebase` para toda la suite. Este archivo mide
+// justo el módulo REAL, así que lo desdobla.
+vi.unmock('./firebase');
+
 afterEach(() => { vi.resetModules(); vi.unstubAllEnvs(); });
 
 describe('services/firebase se inicializa al importarse', () => {
@@ -39,14 +43,13 @@ describe('services/firebase se inicializa al importarse', () => {
   });
 
   it('los módulos que hablan con el backend arrastran esa dependencia', async () => {
-    // `carteraBackend` necesita `auth.currentUser.getIdToken()`, así que importa
-    // `./firebase`. Cualquier test que lo toque —o que toque el despachador—
-    // tiene que doblarlo. Esto lo deja escrito donde alguien lo va a leer al
-    // ver el CI rojo.
+    // `cartera` (P0-01: siempre por la API) necesita `auth.currentUser.getIdToken()`
+    // vía `./api`, así que importa `./firebase`. Cualquier test que lo toque tiene
+    // que doblarlo. Esto lo deja escrito donde alguien lo va a leer al ver el CI rojo.
     vi.stubEnv('VITE_FIREBASE_API_KEY', '');
     vi.resetModules();
 
-    await expect(import('./carteraBackend')).rejects.toThrow();
+    await expect(import('./cartera')).rejects.toThrow();
   });
 
   it('y el árbol de rutas también: monta las pantallas que leen Firestore', async () => {

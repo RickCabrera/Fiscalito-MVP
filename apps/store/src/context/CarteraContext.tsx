@@ -17,8 +17,12 @@
  * dos cuentas veían los mismos tres clientes.
  *
  * `soloLectura` se deriva de `origen`, así que ese campo decide si el botón de
- * alta funciona: una cartera vacía tiene que venir con `origen: 'firestore'` o
+ * alta funciona: una cartera vacía tiene que venir con `origen: 'propia'` o
  * el contador no puede crear su primer cliente.
+ *
+ * P0-01: la cartera va SIEMPRE por la API (`services/cartera.ts`). El backend es el
+ * único dueño del dato; el despacho sale del token, así que ninguna escritura manda
+ * uid.
  *
  * SÓLO CARGA PARA UN CONTADOR, igual que `ClienteActivoContext`: un
  * contribuyente no tiene cartera y pedirla dispararía trabajo inútil en cada
@@ -30,15 +34,12 @@ import { useAuth } from './AuthContext';
 import { useProfile } from './ProfileContext';
 import { esContador } from '../services/navigation';
 import type { EmpleadoCartera, ClienteCartera } from '../services/carteraApi';
-// R-07: quién es el dueño del dato lo decide `services/cartera.ts`. Este
-// archivo no sabe si detrás hay Firestore o el backend, y ésa es la idea: el
-// interruptor se prueba y se enciende en un solo lugar.
 import {
-  borrarCliente as borrarClienteFs,
-  borrarEmpleado as borrarEmpleadoFs,
+  borrarCliente as borrarClienteApi,
+  borrarEmpleado as borrarEmpleadoApi,
   cargarCartera,
-  guardarCliente as guardarClienteFs,
-  guardarEmpleado as guardarEmpleadoFs,
+  guardarCliente as guardarClienteApi,
+  guardarEmpleado as guardarEmpleadoApi,
   sembrarDemo,
   type OrigenCartera,
 } from '../services/cartera';
@@ -63,7 +64,7 @@ interface Estado {
 const INICIAL: Estado = {
   para: undefined,
   clientes: [],
-  origen: 'backend',
+  origen: 'catalogo',
   error: null,
 };
 
@@ -118,20 +119,20 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
    */
   const sembrar = useCallback(async () => {
     if (!uid) throw new Error('Hace falta una sesión para guardar la cartera.');
-    await sembrarDemo(uid);
+    await sembrarDemo();
     setIntento((n) => n + 1);
   }, [uid]);
   // `loading` derivado: cierto mientras lo cargado no sea de este uid.
   const alDia = estado.para === uid;
   const cargando = habilitado && !alDia;
-  const soloLectura = !alDia || estado.origen === 'backend' || !uid;
+  const soloLectura = !alDia || estado.origen === 'catalogo' || !uid;
 
   const escribir = useCallback(
     async (accion: () => Promise<void>) => {
       if (soloLectura) {
         throw new Error(
-          'Esta cartera es el catálogo de demostración y no se puede modificar. ' +
-            'Revisa que tu cuenta tenga permiso de escritura en Firestore.',
+          'Tu cartera todavía no está lista para escribir. ' +
+            'Espera a que termine de cargar tu cartera y vuelve a intentar.',
         );
       }
       await accion();
@@ -152,7 +153,7 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
    * tres escritos**, y sin este filtro los seguiría viendo en producción — el
    * del caso real incluido, con el salario de nueve personas.
    *
-   * **No se borran de Firestore.** Ocultar es reversible y borrar no; si hay
+   * **No se borran de la cartera.** Ocultar es reversible y borrar no; si hay
    * que limpiarlos, es una decisión de Ricardo y una tarea propia.
    */
   const visibles = useMemo(
@@ -177,7 +178,7 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
         (alDia ? visibles.find((c) => c.id === id) : null) ?? null,
       guardarCliente: (c: Omit<ClienteCartera, 'empleados'>) =>
         escribir(() =>
-          guardarClienteFs(uid as string, {
+          guardarClienteApi({
             ...c,
             // Se copia del cliente que ya esté en la cartera en vez de
             // calcularlo aquí: `quincena(hoy)` vive en `demo_nomina.py` y
@@ -209,15 +210,15 @@ export function CarteraProvider({ children }: { children: ReactNode }) {
               : visibles[0]?.periodo_sugerido ?? c.periodo_sugerido,
           }),
         ),
-      borrarCliente: (id: string) => escribir(() => borrarClienteFs(uid as string, id)),
+      borrarCliente: (id: string) => escribir(() => borrarClienteApi(id)),
       guardarEmpleado: (clienteId: string, e: EmpleadoCartera) =>
-        escribir(() => guardarEmpleadoFs(uid as string, clienteId, e)),
+        escribir(() => guardarEmpleadoApi(clienteId, e)),
       borrarEmpleado: (clienteId: string, empleadoNo: string) =>
-        escribir(() => borrarEmpleadoFs(uid as string, clienteId, empleadoNo)),
+        escribir(() => borrarEmpleadoApi(clienteId, empleadoNo)),
       sembrar,
       recargar,
     }),
-    [estado, visibles, alDia, cargando, soloLectura, uid, escribir, sembrar, recargar],
+    [estado, visibles, alDia, cargando, soloLectura, escribir, sembrar, recargar],
   );
 
   return <CarteraContext.Provider value={valor}>{children}</CarteraContext.Provider>;

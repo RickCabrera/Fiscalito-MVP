@@ -1,7 +1,8 @@
 """Endpoint de estado de cuenta fiscal."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.fiscal_engine.estado_cuenta import generar_estado_cuenta
 from app.schemas.estado_cuenta import EstadoCuentaRequest, EstadoCuentaResponse
 from app.services.llm_service import generar_explicacion_estado_cuenta
@@ -16,7 +17,9 @@ router = APIRouter(tags=["PYME"])
     description="Genera estado de cuenta fiscal del ejercicio con totales acumulados, "
     "ISR estimado, proyeccion anual y advertencias.",
 )
-async def estado_cuenta(req: EstadoCuentaRequest):
+async def estado_cuenta(
+    req: EstadoCuentaRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if not req.facturas:
         raise HTTPException(status_code=400, detail="Se requiere al menos una factura.")
 
@@ -28,6 +31,7 @@ async def estado_cuenta(req: EstadoCuentaRequest):
 
     explicacion = None
     if req.incluir_explicacion:
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_estado_cuenta(resultado)
 
     return EstadoCuentaResponse(**resultado, explicacion=explicacion)

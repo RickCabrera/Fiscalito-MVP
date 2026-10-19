@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse, facturasFiscales } from '../../services/fiscalAgentApi';
+import { obtenerRetencionesTerceros, type CFDI, type RetencionesResponse } from '../../services/fiscalAgentApi';
 import { guardarRetenciones } from '../../services/declaracionesHistory';
 import {
   exportarRetencionesPDF, exportConstanciaRetencion, exportTodasLasConstancias,
 } from '../../services/pdfExportRetenciones';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle } from '../../utils/styles';
-import XMLUploader from './XMLUploader';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import { useFuenteFacturas } from './useFuenteFacturas';
 import PeriodSelector from './PeriodSelector';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
@@ -29,9 +30,11 @@ export default function RetencionesTab() {
   const [resultado, setResultado] = useState<RetencionesResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
   const [bajandoTodas, setBajandoTodas] = useState(false);
+  // P1-06: los CFDI del mes salen de la bóveda del cliente; subir XML sigue disponible.
+  const fuente = useFuenteFacturas({ clave: perfil.clienteId, anio: year, mes: month, manual: facturas });
 
   const handleConsultar = async () => {
-    if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
+    if (fuente.paraCalcular.length === 0) { setError(fuente.motivoVacio); return; }
     if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
@@ -39,11 +42,11 @@ export default function RetencionesTab() {
     try {
       const res = await obtenerRetencionesTerceros({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(facturas), periodo_year: year, periodo_month: month, incluir_explicacion: true,
+        facturas: fuente.paraCalcular, periodo_year: year, periodo_month: month, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
-        guardarRetenciones(user.uid, res, facturas.length, perfil.clienteId)
+        guardarRetenciones(user.uid, res, fuente.delPeriodo.length, perfil.clienteId)
           .then(() => setGuardado(true))
           .catch(() => { /* silent */ });
       }
@@ -184,7 +187,7 @@ export default function RetencionesTab() {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
           Consulta las retenciones de ISR e IVA realizadas a tus proveedores.
         </p>
-        <XMLUploader facturas={facturas} onChange={setFacturas} />
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={setFacturas} />
       </div>
       <div className="card" style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <PeriodSelector year={year} month={month} onYearChange={setYear} onMonthChange={setMonth} />

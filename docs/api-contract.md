@@ -1,27 +1,68 @@
 # Contrato de la API — Fiscal Agent
 
-> **PARCIAL.** Cubre los endpoints de la **épica D** —los de **asistencia** que agregó D-04 y
-> el de **nómina** que agregó D-06— y los de **despacho** que agregó E-02.
-> **S-03 lo completa** con los 11 endpoints existentes exportados del OpenAPI de FastAPI y
-> reemplaza por una referencia a este archivo las secciones duplicadas de
-> `apps/api/CLAUDE.md` y `apps/store/CLAUDE.md`. Ese trabajo **no** está hecho: S-03 sigue
-> abierta con su criterio intacto.
+> **Contrato máquina-legible (P0-08):** [`docs/openapi.json`](openapi.json) — el OpenAPI
+> completo, exportado de `app.main:app` — y los tipos TypeScript que el front importa,
+> `apps/store/src/services/tiposApi.generados.ts`. Los dos se regeneran con
+> `cd apps/api && PYTHONPATH=. python scripts/exportar_openapi.py`, y
+> `apps/api/tests/test_contrato_openapi.py` **falla** si el código y el contrato divergen.
+> Este archivo es la explicación para humanos: qué garantiza cada endpoint y por qué.
 
 Base: `/api/v1`. Errores de dominio se serializan como `{"exito": false, "error": ...}` con
-422 (validación) o 500 (cálculo), vía el handler global de `main.py`.
+401 (sin sesión), 403 (rol o recurso ajeno con token de dispositivo), 404 (no existe **en tu
+despacho**), 422 (validación), 429 (límite) o 500 (cálculo), vía el handler global de
+`main.py`.
+
+## Autenticación, límites y tope de LLM (P0-02)
+
+**Todo `/api/v1` exige sesión** (salvo lo declarado abajo). `/health` y
+`/health/integraciones` quedan abiertos.
+
+| Qué | Cómo |
+|---|---|
+| Sesión | `Authorization: Bearer <ID token de Firebase>`. Sin encabezado o mal formado: **401**. Token inválido o expirado: **401** sin detalle del SDK. Sin credenciales de Firebase en el servidor: **503**. |
+| Despacho | Sale del token, nunca del request. El primer request de un uid le crea su despacho (`id = uid`). Un cliente de otro despacho es **404**, nunca 403: un 403 confirmaría que existe. |
+| Rutas públicas | `app/acceso/dependencias.RUTAS_PUBLICAS`. Hoy sólo `POST /asistencia/eventos` (token de dispositivo). Un webhook nuevo se declara ahí, se monta sin `PROTEGIDO` y verifica la firma del proveedor dentro de la ruta. `tests/plan_p/test_acceso.py` recorre **todas** las rutas y exige 401 sin token al resto. |
+| Límite por usuario | `FISCALITO_RATE_LIMIT_POR_MINUTO` (default **120**), ventana deslizante de 60 s por uid (por token en el caso del checador). Al excederlo: **429** con `Retry-After: <segundos>`. Una petición rechazada no gasta cupo. En memoria del proceso: con varias réplicas el límite efectivo se multiplica; la interfaz `Limitador` está lista para Redis/DB (`FISCALITO_LIMITADOR`). |
+| Límite de LLM | `FISCALITO_RATE_LIMIT_LLM_POR_MINUTO` (default **20**) por uid. Cuenta cada llamada al proveedor: cada `incluir_explicacion: true` (pre-declaración, anual, deducciones, comparador, DIOT, retenciones, multi-periodo, estado de cuenta, nómina) y cada vuelta del loop de `/agente/predeclaracion`. El cálculo sin explicación no cuenta. **429** + `Retry-After`. |
+| Tope diario de LLM | `FISCALITO_TOPE_LLM_DIARIO_LLAMADAS` (default **500**) llamadas por **despacho** por día de la Ciudad de México, contadas en la tabla `consumo_llm`. Al llegar: **429** con `Retry-After` hasta la medianoche. Se mide en llamadas, no en pesos: los servicios LLM actuales no devuelven tokens; cada llamada tiene `max_tokens` fijo. |
+
+CORS expone `Retry-After` y acepta el encabezado `X-Token-Dispositivo`.
+
+### Token de dispositivo (checador)
+
+El Hikvision no puede mandar un ID token. Cada checador lleva un secreto propio
+(`fdt_…`, 256 bits) que el backend guarda **sólo como SHA-256**. Viaja en
+`X-Token-Dispositivo: <token>` o en `?token=<token>` (el aparato sólo deja configurar una URL,
+así que la forma real es `…/api/v1/asistencia/eventos?token=fdt_…`). El token fija **despacho y
+cliente**: un `?cliente=` distinto es **403**; un token inventado o revocado es **401**.
+
+#### `POST /api/v1/asistencia/tokens`
+Sesión + rol `dueno`/`contador`. Cuerpo `{cliente, etiqueta?, dispositivo?}`. Responde **201**
+`{exito, token, registro}`: es la **única vez** que el token se ve en claro. Un cliente de otro
+despacho es 404; los tres clientes del catálogo de demostración (`demo`, `cafeteria`,
+`taller`) se aceptan sin renglón en `clientes`.
+
+#### `GET /api/v1/asistencia/tokens?cliente=`
+Tokens activos del despacho: `{id, cliente, dispositivo_id, etiqueta, prefijo, creado_en,
+ultimo_uso}`. Nunca el secreto ni el hash.
+
+#### `DELETE /api/v1/asistencia/tokens/{token_id}`
+Revoca en el acto. Otro despacho: 404.
 
 ---
 
 ## Asistencia (épica D — demo del checador)
 
-> ⚠️ **DEMO — sin autenticación, almacenamiento en memoria del proceso, no desplegar.**
+> ⚠️ **DEMO — almacenamiento en memoria del proceso, no desplegar.**
 >
-> - **Sin auth**: el push del Hikvision no sabe mandar un ID token de Firebase. La
->   autenticación del dispositivo está mandada a **F3**; la del resto de `/api/v1`, a S-00b.
-> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers. Los
->   reemplaza Firestore en F1-09 (`clientes/{id}/asistencia/{periodoId}`).
-> - Tope duro de 5,000 eventos por cliente (ring buffer): un `POST` abierto y sin auth sería
->   si no un agotamiento de memoria de una línea de `curl`. Se pierden los más viejos; el POST
+> - **Auth (P0-02)**: `POST /eventos` acepta el **token del dispositivo** o la sesión de
+>   Firebase (el simulador y las pantallas); `GET /eventos` y `cerrar-periodo` exigen sesión.
+>   Ver "Token de dispositivo" arriba.
+> - **Aislado por despacho**: el almacén se indexa por `despacho::cliente`. Los clientes de la
+>   demo son un catálogo compartido; sin esto, el `taller` de un despacho vería las checadas del
+>   `taller` de otro.
+> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers.
+> - Tope duro de 5,000 eventos por cliente (ring buffer). Se pierden los más viejos; el POST
 >   nunca falla en medio de la demo.
 
 ### `POST /api/v1/asistencia/eventos`
@@ -34,7 +75,8 @@ Starlette lo entrega como archivo en vez de como texto.
 
 | Query param | Default | Notas |
 |---|---|---|
-| `cliente` | `demo` | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Por eso va como query con default y `POST /asistencia/eventos` pelado funciona. |
+| `cliente` | `demo` (o el del token) | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Con token de dispositivo, el cliente es el del token y otro valor es 403. |
+| `token` | — | Token del dispositivo (alternativa a `X-Token-Dispositivo`). |
 | `fuente` | `hikvision` | `hikvision` · `simulado` · `csv` |
 
 Cuerpo (campos que se leen de `AcsEvent.InfoList[]`):
@@ -435,22 +477,30 @@ F1-09 registre RFC, entidad y personalidad.
 
 ---
 
-## Cartera del despacho — el backend como dueño del dato (R-07)
+## Cartera del despacho — el backend como único dueño del dato (R-07 → P0-01)
 
-**El único grupo de rutas del repo que EXIGE autenticación.** El resto de
-`/api/v1` sigue abierto (S-00b) y eso no cambia aquí.
+**Desde P0-01 la cartera vive en SQL** (`app/modelos/nucleo.py`: `clientes`, `empleados`,
+`dispositivos`, con el documento en `datos` JSON) y el front la lee y escribe **sólo por
+aquí**: ya no hay Firestore para la cartera ni interruptor `VITE_CARTERA_BACKEND`. Lo que
+había en Firestore se trae una vez con `apps/api/scripts/migrar_firestore.py` (ver abajo).
 
-`Authorization: Bearer <ID token de Firebase>`. **No hay parámetro de uid en
-ninguna ruta**: pasarlo por el cuerpo o por la URL haría que cualquiera leyera la
-cartera de cualquiera cambiando un renglón, y esta cartera guarda el salario y el
-NSS de trabajadores de terceros. El uid sale del token verificado.
+`Authorization: Bearer <ID token de Firebase>`. **No hay parámetro de uid ni de despacho en
+ninguna ruta**: el despacho sale del token verificado (`app/tenancy.contexto_actual`; la
+primera vez que entra un uid se le crea su despacho con id = uid). Toda ruta obtiene el
+cliente con `cliente_o_404`: **un cliente de otro despacho es 404, nunca 403** (un 403
+confirmaría que existe). Un usuario con rol `auxiliar` sólo ve sus clientes asignados.
+
+Guardar es **merge**: un `PUT` conserva los campos guardados que el esquema actual no
+conoce (p. ej. traídos por la migración) y sobrescribe los que sí manda.
 
 | Código | Cuándo |
 |---|---|
 | 401 | falta `Authorization`, está mal formado, o el token no es válido |
-| 404 | el cliente no está en **tu** cartera |
-| 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL) |
-| 503 | **el backend no tiene credenciales de Firebase.** El mensaje dice qué falta |
+| 403 | un `auxiliar` intenta dar de alta un cliente |
+| 404 | el cliente (o el dispositivo) no está en **tu** despacho |
+| 409 | tope de altas: 500 clientes por despacho; 2,000 empleados o 100 dispositivos por cliente (editar nunca rebota) |
+| 422 | el cuerpo no pasa la validación (prima de RT fuera del Art. 72, NSS mal formado, id que no coincide con la URL, IP inválida, serial repetido) |
+| 503 | **el backend no tiene credenciales de Firebase** para verificar el token. El mensaje dice qué falta |
 
 ### `GET /api/v1/cartera/clientes`
 Los clientes de quien hace el request. `{exito, total, clientes[]}`.
@@ -473,8 +523,8 @@ por un campo de más — el mismo modo de falla que `ilegibles[]` documenta más
 - Vacío significa que **no se pueden emitir movimientos afiliatorios**, y el exportador lo dice
   en vez de emitirlos mal.
 
-En modo empresa única este documento (`users/{uid}/clientes/empresa`) es **la Configuración de
-empresa**: lo lee y lo escribe la pantalla de Perfil, por el mismo despachador de R-07.
+(El modo empresa única, que usaba el cliente `empresa` como Configuración de empresa, se
+retiró en K.)
 
 #### `regimen` — el régimen fiscal del CLIENTE (T1)
 
@@ -495,10 +545,8 @@ calendario manejan para persona física.
 **Vacío significa "no capturado", y el front lo dice en pantalla** en vez de suponerlo en
 silencio: aplica el 612 (el set completo) y avisa de dónde salió ese valor.
 
-El campo existe en `ClienteCarteraSchema` **aunque hoy el dueño del dato siga siendo Firestore**
-(R-07 continúa apagada): sin declararlo, encender R-07 borraría el régimen de cada cliente en el
-primer guardado, porque pydantic descarta lo que no conoce. No hay migración: los documentos sin
-la llave se leen igual.
+El campo está declarado en `ClienteCarteraSchema`: sin declararlo, cada guardado por la API
+(el único camino desde P0-01) lo escribiría vacío. Los documentos sin la llave se leen igual.
 
 #### `rfc`, `codigo_postal` y `clave_entidad` — los datos fiscales del cliente (C-01)
 
@@ -524,12 +572,11 @@ cliente de demostración o uno guardado antes de C-01 se sigue guardando sin ell
 **En `GET /cartera/clientes`** vienen cuando el documento los tiene y **faltan** cuando no (la
 lectura no tipa estricto): el front lee ausente como "Sin capturar".
 
-**ABIERTO — el `PUT` escribe el documento completo.** `guardar_cliente` hace `model_dump` de
-todo el schema, defaults incluidos, así que un `PUT` que no mande `codigo_postal` o
-`clave_entidad` los escribe **vacíos** aunque el merge de Firestore conserve lo demás. Hoy nadie
-lo dispara: la Configuración de empresa (O-01, modo empresa única) no los manda, pero sólo pasa
-por aquí con `VITE_CARTERA_BACKEND` encendido, y R-07 sigue apagada. Es el mismo comportamiento
-que ya tenía `regimen`. Con Firestore (el default) `setDoc(merge: true)` los conserva.
+**ABIERTO — el `PUT` escribe todos los campos del esquema.** `guardar_cliente` hace
+`model_dump` de todo el schema, defaults incluidos, así que un `PUT` que no mande
+`codigo_postal` o `clave_entidad` los escribe **vacíos** (el merge sólo conserva los campos
+que el esquema NO conoce). El formulario de cliente siempre los manda, así que hoy nadie lo
+dispara; es el mismo comportamiento que ya tenía `regimen`.
 
 #### `guia_subdelegacion` — el número que asigna el IMSS (O-04)
 
@@ -575,23 +622,23 @@ URL: adivinar cuál vale escribiría el cliente equivocado. El `id` no se guarda
 dentro del documento — ya es su nombre.
 
 ### `DELETE /api/v1/cartera/clientes/{cliente_id}`
-**Borra en cascada.** Firestore no lo hace solo: sin esto los empleados quedarían
-huérfanos —con su salario y su NSS— y reaparecerían al recrear un cliente con el
-mismo id. Hay un test contra el emulador que lo fija, y el doble en memoria **no
-puede** cazar ese bug.
+**Borra en cascada** empleados y dispositivos: sin esto quedarían huérfanos —con su
+salario y su NSS— y reaparecerían al recrear un cliente con el mismo id. 404 si el
+cliente no está en tu despacho.
 
 ### `GET /api/v1/cartera/clientes/{cliente_id}/empleados`
 La plantilla del cliente, leída de la cartera que este CRUD escribe. Distinta de
 `/despacho/clientes/{id}/empleados`, que es la SEMILLA de demostración y no la
-cartera de nadie. `{exito, cliente_id, total, sin_vincular, ilegibles[], empleados[]}`.
+cartera de nadie. `{exito, cliente_id, total, sin_vincular, ilegibles[], ilegibles_detalle[], empleados[]}`.
 
 `ilegibles[]` son los `empleado_no` de documentos guardados que **no pasan la
 validación actual** —un NSS de una versión anterior, un campo que falta— y que
 por eso **no vienen en `empleados`** ni cuentan en `total`. Se reportan en vez de
 tumbar la respuesta con un 500: como el front pide los empleados de todos los
 clientes en paralelo, un solo documento legado dejaba la cartera **completa** en
-cero. **Hoy el front no los pinta**; pintarlos es tarea pendiente, y hasta
-entonces ese empleado queda fuera del cálculo sin que el contador lo vea.
+cero. `ilegibles_detalle[]` trae lo mismo con `{empleado_no, nombre, razon}` (P0-01,
+R-10): la ficha del cliente los pinta con su razón, junto al aviso de "no vinculados".
+`ilegibles[]` se conserva como lista de `empleado_no` por compatibilidad.
 
 > **Todavía nadie la consume para calcular.** Una versión anterior de este
 > documento decía "ésta es la fuente que el cálculo de nómina lee, y es lo que
@@ -611,24 +658,44 @@ exigir el dígito verificador** (§D25 de `docs/decisiones-nomina.md`). Vacío
 siempre se acepta, y eso es lo que hace seguro bloquear por longitud.
 
 ### `DELETE /api/v1/cartera/clientes/{cliente_id}/empleados/{empleado_no}`
+Idempotente: borrar uno que no existe responde 200; un cliente de otro despacho, 404.
 
-### Estado: **el interruptor está APAGADO**
+### Dispositivos del cliente (R-09 → P0-01)
 
-El front sigue escribiendo Firestore directo. Lo que falta para encenderlo no es
-código: son **credenciales** (`GOOGLE_APPLICATION_CREDENTIALS` o ADC), y
-encenderlo sin ellas daría 503 en todo el CRUD. Se enciende con
-`VITE_CARTERA_BACKEND=1` en `apps/store/.env` **después** de comprobar que
-`GET /api/v1/cartera/clientes` responde 200. **No hay migración de datos**: las
-rutas de Firestore son las mismas de los dos lados.
+Checadores biométricos. Mismo modelo que `DispositivoChecador` del front
+(`dispositivosApi.ts`) y las mismas reglas que su `validarDispositivo`. La IP se
+**registra, no se consulta**: nada del backend se conecta al aparato. `employee_nos` son
+llaves del **checador** (`employee_no`), no del cálculo.
 
-T2 le dio al flag la misma lectura que a `VITE_MODO_EMPRESA_UNICA`
-(`services/flagEncendido.ts`): además de `1` encienden `true`, `on`, `yes`, `si`
-y `sí`, y todo lo demás lo deja apagado. Antes sólo valía `=== '1'`, así que un
-`.env` con `VITE_CARTERA_BACKEND=true` dejaba el backend apagado sin decirlo.
+Cuerpo (`DispositivoSchema`): `{nombre (1-120, obligatorio), ip (IPv4 o ""), puerto
+(1-65535, default 80), marca, modelo, serial, employee_nos[], notas}`. Se limpian espacios;
+`employee_nos` se guarda sin vacíos ni repetidos. Un `serial` no vacío que ya tenga OTRO
+dispositivo del mismo cliente es 422.
 
-**Dispositivos NO están aquí.** R-04 los dejó viviendo en Firestore escritos por
-el front; meterlos en la misma corrida haría nacer la colección con dos dueños
-dentro del mismo día, que es el problema que R-07 cierra. Es tarea propia.
+- **`GET /api/v1/cartera/clientes/{cliente_id}/dispositivos`** →
+  `{exito, cliente_id, total, dispositivos[]}`, cada uno con su `id`. Lectura laxa.
+- **`POST /api/v1/cartera/clientes/{cliente_id}/dispositivos`** → **201**
+  `{exito, id, mensaje}`. El `id` lo genera el backend: nombre y serial son editables y
+  repetibles, y un id derivado de ellos convertiría un cambio de nombre en un aparato nuevo.
+- **`PUT /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}`** →
+  `{exito, id, mensaje}`. 404 si no existe en ese cliente (las altas van por POST). Merge.
+- **`DELETE /api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}`** →
+  `{exito, mensaje}`. Idempotente. No borra a nadie de la plantilla ni del aparato.
+
+### Migración única desde Firestore (`apps/api/scripts/migrar_firestore.py`)
+
+`users/{uid}/clientes/{id}`, `.../empleados/{no}` y `.../dispositivos/{id}` → despacho
+`id = uid`. Copia cada documento **tal cual** a `datos` (sin validar: un legado se migra y
+la API lo reporta en `ilegibles`). **Idempotente**: lo que ya existe en SQL no se toca (ni
+se duplica ni se pisa con la copia vieja); lo que falta se agrega. `--dry-run` reporta lo
+que haría sin escribir; `--uid` (repetible) limita a esas cuentas. Un id más largo que la
+columna se reporta como omitido en vez de truncarse. **No migra** el perfil (`users/{uid}`)
+ni el historial de declaraciones: siguen en Firestore hasta tener tabla.
+
+    cd apps/api && python -m scripts.migrar_firestore --dry-run
+
+> **Todavía nadie la consume para calcular.** `POST /nomina/calcular-periodo` sigue
+> recibiendo `empleados` en el cuerpo (R-08 → P4-01).
 
 ## Nómina (épica D — demo)
 
@@ -1028,3 +1095,426 @@ desarrollo"}`.
   **su declaración anual sale al 30 de abril y una persona moral la presenta en marzo**
   (Art. 76 LISR). Corregirlo es editar `fiscal_engine/calendario.py`, que T6 tenía prohibido
   tocar. Queda como deuda escrita, no como sorpresa.
+
+---
+
+## Bóveda de CFDI (plan P, P0-03)
+
+Comprobantes (I, E, P, N, T) **por cliente**, deduplicados por UUID, con el XML original en el
+adaptador de almacenamiento (`FISCALITO_ALMACENAMIENTO`, ver `docs/servicios-externos.md`).
+Todas las rutas exigen `Authorization: Bearer <ID token>` y resuelven el cliente con
+`contexto_actual` + `cliente_o_404`: **un cliente de otro despacho es 404**, igual que uno que no
+existe. `{clave}` es la clave pública del cliente (`taller`). El UUID se acepta en cualquier
+capitalización y se guarda en mayúsculas. Importes como texto con 2 decimales.
+
+### `POST /api/v1/boveda/clientes/{clave}/cfdi`
+
+`multipart/form-data`, campo `archivos` repetible (máx. 200 por carga): XML sueltos (`.xml` o
+`.XML`) y/o ZIP. Del ZIP se lee un miembro a la vez; un ZIP dentro de otro **no** se abre. Cada
+XML pasa de 10 MB → rechazado. Respuesta 200:
+
+```json
+{ "exito": true, "rfc_cliente": "XEXX010101AB1", "rfc_deducido": false,
+  "importados": 498, "duplicados": 1,
+  "rechazados": [{"archivo": "lote.zip/notas.txt", "razon": "No es XML."}],
+  "importados_detalle": [{"archivo": "lote.zip/a.xml", "uuid": "…", "direccion": "emitido", "tipo": "I"}],
+  "duplicados_detalle": [{"archivo": "lote.zip/b.xml", "uuid": "…", "razon": "ya existía"}] }
+```
+
+- **Duplicado** = el UUID ya está en la bóveda de ESE cliente o salió antes en el mismo lote.
+  No se sobrescribe nada. El mismo UUID sí puede vivir en dos clientes (emisor y receptor).
+- **Dirección**: `emitido` si el RFC del cliente es el emisor, `recibido` si es el receptor; si
+  no es ninguno, el XML se **rechaza** ("no es emisor ni receptor").
+- **Cliente sin RFC**: se toma el RFC más frecuente del lote (`rfc_deducido: true`). La ficha
+  del cliente **no** se modifica.
+- Rechazos con razón: no es XML ni ZIP, XML ilegible, con DOCTYPE, versión distinta de 3.3/4.0,
+  sin timbre, `TipoDeComprobante` inválido, ZIP dañado o anidado.
+
+### `GET /api/v1/boveda/clientes/{clave}/cfdi`
+
+Query (todo opcional): `desde`, `hasta` (AAAA-MM-DD, inclusivos, sobre `Fecha` del CFDI),
+`tipo` (`I|E|P|N|T`), `direccion` (`emitido|recibido`), `rfc` (la **contraparte**: receptor de
+lo emitido, emisor de lo recibido), `estatus` (`vigente|cancelado|desconocido`), `pagina`
+(≥1, default 1), `por_pagina` (1–200, default 50). `desde > hasta` → 422. Orden: fecha
+descendente.
+
+```json
+{ "exito": true, "total": 500, "pagina": 1, "por_pagina": 50,
+  "comprobantes": [{ "uuid": "…", "version": "4.0", "tipo": "I", "fecha": "2026-03-10T10:00:00",
+    "serie": "A", "folio": "1", "rfc_emisor": "…", "nombre_emisor": "…", "rfc_receptor": "…",
+    "nombre_receptor": "…", "direccion": "emitido", "subtotal": "1000.00", "descuento": "0.00",
+    "total": "1160.00", "moneda": "MXN", "metodo_pago": "PUE", "forma_pago": "03",
+    "uso_cfdi": "G03", "iva_trasladado": "160.00", "iva_retenido": "0.00",
+    "isr_retenido": "0.00", "ieps": "0.00", "estatus_sat": "desconocido", "origen": "manual" }] }
+```
+
+`estatus_sat` nace `desconocido` y P1-03 lo pone en `vigente` o `cancelado` (ver §Verificación
+SAT). `origen` es `manual` (subido) o `sat` (descarga masiva, P1-01).
+
+Desde P1-03/P1-04 cada comprobante trae además `fecha_estatus` (ISO o `null`: cuándo se
+consultó el SAT), `estatus_cancelacion` (texto del SAT, p. ej. `"En proceso"`, o `""`) y
+`art_69b`: `null` o `{"lista": "69b", "situacion": "definitivo", "nivel": "alto"}` si la
+**contraparte** está en un listado del SAT (`nivel` `alto`/`medio` = rojo, `info` =
+desvirtuado o sentencia favorable).
+
+### `GET /api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml`
+
+El XML **byte por byte** como se subió (`application/xml`, `Content-Disposition: attachment`).
+Antes de entregarlo se verifica su SHA-256 contra el guardado: si no coincide, 500 y no se
+entrega. 404 si el UUID no está en la bóveda de ese cliente.
+
+### `DELETE /api/v1/boveda/clientes/{clave}/cfdi/{uuid}`
+
+Quita el renglón y el XML del almacenamiento. `{"exito": true, "uuid": "…"}`; 404 si no existe.
+
+### `GET /api/v1/boveda/clientes/{clave}/resumen`
+
+Acepta los mismos filtros que la lista (sin paginar). Conteo y suma de `total` por mes, tipo y
+dirección:
+
+```json
+{ "exito": true, "renglones": [
+  {"periodo": "2026-03", "tipo": "I", "direccion": "emitido", "cantidad": 42, "total": "48720.00"} ] }
+```
+
+### `GET /api/v1/boveda/clientes/{clave}/facturas-calculo` (P1-06)
+
+Los CFDI del periodo **ya en la forma del esquema `CFDI`** de `app/schemas/fiscal.py` (lo que
+reciben todos los endpoints de cálculo). Query: `desde`, `hasta` (obligatorios, AAAA-MM-DD,
+inclusivos, sobre `Fecha` del CFDI), `tipos` (opcional, `I,E,P,T` separados por coma; `N` → 422).
+`desde > hasta` → 422. Lógica en `app/boveda_cfdi/calculo.py`; no calcula impuestos.
+
+```json
+{ "exito": true, "desde": "2026-03-01", "hasta": "2026-03-31",
+  "facturas": [{ "uuid": "…", "fecha": "2026-03-05", "tipo": "I", "rfc_emisor": "…",
+    "rfc_receptor": "…", "subtotal": 1000.0, "total": 1160.0, "iva_trasladado": 160.0,
+    "iva_retenido": 0.0, "isr_retenido": 0.0, "descuento": 0.0, "uso_cfdi": "G03",
+    "descripcion": "Servicio", "clave_prod_serv": "84111506", "metodo_pago": "PUE",
+    "uuid_relacionado": null, "monto_pago": null }],
+  "relacionados": [ /* originales PPD de OTROS periodos que los pagos del periodo liquidan */ ],
+  "resumen": { "comprobantes": 4, "emitidos": 3, "recibidos": 1, "por_tipo": {"I": 3, "P": 1},
+    "cancelados_excluidos": 1, "nomina_excluidos": 1, "relacionados_fuera_del_periodo": 1 },
+  "advertencias": [] }
+```
+
+- **Cancelados fuera** (`estatus_sat = cancelado`, P1-03); los `desconocido` sí cuentan.
+- **Nómina (`N`) fuera**: no es ingreso ni gasto del contribuyente en estos cálculos (mismo
+  criterio que `facturasFiscales` del front); se cuenta en `nomina_excluidos`.
+- **Pagos (`P`)**: uno por `DoctoRelacionado`, con `uuid_relacionado = IdDocumento` y
+  `monto_pago = ImpPagado` (o `Monto` del pago si es el único documento y no trae `ImpPagado`).
+  Si un pago liquida varias facturas, cada documento sale como `<UUID>#1`, `<UUID>#2`…
+- **`relacionados`**: si el original PPD de un pago es de otro periodo, va aquí para que el motor
+  lo cruce. **No** se cuenta en `resumen.comprobantes`; DIOT y retenciones no lo reciben.
+- **Moneda**: importes a pesos con el `TipoCambio` del CFDI; sin `TipoCambio` en moneda
+  extranjera se manda tal cual y se dice en `advertencias`.
+- `descripcion` y `clave_prod_serv` son los del primer concepto (como el parser del navegador).
+
+## Cálculos por cliente desde la bóveda (P1-06)
+
+`POST /api/v1/clientes/{clave}/calculos/<calculo>` — el mismo cálculo que el endpoint de siempre,
+pero **sin `contribuyente` ni `facturas` en el body**: el RFC y el régimen salen de la ficha del
+cliente (`datos.regimen`) y los CFDI de `facturas-calculo` del periodo. Se llama al **mismo
+handler** que el endpoint original (no hay motor duplicado). Autenticado; cliente de otro despacho
+= 404. La respuesta es la del endpoint original más `boveda` (el `resumen` de arriba +
+`advertencias`).
+
+| `<calculo>` | Body | Periodo que lee | Igual que |
+|---|---|---|---|
+| `pre-declaracion` | `periodo_year`, `periodo_month` **o** `periodo_bimestre`, `pagos_provisionales_anteriores`, `ingresos_acumulados_anteriores`, `deducciones_acumuladas_anteriores`, `predial_pagado`, `incluir_explicacion` | el mes/bimestre (+ `relacionados`) | `POST /pre-declaracion` |
+| `pre-declaracion-anual` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /pre-declaracion-anual` |
+| `diot` | `periodo_year`, `periodo_month`, `incluir_explicacion` | el mes | `POST /diot` |
+| `retenciones-terceros` | `periodo_year`, `periodo_month`/`periodo_bimestre` (opcionales), `incluir_explicacion` | el mes/bimestre/ejercicio | `POST /retenciones-terceros` |
+| `multi-periodo` | `periodo_year`, `periodos` (meses 1–12), `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /multi-periodo` |
+| `estado-cuenta` | `periodo_year`, `incluir_explicacion` | el ejercicio (+ `relacionados`) | `POST /estado-cuenta` |
+
+Errores: cliente sin RFC → 422 `"Captura el RFC de este cliente."`; sin régimen → 422 `"Captura
+el régimen de este cliente."`; régimen 601 → 400 (como el original, antes de leer la bóveda);
+bóveda sin CFDI vigentes del periodo → 400 `"La bóveda de este cliente no tiene CFDI vigentes de
+<periodo>. …"`; pre-declaración sin mes ni bimestre → 422.
+
+**Front (P1-06):** los tabs de Fiscalito y Contabilito usan por defecto
+`facturas-calculo` (hook `useFuenteFacturas` / `useFacturasDeBoveda` en
+`apps/store/src/components/fiscalito/`) y siguen llamando a los endpoints de siempre con
+`facturas`; así el Art. 106 de la pre-declaración, que el front arma desde el historial, no
+cambia. Los cálculos por cliente quedan disponibles para integraciones y el agente.
+
+## Credenciales del cliente — e.firma y CSD (P0-05)
+
+Autenticadas (`Authorization: Bearer <ID token>`), multi-despacho (cliente de otro despacho =
+404) y sólo para los roles `dueno` y `contador` (auxiliar = 403). Cifrado con
+`FISCALITO_LLAVE_MAESTRA` (ver `docs/servicios-externos.md`); sin ella en producción, 503.
+**Ninguna respuesta trae la llave privada ni la contraseña.**
+
+Forma de una credencial (`metadatos`):
+
+```json
+{
+  "id": 7, "tipo": "efirma", "rfc": "XAXX010101AB1",
+  "numero_certificado": "30001000000500003416",
+  "valido_desde": "2026-01-01T00:00:00+00:00", "valido_hasta": "2030-01-01T00:00:00+00:00",
+  "dias_para_vencer": 1200, "vencida": false, "por_vencer": false,
+  "creado_por": "uid", "creado_en": "2026-10-19T15:00:00+00:00"
+}
+```
+
+`por_vencer` = vence en menos de 30 días.
+
+### `POST /api/v1/clientes/{clave}/credenciales`
+
+`multipart/form-data`: `tipo` (`efirma` | `csd`), `password`, `cer` (archivo .cer DER),
+`key` (archivo .key PKCS#8 DER cifrada). Respuesta `{"exito": true, "credencial": {...}}`.
+Si ya había una activa del mismo tipo, queda inactiva.
+
+Errores 422 con mensaje en español: contraseña que no abre la llave, llave que no corresponde
+al certificado, RFC del certificado distinto al RFC del cliente (sólo si el cliente tiene RFC),
+e.firma subida como CSD o al revés, certificado vencido o aún no vigente, archivo que no es
+certificado, archivo > 64 KB.
+
+### `GET /api/v1/clientes/{clave}/credenciales`
+
+`{"exito": true, "credenciales": [ {...}, ... ]}` — sólo las activas.
+
+### `DELETE /api/v1/clientes/{clave}/credenciales/{credencial_id}`
+
+`{"exito": true}`. Destruye la llave y la contraseña cifradas y deja el renglón inactivo
+(historial). 404 si la credencial no es de ese cliente.
+
+### Uso interno (no es endpoint)
+
+`app.credenciales.obtener_firmante(db, cliente, tipo)` → objeto con `firmar(bytes)` (SHA256 con
+RSA, PKCS#1 v1.5), `firmar_base64`, `certificado_base64`, `rfc`, `numero_certificado`. Lo usan
+la descarga masiva del SAT y el PAC. 404 sin credencial, 422 vencida, 503 si la llave maestra
+no la abre.
+
+### `GET /health/integraciones` (P0-06)
+
+Fuera de `/api/v1`, sin autenticación. `{"listo_para_produccion": bool, "servicios": [{servicio,
+descripcion, variable, implementacion, disponibles, configurado, es_falso}]}`.
+## Trabajos en segundo plano (P0-04)
+
+Autenticado (`Authorization: Bearer <ID token>`), multi-tenant: sólo se ven los trabajos con
+`despacho_id` del usuario; los de sistema (despacho nulo) nunca. Un auxiliar ve sólo los de sus
+clientes asignados. Trabajo o cliente de otro despacho = **404**.
+
+Forma de un trabajo (`TrabajoSalida`):
+
+```json
+{ "id": 7, "tipo": "diagnostico.cliente", "estado": "fallido", "cliente": "taller",
+  "intentos": 5, "max_intentos": 5, "ejecutar_en": "2026-10-19T15:00:30Z",
+  "iniciado_en": "...", "terminado_en": "...", "creado_en": "...",
+  "error": "RuntimeError: ...", "resultado": null, "carga": {} }
+```
+
+`estado`: `pendiente | corriendo | hecho | fallido | cancelado`. `cliente` es la clave pública.
+Fechas en ISO 8601 UTC.
+
+### `GET /api/v1/trabajos`
+Query: `cliente` (clave; 404 si no es del despacho), `estado`, `tipo`, `limite` (1–200, 50).
+Más reciente primero. → `{"exito": true, "trabajos": [TrabajoSalida]}`. Estado desconocido → 422.
+
+### `GET /api/v1/trabajos/{trabajo_id}`
+→ `{"exito": true, "trabajo": TrabajoSalida}`.
+
+### `POST /api/v1/trabajos/{trabajo_id}/reintentar`
+Sólo `fallido` o `cancelado` (si no, **409**). Vuelve a `pendiente` con `intentos = 0` y
+`ejecutar_en = ahora`. 409 también si ya hay otro trabajo vivo con su misma `clave_unica`.
+
+### `POST /api/v1/trabajos/{trabajo_id}/cancelar`
+Sólo `pendiente` (si no, **409**): uno `corriendo` no se corta a media transacción.
+
+### `POST /api/v1/trabajos/clientes/{clave}/diagnostico`
+Trabajo de prueba de la ficha del cliente (cuenta sus empleados). Cuerpo opcional
+`{"fallar_intentos": n}` (0–10) para verlo fallar y reintentar. Query opcional `ejecutar_en`
+(ISO 8601 **con zona**; sin zona → 422). Clave única por cliente: mientras uno esté vivo, otro
+POST devuelve el mismo. → **201** `{"exito": true, "trabajo": TrabajoSalida}`.
+
+**Worker:** `python -m app.trabajos.worker [--una-vez] [--pausa 5]`. Reintento con backoff
+exponencial (30 s, 60 s, 2 min… techo 1 h) hasta `max_intentos`; un `corriendo` de más de
+15 min vuelve a `pendiente`. Tareas recurrentes en `app/trabajos/programacion.py` (hora diaria
+en America/Mexico_City o intervalo); la última ranura se guarda en `ejecuciones_programadas`.
+
+---
+
+## Auditoría (P0-07)
+
+Toda escritura autenticada (`POST/PUT/PATCH/DELETE` que pasó por `contexto_actual`) deja un
+renglón: el que registra la ruta (`accion` del dominio, p. ej. `trabajo.reintentar`) o, si la
+ruta no registró o falló, el del middleware (`accion: "http.<MÉTODO>"`, `entidad_id` = ruta,
+`detalle: {"metodo", "ruta", "status"}`). Escrituras anónimas no dejan renglón.
+
+### `GET /api/v1/auditoria`
+Sólo roles `dueno` y `contador` (auxiliar → **403**). Query: `usuario` (uid), `cliente` (clave;
+incluye clientes ya borrados), `accion` (exacta, o prefijo con `*`: `trabajo.*`), `desde` y
+`hasta` (AAAA-MM-DD, días completos en hora de Ciudad de México; `desde > hasta` → 422),
+`pagina` (≥1), `por_pagina` (1–200, 50). Más reciente primero.
+
+```json
+{ "exito": true, "total": 1, "pagina": 1, "por_pagina": 50,
+  "eventos": [ { "id": 1, "fecha": "2026-10-19T15:00:00Z", "uid": "uid-a", "cliente": "taller",
+                 "accion": "trabajo.reintentar", "entidad": "trabajo", "entidad_id": "7",
+                 "detalle": {"tipo": "diagnostico.cliente"}, "ip": "201.0.0.1" } ] }
+```
+
+---
+
+## Descarga masiva del SAT (P1-01, P1-02)
+
+Todas bajo `/api/v1/sat/clientes/{clave}/...`, autenticadas, con `contexto_actual` +
+`cliente_o_404` (**cliente de otro despacho = 404**). Leer: cualquier rol que vea al cliente.
+Escribir (`PUT config`, `POST descargar`, `POST historica`): sólo `dueno` y `contador`
+(auxiliar → 403). Las descargas **encolan**: el SAT puede tardar de minutos a días y el avance
+se ve en la bitácora y en la lista de solicitudes. Detalle del servicio y sus códigos en
+`docs/servicios-externos.md` §"Descarga masiva del SAT".
+
+### `GET /config` · `PUT /config`
+```json
+{ "exito": true,
+  "config": { "activa": false, "emitidos": true, "recibidos": true, "metadata": true,
+              "cancelados": true, "desde": null, "hora": "02:00", "pausada_por": null,
+              "ultimo_dia_encolado": null },
+  "efirma": { "vigente": true, "valido_hasta": "2030-01-01T00:00:00+00:00", "mensaje": "" },
+  "alertas": [ { "id": 1, "tipo": "atorada", "mensaje": "…", "solicitud_id": 7, "creado_en": "…" } ] }
+```
+`PUT` acepta cualquiera de `activa`, `emitidos`, `recibidos`, `metadata`, `cancelados`, `desde`
+(AAAA-MM-DD), `hora` (`HH:MM`, Ciudad de México; inválida → 422) y devuelve lo mismo. Sin
+configuración guardada, todo encendido salvo `activa`. Activarla sin e.firma vigente la deja
+`pausada_por: "efirma"` con alerta `sin_efirma`; se reanuda sola al subir una e.firma.
+Tipos de alerta: `sin_efirma`, `atorada`, `error_sat`, `agotada`.
+
+### `POST /descargar`
+`{"desde": "2026-09-01", "hasta": "2026-09-30", "seleccion"?: {"emitidos", "recibidos",
+"metadata", "cancelados"}}` (sin `seleccion` usa la de la config). Un trabajo por mes del rango
+(clave única: pedirlo dos veces no duplica). `desde > hasta`, más de 366 días o un día futuro →
+422. Sin e.firma vigente → **409** con el motivo.
+```json
+{ "exito": true, "encolados": [ {"trabajo_id": 12, "inicio": "2026-09-01", "fin": "2026-09-30"} ] }
+```
+
+### `POST /historica`
+`{"desde": "2024-01-01", "hasta"?: "…", "seleccion"?: {…}}` — `hasta` default ayer. Un trabajo
+por mes; más de 72 meses → 422 (el SAT guarda seis años). Misma respuesta que `/descargar`.
+
+### `GET /solicitudes?estado&pagina&por_pagina`
+Paginado (`por_pagina` 1–100, default 20), más reciente primero.
+```json
+{ "exito": true, "total": 16, "pagina": 1, "por_pagina": 20,
+  "solicitudes": [ { "id": 7, "direccion": "emitidos", "tipo": "cfdi", "estado_comprobante": "todos",
+    "fecha_inicial": "2026-09-01T00:00:00", "fecha_final": "2026-09-30T23:59:59",
+    "rfc_contraparte": "", "tipo_comprobante": "", "origen": "diaria|manual|historica|division",
+    "padre_id": null, "id_solicitud": "4e80…", "estado": "terminada", "codigo": "5000",
+    "mensaje": "Terminada: 120 XML nuevos en la bóveda, 3 ya existían.", "numero_cfdis": 1,
+    "paquetes": 1, "paquetes_procesados": 1, "xml_importados": 120, "duplicados": 3,
+    "rechazados": 0, "metadata_registros": 0, "veces_solicitada": 1, "verificaciones": 3,
+    "intentos": 0, "proxima_verificacion": null, "solicitada_en": "…", "terminada_en": "…",
+    "creado_en": "…" } ] }
+```
+`estado`: `pendiente` · `solicitada` · `en_proceso` · `descargando` · `terminada` · `sin_datos`
+(el SAT respondió 5004) · `fallida` · `dividida` (rebasó el tope 5003 y se partió en hijas con
+`padre_id`). `mensaje` siempre en español.
+
+### `GET /bitacora?anio=2026&mes=9`
+Un renglón por día del mes, para el calendario:
+```json
+{ "exito": true, "anio": 2026, "mes": 9, "dias": [
+  { "fecha": "2026-09-01", "estado": "completo", "solicitudes": 2, "emitidos": 14,
+    "recibidos": 0, "metadata": 14, "cancelados": 1, "mensaje": "" } ] }
+```
+`estado`: `completo` · `en_proceso` · `sin_movimientos` · `fallido` · `no_solicitado`. Manda el
+peor de las solicitudes que cubren el día (las `dividida` no cuentan: las cubren sus hijas).
+`emitidos`/`recibidos` cuentan la bóveda por `Fecha` del CFDI; `metadata`/`cancelados`, la
+metadata del SAT por `FechaEmision`.
+## Verificación SAT — estatus de CFDI, listas 69-B y opinión de cumplimiento (P1-03/04/05)
+
+Autenticado; todo lo de `/sat/clientes/{clave}/…` pasa por `contexto_actual` + `cliente_o_404`
+(cliente de otro despacho = **404**). Las consultas al SAT corren en la cola de trabajos: las
+rutas que consultan **encolan** y devuelven `{"trabajo": {"id", "tipo", "estado"}}`; el avance
+se ve en `GET /api/v1/trabajos?cliente=…&tipo=…`. Servicios y variables en
+`docs/servicios-externos.md`.
+
+### `POST /api/v1/sat/clientes/{clave}/verificar-estatus`
+
+Body `{"desde": "AAAA-MM-DD", "hasta": "AAAA-MM-DD"}` (inclusivos, sobre `Fecha` del CFDI;
+`desde > hasta` o más de cinco años → 422). Encola `sat.verificar_estatus` para los CFDI **no
+cancelados** del rango (la misma petición viva no se duplica). Respuesta
+`{"exito": true, "trabajo": {...}, "comprobantes": 42}`. El trabajo procesa en lotes y deja
+`{"consultados", "vigentes", "cancelados", "nuevos_cancelados", "no_encontrados",
+"en_proceso", "errores", "pendientes"}` en su `resultado`. Un cancelado queda
+`estatus_sat = "cancelado"` en la bóveda y **deja de contar**: los cálculos usan
+`app.boveda_cfdi.servicio.comprobantes_vigentes(consulta)` (uso interno).
+
+### `GET /api/v1/sat/listas/estado`
+
+Datos públicos (no dependen del despacho). `{"exito": true, "listas": [{"lista": "69b",
+"descripcion", "registros", "cargada_en", "revisada_en", "url", "error"}]}`.
+
+### `GET /api/v1/sat/clientes/{clave}/riesgos-69b`
+
+```json
+{ "exito": true, "en_rojo": 1,
+  "riesgos": [{ "rfc": "EFO010101AA1", "nombre": "…", "lista": "69b", "situacion": "definitivo",
+    "situacion_texto": "Definitivo", "relacion": "proveedor", "nivel": "alto", "rojo": true,
+    "comprobantes": 2, "total": "2320.00", "fecha_publicacion_sat": "2026-05-10",
+    "fecha_publicacion_dof": "2026-05-15" }],
+  "alertas": [{ "id": 1, "tipo": "art69b", "rfc": "…", "nombre": "…", "lista": "69b",
+    "situacion": "definitivo", "relacion": "proveedor", "nivel": "alto", "atendida": false,
+    "creada_en": "…", "detalle": {"comprobantes": 2, "total": "2320.00"} }],
+  "listas": [ … como /sat/listas/estado … ] }
+```
+
+`relacion`: `proveedor` (emisor de recibidos), `cliente` (receptor de emitidos; nunca rojo) o
+`propio`. `situacion` 69-B: `definitivo` (alto) · `presunto` (medio) · `desvirtuado` y
+`sentencia_favorable` (info, no rojo, no alertan).
+
+### `POST /api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender`
+
+Marca la alerta como atendida. `{"exito": true}`; 404 si no es de ese cliente.
+
+### `GET /api/v1/sat/clientes/{clave}/opinion` · `GET /api/v1/sat/clientes/{clave}/constancia`
+
+```json
+{ "exito": true, "tipo": "opinion", "semaforo": "verde",
+  "ultimo": { "id": 4, "tipo": "opinion", "fecha": "2026-10-03", "resultado": "positiva",
+    "folio": "26NA…", "origen": "falso", "lectura": "pdf", "tamano": 900,
+    "creado_en": "…", "aviso": null },
+  "historial": [ … ], "via": "falso", "dias_vigencia": 30,
+  "config": { "automatico": true, "dia_del_mes": 1, "constancia": true } }
+```
+
+`semaforo`: `verde` (positiva o sin obligaciones, ≤ `dias_vigencia` días) · `amarillo` (más
+vieja o sentido desconocido) · `rojo` (negativa) · `gris` (sin opinión). `resultado`:
+`positiva|negativa|sin_obligaciones|desconocido` (la constancia siempre `desconocido`).
+`origen`: `falso|portal_sat|proveedor|manual`. `lectura`: `adaptador|pdf|manual|sin_lectura`.
+`aviso`: texto si el RFC del PDF no es el del cliente. `via`: la vía configurada.
+
+### `POST /api/v1/sat/clientes/{clave}/opinion/obtener?tipo=opinion|constancia`
+
+"Obtener ahora": encola `sat.cumplimiento_obtener`. **409** si la vía es `manual`; **422** si el
+cliente no tiene RFC. Con `portal_sat`, el trabajo falla con mensaje si el cliente no tiene
+e.firma (404) o si el portal cambió (502).
+
+### `POST /api/v1/sat/clientes/{clave}/opinion/pdf`
+
+`multipart/form-data`: `archivo` (PDF ≤ 10 MB), `tipo` (`opinion` default | `constancia`),
+`resultado` opcional (lo indica el despacho si el PDF no se lee). Funciona con cualquier vía.
+`{"exito": true, "documento": {...}, "semaforo": "rojo" | null}`. El mismo PDF dos veces es
+un solo documento. No-PDF → 422.
+
+### `GET /api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf`
+
+El PDF guardado (opinión o constancia), `application/pdf`, verificado contra su SHA-256.
+
+### `PUT /api/v1/sat/clientes/{clave}/opinion/config`
+
+Body `{"automatico": true, "dia_del_mes": 1-28, "constancia": true}`. Programación mensual del
+cliente (default: automático el día 1, con constancia).
+
+### `GET /api/v1/sat/cartera/semaforo`
+
+Por cada cliente visible: `{"clave", "opinion": {"semaforo", "resultado", "fecha"},
+"riesgos_69b": <alertas alto/medio sin atender>}`.
+
+### Programación (worker)
+
+`sat_estatus_mes` diario 2:00 (CFDI del mes) · `sat_estatus_anio` semanal (último año) ·
+`sat_listas` diario 6:30 · `sat_cumplimiento` diario 7:00 (encola a quien le toca su día).
+Hora de Ciudad de México.

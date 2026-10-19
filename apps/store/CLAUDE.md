@@ -546,6 +546,13 @@ suscripcion, ni fecha de corte. El plan elegido se guarda en `users/{uid}.plan` 
 
 ### Contabilito — contabilidad electronica (T7, CASCARON)
 
+> **P1-06:** Contabilito y los tabs de Fiscalito toman por defecto los CFDI del periodo de la
+> **bóveda del cliente activo** (`GET /boveda/clientes/{clave}/facturas-calculo`, vía
+> `components/fiscalito/useFuenteFacturas.ts` + `FuenteFacturasPanel.tsx`; sin cancelados ni
+> nómina). Subir XML sigue como "Usar archivos sueltos", con "Guardar en la bóveda". Lo de
+> "sin una sola llamada al API" de abajo es historia: las pólizas se arman en el front, pero
+> los comprobantes ya vienen de la API.
+
 `/app/store/contabilito/use`. **100% front y sin una sola llamada al API**, y puede serlo
 porque aqui no se calcula ningun impuesto: los importes (subtotal, descuento, IVA trasladado,
 retenciones) ya vienen leidos del XML por `cfdiParser.ts` y solo se acomodan en los dos lados
@@ -610,26 +617,18 @@ DB: Firestore
 - `VITE_FISCAL_AGENT_URL` — URL del Fiscal Agent API (default: `http://localhost:8000`)
 - `VITE_OPENAI_API_KEY` — API key de OpenAI para voice chat (Whisper + GPT-4o-mini + TTS). **NOTA**: esta key se expone en el bundle del cliente; aceptable para demo/hackathon, no para produccion.
 
-#### Flags (viene APAGADO; ver `.env.example`)
+#### La cartera va por la API (P0-01)
 
-Los dos se leen con la misma regla (`services/flagEncendido.ts`): encienden `1`,
-`true`, `on`, `yes`, `si` y `sí`; **cualquier otra cosa, y la variable ausente,
-dejan el flag apagado**. Un valor que no se entiende no enciende nada y tampoco
-avisa, así que escribe uno de esos seis.
+Clientes, empleados y dispositivos **no se guardan en Firestore**: van SIEMPRE por
+`/api/v1/cartera/*` (`services/cartera.ts`, `services/dispositivos.ts`, con `apiFetch` de
+`services/api.ts`, que adjunta el ID token). El backend los guarda en SQL y filtra por
+despacho; **ninguna llamada manda uid**. El flag `VITE_CARTERA_BACKEND` y los módulos
+`carteraFirestore.ts` / `carteraBackend.ts` / `dispositivosFirestore.ts` se retiraron. Lo
+que una cuenta tenía en Firestore se trae con `apps/api/scripts/migrar_firestore.py`. Los
+empleados que el backend no puede leer llegan en `ilegibles` con su razón y se pintan en la
+ficha (`EmpleadosIlegibles`, R-10). El contrato vive en `docs/api-contract.md`.
 
-- `VITE_CARTERA_BACKEND` (R-07, T2) — **quién es el dueño de la cartera**
-  (clientes y empleados), y se decide una vez al cargar la app, en
-  `services/cartera.ts`. Apagado (**default**): todo el CRUD va por
-  `services/carteraFirestore.ts`, o sea Firestore desde el navegador.
-  Encendido: va por `services/carteraBackend.ts` contra `/api/v1/cartera/*`.
-  **El backend existe y está probado, pero exige credenciales de GCP**
-  (`GOOGLE_APPLICATION_CREDENTIALS` o ADC) en `apps/api`; sin ellas responde
-  **503 a todo el CRUD**, que no se ve como un problema de configuración sino
-  como una app que dejó de guardar clientes. Enciéndelo sólo después de
-  comprobar que `GET /api/v1/cartera/clientes` responde 200. **No hay migración
-  de datos**: las rutas de Firestore (`users/{uid}/clientes/{id}/empleados/{id}`)
-  son las mismas de los dos lados, así que apagarlo tampoco mueve nada. El
-  contrato vive en `docs/api-contract.md`, y R-07 sigue ABIERTA en `backlog.md`.
+Firestore sigue guardando el **perfil** (`users/{uid}`) y el **historial de declaraciones**.
 
 ### Estructura Firestore:
 

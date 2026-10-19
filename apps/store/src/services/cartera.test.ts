@@ -1,89 +1,215 @@
 /**
- * El interruptor de dueño del dato. (R-07)
+ * La cartera va SIEMPRE por la API. (R-07 → P0-01)
  *
- * LO QUE ESTE ARCHIVO PROTEGE
- * ---------------------------
- * Que el default sea Firestore. Encender el backend sin credenciales da **503
- * en todo el CRUD**, y una regresión aquí no se ve como un error de
- * configuración: se ve como una app que dejó de guardar clientes.
- *
- * Y que las dos implementaciones tengan **la misma forma**. El despachador las
- * intercambia sin que ninguna pantalla se entere, así que una firma que no
- * cuadre no se detecta al compilar —`export const x = activa.x` acepta
- * cualquier cosa— sino en producción, cuando alguien encienda el flag.
+ * Reemplaza a `carteraFirestore.test.ts`, `carteraBackend.test.ts` y al test del
+ * despachador: ya no hay dos dueños del dato ni interruptor. Los mismos criterios que
+ * aquellos medían —vacía es escribible, un fallo se dice y no se sustituye por datos
+ * ajenos, la lectura no se cuelga, el periodo se refresca, el uid no viaja— se miden
+ * aquí contra la API con `fetch` stubbeado.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-/**
- * `services/firebase.ts` llama a `getAuth()` **al importarse**, y sin las llaves
- * de Firebase eso lanza `auth/invalid-api-key`. En local hay `.env` y no se
- * nota; en CI no hay secretos y el archivo entero revienta antes del primer
- * test. Lo descubrió el CI de R-07, y es el mismo modo de falla que la entrada
- * de X-01 documenta: **el bug sólo aparece porque el test corre en un entorno
- * distinto al local**.
- *
- * Es el patrón que ya usan `carteraFirestore.test.ts`, `agentLoop.test.ts`,
- * `tools.test.ts` y `FiscalitoServicePage.test.tsx`.
- */
-vi.mock('./firebase', () => ({ auth: {}, db: {}, default: {} }));
+vi.mock('./firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-1' } },
+  db: {},
+  default: {},
+}));
 
-import * as despachador from './cartera';
-import * as firestore from './carteraFirestore';
-import * as backend from './carteraBackend';
+const PERIODO_VIVO = { inicio: '2026-09-01', fin: '2026-09-15', fecha_pago: '2026-09-15' };
+const PERIODO_GUARDADO = { inicio: '2026-08-16', fin: '2026-08-31', fecha_pago: '2026-08-31' };
 
-/** Las operaciones que una pantalla puede pedirle a la cartera. */
-const OPERACIONES = [
-  'cargarCartera',
-  'guardarCliente',
-  'borrarCliente',
-  'guardarEmpleado',
-  'borrarEmpleado',
-  'sembrarDemo',
-] as const;
+const obtenerPeriodoSugerido = vi.fn();
+vi.mock('./despachoApi', () => ({
+  obtenerPeriodoSugerido: (clave: string) => obtenerPeriodoSugerido(clave),
+  obtenerClientes: async () => [],
+  obtenerCliente: async () => ({}),
+}));
 
-describe('el dueño del dato', () => {
-  it('el default es Firestore, no el backend', () => {
-    // Sin `VITE_CARTERA_BACKEND=1` el backend no manda. Es lo que impide
-    // entregar una app que responde 503 a todo por falta de credenciales.
-    expect(despachador.BACKEND_ES_DUENO).toBe(false);
+const {
+  cargarCartera, guardarCliente, borrarCliente, guardarEmpleado, borrarEmpleado,
+} = await import('./cartera');
+
+const CLIENTE = {
+  id: 'mio', nombre: 'Cliente Propio', giro: 'G', origen: 'propio',
+  prima_riesgo: '0.005', clase_riesgo: null, clave_periodicidad: '04', zona: 'general',
+  periodo_sugerido: PERIODO_GUARDADO,
+};
+const EMPLEADO = { empleado_no: 'E-01', nombre: 'ANA', employee_no: '7' };
+const ILEGIBLE = { empleado_no: 'E-99', nombre: 'BETO', razon: 'nss: debe tener 11 dígitos' };
+
+interface Peticion { url: string; method: string; body?: string; auth?: string }
+const peticiones: Peticion[] = [];
+
+function responder(cuerpoPara: (url: string) => unknown, status = 200) {
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    peticiones.push({
+      url, method: init?.method ?? 'GET', body: init?.body as string, auth: headers.Authorization,
+    });
+    return new Response(JSON.stringify(cuerpoPara(url)), {
+      status, headers: { 'Content-Type': 'application/json' },
+    });
+  }));
+}
+
+beforeEach(() => {
+  peticiones.length = 0;
+  obtenerPeriodoSugerido.mockReset();
+  obtenerPeriodoSugerido.mockImplementation(async (clave: string) => ({
+    clave_periodicidad: clave, periodo: PERIODO_VIVO, dias_naturales: 15,
+  }));
+  responder((url) =>
+    url.endsWith('/empleados')
+      ? { empleados: [EMPLEADO], ilegibles: ['E-99'], ilegibles_detalle: [ILEGIBLE] }
+      : { clientes: [CLIENTE] },
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe('cargarCartera', () => {
+  it('lee clientes y plantillas de la API, con el token', async () => {
+    const r = await cargarCartera('uid-1');
+
+    expect(r.error).toBeNull();
+    expect(r.origen).toBe('propia');
+    expect(r.clientes.map((c) => c.id)).toEqual(['mio']);
+    expect(r.clientes[0].empleados).toEqual([EMPLEADO]);
+    expect(peticiones.map((p) => p.url)).toEqual([
+      'http://localhost:8000/api/v1/cartera/clientes',
+      'http://localhost:8000/api/v1/cartera/clientes/mio/empleados',
+    ]);
+    expect(peticiones.every((p) => p.auth === 'Bearer token-1')).toBe(true);
   });
 
-  it('con el default, las operaciones son las de Firestore', () => {
-    // Identidad de función, no "algo definido": un despachador que exportara
-    // envolturas propias pasaría una comprobación más floja y podría estar
-    // llamando a la implementación equivocada.
-    for (const op of OPERACIONES) {
-      expect(despachador[op], op).toBe(firestore[op]);
-    }
+  it('trae los ilegibles CON su razón para la ficha (R-10)', async () => {
+    const r = await cargarCartera('uid-1');
+    expect(r.clientes[0].ilegibles).toEqual([ILEGIBLE]);
+  });
+
+  it('una cartera vacía es vacía y ESCRIBIBLE, no un error', async () => {
+    responder(() => ({ clientes: [] }));
+    const r = await cargarCartera('uid-1');
+    expect(r).toEqual({ clientes: [], origen: 'propia', error: null });
+  });
+
+  it('sin sesión devuelve vacío escribible sin pedir nada', async () => {
+    const r = await cargarCartera(null);
+    expect(r).toEqual({ clientes: [], origen: 'propia', error: null });
+    expect(peticiones).toEqual([]);
+  });
+
+  it('un fallo de la API se DICE y no se sustituye por datos de otra persona', async () => {
+    responder(() => ({ exito: false, error: 'boom' }), 500);
+    const r = await cargarCartera('uid-1');
+    expect(r.clientes).toEqual([]);
+    expect(r.error).toContain('No se pudo leer tu cartera');
+    expect(r.origen).toBe('propia');
+  });
+
+  it('si la API se cuelga, la cota la rescata (nunca spinner eterno)', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) =>
+      new Promise((_, rechazar) => {
+        init?.signal?.addEventListener('abort', () =>
+          rechazar(new DOMException('abortado', 'AbortError')));
+      })));
+
+    const promesa = cargarCartera('uid-1');
+    await vi.advanceTimersByTimeAsync(9000);
+    const r = await promesa;
+
+    expect(r.error).toContain('tardó demasiado');
+    expect(r.clientes).toEqual([]);
   });
 });
 
-describe('las dos implementaciones son intercambiables', () => {
-  it('el backend expone TODAS las operaciones que expone Firestore', () => {
-    // El despachador hace `activa.x` sin que TypeScript compare las dos formas,
-    // así que una operación faltante en el backend sería `undefined` en tiempo
-    // de ejecución — y sólo el día que alguien encienda el flag.
-    for (const op of OPERACIONES) {
-      expect(typeof backend[op], `al backend le falta ${op}`).toBe('function');
-      expect(typeof firestore[op], `a Firestore le falta ${op}`).toBe('function');
-    }
+describe('cargarCartera · el periodo se REFRESCA, no se sirve del snapshot', () => {
+  it('devuelve el periodo vivo de su periodicidad, no el guardado', async () => {
+    const r = await cargarCartera('uid-1');
+    expect(obtenerPeriodoSugerido).toHaveBeenCalledWith('04');
+    expect(r.clientes[0].periodo_sugerido).toEqual(PERIODO_VIVO);
   });
 
-  it('reciben el mismo número de argumentos', () => {
-    // `guardarEmpleado(uid, clienteId, empleado)` en los dos. Si una tomara los
-    // argumentos en otro orden o le sobrara uno, el `.length` lo delata antes
-    // de que un contador pierda un empleado.
-    for (const op of OPERACIONES) {
-      expect(backend[op].length, `${op}: aridad distinta`).toBe(firestore[op].length);
-    }
+  it('pide UNA vez por clave, no una por cliente', async () => {
+    responder((url) =>
+      url.endsWith('/empleados')
+        ? { empleados: [] }
+        : {
+            clientes: [
+              { ...CLIENTE, id: 'a' },
+              { ...CLIENTE, id: 'b' },
+              { ...CLIENTE, id: 'c', clave_periodicidad: '05' },
+            ],
+          },
+    );
+    await cargarCartera('uid-1');
+    expect(obtenerPeriodoSugerido).toHaveBeenCalledTimes(2);
+  });
+
+  it('si el periodo no se puede pedir, conserva el snapshot', async () => {
+    obtenerPeriodoSugerido.mockRejectedValue(new Error('422 sin tarifa'));
+    const r = await cargarCartera('uid-1');
+    expect(r.error).toBeNull();
+    expect(r.clientes[0].periodo_sugerido).toEqual(PERIODO_GUARDADO);
   });
 });
 
-describe('la siembra con el backend como dueño', () => {
-  it('no existe, y lo dice en vez de fallar raro', async () => {
-    // Darle al backend un endpoint que copia salarios de terceros a la cuenta
-    // de quien llame sería regalar la escalada que R-06 vino a cerrar.
-    await expect(backend.sembrarDemo('uid-1')).rejects.toThrow(/no está disponible/);
+describe('escrituras: verbo, ruta, cuerpo y token', () => {
+  const ultima = () => peticiones[peticiones.length - 1];
+
+  it('guardarCliente hace PUT sin plantilla ni ilegibles en el cuerpo', async () => {
+    await guardarCliente({ ...CLIENTE, empleados: [EMPLEADO], ilegibles: [ILEGIBLE] } as never);
+    const p = ultima();
+    expect(p.method).toBe('PUT');
+    expect(p.url).toBe('http://localhost:8000/api/v1/cartera/clientes/mio');
+    const cuerpo = JSON.parse(p.body!);
+    expect(cuerpo.id).toBe('mio');
+    expect(cuerpo).not.toHaveProperty('empleados');
+    expect(cuerpo).not.toHaveProperty('ilegibles');
+    expect(p.auth).toBe('Bearer token-1');
+  });
+
+  it('borrarCliente hace DELETE', async () => {
+    await borrarCliente('mio');
+    expect(ultima()).toMatchObject({
+      method: 'DELETE', url: 'http://localhost:8000/api/v1/cartera/clientes/mio',
+    });
+  });
+
+  it('guardarEmpleado hace PUT a la llave del cálculo', async () => {
+    await guardarEmpleado('mio', EMPLEADO as never);
+    expect(ultima().method).toBe('PUT');
+    expect(ultima().url).toContain('/cartera/clientes/mio/empleados/E-01');
+    expect(JSON.parse(ultima().body!).empleado_no).toBe('E-01');
+  });
+
+  it('borrarEmpleado hace DELETE', async () => {
+    await borrarEmpleado('mio', 'E-01');
+    expect(ultima().method).toBe('DELETE');
+    expect(ultima().url).toContain('/cartera/clientes/mio/empleados/E-01');
+  });
+
+  it('los ids se codifican en la URL', async () => {
+    await borrarEmpleado('mi cliente', 'E/01');
+    expect(ultima().url).toContain('/cartera/clientes/mi%20cliente/empleados/E%2F01');
+  });
+
+  it('el uid NO viaja en la URL ni en el cuerpo: lo resuelve el token', async () => {
+    await guardarCliente(CLIENTE as never);
+    await guardarEmpleado('mio', EMPLEADO as never);
+    for (const p of peticiones) {
+      expect(p.url).not.toContain('uid-1');
+      expect(p.body ?? '').not.toContain('uid-1');
+    }
+  });
+
+  it('un rechazo del backend llega como Error con su mensaje', async () => {
+    responder(() => ({ exito: false, error: 'La prima de riesgo está fuera del Art. 72' }), 422);
+    await expect(guardarCliente(CLIENTE as never)).rejects.toThrow(/Art\. 72/);
   });
 });
