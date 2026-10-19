@@ -279,6 +279,20 @@ def _comprobante(
 # ── consulta ──
 
 
+def comprobantes_vigentes(consulta: Any) -> Any:
+    """
+    La consulta sin los CFDI cancelados ante el SAT (P1-03).
+
+    Es el filtro que usan los cálculos (Fiscalito, Contabilito, la anual, P1-06): un CFDI
+    cancelado sigue en la bóveda —se ve, se descarga— pero deja de contar. Los que todavía no
+    se verifican (`desconocido`) SÍ cuentan: no verificar no es motivo para excluir.
+
+        servicio.comprobantes_vigentes(select(Comprobante).where(...))
+    """
+    return consulta.where(Comprobante.estatus_sat != "cancelado")
+
+
+
 @dataclass
 class Filtros:
     """Filtros de la lista de la bóveda. Todo opcional."""

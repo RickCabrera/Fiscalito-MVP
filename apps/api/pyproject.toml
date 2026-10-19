@@ -31,6 +31,8 @@ dependencies = [
     "boto3>=1.34",
     # Exportar papeles de trabajo y reportes a Excel.
     "openpyxl>=3.1",
+    # P1-05: leer el sentido de la opinión de cumplimiento y la constancia (texto del PDF).
+    "pypdf>=4.0",
 ]
 
 [tool.setuptools.packages.find]

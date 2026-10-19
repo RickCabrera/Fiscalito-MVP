@@ -15,6 +15,7 @@ from fastapi.responses import Response
 from app.boveda_cfdi import servicio
 from app.exceptions import FiscalAgentError
 from app.modelos.cfdi import Comprobante
+from app.sat_verificacion import estatus, listas
 from app.tenancy import Contexto, cliente_o_404, contexto_actual
 
 router = APIRouter(prefix="/boveda", tags=["boveda"])
@@ -81,9 +82,22 @@ def listar_cfdi(
     """Comprobantes del cliente, filtrados y paginados (más recientes primero)."""
     cliente = cliente_o_404(ctx, clave)
     filas, total = servicio.listar(ctx.db, cliente, filtros, pagina, por_pagina)
+    # P1-03/04: detalle del SAT y marca de listas 69-B/69 de la contraparte.
+    detalle = estatus.detalle(ctx.db, [c.id for c in filas])
+    marcados = listas.rfcs_marcados(
+        ctx.db, {c.rfc_receptor if c.direccion == "emitido" else c.rfc_emisor for c in filas})
+    salida = []
+    for c in filas:
+        fila = _fila(c)
+        v = detalle.get(c.id)
+        fila["fecha_estatus"] = c.fecha_estatus.isoformat() if c.fecha_estatus else None
+        fila["estatus_cancelacion"] = v.estatus_cancelacion if v else ""
+        contraparte = c.rfc_receptor if c.direccion == "emitido" else c.rfc_emisor
+        fila["art_69b"] = marcados.get(contraparte)
+        salida.append(fila)
     return {
         "exito": True, "total": total, "pagina": pagina, "por_pagina": por_pagina,
-        "comprobantes": [_fila(c) for c in filas],
+        "comprobantes": salida,
     }
 
 

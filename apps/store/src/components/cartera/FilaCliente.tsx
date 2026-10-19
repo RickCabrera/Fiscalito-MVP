@@ -10,10 +10,12 @@
 import { Building2, ChevronRight, Pencil, Users } from 'lucide-react';
 import type { ClienteCartera } from '../../services/carteraApi';
 import { etiquetaOrigen, primaComoPorcentaje } from '../../services/despachoApi';
+import type { SemaforoCliente } from '../../services/semaforoSat';
+import IndicadoresSat from './IndicadoresSat';
 
 function TarjetaCliente({
-  cliente, activo, onAbrir,
-}: { cliente: ClienteCartera; activo: boolean; onAbrir: () => void }) {
+  cliente, activo, onAbrir, sat,
+}: { cliente: ClienteCartera; activo: boolean; onAbrir: () => void; sat?: SemaforoCliente }) {
   return (
     <button
       onClick={onAbrir}
@@ -50,6 +52,7 @@ function TarjetaCliente({
               ACTIVO
             </span>
           )}
+          <IndicadoresSat dato={sat} />
         </div>
         <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginTop: 2 }}>
           {cliente.giro} · {etiquetaOrigen(cliente.origen)}
@@ -79,18 +82,20 @@ function TarjetaCliente({
 }
 
 export default function FilaCliente({
-  cliente, activo, editable, onAbrir, onEditar,
+  cliente, activo, editable, onAbrir, onEditar, sat,
 }: {
   cliente: ClienteCartera;
   activo: boolean;
   editable: boolean;
   onAbrir: () => void;
   onEditar: () => void;
+  /** P1-05/P1-04: semáforo de opinión y riesgos 69-B (si el servidor lo tiene). */
+  sat?: SemaforoCliente;
 }) {
   return (
     <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'stretch' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <TarjetaCliente cliente={cliente} activo={activo} onAbrir={onAbrir} />
+        <TarjetaCliente cliente={cliente} activo={activo} onAbrir={onAbrir} sat={sat} />
       </div>
       {editable && (
         <button

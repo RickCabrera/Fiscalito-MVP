@@ -5,7 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ComprobanteBoveda } from '../services/bovedaApi';
 
@@ -50,6 +50,11 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET';
     peticiones.push({ url, method, body: init.body });
+    // P1-03: "Verificar estatus" encola en /sat/...; no es una carga de la bóveda.
+    if (method === 'POST' && url.includes('/verificar-estatus')) {
+      return Response.json({ exito: true, comprobantes: 7, trabajo: { id: 9, tipo: 'sat.verificar_estatus', estado: 'pendiente' } });
+    }
+    if (url.includes('/trabajos')) return Response.json({ trabajos: [] });
     if (method === 'POST') {
       return Response.json({
         exito: true, rfc_cliente: 'XEXX010101AB1', rfc_deducido: false, importados: 3,
@@ -145,5 +150,35 @@ describe('BovedaPage', () => {
     total = 0;
     montar();
     expect(await screen.findByText('No hay comprobantes con estos filtros.')).toBeTruthy();
+  });
+
+  it('marca el CFDI cancelado y la contraparte en el 69-B en rojo (P1-03 / P1-04)', async () => {
+    comprobantes = [
+      { ...comprobante(1), estatus_sat: 'cancelado', fecha_estatus: '2026-10-19T10:00:00+00:00' },
+      { ...comprobante(2, 'recibido'), uuid: 'UUID-2', rfc_emisor: 'EFO010101AA1', nombre_emisor: 'EFOS SINTÉTICO',
+        estatus_sat: 'vigente', art_69b: { lista: '69b', situacion: 'definitivo', nivel: 'alto' } },
+      { ...comprobante(3), uuid: 'UUID-3', art_69b: { lista: '69b', situacion: 'desvirtuado', nivel: 'info' } },
+    ];
+    total = 3;
+    montar();
+    const tabla = (await screen.findByText('Cancelado', { selector: 'span' })).closest('table')!;
+    expect(within(tabla).getByText('Vigente')).toBeTruthy();
+    expect(within(tabla).getAllByTitle('Sin verificar')).toHaveLength(1);
+    const rojo = screen.getByText('69-B Definitivo');
+    expect(rojo.getAttribute('data-riesgo')).toBe('rojo');
+    expect(screen.getByText('69-B Desvirtuado').getAttribute('data-riesgo')).toBe('info');
+    expect(screen.getByRole('columnheader', { name: 'Art. 69-B' })).toBeTruthy();
+  });
+
+  it('"Verificar estatus" pide al SAT el periodo filtrado', async () => {
+    montar();
+    await screen.findByText('COMPRADOR SINTÉTICO');
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-03-01' } });
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-03-31' } });
+    fireEvent.click(screen.getByRole('button', { name: /Verificar estatus/ }));
+    expect(await screen.findByText(/Se consultarán 7 comprobantes ante el SAT/)).toBeTruthy();
+    const post = peticiones.find((p) => p.url.includes('/verificar-estatus'))!;
+    expect(new URL(post.url).pathname).toBe('/api/v1/sat/clientes/taller/verificar-estatus');
+    expect(JSON.parse(String(post.body))).toEqual({ desde: '2026-03-01', hasta: '2026-03-31' });
   });
 });

@@ -221,6 +221,18 @@
       ]
     },
     {
+      "path": "/api/v1/sat/cartera/semaforo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/sat/clientes/{clave}/bitacora",
       "metodos": [
         "GET"
@@ -231,6 +243,12 @@
       "metodos": [
         "GET",
         "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/constancia",
+      "metodos": [
+        "GET"
       ]
     },
     {
@@ -246,7 +264,55 @@
       ]
     },
     {
+      "path": "/api/v1/sat/clientes/{clave}/opinion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/config",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/obtener",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/pdf",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/riesgos-69b",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/sat/clientes/{clave}/solicitudes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/verificar-estatus",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/listas/estado",
       "metodos": [
         "GET"
       ]

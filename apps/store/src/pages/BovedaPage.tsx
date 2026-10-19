@@ -20,6 +20,7 @@ import {
 import CargaBoveda from '../components/boveda/CargaBoveda';
 import FiltrosBoveda from '../components/boveda/FiltrosBoveda';
 import TablaBoveda from '../components/boveda/TablaBoveda';
+import VerificarEstatus from '../components/boveda/VerificarEstatus';
 import ErrorAlert from '../components/common/ErrorAlert';
 import SinClienteActivo from '../components/common/SinClienteActivo';
 
@@ -102,6 +103,8 @@ export default function BovedaPage() {
       <CargaBoveda key={clienteId} clave={clienteId} onImportado={recargar} />
 
       <FiltrosBoveda valor={filtros} onCambio={setFiltros} />
+
+      <VerificarEstatus key={`v-${clienteId}`} clave={clienteId} desde={filtros.desde} hasta={filtros.hasta} onActualizar={recargar} />
 
       {errorDescarga && <ErrorAlert message={errorDescarga} />}
       {!vigente && (

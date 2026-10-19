@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import FilaCliente from '../components/cartera/FilaCliente';
 import ModalCliente from '../components/cartera/ModalCliente';
+import { useSemaforoCartera } from '../components/cartera/useSemaforoCartera';
 import { useCartera } from '../context/carteraStore';
 import { sinEmpleados, type ClienteCartera } from '../services/carteraApi';
 import { Building2, Loader, Plus, RefreshCw } from 'lucide-react';
@@ -51,6 +52,8 @@ export default function ClientesPage() {
   const [sembrando, setSembrando] = useState(false);
   const [editando, setEditando] = useState<Omit<ClienteCartera, 'empleados'> | null>(null);
   const navigate = useNavigate();
+  // P1-05/P1-04: semáforo de opinión y riesgos 69-B por cliente (complementario).
+  const semaforo = useSemaforoCartera(!loading && clientes.length > 0);
 
   // T8: el tope del plan. Es la ÚNICA parte del plan con consecuencia — ver
   // `services/planes.ts`—, y se calcula contra la cartera ya cargada: mientras
@@ -215,6 +218,7 @@ export default function ClientesPage() {
             editable={!cartera.soloLectura}
             onAbrir={() => abrir(c.id)}
             onEditar={() => { setEditando(sinEmpleados(c)); setModalAbierto(true); }}
+            sat={semaforo.porClave[c.id]}
           />
         ))}
       </div>

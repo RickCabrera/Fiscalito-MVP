@@ -8,12 +8,10 @@ import { Download } from 'lucide-react';
 import type { ComprobanteBoveda } from '../../services/bovedaApi';
 import { fmtMoney } from '../../utils/format';
 import { tdMonoStyle, tdStyle, thStyle } from '../../utils/styles';
+import { CeldaArt69b, CeldaEstatusSat } from './MarcasSat';
 
 const NOMBRE_TIPO: Record<string, string> = {
   I: 'Ingreso', E: 'Egreso', P: 'Pago', N: 'Nómina', T: 'Traslado',
-};
-const NOMBRE_ESTATUS: Record<string, string> = {
-  vigente: 'Vigente', cancelado: 'Cancelado', desconocido: 'Sin verificar',
 };
 
 interface Props {
@@ -41,7 +39,8 @@ export default function TablaBoveda({
             <th style={thStyle}>Contraparte</th>
             <th style={thStyle}>Serie/Folio</th>
             <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
-            <th style={thStyle}>Estatus</th>
+            <th style={thStyle}>Estatus SAT</th>
+            <th style={thStyle}>Art. 69-B</th>
             <th style={thStyle}>XML</th>
           </tr>
         </thead>
@@ -61,7 +60,8 @@ export default function TablaBoveda({
                 </td>
                 <td style={tdStyle}>{[c.serie, c.folio].filter(Boolean).join('-') || '—'}</td>
                 <td style={tdMonoStyle}>{fmtMoney(Number(c.total))} {c.moneda !== 'MXN' ? c.moneda : ''}</td>
-                <td style={tdStyle}>{NOMBRE_ESTATUS[c.estatus_sat] ?? c.estatus_sat}</td>
+                <td style={tdStyle}><CeldaEstatusSat c={c} /></td>
+                <td style={tdStyle}><CeldaArt69b c={c} /></td>
                 <td style={tdStyle}>
                   <button
                     type="button"
