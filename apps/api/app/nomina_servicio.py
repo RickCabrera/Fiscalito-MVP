@@ -260,27 +260,3 @@ def resumen(p: NominaPeriodo) -> dict[str, Any]:
         "total_isr": p.total_isr,
         "total_neto": p.total_neto,
     }
-
-
-def acumulados_del_ejercicio(
-    db: Session, cliente: Cliente, ejercicio: int
-) -> dict[str, dict[str, Decimal]]:
-    """Gravado, exento, ISR y subsidio por empleado de los periodos guardados del año."""
-    periodos = db.scalars(
-        select(NominaPeriodo).where(
-            NominaPeriodo.cliente_id == cliente.id,
-            NominaPeriodo.fecha_pago >= date(ejercicio, 1, 1),
-            NominaPeriodo.fecha_pago <= date(ejercicio, 12, 31),
-        )
-    )
-    acc: dict[str, dict[str, Decimal]] = {}
-    for p in periodos:
-        for r in recibos_de(db, p):
-            a = acc.setdefault(
-                r.empleado_no, {k: CERO for k in ("gravado", "exento", "isr", "subsidio")}
-            )
-            a["gravado"] += sum((_dec(x.get("gravado")) for x in r.percepciones), start=CERO)
-            a["exento"] += sum((_dec(x.get("exento")) for x in r.percepciones), start=CERO)
-            a["isr"] += r.isr
-            a["subsidio"] += r.subsidio
-    return acc

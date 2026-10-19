@@ -163,7 +163,7 @@ class TestSelectorDeTarifa:
         assert not es_tarifa_derivada("10")
 
     def test_decenal_ya_se_entrega(self):
-        """P4-03: verificada contra el Anexo 8 (literales en test_tablas_p4.py)."""
+        """P4-03: verificada contra el Anexo 8 (literales: test_p4_motor.py::TestTarifaDecenal)."""
         assert len(tarifa_por_periodicidad("10", date(2026, 6, 1))) == 11
 
     @pytest.mark.parametrize("clave", ["06", "07", "08", "09", "99"])

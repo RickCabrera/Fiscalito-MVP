@@ -1710,7 +1710,9 @@ El código agrupador del SAT completo (Anexo 24, 1080 códigos) con su fuente:
   "acreedor", "cuadra"}, "saldos"}`.
 ## Impuestos del cliente y calculadoras (P3-02, P3-03, P3-07, P3-08)
 
-Motor: `app/fiscal_engine/{actualizacion,inpc,iva,isn,resumen_impuestos,calculadoras_laborales}.py`;
+Motor: `app/fiscal_engine/{actualizacion,inpc,iva,isn,resumen_impuestos}.py`; las calculadoras de
+aguinaldo, PTU y finiquito usan el motor de nómina de P4 (`app/routes/calculadoras_laborales.py`;
+`/calculadoras/finiquito` acepta `salario_diario_integrado` e `incluir_20_dias`, default `false`);
 lectura de la bóveda en `app/impuestos/`. Todo autenticado (`contexto_actual`); las rutas con
 `{clave}` usan `cliente_o_404` (otro despacho = 404). Importes en las respuestas como texto con
 dos decimales. Fuentes y `FUENTE POR CONFIRMAR` en los docstrings y en `fiscal_engine/datos/*.csv`.

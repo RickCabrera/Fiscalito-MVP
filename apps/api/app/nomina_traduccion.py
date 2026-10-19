@@ -50,6 +50,7 @@ def variables_del_schema(v: VariablesEmpleadoSchema) -> var.VariablesEmpleado:
         if v.pension
         else None,
         viaticos_comprobados=v.viaticos_comprobados,
+        prima_vacacional_exenta_previa=v.prima_vacacional_exenta_previa,
     )
 
 

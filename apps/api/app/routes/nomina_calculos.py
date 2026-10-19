@@ -160,7 +160,9 @@ def finiquito(
         aguinaldo_ya_pagado=req.aguinaldo_ya_pagado,
         incluir_20_dias=req.incluir_20_dias,
     )
-    r = calcular_finiquito(d)
+    # B5: lo gravado ordinario se apila sobre el ingreso del mes (Art. 96 LISR). Default
+    # conservador: salario diario × 30.4, igual que aguinaldo y PTU.
+    r = calcular_finiquito(d, ordinario_mensual(f))
     resultado = {**asdict(r), "empleado_no": f.empleado_no, "nombre": f.nombre, "causa": req.causa}
     fila = {
         "empleado_no": f.empleado_no,

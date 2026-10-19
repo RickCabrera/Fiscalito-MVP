@@ -79,7 +79,10 @@ class DatosSeparacion:
     dias_vacaciones_pendientes: Decimal = CERO  # de años anteriores, no disfrutadas
     dias_salario_pendientes: int = 0
     aguinaldo_ya_pagado: Decimal = CERO
-    incluir_20_dias: bool = True
+    # O4: False por default. Los 20 días por año (Art. 50 fr. II) proceden cuando el patrón
+    # se niega a reinstalar (Art. 49) o el trabajador rescinde por causa imputable al
+    # patrón (Art. 52); en un despido injustificado con reinstalación ofrecida no.
+    incluir_20_dias: bool = False
 
     def __post_init__(self) -> None:
         if self.causa not in CAUSAS:
@@ -266,6 +269,11 @@ def calcular_finiquito(
     isr_sep = isr_separacion(gravado_sep, usmo, fecha, ingreso_ordinario_mensual + gravado_ord).isr
     total = sum((x.importe for x in c), start=CERO)
     notas = [f"Causa: {CAUSAS[d.causa]}."]
+    if d.causa == "despido_injustificado" and not d.incluir_20_dias:
+        notas.append(
+            "No incluye los 20 días por año (Art. 50 fr. II LFT): proceden cuando el patrón se "
+            "niega a reinstalar (Art. 49) o el trabajador rescinde (Art. 52). Actívalos si aplica."
+        )
     if not procede_prima_antiguedad(d.causa, anios):
         notas.append(
             "No procede prima de antigüedad: renuncia con menos de 15 años (Art. 162 fr. III)."

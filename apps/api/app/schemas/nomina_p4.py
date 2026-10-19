@@ -64,6 +64,11 @@ class VariablesEmpleadoSchema(BaseModel):
     prestamo: Decimal = Field(default=CERO, ge=0)
     pension: PensionSchema | None = None
     viaticos_comprobados: Decimal = Field(default=CERO, ge=0)
+    prima_vacacional_exenta_previa: Decimal = Field(
+        default=CERO,
+        ge=0,
+        description="Prima vacacional ya exenta en el año fuera del historial (15 UMA anuales).",
+    )
 
 
 class ResumenPeriodoSchema(BaseModel):
@@ -140,7 +145,7 @@ class PTUTrabajadorSchema(BaseModel):
     empleado_no: str
     dias_trabajados: int = Field(ge=0, le=366)
     salarios_devengados: Decimal = Field(ge=0)
-    tipo: Literal["planta", "eventual", "confianza", "director"] = "planta"
+    tipo: Literal["planta", "sindicalizado", "eventual", "confianza", "director"] = "planta"
     promedio_ptu_3_anios: Decimal = Field(default=CERO, ge=0)
 
 
@@ -161,7 +166,11 @@ class FiniquitoRequest(BaseModel):
     dias_salario_pendientes: int = Field(default=0, ge=0, le=31)
     dias_vacaciones_pendientes: Decimal = Field(default=CERO, ge=0)
     aguinaldo_ya_pagado: Decimal = Field(default=CERO, ge=0)
-    incluir_20_dias: bool = True
+    incluir_20_dias: bool = Field(
+        default=False,
+        description="20 días por año (Art. 50 fr. II LFT): sólo si el patrón se niega a "
+        "reinstalar (Art. 49) o el trabajador rescinde (Art. 52).",
+    )
     guardar: bool = True
 
 
@@ -172,6 +181,13 @@ class AjusteAnualTrabajador(BaseModel):
     isr_retenido: Decimal = Field(ge=0)
     subsidio_correspondido: Decimal = Field(default=CERO, ge=0)
     comunico_que_declara: bool = False
+    impuesto_local_retenido: Decimal = Field(
+        default=CERO,
+        ge=0,
+        description="Impuesto local a los ingresos por salarios retenido en el año: se resta "
+        "de la base (Art. 97 LISR) si su tasa no excede del 5 %.",
+    )
+    tasa_impuesto_local: Decimal | None = Field(default=None, ge=0, le=1)
 
 
 class AjusteAnualRequest(BaseModel):

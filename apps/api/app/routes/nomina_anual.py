@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends
 
 from app import nomina_servicio as srv
 from app.exceptions import FiscalValidationError
+from app.nomina_acumulados import acumulados_del_ejercicio
 from app.nomina_engine.ajuste_anual import DatosAnuales, ajuste_anual
 from app.nomina_engine.ptu import TrabajadorPTU, repartir_ptu
 from app.nomina_traduccion import a_json, fichas_por_numero, guardar_calculo, ordinario_mensual
@@ -89,11 +90,7 @@ def ptu(
         if x.participa
     ]
     resultado = {**asdict(r), "recibos": filas}
-    avisos = (
-        (f"Remanente no repartido por el tope del Art. 127 LFT: {r.remanente}.",)
-        if r.remanente > 0
-        else ()
-    )
+    avisos = r.avisos  # incluye la nota del remanente según el criterio del cliente
     pid = (
         guardar_calculo(
             ctx,
@@ -126,7 +123,7 @@ def ajuste(
     cliente = cliente_o_404(ctx, cliente_id)
     fichas = fichas_por_numero(ctx, cliente)
     capturados = {t.empleado_no: t for t in req.trabajadores}
-    acumulados = {} if capturados else srv.acumulados_del_ejercicio(ctx.db, cliente, req.ejercicio)
+    acumulados = {} if capturados else acumulados_del_ejercicio(ctx.db, cliente, req.ejercicio)
     filas, avisos = [], []
     if not capturados:
         avisos.append(
@@ -147,6 +144,8 @@ def ajuste(
             isr_retenido=t.isr_retenido if t else a.get("isr", CERO),
             subsidio_correspondido=t.subsidio_correspondido if t else a.get("subsidio", CERO),
             comunico_que_declara=t.comunico_que_declara if t else False,
+            impuesto_local_retenido=t.impuesto_local_retenido if t else CERO,
+            tasa_impuesto_local=t.tasa_impuesto_local if t else None,
         )
         filas.append({"empleado_no": no, "nombre": f.nombre, **asdict(ajuste_anual(datos))})
     return CalculoResponse(

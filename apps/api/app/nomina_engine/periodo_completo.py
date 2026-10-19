@@ -28,11 +28,13 @@ de la periodicidad. Percepción 046 "Ingresos asimilados a salarios".
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
-from app.constants import DIAS_MES_FISCAL
+from app.constants import DIAS_MES_FISCAL, uma_vigente
 from app.exceptions import FiscalValidationError
+from app.fiscal_engine.tablas_isr import TABLA_ISR_ANUAL
 from app.nomina_engine import variables as var
 from app.nomina_engine.ceav import es_trabajador_de_salario_minimo
 from app.nomina_engine.criterios import CriteriosNomina
@@ -46,6 +48,7 @@ from app.nomina_engine.isr_nomina import (
     exentar,
     isr_retenido,
 )
+from app.nomina_engine.jornada import tope_horas_extra_periodo, tope_horas_extra_semanal
 from app.nomina_engine.periodo_completo_tipos import (  # noqa: F401 — re-exportados
     REGIMEN_SUELDOS,
     REGIMENES_ASIMILADOS,
@@ -63,7 +66,10 @@ from app.nomina_engine.tablas_isr_periodicas import (
 from app.redondeo import redondear
 
 CERO = Decimal("0.00")
-HORAS_EXTRA_SEMANA = Decimal("12")  # Art. 66 LFT, reforma DOF 01-05-2026
+UMAS_PRIMA_VACACIONAL = 15  # Art. 93 fr. XIV LISR, por año calendario
+# Tasa del último renglón de la tarifa anual del Art. 152 (Anexo 8 RMF 2026). Se lee de la
+# tabla transcrita, no se reescribe.
+TASA_MAXIMA_ART_152 = Decimal(str(TABLA_ISR_ANUAL[-1][3]))
 
 
 def dias_con_relacion(e: EmpleadoNomina, inicio: date, fin: date) -> int:
@@ -97,6 +103,7 @@ def calcular_recibo(
     prima_riesgo: Decimal,
     criterios: CriteriosNomina,
     dias_pagados_override: int | None = None,
+    prima_vacacional_exenta_en_el_anio: Decimal = CERO,
 ) -> ReciboCompleto:
     """El recibo de un empleado. Ver el docstring del módulo."""
     v = v or var.VariablesEmpleado(e.empleado_no)
@@ -136,18 +143,19 @@ def calcular_recibo(
             "Art. 82 LFT",
         )
     ]
+    # B2: Art. 66 LFT y Transitorio Cuarto (DOF 01-05-2026). Las dobles que pasan del
+    # tope de la fecha se pagan triples (Art. 68) y van 100 % gravadas e integran.
+    tope_dobles = redondear(tope_horas_extra_periodo(fin, inc.dias_periodo))
+    if v.horas_dobles > tope_dobles:
+        exceso = v.horas_dobles - tope_dobles
+        avisos.append(
+            f"{e.empleado_no}: {v.horas_dobles} horas dobles exceden el tope de {tope_dobles} "
+            f"del periodo ({tope_horas_extra_semanal(fin)} por semana, Art. 66 LFT); las "
+            f"{exceso} de más se pagan triples (Art. 68) y van 100 % gravadas."
+        )
+        v = replace(v, horas_dobles=tope_dobles, horas_triples=v.horas_triples + exceso)
     extra, efecto = var.percepciones_variables(v, e.salario_diario, sbc.valor, pagados)
     conceptos.extend(extra)
-    # Art. 66 LFT (DOF 01-05-2026): hasta 12 horas extra por semana. La exención del
-    # Art. 93 fr. I sólo cubre las que están dentro del límite; el motor no las parte
-    # (no sabe cuántas hubo por semana), así que se advierte en vez de exentar de más.
-    tope_dobles = HORAS_EXTRA_SEMANA * Decimal(inc.dias_periodo) / 7
-    if v.horas_dobles > tope_dobles:
-        avisos.append(
-            f"{e.empleado_no}: {v.horas_dobles} horas dobles exceden {tope_dobles:.1f} "
-            f"(12 por semana, Art. 66 LFT). Lo que exceda va como triples (Art. 68) y "
-            f"100 % gravado; captúralo así."
-        )
     ctx = ContextoExencion(
         fecha=fecha_pago,
         domingos_trabajados=max(v.domingos_trabajados, 1),
@@ -161,7 +169,13 @@ def calcular_recibo(
                 PercepcionGravada("046", c.concepto, c.importe, c.importe, CERO, "Art. 94 LISR")
             )
         else:
-            gravadas.append(_gravada(c, ctx, e.es_asimilado))
+            g = _gravada(c, ctx, e.es_asimilado)
+            if g.clave == "021" and g.exento:
+                previo = prima_vacacional_exenta_en_el_anio + v.prima_vacacional_exenta_previa
+                g = var.con_exencion_anual(
+                    g, previo, redondear(uma_vigente(fecha_pago) * UMAS_PRIMA_VACACIONAL)
+                )
+            gravadas.append(g)
     base_isr = sum((g.gravado for g in gravadas), start=CERO)
 
     if parcial and criterios.parcial == "tarifa_proporcional":
@@ -178,10 +192,16 @@ def calcular_recibo(
         causado = isr_con_tarifa(base_isr, tarifa)
         isr_ret, subsidio = causado, CERO
         if e.tipo_regimen == "07":
-            avisos.append(
-                f"{e.empleado_no}: consejero (Art. 94 fr. III). El Art. 96 exige una "
-                "retención mínima con la tasa máxima del Art. 152; no se aplica aquí."
-            )
+            # O2: Art. 96 LISR, penúltimo párrafo: la retención a consejeros, administradores,
+            # comisarios y gerentes no será menor a la tasa máxima del Art. 152 sobre el
+            # excedente del límite inferior (el primero es $0.01: todo el monto).
+            minima = redondear(base_isr * TASA_MAXIMA_ART_152)
+            if minima > isr_ret:
+                isr_ret = causado = minima
+                avisos.append(
+                    f"{e.empleado_no}: consejero (Art. 94 fr. III): retención a la tasa máxima "
+                    f"del Art. 152 ({TASA_MAXIMA_ART_152 * 100:.0f} %) por el Art. 96 LISR."
+                )
     else:
         r = isr_retenido(
             base_isr,
@@ -211,35 +231,16 @@ def calcular_recibo(
         ded.append(PartidaDeduccion("002", "D001", "ISR", isr_ret))
     if obrera > 0:
         ded.append(PartidaDeduccion("001", "D002", "IMSS", obrera))
-    if v.infonavit and cuotas:
-        cot = cuotas.dias.dias_periodo - cuotas.dias.dias_ausentismo - cuotas.dias.dias_incapacidad
-        imp = var.descuento_infonavit(v.infonavit, sbc.valor, cot, en_periodo)
-        if imp:
-            ded.append(PartidaDeduccion("010", "D010", "CRÉDITO INFONAVIT", imp))
-    sueldo = conceptos[0].importe
-    if v.fonacot:
-        tope = redondear(sueldo * var.TOPE_FONACOT)
-        if v.fonacot > tope:
-            avisos.append(
-                f"{e.empleado_no}: Fonacot topado a 20 % del salario (Art. 110 fr. VII LFT)."
-            )
-        ded.append(PartidaDeduccion("011", "D011", "FONACOT", min(v.fonacot, tope)))
-    if v.prestamo:
-        ded.append(PartidaDeduccion("012", "D012", "PRÉSTAMO / ANTICIPO", v.prestamo))
-        avisos.append(
-            f"{e.empleado_no}: verifica el tope del Art. 110 fr. I LFT (30 % del excedente "
-            "del salario mínimo) contra el saldo total del préstamo."
-        )
-    if v.pension:
-        neto_ley = bruto - isr_ret - obrera
-        ded.append(
-            PartidaDeduccion(
-                "007",
-                "D007",
-                "PENSIÓN ALIMENTICIA",
-                var.pension_alimenticia(v.pension, bruto, neto_ley),
-            )
-        )
+    cotizados = (
+        cuotas.dias.dias_periodo - cuotas.dias.dias_ausentismo - cuotas.dias.dias_incapacidad
+        if cuotas
+        else None
+    )
+    capturadas, avisos_ded = var.descuentos_capturados(
+        v, conceptos[0].importe, bruto, bruto - isr_ret - obrera, sbc.valor, cotizados, en_periodo
+    )
+    ded.extend(capturadas)
+    avisos.extend(avisos_ded)
     otros = []
     if subsidio > 0:
         otros.append(PartidaOtroPago("002", "D100", "SUBSIDIO PARA EL EMPLEO", CERO, subsidio))

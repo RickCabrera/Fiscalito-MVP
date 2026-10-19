@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends
 
 from app import nomina_servicio as srv
 from app.exceptions import FiscalValidationError
+from app.nomina_acumulados import exento_en_el_anio
 from app.nomina_engine.criterios import OPCIONES, CriteriosNomina
 from app.nomina_engine.cuotas import consolidado_bimestral, consolidado_mensual
 from app.nomina_engine.duracion_periodo import validar_duracion_periodo
@@ -111,6 +112,9 @@ async def calcular(
         avisos.append(
             f"Sin incidencias del cierre, NO entran en este cálculo: {', '.join(sin_incidencias)}."
         )
+    prima_vac_previa = exento_en_el_anio(
+        ctx.db, cliente, pago.year, "021", (req.tipo, inicio, fin)
+    )
     recibos: list[ReciboCompleto] = []
     for e in plantilla:
         inc = por_no.get(e.empleado_no) or (Incidencia(e.empleado_no, dias) if asimilados else None)
@@ -127,6 +131,7 @@ async def calcular(
             prima,
             criterios,
             req.parametros.dias_pagados,
+            prima_vac_previa.get(e.empleado_no, Decimal("0.00")),
         )
         recibos.append(r)
         avisos.extend(r.avisos)

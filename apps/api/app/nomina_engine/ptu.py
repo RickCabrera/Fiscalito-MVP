@@ -3,19 +3,21 @@ Reparto de utilidades (PTU). (P4-07) — funciones puras.
 
 FUENTES
 -------
-- **LFT Art. 117 y 120**: el porcentaje lo fija la Comisión Nacional (vigente:
-  **10 %**, Sexta Resolución, DOF 28-02-2009) sobre la renta gravable del
-  patrón conforme a la LISR. La renta gravable es **dato capturado**: el motor no
-  la determina.
+- **LFT Art. 117 y 120**: el porcentaje lo fija la Comisión Nacional. Vigente: **10 %**
+  de la renta gravable, ratificado por la Resolución del Consejo de Representantes de
+  la Sexta Comisión Nacional para la PTU (DOF 18-09-2020); antecedente, la de la
+  Quinta Comisión (DOF 03-02-2009). Fuente única: `PORCENTAJE_PTU` de este módulo.
+  La renta gravable es **dato capturado**: el motor no la determina.
 - **LFT Art. 123**: la utilidad repartible se divide en dos partes iguales; la
   primera por igual según los **días trabajados**, independientemente del salario;
   la segunda en proporción a los **salarios devengados** en el año.
 - **LFT Art. 124**: salario = cuota diaria (sin gratificaciones, horas extra ni
   otras prestaciones). Es dato capturado por trabajador.
 - **LFT Art. 127**: fr. I directores, administradores y gerentes generales no
-  participan; fr. II el salario de los de confianza se topa al del sindicalizado
-  de más alto salario + 20 %; fr. VIII los eventuales participan si trabajaron
-  60 días en el año por lo menos; y el **tope de la reforma DOF 23-04-2021**:
+  participan; fr. II el salario de los de confianza se topa al del **sindicalizado** de
+  más alto salario —a falta de éste, al de **planta**, nunca a un eventual— + 20 %; los
+  eventuales participan si trabajaron 60 días en el año por lo menos; y el **tope de la
+  reforma DOF 23-04-2021**:
   la PTU individual no puede exceder **3 meses de salario o el promedio de lo
   recibido en los últimos 3 años, lo que sea mayor**.
 - **LISR Art. 93 fr. XIV**: exención de 15 UMA (desindexada, DOF 27-01-2016).
@@ -25,7 +27,13 @@ FUENTES
 # diaria (Guía de la STPS para el reparto: "90 días (tres meses) del salario").
 # FUENTE POR CONFIRMAR: el remanente que deja el tope no se redistribuye por
 # default (la LFT no lo ordena); `ptu_remanente="redistribuir"` lo reparte entre
-# quienes no topan.
+# quienes no topan, y `"sumar_siguiente_ejercicio"` lo reporta para sumarlo a la
+# utilidad repartible del año siguiente (criterio IDC, por analogía con el Art. 122 LFT).
+# FUENTE POR CONFIRMAR: la numeración de las fracciones del Art. 127 tras la reforma de
+# 2021 (tope y eventuales) no se pudo cotejar contra el DOF; se citan por su contenido.
+# NO MODELADO (se avisa en cada reparto): fr. III (patrones cuyos ingresos derivan sólo
+# de su trabajo o del cuidado de bienes que producen rentas: máximo un mes de salario),
+# fr. VII (trabajadores del hogar) y fr. X.
 """
 
 from __future__ import annotations
@@ -40,11 +48,18 @@ from app.nomina_engine.isr_extraordinario import ISRExtraordinario, isr_extraord
 from app.redondeo import redondear
 
 CERO = Decimal("0.00")
-PORCENTAJE_PTU = Decimal("0.10")  # Sexta Resolución CNPTU, DOF 28-02-2009
+PORCENTAJE_PTU = Decimal("0.10")  # Sexta Comisión Nacional para la PTU, DOF 18-09-2020
 DIAS_TOPE = Decimal("90")  # 3 meses de salario — ver FUENTE POR CONFIRMAR arriba
 UMAS_EXENCION_PTU = 15  # Art. 93 fr. XIV LISR
 DIAS_MINIMOS_EVENTUAL = 60  # Art. 127 fr. VIII LFT
 SOBRE_SINDICALIZADO = Decimal("1.20")  # Art. 127 fr. II LFT
+NOTAS_REMANENTE = {
+    "no_se_reparte": "Remanente de {} que deja el tope del Art. 127: no se reparte (la LFT no "
+    "ordena redistribuirlo). Decisión abierta para la contadora (§D33).",
+    "redistribuir": "Remanente de {} que no cupo ni redistribuyendo: todos llegaron a su tope.",
+    "sumar_siguiente_ejercicio": "Remanente de {}: se suma a la utilidad repartible del "
+    "ejercicio siguiente (criterio IDC, por analogía con el Art. 122 LFT).",
+}
 
 
 @dataclass(frozen=True)
@@ -55,7 +70,7 @@ class TrabajadorPTU:
     dias_trabajados: int
     salario_diario: Decimal  # cuota diaria, Art. 124 LFT
     salarios_devengados: Decimal  # en el año
-    tipo: str = "planta"  # planta | eventual | confianza | director
+    tipo: str = "planta"  # planta | sindicalizado | eventual | confianza | director
     promedio_ptu_3_anios: Decimal = CERO
 
 
@@ -86,10 +101,11 @@ class ResultadoPTU:
     remanente: Decimal
     trabajadores: tuple[RepartoTrabajador, ...]
     fundamento: str
+    avisos: tuple[str, ...] = ()
 
 
 def utilidad_repartible(renta_gravable: Decimal) -> Decimal:
-    """10 % de la renta gravable (Art. 120 LFT, Sexta Resolución)."""
+    """10 % de la renta gravable (Art. 120 LFT; Sexta Comisión, DOF 18-09-2020)."""
     if renta_gravable < 0:
         raise FiscalValidationError("La renta gravable no puede ser negativa.")
     return redondear(renta_gravable * PORCENTAJE_PTU)
@@ -106,9 +122,14 @@ def _motivo_excluido(t: TrabajadorPTU) -> str | None:
 
 
 def _salario_tope_confianza(trabajadores: tuple[TrabajadorPTU, ...]) -> Decimal | None:
-    """Salario diario del sindicalizado/planta mejor pagado × 1.2 (Art. 127 fr. II)."""
-    planta = [t.salario_diario for t in trabajadores if t.tipo in ("planta", "eventual")]
-    return redondear(max(planta) * SOBRE_SINDICALIZADO) if planta else None
+    """
+    Salario diario máximo del trabajador de confianza (Art. 127 fr. II): el del
+    sindicalizado de más alto salario × 1.2 o, a falta de sindicalizados, el del de
+    planta. Los eventuales no cuentan.
+    """
+    sindicalizados = [t.salario_diario for t in trabajadores if t.tipo == "sindicalizado"]
+    referencia = sindicalizados or [t.salario_diario for t in trabajadores if t.tipo == "planta"]
+    return redondear(max(referencia) * SOBRE_SINDICALIZADO) if referencia else None
 
 
 def repartir_ptu(
@@ -199,11 +220,66 @@ def repartir_ptu(
             )
         )
     repartido = sum((f.ptu for f in filas), start=CERO)
+    sobra = repartible - repartido
+    avisos = [
+        "No modelado del Art. 127 LFT: fr. III (patrones cuyos ingresos derivan sólo de su "
+        "trabajo o del cuidado de bienes que producen rentas), fr. VII (trabajadores del "
+        "hogar) y fr. X. Revísalos a mano si aplican."
+    ]
+    if sobra > 0:
+        avisos.append(
+            NOTAS_REMANENTE.get(remanente, NOTAS_REMANENTE["no_se_reparte"]).format(sobra)
+        )
     return ResultadoPTU(
         renta_gravable=renta_gravable,
         utilidad_repartible=repartible,
         repartido=repartido,
-        remanente=repartible - repartido,
+        remanente=sobra,
         trabajadores=tuple(filas),
         fundamento="Arts. 117, 120, 123, 124 y 127 LFT; Art. 93 fr. XIV LISR (15 UMA)",
+        avisos=tuple(avisos),
+    )
+
+
+def ptu_individual(
+    utilidad_repartible: Decimal,
+    dias_trabajador: int,
+    salarios_trabajador: Decimal,
+    total_dias: int,
+    total_salarios: Decimal,
+    salario_diario: Decimal,
+    promedio_3_anios: Decimal,
+    fecha_pago: date,
+    ingreso_ordinario_mensual: Decimal,
+    metodo_isr: str = "art_96",
+) -> RepartoTrabajador:
+    """
+    La PTU de UN trabajador cuando ya se conocen los totales de la empresa.
+
+    Es la calculadora suelta (`/calculadoras/ptu`): misma regla que `repartir_ptu`
+    —50 % días, 50 % salarios (Art. 123), tope del Art. 127 y 15 UMA exentas— para quien
+    sólo tiene los totales. No aplica exclusiones (directores, eventuales): quien captura
+    los totales ya los dejó fuera.
+    """
+    if total_dias <= 0 or total_salarios <= 0:
+        raise FiscalValidationError("Los totales de días y salarios deben ser positivos.")
+    mitad = utilidad_repartible / 2
+    por_dias = redondear(mitad * dias_trabajador / total_dias)
+    por_salarios = redondear(mitad * salarios_trabajador / total_salarios)
+    tope = max(redondear(salario_diario * DIAS_TOPE), promedio_3_anios)
+    ptu = min(por_dias + por_salarios, tope)
+    exento = min(ptu, redondear(uma_vigente(fecha_pago) * UMAS_EXENCION_PTU))
+    isr = isr_extraordinario(ptu - exento, ingreso_ordinario_mensual, fecha_pago, metodo_isr)
+    return RepartoTrabajador(
+        "",
+        True,
+        "Participa.",
+        por_dias,
+        por_salarios,
+        por_dias + por_salarios,
+        tope,
+        ptu,
+        exento,
+        ptu - exento,
+        isr,
     )

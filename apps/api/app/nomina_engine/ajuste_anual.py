@@ -34,6 +34,7 @@ from app.redondeo import redondear
 
 CERO = Decimal("0.00")
 TOPE_INGRESOS_ART_97 = Decimal("400000.00")  # Art. 97 fr. II LISR
+TASA_MAXIMA_IMPUESTO_LOCAL = Decimal("0.05")  # Art. 97 LISR, segundo párrafo
 
 # Tarifa anual del Art. 152 por ejercicio, en Decimal. Mismos literales de
 # `TABLA_ISR_ANUAL` (Anexo 8 RMF 2026, DOF 28-12-2025), convertidos desde str.
@@ -70,6 +71,10 @@ class DatosAnuales:
     isr_retenido: Decimal
     subsidio_correspondido: Decimal = CERO
     comunico_que_declara: bool = False
+    # O9: impuesto local a los ingresos por salarios retenido en el año. Art. 97 LISR: se
+    # disminuye de la base anual, siempre que la tasa del impuesto local no exceda del 5 %.
+    impuesto_local_retenido: Decimal = CERO
+    tasa_impuesto_local: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -104,7 +109,15 @@ def ajuste_anual(d: DatosAnuales) -> AjusteAnual:
     """Calcula el impuesto anual y el saldo contra lo retenido."""
     if min(d.ingresos_gravados, d.ingresos_exentos, d.isr_retenido, d.subsidio_correspondido) < 0:
         raise FiscalValidationError("Los acumulados del año no pueden ser negativos.")
-    tarifa = isr_anual(d.ingresos_gravados, d.ejercicio)
+    if d.impuesto_local_retenido and (
+        d.tasa_impuesto_local is None or d.tasa_impuesto_local > TASA_MAXIMA_IMPUESTO_LOCAL
+    ):
+        raise FiscalValidationError(
+            "El impuesto local sobre salarios sólo se disminuye si su tasa no excede del 5 % "
+            "(Art. 97 LISR): captura la tasa (fracción, 0.03 = 3 %)."
+        )
+    base = max(d.ingresos_gravados - d.impuesto_local_retenido, CERO)
+    tarifa = isr_anual(base, d.ejercicio)
     subsidio = min(d.subsidio_correspondido, tarifa)
     impuesto = tarifa - subsidio
     diferencia = impuesto - d.isr_retenido

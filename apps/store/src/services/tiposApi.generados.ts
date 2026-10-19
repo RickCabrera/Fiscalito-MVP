@@ -54,6 +54,8 @@ export interface AjusteAnualTrabajador {
   isr_retenido: number | string;
   subsidio_correspondido?: number | string;
   comunico_que_declara?: boolean;
+  impuesto_local_retenido?: number | string;
+  tasa_impuesto_local?: number | string | null;
 }
 
 /** `POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`. */
@@ -360,7 +362,7 @@ export interface CriteriosNominaSchema {
   febrero?: "quince_siempre" | "dias_calendario";
   prestaciones?: "mayor" | "ficha";
   isr_extraordinario?: "art_96" | "art_174";
-  ptu_remanente?: "no_se_reparte" | "redistribuir";
+  ptu_remanente?: "no_se_reparte" | "redistribuir" | "sumar_siguiente_ejercicio";
 }
 
 export interface CriteriosResponse {
@@ -1009,7 +1011,7 @@ export interface PTUTrabajadorSchema {
   empleado_no: string;
   dias_trabajados: number;
   salarios_devengados: number | string;
-  tipo?: "planta" | "eventual" | "confianza" | "director";
+  tipo?: "planta" | "sindicalizado" | "eventual" | "confianza" | "director";
   promedio_ptu_3_anios?: number | string;
 }
 
@@ -1549,6 +1551,7 @@ export interface VariablesEmpleadoSchema {
   prestamo?: number | string;
   pension?: PensionSchema | null;
   viaticos_comprobados?: number | string;
+  prima_vacacional_exenta_previa?: number | string;
 }
 
 /** Zona geografica que determina el salario minimo aplicable. */
@@ -1620,8 +1623,10 @@ export interface app__schemas__impuestos__FiniquitoRequest {
   prima_vacacional?: number | string;
   dias_vacaciones_pendientes?: number | string;
   dias_pendientes_de_pago?: number | string;
-  tipo?: "renuncia" | "despido_injustificado";
+  tipo?: "renuncia" | "despido_justificado" | "despido_injustificado" | "muerte" | "termino_contrato";
   zona?: "general" | "zlfn";
+  salario_diario_integrado?: number | string | null;
+  incluir_20_dias?: boolean;
 }
 
 export interface app__schemas__nomina_p4__AguinaldoRequest {

@@ -116,7 +116,7 @@ class TestFiniquito:
     despido injustificado, 22 días de vacaciones al año, prima 25 %, pagado en baja.
     """
 
-    def _datos(self, causa="despido_injustificado"):
+    def _datos(self, causa="despido_injustificado", incluir_20_dias=True):
         return DatosSeparacion(
             fecha_alta=date(2020, 1, 1),
             fecha_baja=date(2026, 6, 30),
@@ -124,7 +124,30 @@ class TestFiniquito:
             salario_diario_integrado=D("525"),
             causa=causa,
             dias_vacaciones_anio=22,
+            incluir_20_dias=incluir_20_dias,
         )
+
+    def test_los_20_dias_no_entran_por_default_y_se_avisa(self):
+        """O4: proceden sólo si el patrón no reinstala (Art. 49) o el trabajador rescinde (52)."""
+        d = DatosSeparacion(
+            date(2020, 1, 1),
+            date(2026, 6, 30),
+            D("500"),
+            D("525"),
+            "despido_injustificado",
+            dias_vacaciones_anio=22,
+        )
+        r = calcular_finiquito(d)
+        assert not any("20 DÍAS" in c.concepto for c in r.conceptos)
+        assert any("Art. 49" in n and "Art. 52" in n for n in r.notas)
+
+    def test_lo_ordinario_se_apila_sobre_el_ingreso_del_mes(self):
+        """
+        B5: con ingreso ordinario 15,200 (500 × 30.4), el ISR de lo ordinario gravado
+        (5,654.67) es ISR(20,854.67) − ISR(15,200) = 2,566.21 − 1,438.66.
+        """
+        r = calcular_finiquito(self._datos(), D("15200.00"))
+        assert r.isr_ordinario == D("1127.55")
 
     def test_liquidacion_cuadra_al_centavo(self):
         r = calcular_finiquito(self._datos())

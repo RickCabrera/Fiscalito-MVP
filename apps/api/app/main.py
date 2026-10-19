@@ -25,6 +25,7 @@ from app.routes import (
     auditoria,
     boveda,
     calculadoras,
+    calculadoras_laborales,
     calculos_cliente,
     calendario,
     cartera,
@@ -86,9 +87,7 @@ app = FastAPI(
 )
 
 cors_origins: list[str] = [
-    origin.strip()
-    for origin in settings.CORS_ORIGINS.split(",")
-    if origin.strip()
+    origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()
 ]
 
 app.add_middleware(RequestLoggingMiddleware)
@@ -107,6 +106,7 @@ app.add_middleware(
     # Que el front pueda leer cuánto esperar tras un 429.
     expose_headers=["Retry-After"],
 )
+
 
 @app.exception_handler(FiscalAgentError)
 async def fiscal_error_handler(request: Request, exc: FiscalAgentError) -> JSONResponse:
@@ -156,6 +156,7 @@ ROUTERS_PROTEGIDOS = (
     contabilidad.router,
     impuestos.router,
     calculadoras.router,
+    calculadoras_laborales.router,
     # P2-05/P2-08: reportes contables y cierre de periodo y de ejercicio.
     contabilidad_reportes.router,
     # P2-06 conciliación bancaria y P2-07 contabilidad electrónica (Anexo 24).

@@ -124,9 +124,7 @@ class ParametrosSalarialesSchema(BaseModel):
 
     @field_validator("tabla_vacaciones")
     @classmethod
-    def _tabla_sobre_la_ley(
-        cls, valor: tuple[tuple[int, int], ...]
-    ) -> tuple[tuple[int, int], ...]:
+    def _tabla_sobre_la_ley(cls, valor: tuple[tuple[int, int], ...]) -> tuple[tuple[int, int], ...]:
         """
         La escala se valida **al guardar**, no sólo al integrar el SBC.
 
@@ -155,7 +153,9 @@ class CriteriosNominaSchema(BaseModel):
     febrero: Literal["quince_siempre", "dias_calendario"] = "quince_siempre"
     prestaciones: Literal["mayor", "ficha"] = "mayor"
     isr_extraordinario: Literal["art_96", "art_174"] = "art_96"
-    ptu_remanente: Literal["no_se_reparte", "redistribuir"] = "no_se_reparte"
+    ptu_remanente: Literal["no_se_reparte", "redistribuir", "sumar_siguiente_ejercicio"] = (
+        "no_se_reparte"
+    )
 
 
 class ClienteCarteraSchema(BaseModel):
@@ -294,6 +294,7 @@ class ClienteCarteraSchema(BaseModel):
                 f"{self.regimen} admite {' o '.join(map(str, admitidas))}."
             )
         return self
+
 
 class ClientesCarteraResponse(BaseModel):
     exito: bool = True

@@ -82,19 +82,13 @@ TARIFA_MENSUAL_2026: tuple[RenglonTarifa, ...] = (
     RenglonTarifa(Decimal("17533.65"), Decimal("35362.83"), Decimal("1856.84"), Decimal("0.2136")),
     RenglonTarifa(Decimal("35362.84"), Decimal("55736.68"), Decimal("5665.16"), Decimal("0.2352")),
     RenglonTarifa(Decimal("55736.69"), Decimal("106410.50"), Decimal("10457.09"), Decimal("0.30")),
-    RenglonTarifa(
-        Decimal("106410.51"), Decimal("141880.66"), Decimal("25659.23"), Decimal("0.32")
-    ),
-    RenglonTarifa(
-        Decimal("141880.67"), Decimal("425641.99"), Decimal("37009.69"), Decimal("0.34")
-    ),
+    RenglonTarifa(Decimal("106410.51"), Decimal("141880.66"), Decimal("25659.23"), Decimal("0.32")),
+    RenglonTarifa(Decimal("141880.67"), Decimal("425641.99"), Decimal("37009.69"), Decimal("0.34")),
     RenglonTarifa(Decimal("425642.00"), INFINITO, Decimal("133488.54"), Decimal("0.35")),
 )
 
 
-def _derivar_tarifa(
-    mensual: tuple[RenglonTarifa, ...], dias: int
-) -> tuple[RenglonTarifa, ...]:
+def _derivar_tarifa(mensual: tuple[RenglonTarifa, ...], dias: int) -> tuple[RenglonTarifa, ...]:
     """
     Construye la tarifa de `dias` dias a partir de la mensual.
 
@@ -121,7 +115,7 @@ TARIFA_SEMANAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 7)
 TARIFA_QUINCENAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 15)
 # P4-03. La decenal SI la publica el Anexo 8 (rubro B: "pagos que correspondan a
 # un periodo de 10 dias"); sus 11 renglones estan transcritos como literales en
-# `tests/nomina/test_tablas_p4.py` y la regla los reproduce al centavo.
+# `tests/nomina/test_p4_motor.py::TestTarifaDecenal` y la regla los reproduce al centavo.
 TARIFA_DECENAL_2026 = _derivar_tarifa(TARIFA_MENSUAL_2026, 10)
 # P4-03. La catorcenal NO la publica nadie (§D10). Se DERIVA con la misma regla
 # que reproduce al centavo las publicadas de 7, 10 y 15 dias (diaria x 14). Va
@@ -166,9 +160,7 @@ PERIODICIDADES_SIN_TARIFA: dict[str, str] = {
 }
 
 
-def tarifa_por_periodicidad(
-    clave: str, fecha: date
-) -> tuple[RenglonTarifa, ...]:
+def tarifa_por_periodicidad(clave: str, fecha: date) -> tuple[RenglonTarifa, ...]:
     """
     Tarifa del Anexo 8 para una clave de `c_PeriodicidadPago` en una fecha.
 
@@ -224,9 +216,7 @@ def tarifa_por_dias(dias: int, fecha: date) -> tuple[RenglonTarifa, ...]:
 def isr_con_tarifa(base_gravable: Decimal, tarifa: tuple[RenglonTarifa, ...]) -> Decimal:
     """ISR = cuota fija + (base - limite inferior) x tasa, con la tarifa dada."""
     if base_gravable < 0:
-        raise FiscalValidationError(
-            f"La base gravable no puede ser negativa: {base_gravable}."
-        )
+        raise FiscalValidationError(f"La base gravable no puede ser negativa: {base_gravable}.")
     for renglon in tarifa:
         if base_gravable <= renglon.limite_superior:
             excedente = base_gravable - renglon.limite_inferior
@@ -234,9 +224,7 @@ def isr_con_tarifa(base_gravable: Decimal, tarifa: tuple[RenglonTarifa, ...]) ->
                 excedente = Decimal("0")
             return _redondear(renglon.cuota_fija + excedente * renglon.tasa_excedente)
     # Inalcanzable: el ultimo renglon tiene limite superior infinito.
-    raise FiscalValidationError(
-        f"No se encontró renglón de tarifa para la base {base_gravable}."
-    )
+    raise FiscalValidationError(f"No se encontró renglón de tarifa para la base {base_gravable}.")
 
 
 def isr_periodo(base_gravable: Decimal, clave_periodicidad: str, fecha: date) -> Decimal:
@@ -252,7 +240,5 @@ def isr_periodo(base_gravable: Decimal, clave_periodicidad: str, fecha: date) ->
             tiene tarifa.
     """
     if base_gravable < 0:
-        raise FiscalValidationError(
-            f"La base gravable no puede ser negativa: {base_gravable}."
-        )
+        raise FiscalValidationError(f"La base gravable no puede ser negativa: {base_gravable}.")
     return isr_con_tarifa(base_gravable, tarifa_por_periodicidad(clave_periodicidad, fecha))

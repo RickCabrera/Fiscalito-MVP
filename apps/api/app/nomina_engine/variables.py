@@ -8,8 +8,9 @@ con su fundamento. **No calcula ISR**: las exenciones las aplica
 
 FUENTES
 -------
-- Horas extra: LFT Art. 66 (se pagan con 100 % más = dobles; hasta 12 horas a la
-  semana, reforma DOF 01-05-2026) y Art. 68 (lo que excede se paga con 200 % más
+- Horas extra: LFT Art. 66 (se pagan con 100 % más = dobles; el tope semanal sube de
+  9 a 12 horas entre 2026 y 2030 por el Transitorio Cuarto del Decreto DOF 01-05-2026,
+  ver `jornada.py`) y Art. 68 (lo que excede se paga con 200 % más
   = triples). Exención: LISR Art. 93 fr. I (50 % sin exceder 5 UMA por semana,
   **sólo dentro del límite de la LFT**: las triples no tienen exención).
 - Prima dominical: LFT Art. 71 (25 % por lo menos del salario ordinario).
@@ -34,6 +35,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from app.constants import DIAS_MES_FISCAL
+from app.nomina_engine.isr_nomina import PercepcionGravada
+from app.nomina_engine.recibo import PartidaDeduccion
 from app.nomina_engine.variables_tipos import (  # noqa: F401 — re-exportados
     PERCEPCIONES_CAPTURABLES,
     TIPOS_INCAPACIDAD,
@@ -162,6 +165,27 @@ def percepciones_variables(
     return tuple(conceptos), EfectoSBC(sum((c.integra_sbc for c in conceptos), start=CERO), detalle)
 
 
+def con_exencion_anual(
+    g: PercepcionGravada, ya_exento: Decimal, tope_anual: Decimal
+) -> PercepcionGravada:
+    """
+    Limita el exento de una percepción al tope ANUAL menos lo ya exentado en el año.
+
+    O3: la prima vacacional (Art. 93 fr. XIV LISR) está exenta hasta 15 UMA **por año
+    calendario**, no por pago. Sin esto, dos pagos en el año exentarían 30 UMA.
+    """
+    disponible = max(tope_anual - ya_exento, CERO)
+    exento = min(g.exento, disponible)
+    return PercepcionGravada(
+        g.clave,
+        g.descripcion,
+        g.importe,
+        g.importe - exento,
+        exento,
+        f"{g.fundamento}; tope anual, ya exento en el año {ya_exento}",
+    )
+
+
 def descuento_infonavit(
     credito: CreditoInfonavit, sbc: Decimal, dias_cotizados: int, dias_naturales: int
 ) -> Decimal:
@@ -192,3 +216,49 @@ def pension_alimenticia(p: PensionAlimenticia, bruto: Decimal, neto: Decimal) ->
     if p.tipo == "monto":
         return redondear(p.valor)
     return redondear((bruto if p.base == "bruto" else neto) * p.valor)
+
+
+def descuentos_capturados(
+    v: VariablesEmpleado,
+    sueldo: Decimal,
+    bruto: Decimal,
+    neto_de_ley: Decimal,
+    sbc: Decimal,
+    dias_cotizados: int | None,
+    dias_naturales: int,
+) -> tuple[list[PartidaDeduccion], list[str]]:
+    """
+    Infonavit, Fonacot, préstamo y pensión del periodo, con sus topes (LFT Art. 110).
+
+    `dias_cotizados` es `None` para asimilados: sin IMSS no hay crédito Infonavit que
+    descontar por nómina.
+    """
+    ded: list[PartidaDeduccion] = []
+    avisos: list[str] = []
+    if v.infonavit and dias_cotizados is not None:
+        imp = descuento_infonavit(v.infonavit, sbc, dias_cotizados, dias_naturales)
+        if imp:
+            ded.append(PartidaDeduccion("010", "D010", "CRÉDITO INFONAVIT", imp))
+    if v.fonacot:
+        tope = redondear(sueldo * TOPE_FONACOT)
+        if v.fonacot > tope:
+            avisos.append(
+                f"{v.empleado_no}: Fonacot topado a 20 % del salario (Art. 110 fr. VII LFT)."
+            )
+        ded.append(PartidaDeduccion("011", "D011", "FONACOT", min(v.fonacot, tope)))
+    if v.prestamo:
+        ded.append(PartidaDeduccion("012", "D012", "PRÉSTAMO / ANTICIPO", v.prestamo))
+        avisos.append(
+            f"{v.empleado_no}: verifica el tope del Art. 110 fr. I LFT (30 % del excedente "
+            "del salario mínimo) contra el saldo total del préstamo."
+        )
+    if v.pension:
+        ded.append(
+            PartidaDeduccion(
+                "007",
+                "D007",
+                "PENSIÓN ALIMENTICIA",
+                pension_alimenticia(v.pension, bruto, neto_de_ley),
+            )
+        )
+    return ded, avisos

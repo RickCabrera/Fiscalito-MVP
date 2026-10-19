@@ -52,8 +52,8 @@ CRITERIOS QUE NO DICE LA LEY (DECISIONES, todas señaladas en `notas`)
   en el pago del mes en que se pagó (no antes de pagarla). DECISIÓN PROVISIONAL.
 - RESICO PM: los Arts. 206-215 no remiten al Art. 44; no se calcula ajuste anual por inflación
   salvo que el despacho lo pida (`aai_en_resico`). FUENTE POR CONFIRMAR.
-- PTU a repartir: 10 % de la renta gravable (Resolución de la Comisión Nacional para la PTU,
-  DOF 03/02/2009 — FUENTE POR CONFIRMAR contra la resolución vigente). La renta gravable sale
+- PTU a repartir: 10 % de la renta gravable (Sexta Comisión Nacional para la PTU, DOF
+  18-09-2020; se importa de `nomina_engine.ptu.PORCENTAJE_PTU`). La renta gravable sale
   del Art. 9 sin disminuir PTU pagada ni pérdidas.
 """
 
@@ -69,13 +69,13 @@ from app.fiscal_engine.actualizacion import (
     cortar_diezmilesimo,
 )
 from app.fiscal_engine.inpc import inpc_para_actualizar
+from app.nomina_engine.ptu import PORCENTAJE_PTU
 from app.redondeo import redondear
 
 CERO = Decimal("0.00")
 UNO = Decimal("1")
 TASA_ISR_PM = Decimal("0.30")  # Art. 9 LISR, primer párrafo.
-# FUENTE POR CONFIRMAR: Resolución de la Quinta Comisión Nacional para la PTU (DOF 03/02/2009).
-PORCENTAJE_PTU = Decimal("0.10")
+# Una sola fuente del 10 % (Sexta Comisión Nacional para la PTU, DOF 18-09-2020).
 MESES_PTU = 8  # Art. 14 fr. II: partes iguales de mayo a diciembre.
 PRIMER_MES_PTU = 5
 ANIOS_PERDIDA = 10  # Art. 57 LISR.
@@ -112,12 +112,20 @@ def factor_inpc(reciente: Mes, antiguo: Mes, modo: ModoFactor = MODO_FACTOR_DEFA
     r, ur = inpc_para_actualizar(*reciente)
     a, ua = inpc_para_actualizar(*antiguo)
     f = cortar_diezmilesimo(r.valor / a.valor, modo)
-    return FactorINPC(max(f, UNO), r.valor, _mes_txt((r.anio, r.mes)), a.valor,
-                      _mes_txt((a.anio, a.mes)), ur or ua)
+    return FactorINPC(
+        max(f, UNO),
+        r.valor,
+        _mes_txt((r.anio, r.mes)),
+        a.valor,
+        _mes_txt((a.anio, a.mes)),
+        ur or ua,
+    )
 
 
 def coeficiente_utilidad(
-    utilidad_fiscal: Decimal, ingresos_nominales: Decimal, anticipos: Decimal = CERO,
+    utilidad_fiscal: Decimal,
+    ingresos_nominales: Decimal,
+    anticipos: Decimal = CERO,
     modo: ModoFactor = MODO_FACTOR_DEFAULT,
 ) -> Decimal:
     """Art. 14 fr. I: (utilidad fiscal + anticipos Art. 94 fr. II) ÷ ingresos nominales."""
@@ -157,10 +165,20 @@ def actualizar_perdida(
 ) -> PerdidaAplicada:
     """Actualiza la pérdida (Art. 57) hasta `hasta`; None = sólo la primera actualización."""
     if anio - p.ejercicio > ANIOS_PERDIDA or p.ejercicio >= anio:
-        motivo = ("más de diez ejercicios: ya no se puede disminuir (Art. 57)"
-                  if p.ejercicio < anio else "no es de un ejercicio anterior")
-        return PerdidaAplicada(p.ejercicio, p.remanente, [], CERO, "", vigente=False,
-                               nota=f"Pérdida de {p.ejercicio}: {motivo}.")
+        motivo = (
+            "más de diez ejercicios: ya no se puede disminuir (Art. 57)"
+            if p.ejercicio < anio
+            else "no es de un ejercicio anterior"
+        )
+        return PerdidaAplicada(
+            p.ejercicio,
+            p.remanente,
+            [],
+            CERO,
+            "",
+            vigente=False,
+            nota=f"Pérdida de {p.ejercicio}: {motivo}.",
+        )
     monto, factores = p.remanente, []
     ultimo = p.actualizada_a
     if ultimo is None:
@@ -175,7 +193,10 @@ def actualizar_perdida(
 
 
 def aplicar_perdidas(
-    perdidas: list[PerdidaPendiente], anio: int, hasta: Mes | None, base: Decimal,
+    perdidas: list[PerdidaPendiente],
+    anio: int,
+    hasta: Mes | None,
+    base: Decimal,
     modo: ModoFactor,
 ) -> tuple[Decimal, list[PerdidaAplicada]]:
     """Actualiza y disminuye las pérdidas de la más antigua a la más reciente, hasta la base."""
@@ -259,8 +280,9 @@ def _estimulos_mes(estimulos: list[Estimulo], mes: int) -> Decimal:
     return sum((e.importe for e in estimulos if e.en_provisionales and mes >= e.desde_mes), CERO)
 
 
-def _cerrar_pago(e: EntradaProvisionales, mes: int, base: Decimal,
-                 pagos_ant: Decimal, ret: Decimal) -> tuple[Decimal, Decimal, Decimal, bool]:
+def _cerrar_pago(
+    e: EntradaProvisionales, mes: int, base: Decimal, pagos_ant: Decimal, ret: Decimal
+) -> tuple[Decimal, Decimal, Decimal, bool]:
     isr = redondear(base * TASA_ISR_PM)
     determinado = _ceros(isr - pagos_ant - ret)
     capturado = mes in e.pagos_efectuados
@@ -283,9 +305,26 @@ def pagos_provisionales_pm(e: EntradaProvisionales) -> list[PagoProvisionalPM]:
         perd, _ = aplicar_perdidas(e.perdidas, e.anio, hasta, utilidad - ptu - est, e.modo)
         base = _ceros(utilidad - ptu - est - perd)
         isr, det, efe, cap = _cerrar_pago(e, mes, base, pagos_ant, ret_acum)
-        salida.append(PagoProvisionalPM(
-            mes, ing_mes, ing_acum, e.coeficiente, utilidad, ptu, est, perd, base, isr,
-            pagos_ant, ret_acum, det, efe, cap, ajustar_a_pesos(efe)))
+        salida.append(
+            PagoProvisionalPM(
+                mes,
+                ing_mes,
+                ing_acum,
+                e.coeficiente,
+                utilidad,
+                ptu,
+                est,
+                perd,
+                base,
+                isr,
+                pagos_ant,
+                ret_acum,
+                det,
+                efe,
+                cap,
+                ajustar_a_pesos(efe),
+            )
+        )
         pagos_ant += efe
     return salida
 
@@ -307,9 +346,27 @@ def pagos_provisionales_resico_pm(e: EntradaProvisionales) -> list[PagoProvision
         perd, _ = aplicar_perdidas(e.perdidas, e.anio, hasta, utilidad - ptu - est, e.modo)
         base = _ceros(utilidad - ptu - est - perd)
         isr, det, efe, cap = _cerrar_pago(e, mes, base, pagos_ant, ret_acum)
-        salida.append(PagoProvisionalPM(
-            mes, ing_mes, ing_acum, CERO, utilidad, ptu, est, perd, base, isr, pagos_ant,
-            ret_acum, det, efe, cap, ajustar_a_pesos(efe), deducciones_acumuladas=ded_acum))
+        salida.append(
+            PagoProvisionalPM(
+                mes,
+                ing_mes,
+                ing_acum,
+                CERO,
+                utilidad,
+                ptu,
+                est,
+                perd,
+                base,
+                isr,
+                pagos_ant,
+                ret_acum,
+                det,
+                efe,
+                cap,
+                ajustar_a_pesos(efe),
+                deducciones_acumuladas=ded_acum,
+            )
+        )
         pagos_ant += efe
     return salida
 
@@ -341,15 +398,29 @@ def ajuste_por_promedios(
 
 
 def ajuste_anual_inflacion(
-    anio: int, creditos: list[Decimal], deudas: list[Decimal],
-    modo: ModoFactor = MODO_FACTOR_DEFAULT, primer_mes: int = 1,
+    anio: int,
+    creditos: list[Decimal],
+    deudas: list[Decimal],
+    modo: ModoFactor = MODO_FACTOR_DEFAULT,
+    primer_mes: int = 1,
 ) -> ResultadoAAI:
     """Art. 44 LISR con los saldos al último día de cada mes del ejercicio."""
     meses = len(creditos)
     if meses == 0 or len(deudas) != meses:
-        return ResultadoAAI([], [], CERO, CERO, None, CERO, CERO, CERO,
-                            ["Sin saldos mensuales de créditos y deudas: no se calcula el "
-                             "ajuste anual por inflación."])
+        return ResultadoAAI(
+            [],
+            [],
+            CERO,
+            CERO,
+            None,
+            CERO,
+            CERO,
+            CERO,
+            [
+                "Sin saldos mensuales de créditos y deudas: no se calcula el "
+                "ajuste anual por inflación."
+            ],
+        )
     pc = redondear(sum(creditos, CERO) / meses)
     pd = redondear(sum(deudas, CERO) / meses)
     antiguo = (anio - 1, 12) if primer_mes == 1 else (anio, primer_mes - 1)
@@ -359,8 +430,10 @@ def ajuste_anual_inflacion(
     acumulable, deducible = ajuste_por_promedios(pc, pd, factor)
     notas = []
     if f.uso_ultimo_publicado:
-        notas.append(f"El INPC de {_mes_txt(ultimo)} aún no se publica: el factor usa el último "
-                     f"publicado ({f.mes_reciente}) y el ajuste es una estimación (Art. 17-A CFF).")
+        notas.append(
+            f"El INPC de {_mes_txt(ultimo)} aún no se publica: el factor usa el último "
+            f"publicado ({f.mes_reciente}) y el ajuste es una estimación (Art. 17-A CFF)."
+        )
     return ResultadoAAI(creditos, deudas, pc, pd, f, factor, acumulable, deducible, notas)
 
 
@@ -427,17 +500,31 @@ def anual_pm(e: EntradaAnual, *, resico: bool = False) -> ResultadoAnualPM:
     isr = redondear(resultado * TASA_ISR_PM)
     neto = isr - e.pagos_provisionales - e.retenciones
     art = "Art. 212" if resico else "Art. 9"
-    ingreso_txt = ("Ingresos efectivamente percibidos (Art. 207)" if resico
-                   else "Ingresos acumulables (sin ajuste por inflación)")
-    deduccion_txt = ("Deducciones autorizadas efectivamente erogadas (Arts. 208-210)" if resico
-                     else "Deducciones autorizadas")
+    ingreso_txt = (
+        "Ingresos efectivamente percibidos (Art. 207)"
+        if resico
+        else "Ingresos acumulables (sin ajuste por inflación)"
+    )
+    deduccion_txt = (
+        "Deducciones autorizadas efectivamente erogadas (Arts. 208-210)"
+        if resico
+        else "Deducciones autorizadas"
+    )
     r = [
-        Renglon("ingresos", ingreso_txt, redondear(e.ingresos_acumulables),
-                "Art. 207 LISR" if resico else "Arts. 16, 17 y 18 LISR"),
+        Renglon(
+            "ingresos",
+            ingreso_txt,
+            redondear(e.ingresos_acumulables),
+            "Art. 207 LISR" if resico else "Arts. 16, 17 y 18 LISR",
+        ),
         Renglon("aai_acumulable", "Ajuste anual por inflación acumulable", aai_acum, "Art. 44"),
         Renglon("ingresos_totales", "Total de ingresos acumulables", ingresos, art),
-        Renglon("deducciones", deduccion_txt, redondear(e.deducciones_autorizadas),
-                "Arts. 208-210 LISR" if resico else "Arts. 25, 27 y 28 LISR"),
+        Renglon(
+            "deducciones",
+            deduccion_txt,
+            redondear(e.deducciones_autorizadas),
+            "Arts. 208-210 LISR" if resico else "Arts. 25, 27 y 28 LISR",
+        ),
         Renglon("aai_deducible", "Ajuste anual por inflación deducible", aai_ded, "Art. 44"),
         Renglon("deducciones_totales", "Total de deducciones autorizadas", deducciones, art),
         Renglon("utilidad_antes_ptu", "Utilidad (pérdida) antes de PTU", antes_ptu, art),
@@ -445,28 +532,51 @@ def anual_pm(e: EntradaAnual, *, resico: bool = False) -> ResultadoAnualPM:
         Renglon("utilidad_fiscal", "Utilidad fiscal", utilidad, "Art. 9 fr. I"),
         Renglon("perdida_fiscal", "Pérdida fiscal del ejercicio", perdida, "Art. 57"),
         Renglon("estimulos", "Estímulos que disminuyen la utilidad", est, "Configurado"),
-        Renglon("perdidas_aplicadas", "Pérdidas de ejercicios anteriores aplicadas", perd,
-                "Arts. 9 fr. II y 57"),
+        Renglon(
+            "perdidas_aplicadas",
+            "Pérdidas de ejercicios anteriores aplicadas",
+            perd,
+            "Arts. 9 fr. II y 57",
+        ),
         Renglon("resultado_fiscal", "Resultado fiscal", resultado, "Art. 9 fr. II"),
         Renglon("isr_ejercicio", "ISR del ejercicio (30 %)", isr, "Art. 9"),
-        Renglon("pagos_provisionales", "Pagos provisionales efectuados", e.pagos_provisionales,
-                "Art. 211" if resico else "Art. 14"),
-        Renglon("retenciones", "ISR retenido por el sistema financiero", e.retenciones,
-                "Art. 54"),
+        Renglon(
+            "pagos_provisionales",
+            "Pagos provisionales efectuados",
+            e.pagos_provisionales,
+            "Art. 211" if resico else "Art. 14",
+        ),
+        Renglon("retenciones", "ISR retenido por el sistema financiero", e.retenciones, "Art. 54"),
         Renglon("a_cargo", "ISR a cargo", _ceros(neto), "Art. 76 fr. V"),
         Renglon("a_favor", "ISR a favor", _ceros(-neto), "Art. 22 CFF"),
     ]
     renta_ptu = _ceros(antes_ptu)
     ptu = redondear(renta_ptu * PORCENTAJE_PTU)
-    coef = CERO if resico else coeficiente_utilidad(
-        utilidad, e.ingresos_acumulables, e.anticipos_miembros, e.modo)
+    coef = (
+        CERO
+        if resico
+        else coeficiente_utilidad(utilidad, e.ingresos_acumulables, e.anticipos_miembros, e.modo)
+    )
     notas = list(e.aai.notas if e.aai else [])
     notas += [p.nota for p in detalle if p.nota]
     if est and est < sum((x.importe for x in e.estimulos), CERO):
         notas.append("Los estímulos se limitaron a la utilidad fiscal del ejercicio.")
-    return ResultadoAnualPM(e.anio, r, utilidad, perdida, resultado, isr, _ceros(neto),
-                            _ceros(-neto), coef, redondear(e.ingresos_acumulables), renta_ptu,
-                            ptu, detalle, notas)
+    return ResultadoAnualPM(
+        e.anio,
+        r,
+        utilidad,
+        perdida,
+        resultado,
+        isr,
+        _ceros(neto),
+        _ceros(-neto),
+        coef,
+        redondear(e.ingresos_acumulables),
+        renta_ptu,
+        ptu,
+        detalle,
+        notas,
+    )
 
 
 # ── serialización ──
@@ -477,43 +587,70 @@ def _t(v: Decimal) -> str:
 
 
 def factor_dict(f: FactorINPC) -> dict[str, object]:
-    return {"factor": f"{f.factor:.4f}", "inpc_reciente": str(f.inpc_reciente),
-            "mes_reciente": f.mes_reciente, "inpc_antiguo": str(f.inpc_antiguo),
-            "mes_antiguo": f.mes_antiguo, "uso_ultimo_publicado": f.uso_ultimo_publicado}
+    return {
+        "factor": f"{f.factor:.4f}",
+        "inpc_reciente": str(f.inpc_reciente),
+        "mes_reciente": f.mes_reciente,
+        "inpc_antiguo": str(f.inpc_antiguo),
+        "mes_antiguo": f.mes_antiguo,
+        "uso_ultimo_publicado": f.uso_ultimo_publicado,
+    }
 
 
 def pago_dict(p: PagoProvisionalPM) -> dict[str, object]:
     return {
-        "mes": p.mes, "ingresos_mes": _t(p.ingresos_mes),
+        "mes": p.mes,
+        "ingresos_mes": _t(p.ingresos_mes),
         "ingresos_acumulados": _t(p.ingresos_acumulados),
         "deducciones_acumuladas": _t(p.deducciones_acumuladas),
-        "coeficiente": f"{p.coeficiente:.4f}", "utilidad_estimada": _t(p.utilidad_estimada),
-        "ptu_disminuida": _t(p.ptu_disminuida), "estimulos": _t(p.estimulos),
-        "perdidas": _t(p.perdidas), "base": _t(p.base), "isr_causado": _t(p.isr_causado),
-        "pagos_anteriores": _t(p.pagos_anteriores), "retenciones": _t(p.retenciones),
-        "pago_determinado": _t(p.pago_determinado), "pago_efectuado": _t(p.pago_efectuado),
-        "pago_capturado": p.pago_capturado, "a_pagar_pesos": _t(p.a_pagar_pesos),
+        "coeficiente": f"{p.coeficiente:.4f}",
+        "utilidad_estimada": _t(p.utilidad_estimada),
+        "ptu_disminuida": _t(p.ptu_disminuida),
+        "estimulos": _t(p.estimulos),
+        "perdidas": _t(p.perdidas),
+        "base": _t(p.base),
+        "isr_causado": _t(p.isr_causado),
+        "pagos_anteriores": _t(p.pagos_anteriores),
+        "retenciones": _t(p.retenciones),
+        "pago_determinado": _t(p.pago_determinado),
+        "pago_efectuado": _t(p.pago_efectuado),
+        "pago_capturado": p.pago_capturado,
+        "a_pagar_pesos": _t(p.a_pagar_pesos),
     }
 
 
 def perdida_dict(p: PerdidaAplicada) -> dict[str, object]:
-    return {"ejercicio": p.ejercicio, "remanente_inicial": _t(p.remanente_inicial),
-            "factores": [factor_dict(f) for f in p.factores], "actualizada": _t(p.actualizada),
-            "actualizada_a": p.actualizada_a, "aplicada": _t(p.aplicada),
-            "remanente_final": _t(p.remanente_final), "vigente": p.vigente, "nota": p.nota}
+    return {
+        "ejercicio": p.ejercicio,
+        "remanente_inicial": _t(p.remanente_inicial),
+        "factores": [factor_dict(f) for f in p.factores],
+        "actualizada": _t(p.actualizada),
+        "actualizada_a": p.actualizada_a,
+        "aplicada": _t(p.aplicada),
+        "remanente_final": _t(p.remanente_final),
+        "vigente": p.vigente,
+        "nota": p.nota,
+    }
 
 
 def aai_dict(a: ResultadoAAI) -> dict[str, object]:
     return {
         "saldos_creditos": [_t(x) for x in a.saldos_creditos],
         "saldos_deudas": [_t(x) for x in a.saldos_deudas],
-        "promedio_creditos": _t(a.promedio_creditos), "promedio_deudas": _t(a.promedio_deudas),
+        "promedio_creditos": _t(a.promedio_creditos),
+        "promedio_deudas": _t(a.promedio_deudas),
         "factor": factor_dict(a.factor) if a.factor else None,
-        "factor_ajuste": f"{a.factor_ajuste:.4f}", "acumulable": _t(a.acumulable),
-        "deducible": _t(a.deducible), "notas": a.notas,
+        "factor_ajuste": f"{a.factor_ajuste:.4f}",
+        "acumulable": _t(a.acumulable),
+        "deducible": _t(a.deducible),
+        "notas": a.notas,
     }
 
 
 def renglon_dict(r: Renglon) -> dict[str, str]:
-    return {"clave": r.clave, "concepto": r.concepto, "importe": _t(r.importe),
-            "fundamento": r.fundamento}
+    return {
+        "clave": r.clave,
+        "concepto": r.concepto,
+        "importe": _t(r.importe),
+        "fundamento": r.fundamento,
+    }

@@ -85,6 +85,11 @@ OPCIONES: dict[str, dict[str, str]] = {
             "entrega y se reporta como remanente. La LFT no ordena redistribuirlo. "
             "FUENTE POR CONFIRMAR con la contadora."
         ),
+        "sumar_siguiente_ejercicio": (
+            "Sumar al ejercicio siguiente. Lo que excede los topes se reporta para sumarlo a "
+            "la utilidad repartible del año siguiente (criterio IDC, por analogía con el "
+            "Art. 122 LFT). FUENTE POR CONFIRMAR."
+        ),
         "redistribuir": (
             "Redistribuir entre quienes no llegaron a su tope, en proporción a lo que "
             "les tocó, hasta agotar el remanente o los topes."

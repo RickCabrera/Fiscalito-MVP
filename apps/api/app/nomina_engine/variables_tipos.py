@@ -125,6 +125,9 @@ class VariablesEmpleado:
     prestamo: Decimal = CERO
     pension: PensionAlimenticia | None = None
     viaticos_comprobados: Decimal = CERO
+    # O3: prima vacacional ya exenta en el año fuera de este sistema (Art. 93 fr. XIV:
+    # 15 UMA por año calendario). Se suma a lo que ya consta en el historial.
+    prima_vacacional_exenta_previa: Decimal = CERO
 
     def __post_init__(self) -> None:
         negativos = [

@@ -1057,7 +1057,7 @@ Todas marcadas `# DECISIÓN PROVISIONAL (nocturno)` o `# FUENTE POR CONFIRMAR` e
    del cliente. "Ingreso ordinario mensual" = salario diario × 30.4. La tasa del 174 se usa con
    precisión completa.
 2. **Aguinaldo proporcional:** días trabajados ÷ 365 aun en año bisiesto.
-3. **PTU:** 10 % (Sexta Resolución CNPTU, DOF 28-02-2009). "Tres meses de salario" = 90 días de
+3. **PTU:** 10 % (Resolución de la Sexta Comisión Nacional para la PTU, DOF 18-09-2020; antecedente: Quinta Comisión, DOF 03-02-2009). Fuente única en código: `nomina_engine/ptu.PORCENTAJE_PTU`. "Tres meses de salario" = 90 días de
    cuota diaria (Guía STPS) — FUENTE POR CONFIRMAR. El remanente que deja el tope **no se
    reparte** por default — FUENTE POR CONFIRMAR. El centavo de redondeo se ajusta en el de mayor
    salario para no exceder el 10 %.
@@ -1073,3 +1073,47 @@ Todas marcadas `# DECISIÓN PROVISIONAL (nocturno)` o `# FUENTE POR CONFIRMAR` e
    sólo se advierte: la retención mínima con tasa máxima del Art. 96 no se aplica.
 9. **Horas extra:** salario por hora = diario ÷ 8 (jornada capturable). Las triples (Art. 68
    LFT) se gravan al 100 % e integran al SBC.
+
+---
+
+## D34 · Correcciones del revisor de motor sobre P4 y dos decisiones abiertas — para Ricardo y la contadora
+
+**Corregido (2026-10-19), cada punto con su test en `tests/nomina/test_p4_revisor.py`:**
+
+- **Tope de horas extra por fecha** (`nomina_engine/jornada.py`): Art. 66 LFT reformado y
+  Transitorio Cuarto del Decreto DOF 01-05-2026 — 9 horas por semana en 2026 y 2027, 10 en 2028,
+  11 en 2029 y 12 desde 2030. Las dobles que pasan del tope se pagan triples (Art. 68) y van
+  100 % gravadas.
+- **Finiquito con el ingreso del mes:** lo ordinario gravado se apila sobre salario × 30.4
+  (igual que aguinaldo y PTU).
+- **Consejeros (régimen 07):** retención a la tasa máxima del Art. 152 sobre todo el monto
+  (Art. 96 LISR), si es mayor que la de tarifa.
+- **Prima vacacional:** las 15 UMA exentas son **por año calendario**. Se descuenta lo ya
+  exento en el historial del año (y lo que se capture como `prima_vacacional_exenta_previa`).
+- **Confianza en PTU (Art. 127 fr. II):** el tope sale del sindicalizado de más alto salario o,
+  a falta de éste, del de planta. Los eventuales no cuentan.
+- **Impuesto local sobre salarios en el ajuste anual:** se resta de la base si su tasa no excede
+  del 5 % (Art. 97 LISR).
+- **El 10 % de la PTU** se cita en un solo lugar (`nomina_engine/ptu.PORCENTAJE_PTU`):
+  Resolución de la Sexta Comisión Nacional para la PTU, DOF 18-09-2020 (antecedente: Quinta
+  Comisión, DOF 03-02-2009). La cita anterior ("Sexta Resolución, DOF 28-02-2009") era errónea.
+- **Las calculadoras sueltas** `/calculadoras/{aguinaldo,ptu,finiquito}` usan el motor de P4. La
+  versión mínima de P3 (`fiscal_engine/calculadoras_laborales.py`) se retiró: indemnizaba con
+  salario diario en vez de SDI y no apilaba lo ordinario con la separación.
+
+**Abierto — O4: los 20 días por año en la liquidación.** Ahora van **apagados por default**. El
+Art. 50 fr. II los da cuando el patrón se niega a reinstalar (Art. 49) o el trabajador rescinde
+por causa imputable al patrón (Art. 52). En un despido injustificado con reinstalación ofrecida
+no proceden. La respuesta lo avisa. **Pregunta:** ¿el despacho los incluye siempre en la
+liquidación negociada (práctica común en convenios) o sólo en esos supuestos?
+
+**Abierto — O5: el remanente de la PTU que deja el tope del Art. 127.** Hay tres opciones por
+cliente (`criterios_nomina.ptu_remanente`):
+- `no_se_reparte` (default): se reporta y no se entrega.
+- `redistribuir`: se reparte entre quienes no llegaron a su tope.
+- `sumar_siguiente_ejercicio`: se reporta para sumarlo a la utilidad repartible del año siguiente
+  (criterio IDC, por analogía con el Art. 122 LFT).
+
+La LFT no lo resuelve expresamente. **Pregunta:** ¿qué hace el despacho con ese remanente?
+**FUENTE POR CONFIRMAR** también: la numeración de las fracciones del Art. 127 tras la reforma
+de 2021 no se pudo cotejar contra el DOF.
