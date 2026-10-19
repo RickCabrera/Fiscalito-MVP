@@ -84,7 +84,7 @@ export interface Poliza {
   numero: number;
   fecha: string;
   concepto: string;
-  origen: 'automatica' | 'manual';
+  origen: 'automatica' | 'manual' | 'cierre' | 'apertura';
   estado: 'activa' | 'cancelada';
   uuid_cfdi: string | null;
   tipo_cfdi: string;
@@ -186,4 +186,86 @@ export interface NuevaPoliza {
   fecha: string;
   concepto: string;
   movimientos: Pick<MovimientoPoliza, 'cuenta_id' | 'cargo' | 'abono' | 'concepto' | 'uuid' | 'rfc'>[];
+}
+
+// ── P2-05: reportes contables ──
+
+export type TipoReporte = 'estado_resultados' | 'balance_general' | 'balanza' | 'auxiliar' | 'polizas';
+export type Comparativo = 'ninguno' | 'periodo_anterior' | 'anio_anterior';
+
+export interface FiltrosReporte {
+  desde: string;
+  hasta: string;
+  nivel?: number | null;
+  solo?: FiltroBalanza;
+  agrupar?: 'cuenta' | 'agrupador';
+  moneda?: string;
+  tipo_cambio?: string | null;
+  idioma?: 'es' | 'en';
+  comparar?: Comparativo;
+  incluir_cierre?: boolean;
+}
+
+export interface LineaReporte {
+  tipo: 'encabezado' | 'cuenta' | 'subtotal' | 'total';
+  clave: string;
+  etiqueta: string;
+  nivel: number;
+  numero?: string;
+  cuenta_id?: number | null;
+  valores?: Record<string, string>;
+}
+
+export interface EstadoFinanciero {
+  reporte: 'estado_resultados' | 'balance_general';
+  titulo: string;
+  cliente: { clave: string; nombre: string; rfc: string };
+  desde: string;
+  hasta: string;
+  moneda: string;
+  tipo_cambio: string | null;
+  idioma: 'es' | 'en';
+  comparativo: { tipo: Comparativo; desde: string; hasta: string } | null;
+  columnas: { clave: string; etiqueta: string }[];
+  lineas: LineaReporte[];
+  resumen: Record<string, string>;
+  cuadra?: boolean;
+  diferencia?: string;
+}
+
+// ── P2-08: periodos y cierre ──
+
+export interface CfdiSinPoliza {
+  uuid: string;
+  fecha: string;
+  tipo: string;
+  direccion: string;
+  rfc: string;
+  total: string;
+  moneda: string;
+}
+
+export interface ValidacionCierre {
+  desde: string;
+  hasta: string;
+  balanza_cuadra: boolean;
+  diferencias: { saldo_inicial: string; movimientos: string; saldo_final: string };
+  cfdi_sin_poliza: CfdiSinPoliza[];
+  total_cfdi_sin_poliza: number;
+  se_puede_cerrar: boolean;
+}
+
+export interface MesContable {
+  mes: number;
+  estado: 'abierto' | 'cerrado';
+  cerrado_en: string | null;
+  cerrado_por: string | null;
+  polizas: number;
+}
+
+export interface EjercicioContable {
+  anio: number;
+  meses: MesContable[];
+  historial: { mes: number; accion: string; motivo: string; uid: string; fecha: string }[];
+  cierre_anual: { hecho: boolean; polizas: Poliza[] };
 }

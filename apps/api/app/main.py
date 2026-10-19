@@ -29,6 +29,7 @@ from app.routes import (
     cartera,
     comparador,
     contabilidad,
+    contabilidad_reportes,
     credenciales,
     declaraciones,
     despacho,
@@ -139,6 +140,8 @@ ROUTERS_PROTEGIDOS = (
     sat_verificacion.router,
     calculos_cliente.router,
     contabilidad.router,
+    # P2-05/P2-08: reportes contables y cierre de periodo y de ejercicio.
+    contabilidad_reportes.router,
 )
 
 app.include_router(health.router)

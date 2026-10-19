@@ -1,14 +1,15 @@
 /**
- * Contabilidad del cliente (plan P, P2-01 a P2-04): catálogo, configuración de
- * pólizas automáticas, pólizas y balanza. El backend es el dueño del dato y de
+ * Contabilidad del cliente (plan P, P2-01 a P2-05 y P2-08): catálogo,
+ * configuración de pólizas automáticas, pólizas, balanza, reportes y cierre. El backend es el dueño del dato y de
  * cada importe; esta capa sólo arma URLs. Contrato: `docs/api-contract.md`,
  * sección "Contabilidad".
  */
 
-import { apiFetch } from './api';
+import { apiArchivo, apiFetch } from './api';
 import type {
-  Auxiliar, Balanza, CodigoAgrupador, ConfigContable, Cuenta, FiltroBalanza, FiltrosPolizas,
-  NuevaCuenta, NuevaPoliza, Poliza, Regla, RespuestaGenerar,
+  Auxiliar, Balanza, CodigoAgrupador, ConfigContable, Cuenta, EjercicioContable, EstadoFinanciero,
+  FiltroBalanza, FiltrosPolizas, FiltrosReporte, NuevaCuenta, NuevaPoliza, Poliza, Regla,
+  RespuestaGenerar, TipoReporte, ValidacionCierre,
 } from './contabilidadTipos';
 
 export type * from './contabilidadTipos';
@@ -118,14 +119,6 @@ export function listarPeriodosCerrados(
   return apiFetch(`${base(clave)}/periodos-cerrados`);
 }
 
-export function cerrarPeriodo(clave: string, anio: number, mes: number): Promise<{ exito: boolean }> {
-  return apiFetch(`${base(clave)}/periodos-cerrados`, { method: 'POST', json: { anio, mes } });
-}
-
-export function abrirPeriodo(clave: string, anio: number, mes: number): Promise<{ exito: boolean }> {
-  return apiFetch(`${base(clave)}/periodos-cerrados/${anio}/${mes}`, { method: 'DELETE' });
-}
-
 // ── P2-04: balanza y auxiliar ──
 
 export function obtenerBalanza(
@@ -150,4 +143,70 @@ export function guardarSaldosIniciales(
   clave: string, saldos: { cuenta_id: number; deudor: string; acreedor: string }[],
 ): Promise<{ totales: { deudor: string; acreedor: string; cuadra: boolean } }> {
   return apiFetch(`${base(clave)}/saldos-iniciales`, { method: 'PUT', json: { saldos } });
+}
+
+// ── P2-05: reportes contables ──
+
+function filtros(f: FiltrosReporte): Record<string, string | number | undefined | null> {
+  return {
+    desde: f.desde, hasta: f.hasta, nivel: f.nivel, solo: f.solo, agrupar: f.agrupar,
+    moneda: f.moneda, tipo_cambio: f.moneda && f.moneda !== 'MXN' ? f.tipo_cambio : null,
+    idioma: f.idioma, comparar: f.comparar, incluir_cierre: f.incluir_cierre ? 'true' : null,
+  };
+}
+
+export function obtenerEstadoResultados(clave: string, f: FiltrosReporte): Promise<EstadoFinanciero> {
+  return apiFetch(`${base(clave)}/reportes/estado-resultados${consulta(filtros(f))}`);
+}
+
+export function obtenerBalanceGeneral(clave: string, f: FiltrosReporte): Promise<EstadoFinanciero> {
+  return apiFetch(`${base(clave)}/reportes/balance-general${consulta(filtros(f))}`);
+}
+
+export function obtenerPolizasImpresion(
+  clave: string, desde: string, hasta: string,
+): Promise<{ total: number; truncado: boolean; polizas: Poliza[] }> {
+  return apiFetch(`${base(clave)}/reportes/polizas${consulta({ desde, hasta })}`, { timeoutMs: 120000 });
+}
+
+/** El reporte como .xlsx, generado por el backend (importes numéricos y totales). */
+export function descargarExcel(
+  clave: string, reporte: TipoReporte, f: FiltrosReporte, cuentaId?: number | null,
+): Promise<Blob> {
+  const q = consulta({ reporte, cuenta_id: cuentaId, ...filtros(f) });
+  return apiArchivo(`${base(clave)}/reportes/excel${q}`, { timeoutMs: 120000 });
+}
+
+// ── P2-08: periodos y cierre ──
+
+export function obtenerEjercicio(clave: string, anio: number): Promise<EjercicioContable> {
+  return apiFetch(`${base(clave)}/periodos/${anio}`);
+}
+
+export function validarCierreMes(clave: string, anio: number, mes: number): Promise<ValidacionCierre> {
+  return apiFetch(`${base(clave)}/periodos/${anio}/${mes}/validacion`);
+}
+
+export function cerrarMes(
+  clave: string, anio: number, mes: number, forzar = false, motivo = '',
+): Promise<{ validacion: ValidacionCierre }> {
+  return apiFetch(`${base(clave)}/periodos/${anio}/${mes}/cerrar`, { method: 'POST', json: { forzar, motivo } });
+}
+
+export function reabrirMes(clave: string, anio: number, mes: number, motivo: string): Promise<{ exito: boolean }> {
+  return apiFetch(`${base(clave)}/periodos/${anio}/${mes}/reabrir`, { method: 'POST', json: { motivo } });
+}
+
+export function validarCierreAnual(clave: string, anio: number): Promise<ValidacionCierre> {
+  return apiFetch(`${base(clave)}/cierre-anual/${anio}/validacion`);
+}
+
+export function hacerCierreAnual(
+  clave: string, anio: number, opciones: { traspasar_resultado: boolean; forzar: boolean; motivo: string },
+): Promise<{ anio: number; resultado: string; tipo_resultado: string; polizas: Poliza[] }> {
+  return apiFetch(`${base(clave)}/cierre-anual/${anio}`, { method: 'POST', json: opciones, timeoutMs: 120000 });
+}
+
+export function deshacerCierreAnual(clave: string, anio: number, motivo: string): Promise<{ canceladas: number }> {
+  return apiFetch(`${base(clave)}/cierre-anual/${anio}/deshacer`, { method: 'POST', json: { motivo } });
 }

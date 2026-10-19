@@ -132,7 +132,7 @@ class Poliza(ConMarcasDeTiempo, Base):
     numero: Mapped[int] = mapped_column(Integer)
     fecha: Mapped[date] = mapped_column(Date)
     concepto: Mapped[str] = mapped_column(String(500), default="")
-    # automatica | manual
+    # automatica | manual | cierre | apertura (P2-08: cierre anual, ver `cierre.py`)
     origen: Mapped[str] = mapped_column(String(10), default="manual")
     # activa | cancelada
     estado: Mapped[str] = mapped_column(String(10), default="activa", index=True)
@@ -199,3 +199,25 @@ class PeriodoCerrado(Base):
     mes: Mapped[int] = mapped_column(Integer, primary_key=True)
     cerrado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     cerrado_por: Mapped[str] = mapped_column(String(128), default="")
+
+
+class HistorialPeriodo(Base):
+    """
+    Bitácora de cierres y reaperturas del cliente (P2-08), para la pantalla de periodos.
+
+    `mes = 0` marca un evento del ejercicio (cierre anual o su reversa). La bitácora general
+    (`eventos_auditoria`) también recibe cada evento; ésta es la vista por cliente y periodo.
+    """
+
+    __tablename__ = "historial_periodos"
+    __table_args__ = (Index("ix_historial_periodo_cliente", "cliente_id", "anio", "mes"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id", ondelete="CASCADE"))
+    anio: Mapped[int] = mapped_column(Integer)
+    mes: Mapped[int] = mapped_column(Integer)
+    # cerrar | reabrir | cierre_anual | deshacer_cierre_anual
+    accion: Mapped[str] = mapped_column(String(24))
+    motivo: Mapped[str] = mapped_column(String(500), default="")
+    uid: Mapped[str] = mapped_column(String(128), default="")
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True))

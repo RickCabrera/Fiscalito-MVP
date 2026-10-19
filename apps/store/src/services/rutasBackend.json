@@ -180,6 +180,24 @@
       ]
     },
     {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/contabilidad/clientes/{clave}/config",
       "metodos": [
         "GET",
@@ -215,14 +233,31 @@
     {
       "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados",
       "metodos": [
-        "GET",
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar",
+      "metodos": [
         "POST"
       ]
     },
     {
-      "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados/{anio}/{mes}",
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir",
       "metodos": [
-        "DELETE"
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion",
+      "metodos": [
+        "GET"
       ]
     },
     {
@@ -262,6 +297,30 @@
       "metodos": [
         "DELETE",
         "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/excel",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/polizas",
+      "metodos": [
+        "GET"
       ]
     },
     {
