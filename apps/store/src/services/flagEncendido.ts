@@ -3,7 +3,7 @@
  *
  * POR QUÉ EXISTE
  * --------------
- * Había dos convenciones. `modoEmpresa.ts` aceptaba `1`, `true`, `on`, `yes`,
+ * Había dos convenciones. El viejo `modoEmpresa.ts` aceptaba `1`, `true`, `on`, `yes`,
  * `si` y `sí`, y lo justificaba con una frase que vale para cualquier flag:
  * *"un flag que ignora en silencio lo que le escribieron es peor que no
  * tenerlo"*. `cartera.ts` comparaba `=== '1'` y nada más, así que un
@@ -19,7 +19,7 @@
  *
  * Esto NO decide el default de ningún flag; sólo cómo se interpreta lo que
  * venga escrito. El default lo declara cada flag en su módulo, y los dos que
- * hay hoy —`VITE_MODO_EMPRESA_UNICA` y `VITE_CARTERA_BACKEND`— vienen apagados.
+ * hay hoy —`VITE_CARTERA_BACKEND`— viene apagado.
  */
 
 /** Las formas de ENCENDER un flag. Todo lo demás lo deja apagado. */

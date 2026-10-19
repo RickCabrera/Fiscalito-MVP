@@ -140,22 +140,9 @@ export interface CalendarioPatronal {
  * contenido cambia solo al pasar de año es justo lo que `despacho_demo.py`
  * evita en el resto de la demo.
  */
-/**
- * El calendario patronal.
- *
- * `empresaUnica` no tiene default y se pasa siempre desde la pantalla, a
- * propósito: un default silencioso aquí decidiría por su cuenta si el backend
- * hace fan-out sobre el catálogo de demostración, y ese es justo el tipo de
- * decisión que O-01 saca de los servicios y sube a un solo lugar
- * (`modoEmpresaUnica`).
- */
-export async function obtenerCalendarioPatronal(
-  anio: number,
-  empresaUnica: boolean,
-): Promise<CalendarioPatronal> {
-  const res = await fetch(
-    `${V1}/despacho/calendario?anio_de_las_cuotas=${anio}&empresa_unica=${empresaUnica}`,
-  );
+/** El calendario patronal de toda la cartera del despacho. */
+export async function obtenerCalendarioPatronal(anio: number): Promise<CalendarioPatronal> {
+  const res = await fetch(`${V1}/despacho/calendario?anio_de_las_cuotas=${anio}`);
   return leer<CalendarioPatronal>(res, 'No se pudo cargar el calendario patronal');
 }
 

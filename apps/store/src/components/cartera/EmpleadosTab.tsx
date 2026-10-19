@@ -25,7 +25,6 @@ import {
 import { nssPorVerificar } from '../../services/nss';
 import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from '../nomina/estilosTabla';
 import ModalEmpleado from './ModalEmpleado';
-import { modoEmpresaUnica } from '../../services/modoEmpresa';
 import type { ParametrosSalariales } from '../../services/carteraApi';
 
 const num: React.CSSProperties = {
@@ -202,17 +201,14 @@ export default function EmpleadosTab({
 
       {empleados.length === 0 && (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
-          {modoEmpresaUnica()
-            ? 'Todavía no hay empleados dados de alta.'
-            : 'Este cliente no tiene empleados todavía.'}
+          Este cliente no tiene empleados todavía.
         </p>
       )}
 
       {soloLectura && (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: 0 }}>
-          {modoEmpresaUnica()
-            ? 'Esta plantilla es de sólo lectura. Revisa que tu cuenta tenga permiso de escritura.'
-            : 'Estás viendo el catálogo de demostración, que es de sólo lectura. Para dar de alta empleados hace falta que tu cartera esté guardada en tu cuenta.'}
+          Estás viendo el catálogo de demostración, que es de sólo lectura. Para dar de alta
+          empleados hace falta que tu cartera esté guardada en tu cuenta.
         </p>
       )}
 
@@ -228,7 +224,7 @@ export default function EmpleadosTab({
         >
           <span>
             ¿Dar de baja a <strong>{porBorrar.nombre}</strong>? Deja de aparecer en la nómina
-            {modoEmpresaUnica() ? '' : ' de este cliente'} y no se puede deshacer.
+            de este cliente y no se puede deshacer.
           </span>
           <button className="btn-secondary" onClick={() => setPorBorrar(null)}>Cancelar</button>
           <button

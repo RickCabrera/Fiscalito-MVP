@@ -46,8 +46,6 @@ import { incidenciasConLlaveDeCalculo, llavesParaElCierre } from './llavesDelCie
 import { contarSinVincular, type EmpleadoCartera } from '../../services/carteraApi';
 import { obtenerCliente, type ClienteDetalle } from '../../services/despachoApi';
 import { useClienteActivo } from '../../context/clienteActivoStore';
-import { modoEmpresaUnica } from '../../services/modoEmpresa';
-import { faltantesDeLaEmpresa } from '../../services/empresa';
 
 const MS_POLLING = 3000;
 
@@ -130,21 +128,8 @@ export function useNominaCliente(clienteId: string) {
     if (clienteId && clienteId !== activo) setClienteId(clienteId);
   }, [clienteId, activo, setClienteId]);
 
-  /**
-   * O-01: en modo empresa única **no se pide la ficha al backend**.
-   *
-   * `GET /despacho/clientes/{id}` sólo conoce los tres clientes de
-   * demostración, así que con el id de la empresa responde 404 — en **cada
-   * montaje de la pantalla principal**. Funciona igual, porque el camino del
-   * `catch` ya cae a la cartera (es el caso normal desde G-03), pero es un 404
-   * permanente en la red de la pantalla estrella y el error queda guardado por
-   * si acaso. No hay nada que ir a buscar: la ficha de la empresa está entera
-   * en la cartera, que es su único dueño.
-   */
-  const empresaUnica = modoEmpresaUnica();
-
   useEffect(() => {
-    if (!clienteId || empresaUnica) return;
+    if (!clienteId) return;
     let cancelado = false;
     obtenerCliente(clienteId)
       .then((c) => {
@@ -182,9 +167,7 @@ export function useNominaCliente(clienteId: string) {
         setErrorCargaDe({ id: clienteId, valor: e.message });
       });
     return () => { cancelado = true; };
-  }, [clienteId, empresaUnica]);
-
-
+  }, [clienteId]);
 
   const refrescar = useCallback(() => {
     if (!clienteId) return;
@@ -273,26 +256,6 @@ export function useNominaCliente(clienteId: string) {
   const empleadosCartera = deLaCartera?.empleados ?? null;
   const sinVincular = empleadosCartera ? contarSinVincular(empleadosCartera) : 0;
 
-  /**
-   * O-01: lo que le falta a la empresa para que su nómina signifique algo.
-   *
-   * Sale de `cartera.empresa` y **no** de leerle campos al cliente proyectado.
-   * Son el mismo dato —los dos salen de `users/{uid}/clientes/empresa`, uno por
-   * `deClienteCartera` y el otro por `aClienteCartera`— así que no hay dos
-   * verdades que puedan divergir.
-   *
-   * La razón de preferir éste es concreta: leerle dos propiedades más a
-   * `deLaCartera` aquí hacía que el React Compiler **desoptimizara el `useMemo`
-   * de la plantilla** que viaja a `POST /nomina/calcular-periodo`
-   * (`react-hooks/preserve-manual-memoization`: *this dependency may be modified
-   * later*). Se probó moverlo antes, después y envuelto en su propio `useMemo`;
-   * las tres empeoraban o no arreglaban. Leer del objeto que el proveedor ya
-   * calculó no toca esa cadena.
-   */
-  const faltaDeLaEmpresa = empresaUnica
-    ? faltantesDeLaEmpresa(cartera.empresa.razonSocial, cartera.empresa.primaRiesgo)
-    : [];
-
   const { inicio, fin } = suyo(periodoDe, clienteId, { inicio: '', fin: '' });
   const setInicio = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio: v, fin } });
   const setFin = (v: string) => setPeriodoDe({ id: clienteId, valor: { inicio, fin: v } });
@@ -337,50 +300,6 @@ export function useNominaCliente(clienteId: string) {
     () => plantillaDeNomina(cliente?.empleados ?? [], empleadosCartera),
     [cliente, empleadosCartera],
   );
-
-  /**
-   * O-01: en modo empresa única el periodo se siembra desde la CARTERA.
-   *
-   * En modo despacho lo siembran las dos ramas del efecto de arriba. Aquí ese
-   * efecto no corre, así que sin esto los dos inputs de fecha arrancarían
-   * vacíos **siempre** y el paso 2 quedaría bloqueado en la pantalla principal
-   * con el mensaje de R-06 ("captura las fechas"), que ahí sería un estorbo
-   * permanente en vez de un aviso.
-   *
-   * DOS CUIDADOS QUE ESTE ARCHIVO YA PAGÓ CAROS:
-   *
-   * 1. **No depende de `cartera`.** El valor del contexto cambia de identidad
-   *    en cada render, así que el efecto volvería a correr y revertiría las
-   *    fechas que el operador acaba de mover — es el bug que cazó el test de la
-   *    fecha de pago. Depende de la FECHA misma, que es una cadena: cambia
-   *    cuando de verdad hay un periodo nuevo y no en cada render.
-   *
-   *    Dependía de `cartera.loading`, y eso tenía un hueco: después de la
-   *    primera carga ese booleano ya no vuelve a cambiar —`alDia` se queda en
-   *    `true` durante las relecturas— así que un periodo que llegara **después**
-   *    dejaba los dos inputs vacíos hasta remontar la pantalla. Pasa al guardar
-   *    la empresa por primera vez, que es justo cuando el periodo aparece.
-   * 2. **No pisa lo que ya hay.** El `setPeriodoDe` funcional sólo siembra si
-   *    todavía no hay periodo de ESTE cliente. Sembrar incondicionalmente sería
-   *    el mismo bug por la otra puerta.
-   */
-  const inicioSugerido = empresaUnica
-    ? cartera.clientePorId(clienteId)?.periodo_sugerido.inicio ?? ''
-    : '';
-
-  useEffect(() => {
-    if (!empresaUnica || !clienteId || !inicioSugerido) return;
-    const c = carteraRef.current.clientePorId(clienteId);
-    if (!c?.periodo_sugerido.inicio) return;
-    setPeriodoDe((actual) =>
-      actual && actual.id === clienteId
-        ? actual
-        : {
-            id: clienteId,
-            valor: { inicio: c.periodo_sugerido.inicio, fin: c.periodo_sugerido.fin },
-          },
-    );
-  }, [empresaUnica, clienteId, inicioSugerido]);
 
   /**
    * El cierre vuelve con la llave del checador; los recibos se indexan por la
@@ -443,11 +362,6 @@ export function useNominaCliente(clienteId: string) {
     // un cierre con el conjunto de empleados equivocado, que es el insumo del
     // cálculo.
     if (cartera.loading || ajenoALaCartera) return;
-    // O-01: misma disciplina que `ajenoALaCartera` — la guarda va en el
-    // HANDLER, no sólo en el `disabled` del botón, que es una propiedad del DOM
-    // y no una garantía. Es literalmente el defecto que este archivo critica de
-    // la corrida G tres bloques más abajo.
-    if (faltaDeLaEmpresa.length > 0) return;
     /**
      * La llave es `clienteId`, no `cliente.id`. (F-02)
      *
@@ -485,11 +399,6 @@ export function useNominaCliente(clienteId: string) {
             id,
             llavesParaElCierre(plantilla, empleadosCartera),
             { inicio, fin },
-            // O-03: el horario configurado por el patrón. Hasta aquí el front
-            // NUNCA lo mandaba, así que el backend aplicaba 08:00-17:00 con 15
-            // minutos de tolerancia a todo el mundo — y el formulario de
-            // "Horario y tolerancia del checador" habría sido decorativo.
-            { horario: empresaUnica ? cartera.empresa.parametros.horario : undefined },
           ),
           empleadosCartera,
         ),
@@ -510,24 +419,10 @@ export function useNominaCliente(clienteId: string) {
       setErrorDe({
         // F-02: ver la nota de `clienteId` en `cerrar`.
         id: clienteId,
-        // El mismo texto que `motivoDelPaso2` pinta en el badge, por modo. Era
-        // la copia que se quedó sin traducir: mandaba a "tu lista de clientes",
-        // que en modo empresa única es una ruta que redirige.
-        valor: empresaUnica
-          ? 'Esta nómina no es de tu empresa, así que no se puede calcular aquí.'
-          : 'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
-            'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
-            'Ábrelo desde tu lista de clientes.',
-      });
-      return;
-    }
-    if (faltaDeLaEmpresa.length > 0) {
-      setErrorDe({
-        // F-02: ver la nota de `clienteId` en `cerrar`.
-        id: clienteId,
         valor:
-          `Falta ${faltaDeLaEmpresa.join(' y ')} de la empresa. Sin eso no se pueden ` +
-          'calcular las cuotas patronales. Captúralo en Perfil → Configuración de empresa.',
+          'Este cliente no está en la cartera de tu cuenta, así que no se puede calcular su ' +
+          'nómina: la plantilla saldría del catálogo de demostración y no de tus empleados. ' +
+          'Ábrelo desde tu lista de clientes.',
       });
       return;
     }
@@ -578,25 +473,12 @@ export function useNominaCliente(clienteId: string) {
      * emitir un archivo con el registro patronal en blanco** — que el IMSS
      * rechazaría sin decir cuál de los dos faltaba.
      *
-     * SALEN DE DISTINTO LADO SEGÚN EL MODO, Y TIENE QUE SER ASÍ (O-cierre)
-     * --------------------------------------------------------------------
-     * En empresa única hay una sola empresa y sus datos viven en Configuración
-     * de empresa. En despacho son **de cada cliente**: cada patrón tiene su
-     * propio registro patronal ante el IMSS, y usar el de otro presentaría los
-     * movimientos afiliatorios bajo el patrón equivocado.
-     *
-     * Leer `cartera.empresa` en los dos modos —como estaba— daba en despacho el
-     * documento con id `'empresa'`, que en una cuenta de despacho **no existe**:
-     * los dos campos salían vacíos siempre y el exportador mandaba a "Perfil →
-     * Configuración de empresa", una pantalla que con el flag apagado ni
-     * siquiera se renderiza. Un callejón sin salida, y nuevo de esta corrida.
+     * Son **de cada cliente**: cada patrón tiene su propio registro patronal
+     * ante el IMSS, y usar el de otro presentaría los movimientos afiliatorios
+     * bajo el patrón equivocado.
      */
-    registroPatronal: empresaUnica
-      ? cartera.empresa.registroPatronal
-      : (deLaCartera?.registro_patronal ?? ''),
-    guiaSubdelegacion: empresaUnica
-      ? cartera.empresa.guiaSubdelegacion
-      : (deLaCartera?.guia_subdelegacion ?? ''),
+    registroPatronal: deLaCartera?.registro_patronal ?? '',
+    guiaSubdelegacion: deLaCartera?.guia_subdelegacion ?? '',
     /** `true` mientras no se sabe con qué llaves cerrar. Bloquea el paso 2. */
     carteraCargando: cartera.loading,
     /**
@@ -606,19 +488,6 @@ export function useNominaCliente(clienteId: string) {
      * al cálculo, en silencio.
      */
     ajenoALaCartera,
-    /**
-     * O-01: qué le falta a la empresa para poder calcular. Vacío = nada.
-     *
-     * **Sin prima de riesgos de trabajo no hay cuota patronal que calcular**, y
-     * el motor la acota a [0.005, 0.150] (Arts. 72 y 73 LSS): mandarla vacía
-     * devuelve un 422 de pydantic sobre un campo que el operador no sabe que
-     * existe. Se para aquí, con el motivo en palabras y el camino para
-     * arreglarlo, en vez de dejar que el error llegue del backend.
-     *
-     * En modo despacho va siempre vacío: ahí la prima es del cliente y ya la
-     * valida `ModalCliente` al capturarla.
-     */
-    faltaDeLaEmpresa,
     eventos,
     cierre,
     nomina,
@@ -639,20 +508,6 @@ export function useNominaCliente(clienteId: string) {
       // La guarda va en la ACCIÓN, no en el badge del paso. En la corrida G se
       // puso en el letrero y el botón quedó vivo, en gris, sin impedir nada.
       if (!cliente || cartera.loading || ajenoALaCartera) return;
-      /**
-       * O-01: **la guarda de la empresa va TAMBIÉN aquí, y no era redundante.**
-       *
-       * Estaba sólo en `cerrar`, y un test de mutación lo destapó: sin checadas
-       * en el periodo, `pedirCierre` no llama a `cerrar` — abre el diálogo de
-       * confirmación. Así que con la empresa sin configurar el operador veía
-       * *"¿cerrar de todos modos?"*, decía que sí, y **hasta entonces** algo lo
-       * frenaba, sin explicar qué.
-       *
-       * Son dos puertas distintas, como las de R-06: `pedirCierre` es el botón
-       * y `cerrar` es el "Cerrar de todos modos" del diálogo, que se exporta y
-       * se llama directo. Cerrar una sola deja la otra abierta.
-       */
-      if (faltaDeLaEmpresa.length > 0) return;
       if (sinChecadasEnElPeriodo) setConfirmarPara(cliente.id);
       else void cerrar();
     },

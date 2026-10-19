@@ -146,11 +146,7 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
   'despachoApi.ts': {
     obtenerClientes: () => despachoApi.obtenerClientes(),
     obtenerCliente: () => despachoApi.obtenerCliente('demo'),
-    // O-01: se ejercita con `empresa_unica=true`, que es el modo por default de
-    // la app. La RUTA es la misma en los dos modos; el query param lo ancla su
-    // propio caso al final del archivo, porque este barrido mide cobertura de
-    // exports —una entrada por función— y no valores de parámetros.
-    obtenerCalendarioPatronal: () => despachoApi.obtenerCalendarioPatronal(2026, true),
+    obtenerCalendarioPatronal: () => despachoApi.obtenerCalendarioPatronal(2026),
     // O-03: el periodo que la app propone sale del backend, por periodicidad.
     // Antes se copiaba la quincena del cliente `demo` a todos.
     obtenerPeriodoSugerido: () => despachoApi.obtenerPeriodoSugerido('05'),
@@ -320,26 +316,16 @@ describe('contrato de rutas front ↔ backend', () => {
   it('el calendario patronal pide exactamente la ruta que el backend publica', async () => {
     // El caso del 2026-09-02, anclado en el lado del front.
     const { path, metodo } = await urlDe(() =>
-      despachoApi.obtenerCalendarioPatronal(2026, false),
+      despachoApi.obtenerCalendarioPatronal(2026),
     );
     expect(path).toBe('/api/v1/despacho/calendario');
     expect(metodo).toBe('GET');
   });
 
-  /**
-   * O-01. El query param **también** se ancla aquí.
-   *
-   * `empresa_unica` no es cosmético: decide si el backend hace fan-out sobre
-   * los tres clientes del catálogo de demostración o devuelve un solo juego de
-   * obligaciones. Si el front mandara un nombre que el backend no publica, el
-   * parámetro se ignoraría en silencio y el calendario de la empresa saldría
-   * triplicado con los nombres de tres clientes que no son suyos — un 200 que
-   * miente, que es la forma exacta del defecto de X-01.
-   */
-  it('el calendario de la empresa única manda el query param que el backend publica', async () => {
-    const { url } = await urlDe(() => despachoApi.obtenerCalendarioPatronal(2026, true));
+  it('el calendario del despacho no pide el modo empresa única (fan-out sobre la cartera)', async () => {
+    const { url } = await urlDe(() => despachoApi.obtenerCalendarioPatronal(2026));
     const params = new URL(url).searchParams;
-    expect(params.get('empresa_unica')).toBe('true');
+    expect(params.get('empresa_unica')).toBeNull();
     expect(params.get('anio_de_las_cuotas')).toBe('2026');
   });
 });

@@ -1,136 +1,69 @@
 /**
- * Wizard de onboarding post-registro (E-05: los pasos dependen del tipo).
+ * Wizard de onboarding post-registro.
  *
- * UN DESPACHO RECORRE TRES PASOS, UN CONTRIBUYENTE CUATRO
- * ------------------------------------------------------
- * Y **todo** se decide contra la lista de ids, no contra el índice: el render,
- * `canNext`, el botón "Atrás" y —sobre todo— cuál es el último paso. Con el
- * `step < 3` que estaba cableado, un wizard de tres pasos dejaba al contador en
- * "Confirmar" viendo "Siguiente", y `handleFinish` no se ejecutaba nunca: no se
- * creaba la cuenta.
+ * K (2026-10-19): el sistema es SOLO para despachos y contadores. No hay paso
+ * de "tipo": toda cuenta queda como `contador`. Se piden tres datos —contador,
+ * despacho y teléfono—; los fiscales son de cada cliente (§D21).
  *
- * A un despacho no se le piden RFC, régimen, actividad ni código postal: no
- * declara por sí mismo en esta app, el sujeto del cálculo es su cliente. La
- * consecuencia está declarada en `docs/decisiones-nomina.md` §D21.
+ * Una cuenta vieja de contribuyente también cae aquí (ver `isOnboardingComplete`
+ * en `ProfileContext`): al terminar el wizard queda convertida en despacho. Sus
+ * campos de contribuyente (RFC, régimen…) se vacían para que nada los lea como
+ * si fueran del despacho.
  */
 
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { getProfileByType } from '../services/contributorProfiles';
-import { rutaInicial, esContador, etiquetaDelPerfilOperador } from '../services/navigation';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
-import type { ContributorType } from '../services/contributorProfiles';
+import { rutaInicial } from '../services/navigation';
 import { ArrowLeft, ArrowRight, Check, Loader } from 'lucide-react';
 
 import WizardProgress from '../components/onboarding/WizardProgress';
-import StepTipo from '../components/onboarding/StepTipo';
-import StepDatosFiscales from '../components/onboarding/StepDatosFiscales';
 import StepDatosDespacho from '../components/onboarding/StepDatosDespacho';
-import StepDatosPersonales from '../components/onboarding/StepDatosPersonales';
 import StepConfirmar from '../components/onboarding/StepConfirmar';
 import { MARCA, MARCA_LOGO } from '../services/marca';
 
 /** Un paso del wizard. El id es lo que manda; el índice sólo ordena. */
-type PasoId = 'tipo' | 'fiscales' | 'despacho' | 'personales' | 'confirmar';
+type PasoId = 'despacho' | 'confirmar';
 
-/**
- * Los rótulos de la barra de progreso.
- *
- * Es una FUNCIÓN y no una constante de módulo porque uno de los rótulos depende
- * del modo (O-01), y `modoEmpresaUnica()` en el cuerpo de un módulo se evalúa
- * una sola vez al importar: quedaría congelado y ningún test podría medir el
- * otro modo. Es la misma razón por la que el flag se lee en cada llamada.
- *
- * El rótulo del paso decía "Datos del despacho" mientras el H2 de adentro ya
- * decía "¿Quién lleva la nómina?": la barra contradecía a la pantalla que
- * etiqueta.
- */
-function etiquetas(): Record<PasoId, string> {
-  return {
-    tipo: 'Tipo',
-    fiscales: 'Datos fiscales',
-    despacho: modoEmpresaUnica() ? 'Tus datos' : 'Datos del despacho',
-    personales: 'Datos personales',
-    confirmar: 'Confirmar',
-  };
-}
-
-const PASOS_CONTADOR: PasoId[] = ['tipo', 'despacho', 'confirmar'];
-const PASOS_CONTRIBUYENTE: PasoId[] = ['tipo', 'fiscales', 'personales', 'confirmar'];
-
-function pasosDelTipo(tipo: ContributorType | null): PasoId[] {
-  return esContador(tipo) ? PASOS_CONTADOR : PASOS_CONTRIBUYENTE;
-}
+const PASOS: PasoId[] = ['despacho', 'confirmar'];
+const ETIQUETAS: Record<PasoId, string> = {
+  despacho: 'Datos del despacho',
+  confirmar: 'Confirmar',
+};
 
 export default function OnboardingWizard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { setProfile, loading: profileLoading, isOnboardingComplete } = useProfile();
+  const { profile, setProfile, loading: profileLoading, isOnboardingComplete } = useProfile();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Form state
-  const [tipo, setTipo] = useState<ContributorType | null>(null);
-  const [rfc, setRfc] = useState('');
-  const [regimen, setRegimen] = useState('');
-  const [nombreNegocio, setNombreNegocio] = useState('');
-  const [numEmpleados, setNumEmpleados] = useState('');
-  const [nombreDespacho, setNombreDespacho] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [actividad, setActividad] = useState('');
-  const [cp, setCp] = useState('');
+  const eraContribuyente =
+    profile.onboardingComplete && profile.contributorType !== 'contador';
 
-  const selectedProfile = tipo ? getProfileByType(tipo) : null;
-  const esDespacho = esContador(tipo);
-  const pasos = pasosDelTipo(tipo);
-  // El índice puede quedar fuera de rango si el tipo cambia de 4 pasos a 3: se
-  // acota, en vez de dejar `pasos[step]` en `undefined`.
-  const pasoActual = pasos[Math.min(step, pasos.length - 1)];
-  const esUltimo = step >= pasos.length - 1;
+  const [nombreDespacho, setNombreDespacho] = useState(profile.nombreDespacho ?? '');
+  const [nombre, setNombre] = useState(profile.nombre ?? '');
+  const [telefono, setTelefono] = useState(profile.telefono ?? '');
 
-  /** Qué falta para avanzar. Decidido por ID de paso, nunca por índice. */
-  const canNext = (): boolean => {
-    switch (pasoActual) {
-      case 'tipo':
-        return tipo !== null;
-      case 'fiscales': {
-        const rfcValid = rfc.length === 12 || rfc.length === 13;
-        const pymeValid = tipo !== 'pyme' || (nombreNegocio.trim() !== '' && numEmpleados !== '');
-        return rfcValid && regimen !== '' && pymeValid;
-      }
-      case 'despacho':
-        // O-01: en modo empresa única el paso no pinta "nombre del despacho"
-        // —la razón social es dato fiscal y se captura en Configuración de
-        // empresa—, así que exigirlo aquí dejaría "Siguiente" apagado para
-        // siempre sobre un campo que no existe en la pantalla. Es el mismo
-        // defecto de E-05 (`step < 3` cableado) por la puerta de al lado: la
-        // condición tiene que seguir a lo que de verdad se renderiza.
-        return (
-          nombre.trim() !== '' && (modoEmpresaUnica() || nombreDespacho.trim() !== '')
-        );
-      case 'personales':
-        return nombre.trim() !== '';
-      default:
-        return true;
-    }
-  };
+  const pasoActual = PASOS[step];
+  const esUltimo = step >= PASOS.length - 1;
+
+  const canNext = (): boolean =>
+    pasoActual !== 'despacho' || (nombre.trim() !== '' && nombreDespacho.trim() !== '');
 
   const handleFinish = async () => {
     setSaving(true);
     try {
-      // Los campos que el despacho no llenó viajan vacíos, no ausentes: el
-      // perfil tiene una forma fija y `setProfile` hace merge sobre lo previo.
+      // Los campos de contribuyente viajan VACÍOS, no ausentes: `setProfile`
+      // hace merge, y una cuenta convertida conservaría su RFC propio.
       await setProfile({
-        contributorType: tipo,
-        rfc, regimen, nombre, telefono, actividad, cp,
-        nombreNegocio, numEmpleados, nombreDespacho,
+        contributorType: 'contador',
+        nombre, telefono, nombreDespacho,
+        rfc: '', regimen: '', actividad: '', cp: '', nombreNegocio: '', numEmpleados: '',
         onboardingComplete: true,
       });
-      // Un despacho entra a sus clientes, no al dashboard de contribuyente.
-      navigate(rutaInicial(tipo));
+      navigate(rutaInicial());
     } catch {
       setSaving(false);
     }
@@ -166,30 +99,26 @@ export default function OnboardingWizard() {
           <span className="gradient-text">{MARCA_LOGO}</span>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          {esDespacho
-            ? modoEmpresaUnica()
-              ? 'Configuremos tu cuenta para llevar la nómina'
-              : 'Configuremos el perfil de tu despacho'
-            : 'Configuremos tu perfil de contribuyente'}
+          Configuremos el perfil de tu despacho
         </p>
       </div>
 
-      <WizardProgress pasos={pasos.map((p) => etiquetas()[p])} currentStep={step} />
+      {eraContribuyente && (
+        <p role="status" style={{
+          maxWidth: 672, margin: '16px 24px 0', padding: '12px 16px',
+          background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
+          borderRadius: 'var(--radius-sm)', fontSize: '0.88rem', color: 'var(--text-primary)',
+        }}>
+          Esta plataforma ahora es solo para despachos y contadores. Completa estos
+          datos para convertir tu cuenta en una cuenta de despacho.
+        </p>
+      )}
+
+      <WizardProgress pasos={PASOS.map((p) => ETIQUETAS[p])} currentStep={step} />
 
       {/* Step content */}
       <div style={{ flex: 1, width: '100%', maxWidth: 720, padding: '40px 24px' }}>
         <div className="animate-in" key={pasoActual}>
-          {pasoActual === 'tipo' && <StepTipo tipo={tipo} setTipo={setTipo} />}
-          {pasoActual === 'fiscales' && selectedProfile && (
-            <StepDatosFiscales
-              allowedRegimens={selectedProfile.allowedRegimens}
-              rfc={rfc} setRfc={setRfc}
-              regimen={regimen} setRegimen={setRegimen}
-              nombreNegocio={nombreNegocio} setNombreNegocio={setNombreNegocio}
-              numEmpleados={numEmpleados} setNumEmpleados={setNumEmpleados}
-              isPyme={tipo === 'pyme'}
-            />
-          )}
           {pasoActual === 'despacho' && (
             <StepDatosDespacho
               nombre={nombre} setNombre={setNombre}
@@ -197,30 +126,8 @@ export default function OnboardingWizard() {
               telefono={telefono} setTelefono={setTelefono}
             />
           )}
-          {pasoActual === 'personales' && (
-            <StepDatosPersonales
-              nombre={nombre} setNombre={setNombre}
-              telefono={telefono} setTelefono={setTelefono}
-              actividad={actividad} setActividad={setActividad}
-              cp={cp} setCp={setCp}
-            />
-          )}
-          {pasoActual === 'confirmar' && selectedProfile && (
-            <StepConfirmar
-              // O-01: el resumen decía "Despacho / Contador" después de que
-              // `StepTipo` le mostró "Empresa". El id guardado no cambia; la
-              // etiqueta sí, y las dos pantallas tienen que coincidir.
-              tipoLabel={
-                esDespacho ? etiquetaDelPerfilOperador() : selectedProfile.label
-              }
-              tipoIcon={selectedProfile.icon}
-              allowedRegimens={selectedProfile.allowedRegimens}
-              esContador={esDespacho}
-              rfc={rfc} regimen={regimen} nombre={nombre}
-              telefono={telefono} actividad={actividad} cp={cp}
-              nombreNegocio={nombreNegocio} numEmpleados={numEmpleados}
-              nombreDespacho={nombreDespacho}
-            />
+          {pasoActual === 'confirmar' && (
+            <StepConfirmar nombre={nombre} nombreDespacho={nombreDespacho} telefono={telefono} />
           )}
         </div>
       </div>

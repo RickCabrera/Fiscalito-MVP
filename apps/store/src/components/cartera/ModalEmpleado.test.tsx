@@ -241,9 +241,8 @@ describe('O-03 · las prestaciones del PATRÓN llegan al motor', () => {
    * ---------------------------
    * Un revisor de motor borró `tabla_vacaciones: tablaVacaciones` del request
    * de SBC y **las 543 pruebas del front quedaron verdes**. Con esa línea
-   * muerta, el formulario de "Vacaciones por antigüedad" de Configuración de
-   * empresa queda **decorativo**: se captura, se guarda, y el SBC sigue
-   * saliendo con los días de ley.
+   * muerta, la escala de vacaciones del patrón queda **decorativa**: se
+   * captura, se guarda, y el SBC sigue saliendo con los días de ley.
    *
    * Es literalmente el modo de falla contra el que O-03 se defiende en su
    * propio mensaje de commit, y no tenía una sola prueba.
@@ -286,7 +285,7 @@ describe('O-03 · las prestaciones del PATRÓN llegan al motor', () => {
   });
 
   it('el aguinaldo y la prima del patrón son el DEFAULT del alta', async () => {
-    // 30 días y 50 %, no el mínimo de ley: es la política de la empresa, que es
+    // 30 días y 50 %, no el mínimo de ley: es la política del patrón, que es
     // lo que aplica a casi todos. Se puede pisar para un caso particular.
     pintar({ parametros: PARAMETROS });
     await llenarBasico();
@@ -297,8 +296,6 @@ describe('O-03 · las prestaciones del PATRÓN llegan al motor', () => {
   });
 
   it('sin parámetros manda el mínimo de ley, como antes de O-03', async () => {
-    // El modo despacho no tiene una empresa única de la que sacarlos, y ahí el
-    // comportamiento no puede cambiar.
     pintar();
     await llenarBasico();
 

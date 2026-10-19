@@ -1,4 +1,4 @@
-/** Tab de calendario fiscal: muestra obligaciones del contribuyente */
+/** Tab de calendario fiscal: obligaciones del cliente activo */
 
 import { useState, useEffect } from 'react';
 import { useProfile } from '../../context/ProfileContext';

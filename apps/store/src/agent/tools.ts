@@ -12,13 +12,12 @@
 
 import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
-import { esContador } from '../services/navigation';
-import { modoEmpresaUnica } from '../services/modoEmpresa';
+import { mensajeFalta, type PerfilFiscal } from '../context/perfilFiscal';
 import { parseMultipleCFDI } from '../services/cfdiParser';
 import {
   calcularPreDeclaracion,
   type CFDI,
-  type PreDeclaracionRequest, tipoParaApi, facturasFiscales } from '../services/fiscalAgentApi';
+  type PreDeclaracionRequest, facturasFiscales } from '../services/fiscalAgentApi';
 import { guardarDeclaracion } from '../services/declaracionesHistory';
 import { getAgentActions, getAgentSnapshot } from './AgentContext';
 import type { ToolName, ToolResult } from './types';
@@ -30,22 +29,17 @@ import type { ToolName, ToolResult } from './types';
 /**
  * Rutas válidas que la tool `navegar` puede recibir. Se enumeran para que el
  * LLM no invente rutas inexistentes.
- *
- * **Se calculan por modo, no son una constante.** En modo empresa única
- * `/app/clientes` **no existe**: la ruta redirige. Dejarla en el enum hacía que
- * el LLM la eligiera, el operador aterrizara en Nómina por la redirección, y el
- * resumen de la tool dijera "Navegando a /app/clientes" — una pantalla que en
- * ese modo no existe. Lo cazó el revisor de cierre de la corrida O.
  */
 function rutasValidas(): string[] {
-  return RUTAS_BASE.filter((r) => r !== '/app/clientes' || !modoEmpresaUnica());
+  return [...RUTAS_BASE];
 }
 
 const RUTAS_BASE = [
-  '/app',
-  // E-01: pantalla de clientes del despacho. Sale del enum en modo empresa
-  // única (O-cierre): ahí no hay cartera que visitar.
+  // E-01: la cartera del despacho. Es también la entrada (`/app` redirige aquí).
   '/app/clientes',
+  // R-05: empleados y dispositivos del cliente activo.
+  '/app/empleados',
+  '/app/dispositivos',
   // E-07: el calendario PATRONAL de los clientes del despacho. Sin esto,
   // "llévame al calendario" mandaba a un contador al tab de contribuyente, que
   // desde E-05 ni siquiera puede cargar (no hay RFC ni régimen que capturar).
@@ -53,9 +47,9 @@ const RUTAS_BASE = [
   // E-03: resuelve el cliente activo y redirige a su nómina. Va esta ruta y no
   // `/app/clientes/{id}/nomina` porque el enum es cerrado y no admite un id.
   '/app/nomina',
-  '/app/historial',
   '/app/store',
   '/app/store/fiscalito/use',
+  '/app/store/contabilito/use',
   '/app/profile',
   // Tabs internos de Fiscalito
   '/app/store/fiscalito/use?tab=declaracion',
@@ -67,16 +61,10 @@ const RUTAS_BASE = [
   '/app/store/fiscalito/use?tab=multiperiodo',
   '/app/store/fiscalito/use?tab=estado-cuenta',
   '/app/store/fiscalito/use?tab=deducciones',
+  '/app/store/fiscalito/use?tab=pagospm',
 ] as const;
 
-/**
- * El catálogo de tools que viaja al LLM.
- *
- * **Es una función y no una constante** porque el enum de rutas depende del
- * modo (`rutasValidas()`), y `modoEmpresaUnica()` se lee en cada llamada — no
- * al importar el módulo. Congelarlo aquí dejaría el catálogo fijado por el
- * primer import, que es justo lo que O-01 evitó en `modoEmpresa.ts`.
- */
+/** El catálogo de tools que viaja al LLM. */
 export function toolsOpenAI() {
   return [
     {
@@ -97,16 +85,12 @@ export function toolsOpenAI() {
                 // quedar la marca vieja: el modelo la repetiría en el chat. Las
                 // RUTAS sí se quedan literales (`/app/store/fiscalito/use`): son
                 // nombres internos y cambiarlas rompería enlaces guardados.
-                'Ruta exacta a la que navegar. Para los tabs del servicio fiscal ' +
-                'usa la ruta con ?tab=... Por ejemplo, "/app/store/fiscalito/use?tab=declaracion" ' +
-                'lleva al tab de pre-declaración. Las de nómina: "/app/nomina" es la ' +
-                'nómina y "/app/calendario" las obligaciones patronales (IMSS, ISR ' +
-                'retenido, avisos)' +
-                (modoEmpresaUnica()
-                  ? '. Esta cuenta lleva UNA sola empresa: no hay cartera de clientes.'
-                  : '; "/app/clientes" es la cartera del despacho.') +
-                ' Quien lleva nómina NO usa los tabs del servicio fiscal: son de ' +
-                'contribuyente.',
+                'Ruta exacta a la que navegar. Para los tabs del servicio fiscal del ' +
+                'cliente activo usa la ruta con ?tab=... Por ejemplo, ' +
+                '"/app/store/fiscalito/use?tab=declaracion" lleva al tab de pre-declaración. ' +
+                '"/app/clientes" es la cartera del despacho, "/app/nomina" la nómina del ' +
+                'cliente activo y "/app/calendario" las obligaciones patronales (IMSS, ISR ' +
+                'retenido, avisos) de toda la cartera.',
             },
           },
           required: ['ruta'],
@@ -163,6 +147,8 @@ export function toolsOpenAI() {
 export interface ToolDeps {
   navigate: NavigateFunction;
   profile: UserProfile;
+  /** K: el cliente activo del despacho. Sobre él se calcula todo. */
+  perfilFiscal: PerfilFiscal;
   uid: string | null;
 }
 
@@ -175,8 +161,7 @@ async function ejecutarNavegar(
   deps: ToolDeps,
 ): Promise<ToolResult> {
   // Se vuelve a consultar aquí y no se confía en el enum del schema: el LLM
-  // puede mandar cualquier cadena, y en modo empresa única `/app/clientes` es
-  // una ruta que redirige.
+  // puede mandar cualquier cadena.
   if (!rutasValidas().includes(args.ruta)) {
     return {
       ok: false,
@@ -294,41 +279,16 @@ async function ejecutarCalcularPredeclaracion(
   args: { año: number; mes: number },
   deps: ToolDeps,
 ): Promise<ToolResult> {
-  const { profile } = deps;
+  const { perfilFiscal } = deps;
   const snapshot = getAgentSnapshot();
 
-  // E-01: un despacho no declara por sus clientes desde aqui. Sin esta guarda
-  // se calcularia la pre-declaracion del RFC del despacho creyendo que es la
-  // del cliente del que se esta hablando.
-  //
-  // O-cierre: en modo empresa única el mismo perfil `contador` es el operador
-  // de UNA empresa, así que el motivo se redacta distinto. El texto viaja al
-  // LLM y se pinta en el log de tools: mandar a "la nómina de un cliente" a
-  // quien no tiene clientes es la misma confusión que el revisor encontró en el
-  // prompt del sistema.
-  if (esContador(profile.contributorType)) {
+  // K: se calcula sobre el CLIENTE ACTIVO del despacho, nunca sobre el despacho.
+  if (perfilFiscal.falta) {
     return {
       ok: false,
-      // El resumen también cambia de modo: se pinta en el log de tools que el
-      // operador lee, y "cuenta de despacho" ahí es tan falso como en el prompt.
-      summary: modoEmpresaUnica()
-        ? 'La pre-declaración no aplica a esta cuenta'
-        : 'La pre-declaración no aplica a una cuenta de despacho',
-      error: modoEmpresaUnica()
-        ? 'Esta cuenta lleva la NÓMINA de una empresa, no sus declaraciones propias. La ' +
-          'pre-declaración se calcula sobre el RFC de un contribuyente y esta app no la ' +
-          'cubre. Explícale que use la pantalla de Nómina.'
-        : 'Este perfil es de contador: la pre-declaración se calcula sobre el RFC de un ' +
-          'contribuyente, no del despacho. Explícale que para la nómina de un cliente use la ' +
-          'pantalla de nómina.',
-    };
-  }
-
-  if (!profile.rfc || !profile.regimen) {
-    return {
-      ok: false,
-      summary: 'Falta RFC o régimen en el perfil del contribuyente',
-      error: 'Pídele al usuario que complete su perfil (RFC y régimen) en /app/profile antes de calcular.',
+      summary: 'Faltan datos del cliente para calcular',
+      error: `${mensajeFalta(perfilFiscal.falta)} Explícaselo al contador; el cliente se ` +
+        'elige y se edita en /app/clientes.',
     };
   }
 
@@ -342,11 +302,10 @@ async function ejecutarCalcularPredeclaracion(
 
   const request: PreDeclaracionRequest = {
     contribuyente: {
-      rfc: profile.rfc,
-      regimen: profile.regimen,
-      nombre: profile.nombre,
-      contributor_type: tipoParaApi(profile.contributorType),
-      actividad_economica: profile.actividad,
+      rfc: perfilFiscal.rfc,
+      regimen: perfilFiscal.regimen,
+      nombre: perfilFiscal.nombre,
+      contributor_type: perfilFiscal.contributorType,
     },
     // T4: los recibos de nómina no son facturas del contribuyente.
     facturas: facturasFiscales(snapshot.facturas),
@@ -401,7 +360,7 @@ async function ejecutarCalcularPredeclaracion(
       advertencias: resp.advertencias ?? [],
       recomendaciones: resp.recomendaciones ?? [],
       facturas_count: facturasCount,
-    }).catch(() => { /* fire-and-forget */ });
+    }, 'predeclaracion', perfilFiscal.clienteId ?? undefined).catch(() => { /* fire-and-forget */ });
   }
 
   // Opción A — navegar al tab de declaración si el usuario no está ya allí.

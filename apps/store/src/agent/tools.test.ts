@@ -3,7 +3,8 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { CFDI } from '../services/fiscalAgentApi';
 import ingreso001 from '../../public/demo-xmls/2026/01/ingreso-001.xml?raw';
-import { modoDespacho } from '../test/modoDespacho';
+import { resolverPerfilFiscal } from '../context/perfilFiscal';
+import type { ClienteResumen } from '../services/despachoApi';
 
 // firebase.ts corre initializeApp() en el import y tools.ts lo arrastra via
 // declaracionesHistory. Sin este mock los tests explotan al importar.
@@ -12,8 +13,14 @@ vi.mock('../services/firebase', () => ({
   db: {},
   default: {},
 }));
-vi.mock('../services/declaracionesHistory', () => ({
-  guardarDeclaracion: vi.fn(),
+const { guardarDeclaracion, calcularPreDeclaracion } = vi.hoisted(() => ({
+  guardarDeclaracion: vi.fn(async (..._args: unknown[]) => 'id'),
+  calcularPreDeclaracion: vi.fn(),
+}));
+vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion }));
+vi.mock('../services/fiscalAgentApi', async (original) => ({
+  ...(await original<typeof import('../services/fiscalAgentApi')>()),
+  calcularPreDeclaracion,
 }));
 
 const setFacturas = vi.fn();
@@ -37,29 +44,29 @@ vi.mock('./AgentContext', () => ({
   }),
 }));
 
-/**
- * O-cierre: este archivo mide la semántica del MODO DESPACHO —el prompt que
- * habla de clientes, la ruta de la cartera, la pre-declaración que no aplica—.
- * Desde el pivote el modo por default es empresa única, así que sin declararlo
- * estos casos medían otra app. Es el hueco que el revisor de cierre encontró:
- * sólo 22 de 57 archivos de prueba declaraban modo.
- */
-modoDespacho();
-
 
 const { TOOL_EXECUTORS } = await import('./tools');
 
-function hacerDeps(profile: Partial<UserProfile> = {}) {
+const CLIENTE: ClienteResumen = {
+  id: 'taller', nombre: 'Taller Nogal', rfc: 'TNO010101AB1', regimen: '612',
+} as ClienteResumen;
+
+/** K: toda cuenta es un despacho; lo que cambia es el cliente activo. */
+function hacerDeps(cliente: Partial<ClienteResumen> | null = {}, uid: string | null = null) {
   const navigate = vi.fn() as unknown as NavigateFunction;
+  const profile = { contributorType: 'contador', rfc: '', regimen: '', nombre: 'Ana' } as unknown as UserProfile;
   return {
     navigate,
-    profile: { rfc: 'AAA010101AAA', regimen: '612', ...profile } as UserProfile,
-    uid: null,
+    profile,
+    perfilFiscal: resolverPerfilFiscal(profile, cliente ? { ...CLIENTE, ...cliente } : null),
+    uid,
   };
 }
 
 beforeEach(() => {
   facturasEnEstado = [];
+  calcularPreDeclaracion.mockReset();
+  guardarDeclaracion.mockClear();
   setFacturas.mockClear();
   setPeriodo.mockClear();
 });
@@ -77,7 +84,7 @@ describe('tool navegar', () => {
   // E-01: la lista de clientes del despacho es ruta nueva; si no está en la
   // whitelist, el agente no puede llevar al contador a su propia pantalla.
   it('acepta la pantalla de clientes del despacho', async () => {
-    const deps = hacerDeps({ contributorType: 'contador' });
+    const deps = hacerDeps();
     const res = await TOOL_EXECUTORS.navegar({ ruta: '/app/clientes' }, deps);
 
     expect(res.ok).toBe(true);
@@ -91,7 +98,7 @@ describe('tool navegar', () => {
    * imposible. El enum es cerrado: lo que no está aquí, el ejecutor lo rechaza.
    */
   it.each(['/app/calendario', '/app/nomina'])('acepta la ruta %s del despacho', async (ruta) => {
-    const deps = hacerDeps({ contributorType: 'contador' });
+    const deps = hacerDeps();
     const res = await TOOL_EXECUTORS.navegar({ ruta }, deps);
 
     expect(res.ok).toBe(true);
@@ -113,52 +120,47 @@ describe('tool navegar', () => {
 
 describe('tool calcular_predeclaracion', () => {
   /**
-   * E-01. El chat de voz flota sobre TODAS las pantallas, incluidas las del
-   * despacho, y esta tool no pasa por el filtro de tabs: sin la guarda, pedirle
-   * "calcula la predeclaración" a una cuenta de contador la calcularía sobre el
-   * RFC del despacho como si fuera el del cliente del que se está hablando.
+   * K: el chat de voz calcula sobre el CLIENTE ACTIVO del despacho. Antes se
+   * negaba en toda cuenta de despacho, y desde K todas las cuentas lo son.
    */
-  it('se niega en una cuenta de despacho', async () => {
-    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
-      { año: 2026, mes: 1 },
-      hacerDeps({ contributorType: 'contador', rfc: 'AAA010101AAA', regimen: '612' }),
-    );
+  it('sin cliente activo se detiene sin llamar a la red', async () => {
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion({ año: 2026, mes: 1 }, hacerDeps(null));
 
     expect(res.ok).toBe(false);
-    expect(res.summary).toMatch(/despacho/i);
+    expect(res.error).toMatch(/elige un cliente/i);
+    expect(calcularPreDeclaracion).not.toHaveBeenCalled();
   });
 
-  // La guarda va ANTES de la de RFC: a un contador el mensaje correcto es "no
-  // calculo la predeclaración de un despacho", no "completa tu RFC".
-  it('el mensaje del despacho gana al de perfil incompleto', async () => {
-    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
-      { año: 2026, mes: 1 },
-      hacerDeps({ contributorType: 'contador', rfc: '', regimen: '' }),
-    );
+  it('con un cliente sin RFC pide capturarlo, sin llamar a la red', async () => {
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion({ año: 2026, mes: 1 }, hacerDeps({ rfc: '' }));
 
     expect(res.ok).toBe(false);
-    expect(res.summary).toMatch(/despacho/i);
-    expect(res.summary).not.toMatch(/falta rfc/i);
-  });
-
-  it('se detiene si el perfil no tiene RFC, sin llamar a la red', async () => {
-    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
-      { año: 2026, mes: 1 },
-      hacerDeps({ rfc: '' }),
-    );
-
-    expect(res.ok).toBe(false);
-    expect(res.summary).toMatch(/falta rfc o régimen/i);
+    expect(res.error).toMatch(/captura el rfc de este cliente/i);
+    expect(calcularPreDeclaracion).not.toHaveBeenCalled();
   });
 
   it('se detiene si no hay facturas cargadas, sin llamar a la red', async () => {
-    const res = await TOOL_EXECUTORS.calcular_predeclaracion(
-      { año: 2026, mes: 1 },
-      hacerDeps(),
-    );
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion({ año: 2026, mes: 1 }, hacerDeps());
 
     expect(res.ok).toBe(false);
     expect(res.summary).toMatch(/no hay facturas/i);
+    expect(calcularPreDeclaracion).not.toHaveBeenCalled();
+  });
+
+  it('calcula con el RFC y el régimen del CLIENTE y guarda con su cliente_id', async () => {
+    facturasEnEstado = [{ uuid: 'u1', tipo: 'I' } as CFDI];
+    calcularPreDeclaracion.mockResolvedValueOnce({
+      exito: true, periodo: 'Enero 2026', regimen: '612', advertencias: [], recomendaciones: [],
+      desglose: { total_ingresos_facturados: 1, total_ingresos_gravados: 1, base_isr: 1, tasa_isr: 0,
+        isr_causado: 0, isr_a_pagar: 10, iva_a_pagar: 5, total_a_pagar: 15 },
+    });
+
+    const res = await TOOL_EXECUTORS.calcular_predeclaracion({ año: 2026, mes: 1 }, hacerDeps({}, 'uid-1'));
+
+    expect(res.ok).toBe(true);
+    const req = calcularPreDeclaracion.mock.calls[0][0];
+    expect(req.contribuyente).toMatchObject({ rfc: 'TNO010101AB1', regimen: '612', nombre: 'Taller Nogal' });
+    expect(guardarDeclaracion).toHaveBeenCalledWith('uid-1', expect.anything(), 'predeclaracion', 'taller');
   });
 });
 

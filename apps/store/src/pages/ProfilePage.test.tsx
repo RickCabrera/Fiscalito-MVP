@@ -14,20 +14,7 @@ import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import { CarteraContext } from '../context/carteraStore';
 import { carteraDePrueba } from '../test/carteraDePrueba';
-import { modoDespacho } from '../test/modoDespacho';
 
-/**
- * MODO DESPACHO (O-01).
- *
- * Este archivo mide el producto de las épicas E, G y R: cartera de clientes,
- * selector de cliente activo y rutas `/app/clientes`. Desde el pivote, el modo
- * por default de la app es **empresa única**, así que el modo en el que corre
- * se declara aquí en vez de heredarse del ambiente.
- *
- * No cambia ninguna aserción: cambia el mundo en el que se evalúan, que es
- * exactamente lo que el flag hace en producción.
- */
-modoDespacho();
 
 const perfilContador: UserProfile = {
   contributorType: 'contador',
@@ -106,19 +93,11 @@ describe('ProfilePage — perfil de despacho', () => {
 
     await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
     expect(setProfile.mock.calls[0][0]).toMatchObject({
-      contributorType: 'contador',
       nombreDespacho: 'Despacho Demo y Asociados',
     });
   });
 
-  it('un contribuyente no ve el campo del despacho', () => {
-    perfilMock.actual = { ...perfilContador, contributorType: 'independiente', regimen: '626' };
-    pintar();
-
-    expect(screen.queryByPlaceholderText('Despacho Contable Ejemplo')).toBeNull();
-  });
-
-  /** E-05: no mostrar el selector de los otros cinco tipos. */
+  /** K: no hay tipos de cuenta a los que cambiarse; el sistema es solo para despachos. */
   it('no ofrece cambiarse a otro tipo de cuenta', () => {
     pintar();
 
@@ -126,8 +105,7 @@ describe('ProfilePage — perfil de despacho', () => {
       'Plataformas digitales', 'Negocio / PYME']) {
       expect(screen.queryByText(otro)).toBeNull();
     }
-    // Sí ve cuál es su tipo; lo que no hay es dónde cambiarlo.
-    expect(screen.getByText('Despacho / Contador')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Perfil del despacho' })).toBeTruthy();
   });
 
   it('no le pide RFC, régimen, actividad ni código postal', () => {
@@ -139,52 +117,13 @@ describe('ProfilePage — perfil de despacho', () => {
     expect(screen.queryByText(/Codigo postal/)).toBeNull();
   });
 
-  it('guardar NO pierde el RFC ni el régimen que ya estaban', async () => {
-    /**
-     * Los campos dejaron de pintarse, pero siguen en el perfil. Si `handleSave`
-     * dejara de mandarlos, el merge de `setProfile` conservaría el valor viejo
-     * y nada fallaría **visiblemente** — que es exactamente la pérdida
-     * silenciosa con mensaje de éxito que cazó la mutación de E-01. Se asserta
-     * que viajan.
-     */
+  it('guardar sólo manda los datos del despacho: no toca el tipo de cuenta ni datos fiscales', async () => {
+    // `setProfile` hace merge: lo que no viaja se conserva tal cual.
     pintar();
     fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
 
     await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
-    expect(setProfile.mock.calls[0][0]).toMatchObject({
-      rfc: 'XAXX010101000',
-      regimen: '612',
-    });
-  });
-
-  /**
-   * EL BUG QUE ESTE TEST FIJA. Si la condición para ocultar el selector colgara
-   * del estado LOCAL `tipo` en vez del perfil guardado, un contribuyente que
-   * clickeara "Despacho / Contador" por curiosidad vería desaparecer el
-   * selector completo en ese mismo render —sin haber guardado nada— y se
-   * quedaría encerrado sin forma de volver salvo recargando.
-   */
-  it('un contribuyente que clickea "Despacho / Contador" NO pierde el selector', () => {
-    perfilMock.actual = { ...perfilContador, contributorType: 'independiente', regimen: '626' };
-    pintar();
-
-    fireEvent.click(screen.getByText('Despacho / Contador'));
-
-    expect(screen.getByText('Asalariado')).toBeTruthy();
-    expect(screen.getByText('Negocio / PYME')).toBeTruthy();
-  });
-
-  it('el contribuyente sigue guardando sus campos de siempre', async () => {
-    perfilMock.actual = { ...perfilContador, contributorType: 'pyme', nombreNegocio: 'Negocio Demo' };
-    pintar();
-
-    fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
-
-    await vi.waitFor(() => expect(setProfile).toHaveBeenCalledTimes(1));
-    expect(setProfile.mock.calls[0][0]).toMatchObject({
-      contributorType: 'pyme',
-      nombreNegocio: 'Negocio Demo',
-      rfc: 'XAXX010101000',
-    });
+    const guardado = setProfile.mock.calls[0][0];
+    expect(Object.keys(guardado).sort()).toEqual(['nombre', 'nombreDespacho', 'telefono']);
   });
 });

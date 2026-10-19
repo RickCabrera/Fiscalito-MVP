@@ -6,6 +6,7 @@ import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import type { ContributorType } from '../services/contributorProfiles';
 import type { IdPlan } from '../services/planes';
+import { cuentaLista } from '../services/navigation';
 
 export interface UserProfile {
   contributorType: ContributorType | null;
@@ -190,7 +191,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   }, [user, profile]);
 
-  const isOnboardingComplete = useCallback(() => profile.onboardingComplete, [profile]);
+  // K: una cuenta vieja de contribuyente cuenta como onboarding sin terminar.
+  const isOnboardingComplete = useCallback(() => cuentaLista(profile), [profile]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, error, setProfile, isOnboardingComplete }}>
