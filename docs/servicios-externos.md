@@ -146,6 +146,12 @@ adaptador (EXT-11).
 **A quién contratar.** OpenAI o Anthropic; la llave sólo en el servidor, con tope de gasto en la
 consola del proveedor (EXT-09).
 
+**Límites propios (P0-02).** Además del tope del proveedor, la API corta antes:
+`FISCALITO_RATE_LIMIT_LLM_POR_MINUTO` (default 20, por usuario) y
+`FISCALITO_TOPE_LLM_DIARIO_LLAMADAS` (default 500, por despacho y día de la CDMX, contado en la
+tabla `consumo_llm`). Los dos responden 429 con `Retry-After`. Ver `docs/api-contract.md`,
+"Autenticación, límites y tope de LLM".
+
 ---
 
 ## Almacenamiento de archivos (`almacenamiento`) — P0-03
@@ -381,3 +387,17 @@ e.firma vigente cargada.
 
 *Pendiente (P4).* Timbra con el CSD del cliente (`obtener_firmante(db, cliente, "csd")`).
 Variable prevista: `FISCALITO_PAC`. Se elige proveedor en EXT-04 (DP-4).
+
+## Límite de peticiones (`limitador`) — P0-02
+
+**Qué es.** Ventana deslizante de 60 s por usuario (y por token de checador) delante de todo
+`/api/v1`. No es un servicio externo HOY: vive en la memoria del proceso. Se documenta aquí
+porque el día que haya más de una réplica pasa a serlo (Redis o la base).
+
+**Variables.** `FISCALITO_RATE_LIMIT_POR_MINUTO` (default 120). `FISCALITO_LIMITADOR` =
+`memoria` (única implementación; elegir otra cosa revienta al arrancar el primer request).
+
+**Cómo probar.** `apps/api/tests/plan_p/test_acceso.py` (`TestLimites`, `TestVentanaDeslizante`).
+
+**A quién contratar.** Nadie mientras haya un solo proceso. Con varias réplicas: Redis administrado
+(Railway, Upstash) e implementar `Limitador` en `app/acceso/limitador.py`.

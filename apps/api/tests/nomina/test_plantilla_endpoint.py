@@ -17,9 +17,6 @@ cuotas del IMSS y el ISR, en pantalla y en el PDF.
 
 from datetime import date
 
-import pytest
-from fastapi.testclient import TestClient
-
 from app.constants import CLIENTE_DEMO, ZonaSalarioMinimo
 from app.demo_nomina import (
     CLAVE_PERIODICIDAD_DEMO,
@@ -27,14 +24,11 @@ from app.demo_nomina import (
     PRIMA_RIESGO_DEMO,
     quincena,
 )
-from app.main import app
 
 PLANTILLA = "/api/v1/nomina/demo/plantilla"
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 class TestPlantilla:

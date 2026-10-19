@@ -34,12 +34,11 @@
  * persona real y los datos de nadie.
  */
 
+import { V1, encabezadoAuth } from './api';
 import { cuerpoDeError, detalleDelError } from './errorApi';
 import type { ReciboNomina } from './nominaDemoApi';
 import type { TipoContrato } from './carteraApi';
 
-const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
-const V1 = `${BASE_URL}/api/v1`;
 
 /**
  * El mapa a `c_TipoContrato` del complemento de nómina 1.2.
@@ -159,7 +158,7 @@ export async function generarCFDINomina(
 ): Promise<CFDINominaResponse> {
   const res = await fetch(`${V1}/nomina/cfdi`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await encabezadoAuth()) },
     body: JSON.stringify(req),
   });
   if (!res.ok) {

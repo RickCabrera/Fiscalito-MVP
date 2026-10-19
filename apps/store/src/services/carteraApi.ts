@@ -7,6 +7,7 @@
  * verdad sin ningún test que la cuide.
  */
 
+import { encabezadoAuth } from './api';
 import { cuerpoDeError, detalleDelError } from './errorApi';
 
 const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
@@ -248,7 +249,9 @@ export function contarSinVincular(empleados: EmpleadoCartera[]): number {
 // ── Llamadas ──
 
 export async function obtenerEmpleadosSemilla(clienteId: string): Promise<EmpleadosSemilla> {
-  const res = await fetch(`${V1}/despacho/clientes/${encodeURIComponent(clienteId)}/empleados`);
+  const res = await fetch(`${V1}/despacho/clientes/${encodeURIComponent(clienteId)}/empleados`, {
+    headers: await encabezadoAuth(),
+  });
   return leer<EmpleadosSemilla>(res, `No se pudieron cargar los empleados de ${clienteId}`);
 }
 
@@ -296,7 +299,7 @@ export interface SBCResponse {
 export async function integrarSBC(req: SBCRequest): Promise<SBCResponse> {
   const res = await fetch(`${V1}/nomina/sbc`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await encabezadoAuth()) },
     body: JSON.stringify(req),
   });
   return leer<SBCResponse>(res, 'No se pudo integrar el salario');
@@ -322,6 +325,8 @@ export interface PrimasDeRiesgo {
  * del Art. 73 es por año, leída en el motor con función de vigencia.
  */
 export async function obtenerPrimasDeRiesgo(fecha: string): Promise<PrimasDeRiesgo> {
-  const res = await fetch(`${V1}/despacho/primas-de-riesgo?fecha=${encodeURIComponent(fecha)}`);
+  const res = await fetch(`${V1}/despacho/primas-de-riesgo?fecha=${encodeURIComponent(fecha)}`, {
+    headers: await encabezadoAuth(),
+  });
   return leer<PrimasDeRiesgo>(res, 'No se pudieron cargar las primas de riesgo');
 }

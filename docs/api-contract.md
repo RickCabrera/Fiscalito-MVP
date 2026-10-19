@@ -1,27 +1,68 @@
 # Contrato de la API — Fiscal Agent
 
-> **PARCIAL.** Cubre los endpoints de la **épica D** —los de **asistencia** que agregó D-04 y
-> el de **nómina** que agregó D-06— y los de **despacho** que agregó E-02.
-> **S-03 lo completa** con los 11 endpoints existentes exportados del OpenAPI de FastAPI y
-> reemplaza por una referencia a este archivo las secciones duplicadas de
-> `apps/api/CLAUDE.md` y `apps/store/CLAUDE.md`. Ese trabajo **no** está hecho: S-03 sigue
-> abierta con su criterio intacto.
+> **Contrato máquina-legible (P0-08):** [`docs/openapi.json`](openapi.json) — el OpenAPI
+> completo, exportado de `app.main:app` — y los tipos TypeScript que el front importa,
+> `apps/store/src/services/tiposApi.generados.ts`. Los dos se regeneran con
+> `cd apps/api && PYTHONPATH=. python scripts/exportar_openapi.py`, y
+> `apps/api/tests/test_contrato_openapi.py` **falla** si el código y el contrato divergen.
+> Este archivo es la explicación para humanos: qué garantiza cada endpoint y por qué.
 
 Base: `/api/v1`. Errores de dominio se serializan como `{"exito": false, "error": ...}` con
-422 (validación) o 500 (cálculo), vía el handler global de `main.py`.
+401 (sin sesión), 403 (rol o recurso ajeno con token de dispositivo), 404 (no existe **en tu
+despacho**), 422 (validación), 429 (límite) o 500 (cálculo), vía el handler global de
+`main.py`.
+
+## Autenticación, límites y tope de LLM (P0-02)
+
+**Todo `/api/v1` exige sesión** (salvo lo declarado abajo). `/health` y
+`/health/integraciones` quedan abiertos.
+
+| Qué | Cómo |
+|---|---|
+| Sesión | `Authorization: Bearer <ID token de Firebase>`. Sin encabezado o mal formado: **401**. Token inválido o expirado: **401** sin detalle del SDK. Sin credenciales de Firebase en el servidor: **503**. |
+| Despacho | Sale del token, nunca del request. El primer request de un uid le crea su despacho (`id = uid`). Un cliente de otro despacho es **404**, nunca 403: un 403 confirmaría que existe. |
+| Rutas públicas | `app/acceso/dependencias.RUTAS_PUBLICAS`. Hoy sólo `POST /asistencia/eventos` (token de dispositivo). Un webhook nuevo se declara ahí, se monta sin `PROTEGIDO` y verifica la firma del proveedor dentro de la ruta. `tests/plan_p/test_acceso.py` recorre **todas** las rutas y exige 401 sin token al resto. |
+| Límite por usuario | `FISCALITO_RATE_LIMIT_POR_MINUTO` (default **120**), ventana deslizante de 60 s por uid (por token en el caso del checador). Al excederlo: **429** con `Retry-After: <segundos>`. Una petición rechazada no gasta cupo. En memoria del proceso: con varias réplicas el límite efectivo se multiplica; la interfaz `Limitador` está lista para Redis/DB (`FISCALITO_LIMITADOR`). |
+| Límite de LLM | `FISCALITO_RATE_LIMIT_LLM_POR_MINUTO` (default **20**) por uid. Cuenta cada llamada al proveedor: cada `incluir_explicacion: true` (pre-declaración, anual, deducciones, comparador, DIOT, retenciones, multi-periodo, estado de cuenta, nómina) y cada vuelta del loop de `/agente/predeclaracion`. El cálculo sin explicación no cuenta. **429** + `Retry-After`. |
+| Tope diario de LLM | `FISCALITO_TOPE_LLM_DIARIO_LLAMADAS` (default **500**) llamadas por **despacho** por día de la Ciudad de México, contadas en la tabla `consumo_llm`. Al llegar: **429** con `Retry-After` hasta la medianoche. Se mide en llamadas, no en pesos: los servicios LLM actuales no devuelven tokens; cada llamada tiene `max_tokens` fijo. |
+
+CORS expone `Retry-After` y acepta el encabezado `X-Token-Dispositivo`.
+
+### Token de dispositivo (checador)
+
+El Hikvision no puede mandar un ID token. Cada checador lleva un secreto propio
+(`fdt_…`, 256 bits) que el backend guarda **sólo como SHA-256**. Viaja en
+`X-Token-Dispositivo: <token>` o en `?token=<token>` (el aparato sólo deja configurar una URL,
+así que la forma real es `…/api/v1/asistencia/eventos?token=fdt_…`). El token fija **despacho y
+cliente**: un `?cliente=` distinto es **403**; un token inventado o revocado es **401**.
+
+#### `POST /api/v1/asistencia/tokens`
+Sesión + rol `dueno`/`contador`. Cuerpo `{cliente, etiqueta?, dispositivo?}`. Responde **201**
+`{exito, token, registro}`: es la **única vez** que el token se ve en claro. Un cliente de otro
+despacho es 404; los tres clientes del catálogo de demostración (`demo`, `cafeteria`,
+`taller`) se aceptan sin renglón en `clientes`.
+
+#### `GET /api/v1/asistencia/tokens?cliente=`
+Tokens activos del despacho: `{id, cliente, dispositivo_id, etiqueta, prefijo, creado_en,
+ultimo_uso}`. Nunca el secreto ni el hash.
+
+#### `DELETE /api/v1/asistencia/tokens/{token_id}`
+Revoca en el acto. Otro despacho: 404.
 
 ---
 
 ## Asistencia (épica D — demo del checador)
 
-> ⚠️ **DEMO — sin autenticación, almacenamiento en memoria del proceso, no desplegar.**
+> ⚠️ **DEMO — almacenamiento en memoria del proceso, no desplegar.**
 >
-> - **Sin auth**: el push del Hikvision no sabe mandar un ID token de Firebase. La
->   autenticación del dispositivo está mandada a **F3**; la del resto de `/api/v1`, a S-00b.
-> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers. Los
->   reemplaza Firestore en F1-09 (`clientes/{id}/asistencia/{periodoId}`).
-> - Tope duro de 5,000 eventos por cliente (ring buffer): un `POST` abierto y sin auth sería
->   si no un agotamiento de memoria de una línea de `curl`. Se pierden los más viejos; el POST
+> - **Auth (P0-02)**: `POST /eventos` acepta el **token del dispositivo** o la sesión de
+>   Firebase (el simulador y las pantallas); `GET /eventos` y `cerrar-periodo` exigen sesión.
+>   Ver "Token de dispositivo" arriba.
+> - **Aislado por despacho**: el almacén se indexa por `despacho::cliente`. Los clientes de la
+>   demo son un catálogo compartido; sin esto, el `taller` de un despacho vería las checadas del
+>   `taller` de otro.
+> - **En memoria**: los eventos se pierden al reiniciar y no se replican entre workers.
+> - Tope duro de 5,000 eventos por cliente (ring buffer). Se pierden los más viejos; el POST
 >   nunca falla en medio de la demo.
 
 ### `POST /api/v1/asistencia/eventos`
@@ -34,7 +75,8 @@ Starlette lo entrega como archivo en vez de como texto.
 
 | Query param | Default | Notas |
 |---|---|---|
-| `cliente` | `demo` | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Por eso va como query con default y `POST /asistencia/eventos` pelado funciona. |
+| `cliente` | `demo` (o el del token) | El cuerpo del dispositivo **no puede llevar el cliente**: la URL se configura en el aparato y el JSON lo arma él. Con token de dispositivo, el cliente es el del token y otro valor es 403. |
+| `token` | — | Token del dispositivo (alternativa a `X-Token-Dispositivo`). |
 | `fuente` | `hikvision` | `hikvision` · `simulado` · `csv` |
 
 Cuerpo (campos que se leen de `AcsEvent.InfoList[]`):
