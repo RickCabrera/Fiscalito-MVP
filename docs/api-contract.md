@@ -2091,3 +2091,47 @@ Versión nueva por cliente; `POST /api/v1/diot` y `POST …/calculos/diot` no ca
 - `POST /api/v1/agenda/tareas/desde-obligaciones` `{desde, hasta, cliente?, responsable_uid?}`
   → una tarea por obligación pendiente o vencida del rango; idempotente (`creadas: 0` al
   repetir).
+
+## Movimientos afiliatorios del IMSS (P4-09)
+
+Prefijo `/api/v1/nomina/clientes/{clave}`. Tenencia: `cliente_o_404` (otro despacho = 404).
+Guardar una ficha en `PUT /cartera/clientes/{c}/empleados/{no}` deja el movimiento pendiente
+(alta → 08, reingreso → 08, baja con `fecha_baja`/`causa_baja` → 02, cambio de SDI → 07) y su
+SBC en el historial. Ficha nueva: `causa_baja`, `tipo_salario` (0/1/2), `tipo_trabajador`,
+`jornada`, `umf`, `rfc`, `curp`, `codigo_postal`, `departamento`, `sindicalizado`.
+
+- `GET /movimientos-imss?estado&tipo` → `{movimientos[], pendientes}`.
+- `POST /movimientos-imss/archivo` `{destino: idse_08|idse_07|idse_02|sua_trabajadores|sua_movimientos, ids?, al?, desde?, hasta?}`
+  → `{lote{id,tipo,nombre_archivo,registros,sha256}, no_exportables[], transliterados[]}`. IDSE:
+  168 posiciones + cifras de control, CRLF, ASCII; los incluidos pasan a `generado`.
+- `GET /movimientos-imss/lotes` · `GET /movimientos-imss/lotes/{id}/archivo` (texto ASCII).
+- `POST /movimientos-imss/marcar` `{ids, estado: enviado|acuse|cancelado, acuse}`.
+- `GET /empleados/{no}/historial-sbc` · `POST /empleados/{no}/sbc` `{fecha, sbc, tipo_salario?, motivo: aumento|prestaciones|correccion, nota, actualizar_ficha}` → historial + 07.
+- `POST /movimientos-imss/bimestre-variable` `{ejercicio, bimestre, aplicar}` → nuevo SBC de
+  variables/mixtos (Art. 30 fr. II LSS) y, con `aplicar`, sus 07.
+
+## Cuotas IMSS mensuales/bimestrales y cédulas EMA/EBA (P4-10)
+
+- `GET /cuotas-imss?ejercicio&mes|bimestre&tope_ausentismo=7&formato=json|csv` → por trabajador:
+  `dias`, `dias_ausentismo`, `dias_incapacidad`, `dias_cotizados`, `sbc`, `tramos[]`,
+  `ramos{clave:{patron,obrero,total}}`, `total`; más `por_ramo` y `total`. `mes` = EMA (RT,
+  EyM, IyV, GPS); `bimestre` = EBA (Retiro, CEAV, Infonavit). Usa historial de SBC y las
+  ausencias de nóminas ordinarias **cerradas**.
+- `GET /cedulas/plantilla?tipo=EMA|EBA` (CSV).
+- `POST /cedulas` multipart `archivo`, `tipo`, `ejercicio`, `periodo` (mes o bimestre),
+  `configuracion` (JSON: `formato`, `delimitador`, `fila_encabezado`, `columnas{campo: nombre|n}`,
+  `posiciones{campo:[desde,hasta]}`, `decimales_implicitos`, `tolerancia`) →
+  `{cedula{id, diferencias, conciliacion{trabajadores[{nss, cuadra, diferencias[{campo, calculado, cedula, diferencia}]}], total_calculo, total_cedula, diferencia_total}}}`.
+- `GET /cedulas` · `GET /cedulas/{id}` · `GET /cedulas/{id}/reporte?formato=csv|xlsx`.
+
+## Timbrado del CFDI de nómina (P4-11)
+
+Prefijo `/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}`. El periodo debe estar `cerrada`.
+
+- `POST /timbrar` → encola `nomina.timbrar_periodo` (segundo plano, idempotente, reintentos) y
+  devuelve el estado. Sella con el CSD del cliente, valida contra XSD, timbra con `FISCALITO_PAC`
+  y guarda el XML en la bóveda y el UUID en el recibo. Periodo completo → `timbrada`.
+- `GET /cfdi` → `{estado_periodo, por_estado, trabajo, recibos[{id, empleado_no, estado: pendiente|timbrado|error|reintento|cancelado|cancelacion_en_proceso, uuid, error, es_prueba}]}`.
+- `GET /cfdi/{id}/xml` · `GET /cfdi/{id}/pdf` (recibo con QR) · `GET /cfdi.zip`.
+- `POST /cfdi/{id}/cancelar` `{motivo: 01..04, folio_sustitucion?}` → el periodo vuelve a
+  `cerrada`; `POST /timbrar` re-timbra sólo lo que no tiene CFDI vigente.

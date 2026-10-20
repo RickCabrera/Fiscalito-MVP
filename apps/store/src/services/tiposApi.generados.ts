@@ -64,6 +64,20 @@ export interface AnualRequest {
   pagos_provisionales?: Record<string, number | string>;
 }
 
+export interface BimestreVariable {
+  ejercicio: number;
+  bimestre: number;
+  aplicar?: boolean;
+}
+
+export interface Body_importar_api_v1_nomina_clientes__clave__cedulas_post {
+  archivo: string;
+  tipo: "EMA" | "EBA";
+  ejercicio: number;
+  periodo: number;
+  configuracion?: string;
+}
+
 export interface Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post {
   archivos: string[];
 }
@@ -198,8 +212,22 @@ export interface CalendarioResponse {
   obligaciones: ObligacionFiscalSchema[];
 }
 
+export interface CambioSBC {
+  fecha: string;
+  sbc: number | string;
+  tipo_salario?: "0" | "1" | "2" | null;
+  motivo?: "aumento" | "prestaciones" | "correccion";
+  nota?: string;
+  actualizar_ficha?: boolean;
+}
+
 export interface Cancelacion {
   motivo?: string;
+}
+
+export interface CancelarCfdi {
+  motivo: string;
+  folio_sustitucion?: string | null;
 }
 
 export interface CancelarRetencion {
@@ -682,6 +710,16 @@ export interface EmpleadoCarteraSchemaInput {
   fecha_alta?: string | null;
   fecha_baja?: string | null;
   tipo_regimen?: string;
+  causa_baja?: string;
+  tipo_salario?: string;
+  tipo_trabajador?: string;
+  jornada?: string;
+  umf?: string;
+  rfc?: string;
+  curp?: string;
+  codigo_postal?: string;
+  departamento?: string;
+  sindicalizado?: boolean;
   tipo_contrato?: TipoContrato;
   prestaciones?: PrestacionesSchemaInput;
   nss?: string;
@@ -703,6 +741,16 @@ export interface EmpleadoCarteraSchemaOutput {
   fecha_alta?: string | null;
   fecha_baja?: string | null;
   tipo_regimen?: string;
+  causa_baja?: string;
+  tipo_salario?: string;
+  tipo_trabajador?: string;
+  jornada?: string;
+  umf?: string;
+  rfc?: string;
+  curp?: string;
+  codigo_postal?: string;
+  departamento?: string;
+  sindicalizado?: boolean;
   tipo_contrato?: TipoContrato;
   prestaciones?: PrestacionesSchemaOutput;
   nss?: string;
@@ -856,6 +904,14 @@ export interface EventosResponse {
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
 
+export interface GenerarArchivo {
+  destino: "idse_08" | "idse_07" | "idse_02" | "sua_trabajadores" | "sua_movimientos";
+  ids?: number[] | null;
+  al?: string | null;
+  desde?: string | null;
+  hasta?: string | null;
+}
+
 export interface GenerarTareas {
   desde: string;
   hasta: string;
@@ -975,6 +1031,12 @@ export interface IvaPeriodoRequest {
 export interface ListaTrabajos {
   exito?: boolean;
   trabajos: TrabajoSalida[];
+}
+
+export interface MarcarMovimientos {
+  ids: number[];
+  estado: "enviado" | "acuse" | "cancelado";
+  acuse?: string;
 }
 
 export interface MarcarObligacion {
@@ -1844,6 +1906,25 @@ export type RutaApi =
   | "/api/v1/multi-periodo"
   | "/api/v1/nomina/calcular-periodo"
   | "/api/v1/nomina/cfdi"
+  | "/api/v1/nomina/clientes/{clave}/cedulas"
+  | "/api/v1/nomina/clientes/{clave}/cedulas/plantilla"
+  | "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}"
+  | "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}/reporte"
+  | "/api/v1/nomina/clientes/{clave}/cuotas-imss"
+  | "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/historial-sbc"
+  | "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/sbc"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss/archivo"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss/bimestre-variable"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes/{lote_id}/archivo"
+  | "/api/v1/nomina/clientes/{clave}/movimientos-imss/marcar"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi.zip"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/cancelar"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/pdf"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/xml"
+  | "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/timbrar"
   | "/api/v1/nomina/clientes/{cliente_id}/aguinaldo"
   | "/api/v1/nomina/clientes/{cliente_id}/ajuste-anual"
   | "/api/v1/nomina/clientes/{cliente_id}/comparar"
@@ -2452,6 +2533,86 @@ export interface OperacionesApi {
   "POST /api/v1/nomina/cfdi": {
     cuerpo: CFDINominaRequest;
     respuesta: CFDINominaResponse;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/cedulas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/cedulas": {
+    cuerpo: Body_importar_api_v1_nomina_clientes__clave__cedulas_post;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/cedulas/plantilla": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}/reporte": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/cuotas-imss": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/historial-sbc": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/sbc": {
+    cuerpo: CambioSBC;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/movimientos-imss": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/movimientos-imss/archivo": {
+    cuerpo: GenerarArchivo;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/movimientos-imss/bimestre-variable": {
+    cuerpo: BimestreVariable;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/movimientos-imss/lotes": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/movimientos-imss/lotes/{lote_id}/archivo": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/movimientos-imss/marcar": {
+    cuerpo: MarcarMovimientos;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi.zip": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/cancelar": {
+    cuerpo: CancelarCfdi;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/pdf": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/xml": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "POST /api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/timbrar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
   };
   "POST /api/v1/nomina/clientes/{cliente_id}/aguinaldo": {
     cuerpo: app__schemas__nomina_p4__AguinaldoRequest;

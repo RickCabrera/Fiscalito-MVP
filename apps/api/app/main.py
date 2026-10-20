@@ -49,8 +49,11 @@ from app.routes import (
     nomina,
     nomina_anual,
     nomina_calculos,
+    nomina_cuotas,
     nomina_historial,
+    nomina_imss,
     nomina_periodo,
+    nomina_timbrado,
     retenciones,
     retenciones_cfdi,
     sat_descarga,
@@ -145,6 +148,10 @@ ROUTERS_PROTEGIDOS = (
     nomina_historial.router,
     nomina_calculos.router,
     nomina_anual.router,
+    # P4-09 movimientos IMSS, P4-10 cuotas y cédulas, P4-11 timbrado de nómina.
+    nomina_imss.router,
+    nomina_cuotas.router,
+    nomina_timbrado.router,
     despacho.router,
     # R-07: la cartera ya exigía su propio token; aquí además entra al límite por usuario.
     cartera.router,

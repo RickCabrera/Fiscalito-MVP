@@ -736,6 +736,121 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/plantilla",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}/reporte",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cuotas-imss",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/historial-sbc",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/sbc",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/archivo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/bimestre-variable",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes/{lote_id}/archivo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/marcar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi.zip",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/timbrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/clientes/{cliente_id}/aguinaldo",
       "metodos": [
         "POST"

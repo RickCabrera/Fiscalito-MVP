@@ -42,6 +42,7 @@ import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import IdentidadEmpleado from './IdentidadEmpleado';
 import CamposNominaEmpleado from './CamposNominaEmpleado';
+import CamposImssCfdiEmpleado from './CamposImssCfdiEmpleado';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
@@ -343,6 +344,8 @@ export default function ModalEmpleado({
         </div>
         {/* P4-03/P4-04: régimen (sueldos o asimilado) y fecha de baja. */}
         <CamposNominaEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
+        {/* P4-09/P4-11: causa de baja, tipo de salario y datos del receptor del CFDI. */}
+        <CamposImssCfdiEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
 
         {/* R-03. Opcional a propósito, y el placeholder lo dice: es la salida
             para quien no tiene el número, y es lo que hace seguro rechazar por
