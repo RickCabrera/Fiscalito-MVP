@@ -47,6 +47,11 @@ import DescargaSatPage from './pages/DescargaSatPage';
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
 // P3-09: alertas fiscales de la cartera (se entra por la campana del layout).
 import AlertasPage from './pages/AlertasPage';
+// P5-01/02/03: equipo del despacho, dashboard de entrada y cuentas por cobrar.
+import InicioPage from './pages/InicioPage';
+import EquipoPage from './pages/EquipoPage';
+import CobranzaPage from './pages/CobranzaPage';
+import AceptarInvitacionPage from './pages/AceptarInvitacionPage';
 
 export default function AppRoutes() {
   return (
@@ -54,6 +59,8 @@ export default function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      {/* P5-01: el enlace del correo de invitación. Pública: pide sesión por dentro. */}
+      <Route path="/aceptar-invitacion" element={<AceptarInvitacionPage />} />
 
       {/* Onboarding — protected but no sidebar */}
       <Route path="/app/onboarding" element={
@@ -68,10 +75,12 @@ export default function AppRoutes() {
           <AppLayout />
         </ProtectedRoute>
       }>
-        {/* K: el sistema es solo para despachos. `/app` entra a la cartera; el
-            dashboard y el historial del contribuyente ya no existen, y la ruta
-            vieja del historial se redirige para no dejar enlaces muertos. */}
-        <Route index element={<Navigate to="/app/clientes" replace />} />
+        {/* P5-02: `/app` entra al dashboard DEL DESPACHO (no el del contribuyente,
+            que K retiró). La ruta vieja del historial se sigue redirigiendo. */}
+        <Route index element={<Navigate to="/app/inicio" replace />} />
+        <Route path="inicio" element={<InicioPage />} />
+        <Route path="equipo" element={<EquipoPage />} />
+        <Route path="cobranza" element={<CobranzaPage />} />
         <Route path="historial" element={<Navigate to="/app/clientes" replace />} />
         {/* DEMO E-02 */}
         <Route path="clientes" element={<ClientesPage />} />

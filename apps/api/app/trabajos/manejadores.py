@@ -56,6 +56,7 @@ def cargar_manejadores() -> None:
     """Importa los módulos que registran manejadores. Agrega aquí los de cada dominio."""
     # P1-01/P1-02: descarga masiva del SAT (manejadores y sus tareas recurrentes).
     import app.alertas.trabajos  # noqa: F401 — P3-09
+    import app.cobranza.trabajos  # noqa: F401 — P5-03
     import app.contabilidad.trabajos  # noqa: F401 — P2-03
     import app.sat_descarga.trabajos  # noqa: F401
     import app.sat_verificacion.trabajos  # noqa: F401 — P1-03/04/05

@@ -14022,10 +14022,1589 @@
           }
         }
       }
+    },
+    "/api/v1/equipo": {
+      "get": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Equipo",
+        "description": "Usuarios del despacho, sus clientes asignados, el plan y las invitaciones vigentes.",
+        "operationId": "equipo_api_v1_equipo_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Equipo Api V1 Equipo Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/invitaciones": {
+      "post": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Invitar",
+        "description": "Invita un correo con un rol y le manda el enlace (sólo el dueño).",
+        "operationId": "invitar_api_v1_equipo_invitaciones_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitacionNueva"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Invitar Api V1 Equipo Invitaciones Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/invitaciones/{invitacion_id}": {
+      "delete": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Revocar",
+        "operationId": "revocar_api_v1_equipo_invitaciones__invitacion_id__delete",
+        "parameters": [
+          {
+            "name": "invitacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Invitacion Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Revocar Api V1 Equipo Invitaciones  Invitacion Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/invitaciones/aceptar": {
+      "post": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Aceptar",
+        "description": "El usuario de la sesión se une al despacho de la invitación.",
+        "operationId": "aceptar_api_v1_equipo_invitaciones_aceptar_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AceptarInvitacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Aceptar Api V1 Equipo Invitaciones Aceptar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/usuarios/{uid}/rol": {
+      "put": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Cambiar Rol",
+        "operationId": "cambiar_rol_api_v1_equipo_usuarios__uid__rol_put",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioRol"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Rol Api V1 Equipo Usuarios  Uid  Rol Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/usuarios/{uid}/desactivar": {
+      "post": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Desactivar",
+        "operationId": "desactivar_api_v1_equipo_usuarios__uid__desactivar_post",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Desactivar Api V1 Equipo Usuarios  Uid  Desactivar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/usuarios/{uid}/reactivar": {
+      "post": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Reactivar",
+        "operationId": "reactivar_api_v1_equipo_usuarios__uid__reactivar_post",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reactivar Api V1 Equipo Usuarios  Uid  Reactivar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/usuarios/{uid}/clientes/{clave}": {
+      "post": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Asignar",
+        "operationId": "asignar_api_v1_equipo_usuarios__uid__clientes__clave__post",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Asignar Api V1 Equipo Usuarios  Uid  Clientes  Clave  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Desasignar",
+        "operationId": "desasignar_api_v1_equipo_usuarios__uid__clientes__clave__delete",
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Uid"
+            }
+          },
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Desasignar Api V1 Equipo Usuarios  Uid  Clientes  Clave  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipo/plan": {
+      "put": {
+        "tags": [
+          "equipo"
+        ],
+        "summary": "Cambiar Plan",
+        "description": "El dueño elige el plan del despacho (la fuente de los límites es `app/planes.py`).",
+        "operationId": "cambiar_plan_api_v1_equipo_plan_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioPlan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Plan Api V1 Equipo Plan Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Dashboard",
+        "description": "Tarjetas del despacho para los clientes que el usuario ve (ver `app/dashboard`).",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "parameters": [
+          {
+            "name": "hoy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hoy"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Dashboard Api V1 Dashboard Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/resumen": {
+      "get": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Resumen",
+        "description": "Saldo, vencido y antigüedad por cliente visible, con totales.",
+        "operationId": "resumen_api_v1_cobranza_resumen_get",
+        "parameters": [
+          {
+            "name": "hoy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hoy"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resumen Api V1 Cobranza Resumen Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}": {
+      "get": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Detalle",
+        "description": "Estado de cuenta, configuración de honorarios y recordatorios del cliente.",
+        "operationId": "detalle_api_v1_cobranza_clientes__clave__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "hoy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hoy"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Detalle Api V1 Cobranza Clientes  Clave  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/honorarios": {
+      "put": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Guardar Honorarios",
+        "operationId": "guardar_honorarios_api_v1_cobranza_clientes__clave__honorarios_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Honorarios"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Honorarios Api V1 Cobranza Clientes  Clave  Honorarios Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/cargos": {
+      "post": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Nuevo Cargo",
+        "description": "Servicio extra (la iguala se genera sola cada mes).",
+        "operationId": "nuevo_cargo_api_v1_cobranza_clientes__clave__cargos_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CargoNuevo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Nuevo Cargo Api V1 Cobranza Clientes  Clave  Cargos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}": {
+      "delete": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Cancelar Cargo",
+        "operationId": "cancelar_cargo_api_v1_cobranza_clientes__clave__cargos__cargo_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cargo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cargo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Cargo Api V1 Cobranza Clientes  Clave  Cargos  Cargo Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}/factura": {
+      "put": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Factura Cargo",
+        "description": "Gancho de P5-04: marca el cargo para facturar y guarda el UUID cuando exista.",
+        "operationId": "factura_cargo_api_v1_cobranza_clientes__clave__cargos__cargo_id__factura_put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cargo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cargo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacturaCargo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Factura Cargo Api V1 Cobranza Clientes  Clave  Cargos  Cargo Id  Factura Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/pagos": {
+      "post": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Nuevo Pago",
+        "operationId": "nuevo_pago_api_v1_cobranza_clientes__clave__pagos_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagoNuevo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Nuevo Pago Api V1 Cobranza Clientes  Clave  Pagos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/pagos/{pago_id}": {
+      "delete": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Borrar Pago",
+        "operationId": "borrar_pago_api_v1_cobranza_clientes__clave__pagos__pago_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "pago_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Pago Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Pago Api V1 Cobranza Clientes  Clave  Pagos  Pago Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/cargos/generar": {
+      "post": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Generar",
+        "description": "Genera ya las igualas de un mes (default: el actual) de los clientes visibles.",
+        "operationId": "generar_api_v1_cobranza_cargos_generar_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerarIgualas"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Generar Api V1 Cobranza Cargos Generar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/estado-cuenta": {
+      "get": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Estado Cuenta Archivo",
+        "operationId": "estado_cuenta_archivo_api_v1_cobranza_clientes__clave__estado_cuenta_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pdf",
+                "xlsx"
+              ],
+              "type": "string",
+              "default": "pdf",
+              "title": "Formato"
+            }
+          },
+          {
+            "name": "hoy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hoy"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/recordatorios": {
+      "post": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Nuevo Recordatorio",
+        "description": "Sin `programado_para` (o en el pasado) se manda ya; si no, se programa en la cola.",
+        "operationId": "nuevo_recordatorio_api_v1_cobranza_clientes__clave__recordatorios_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordatorioNuevo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Nuevo Recordatorio Api V1 Cobranza Clientes  Clave  Recordatorios Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cobranza/clientes/{clave}/recordatorios/{rec_id}": {
+      "delete": {
+        "tags": [
+          "cobranza"
+        ],
+        "summary": "Cancelar Recordatorio",
+        "operationId": "cancelar_recordatorio_api_v1_cobranza_clientes__clave__recordatorios__rec_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "rec_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rec Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Recordatorio Api V1 Cobranza Clientes  Clave  Recordatorios  Rec Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AceptarInvitacion": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 10,
+            "title": "Token"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Nombre",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "AceptarInvitacion"
+      },
       "ActualizacionRequest": {
         "properties": {
           "monto": {
@@ -15078,6 +16657,39 @@
         "title": "CalendarioResponse",
         "description": "Respuesta con el calendario de obligaciones fiscales."
       },
+      "CambioPlan": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Plan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "title": "CambioPlan"
+      },
+      "CambioRol": {
+        "properties": {
+          "rol": {
+            "type": "string",
+            "enum": [
+              "dueno",
+              "contador",
+              "auxiliar"
+            ],
+            "title": "Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rol"
+        ],
+        "title": "CambioRol"
+      },
       "Cancelacion": {
         "properties": {
           "motivo": {
@@ -15162,6 +16774,58 @@
         "type": "object",
         "title": "CapturaRenglon",
         "description": "Captura del contador en un renglón del resumen."
+      },
+      "CargoNuevo": {
+        "properties": {
+          "concepto": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Concepto"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "vencimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vencimiento"
+          },
+          "facturar": {
+            "type": "boolean",
+            "title": "Facturar",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "concepto",
+          "importe",
+          "fecha"
+        ],
+        "title": "CargoNuevo"
       },
       "CerrarPeriodoRequest": {
         "properties": {
@@ -18768,6 +20432,31 @@
         ],
         "title": "EventosResponse"
       },
+      "FacturaCargo": {
+        "properties": {
+          "facturar": {
+            "type": "boolean",
+            "title": "Facturar"
+          },
+          "uuid_cfdi": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid Cfdi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "facturar"
+        ],
+        "title": "FacturaCargo"
+      },
       "FuenteChecada": {
         "type": "string",
         "enum": [
@@ -18777,6 +20466,24 @@
         ],
         "title": "FuenteChecada",
         "description": "De donde vino el evento. `csv` queda para el plan C (import manual)."
+      },
+      "GenerarIgualas": {
+        "properties": {
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          }
+        },
+        "type": "object",
+        "title": "GenerarIgualas"
       },
       "GenerarTareas": {
         "properties": {
@@ -18906,6 +20613,92 @@
           "desde"
         ],
         "title": "HistoricaEntrada"
+      },
+      "Honorarios": {
+        "properties": {
+          "iguala_mensual": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Iguala Mensual"
+          },
+          "concepto": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Concepto",
+            "default": "Honorarios contables"
+          },
+          "dia_cargo": {
+            "type": "integer",
+            "maximum": 28.0,
+            "minimum": 1.0,
+            "title": "Dia Cargo",
+            "default": 1
+          },
+          "dias_credito": {
+            "type": "integer",
+            "maximum": 180.0,
+            "minimum": 0.0,
+            "title": "Dias Credito",
+            "default": 10
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          },
+          "facturar": {
+            "type": "boolean",
+            "title": "Facturar",
+            "default": false
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "Correo",
+            "default": ""
+          },
+          "telefono": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Telefono",
+            "default": ""
+          },
+          "recordatorio_automatico": {
+            "type": "boolean",
+            "title": "Recordatorio Automatico",
+            "default": false
+          },
+          "canal_recordatorio": {
+            "type": "string",
+            "enum": [
+              "correo",
+              "whatsapp"
+            ],
+            "title": "Canal Recordatorio",
+            "default": "correo"
+          },
+          "dias_entre_recordatorios": {
+            "type": "integer",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Dias Entre Recordatorios",
+            "default": 7
+          }
+        },
+        "type": "object",
+        "required": [
+          "iguala_mensual"
+        ],
+        "title": "Honorarios"
       },
       "HorarioLaboral": {
         "properties": {
@@ -19160,6 +20953,31 @@
           "valor"
         ],
         "title": "InfonavitSchema"
+      },
+      "InvitacionNueva": {
+        "properties": {
+          "correo": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Correo"
+          },
+          "rol": {
+            "type": "string",
+            "enum": [
+              "dueno",
+              "contador",
+              "auxiliar"
+            ],
+            "title": "Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correo",
+          "rol"
+        ],
+        "title": "InvitacionNueva"
       },
       "IsnRequest": {
         "properties": {
@@ -19921,6 +21739,64 @@
           "por_pagina"
         ],
         "title": "PaginaAuditoria"
+      },
+      "PagoNuevo": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "importe": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 99999999.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe"
+          },
+          "forma_pago": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Forma Pago",
+            "default": ""
+          },
+          "referencia": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Referencia",
+            "default": ""
+          },
+          "cfdi_uuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cfdi Uuid"
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha",
+          "importe"
+        ],
+        "title": "PagoNuevo"
       },
       "PagosProvisionalesPMRequest": {
         "properties": {
@@ -21524,6 +23400,35 @@
           "ramos"
         ],
         "title": "ReciboSchema"
+      },
+      "RecordatorioNuevo": {
+        "properties": {
+          "canal": {
+            "type": "string",
+            "enum": [
+              "correo",
+              "whatsapp"
+            ],
+            "title": "Canal"
+          },
+          "programado_para": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programado Para"
+          }
+        },
+        "type": "object",
+        "required": [
+          "canal"
+        ],
+        "title": "RecordatorioNuevo"
       },
       "RegimenDePlazo": {
         "type": "string",

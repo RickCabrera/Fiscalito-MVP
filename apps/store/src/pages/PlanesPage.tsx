@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, Loader } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
 import { useCartera } from '../context/carteraStore';
+import { cambiarPlanDespacho } from '../services/equipoApi';
 import { PLANES, planDelPerfil, usoDeClientes, type IdPlan, type Plan } from '../services/planes';
 
 function TarjetaDePlan({
@@ -110,6 +111,9 @@ export default function PlanesPage() {
     setError(null);
     setGuardado(false);
     try {
+      // P5-01: el backend hace cumplir los límites (`app/planes.py`) con el plan del
+      // DESPACHO; primero se le avisa a él (sólo el dueño puede) y luego al perfil.
+      await cambiarPlanDespacho(id);
       await setProfile({ plan: id });
       setGuardado(true);
     } catch (e) {

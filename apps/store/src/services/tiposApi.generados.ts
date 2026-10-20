@@ -6,6 +6,11 @@
  * `apps/api/tests/test_contrato_openapi.py` falla si este archivo quedó viejo.
  */
 
+export interface AceptarInvitacion {
+  token: string;
+  nombre?: string;
+}
+
 /** `POST /calculadoras/actualizacion-recargos`. */
 export interface ActualizacionRequest {
   monto: number | string;
@@ -198,6 +203,14 @@ export interface CalendarioResponse {
   obligaciones: ObligacionFiscalSchema[];
 }
 
+export interface CambioPlan {
+  plan: string;
+}
+
+export interface CambioRol {
+  rol: "dueno" | "contador" | "auxiliar";
+}
+
 export interface Cancelacion {
   motivo?: string;
 }
@@ -212,6 +225,14 @@ export interface CapturaRenglon {
   importe_a_pagar?: number | string | null;
   subsidio?: number | string;
   compensaciones?: number | string;
+}
+
+export interface CargoNuevo {
+  concepto: string;
+  importe: number | string;
+  fecha: string;
+  vencimiento?: string | null;
+  facturar?: boolean;
 }
 
 export interface CerrarPeriodoRequest {
@@ -853,8 +874,17 @@ export interface EventosResponse {
   eventos: EventoChecada[];
 }
 
+export interface FacturaCargo {
+  facturar: boolean;
+  uuid_cfdi?: string | null;
+}
+
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
+
+export interface GenerarIgualas {
+  periodo?: string | null;
+}
 
 export interface GenerarTareas {
   desde: string;
@@ -884,6 +914,20 @@ export interface HistoricaEntrada {
   desde: string;
   hasta?: string | null;
   seleccion?: Seleccion | null;
+}
+
+export interface Honorarios {
+  iguala_mensual: number | string;
+  concepto?: string;
+  dia_cargo?: number;
+  dias_credito?: number;
+  activo?: boolean;
+  facturar?: boolean;
+  correo?: string;
+  telefono?: string;
+  recordatorio_automatico?: boolean;
+  canal_recordatorio?: "correo" | "whatsapp";
+  dias_entre_recordatorios?: number;
 }
 
 /** Horario contra el que se miden retardos y faltas. */
@@ -933,6 +977,11 @@ export interface InfonavitSchema {
   tipo: "porcentaje" | "cuota_fija" | "factor";
   valor: number | string;
   valor_unidad_diario?: number | string | null;
+}
+
+export interface InvitacionNueva {
+  correo: string;
+  rol: "dueno" | "contador" | "auxiliar";
 }
 
 /** `POST /calculadoras/isn`. */
@@ -1070,6 +1119,15 @@ export interface PaginaAuditoria {
   total: number;
   pagina: number;
   por_pagina: number;
+}
+
+export interface PagoNuevo {
+  fecha: string;
+  importe: number | string;
+  forma_pago?: string;
+  referencia?: string;
+  cfdi_uuid?: string | null;
+  nota?: string;
 }
 
 /** `POST /impuestos/clientes/{clave}/pm/pagos-provisionales`. */
@@ -1371,6 +1429,11 @@ export interface ReciboSchema {
   isr_causado?: string | null;
   subsidio_causado?: string;
   sbc_variable_integrable?: string;
+}
+
+export interface RecordatorioNuevo {
+  canal: "correo" | "whatsapp";
+  programado_para?: string | null;
 }
 
 /** Qué regla de cómputo produjo la fecha límite. */
@@ -1781,6 +1844,18 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar"
   | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf"
   | "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml"
+  | "/api/v1/cobranza/cargos/generar"
+  | "/api/v1/cobranza/clientes/{clave}"
+  | "/api/v1/cobranza/clientes/{clave}/cargos"
+  | "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}"
+  | "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}/factura"
+  | "/api/v1/cobranza/clientes/{clave}/estado-cuenta"
+  | "/api/v1/cobranza/clientes/{clave}/honorarios"
+  | "/api/v1/cobranza/clientes/{clave}/pagos"
+  | "/api/v1/cobranza/clientes/{clave}/pagos/{pago_id}"
+  | "/api/v1/cobranza/clientes/{clave}/recordatorios"
+  | "/api/v1/cobranza/clientes/{clave}/recordatorios/{rec_id}"
+  | "/api/v1/cobranza/resumen"
   | "/api/v1/comparar-regimenes"
   | "/api/v1/conciliacion/bancos"
   | "/api/v1/conciliacion/clientes/{clave}/cuentas"
@@ -1825,6 +1900,7 @@ export type RutaApi =
   | "/api/v1/contabilidad/clientes/{clave}/reportes/polizas"
   | "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales"
   | "/api/v1/contabilidad/codigo-agrupador"
+  | "/api/v1/dashboard"
   | "/api/v1/deducciones-personales"
   | "/api/v1/despacho/calendario"
   | "/api/v1/despacho/clientes"
@@ -1832,6 +1908,15 @@ export type RutaApi =
   | "/api/v1/despacho/clientes/{cliente_id}/empleados"
   | "/api/v1/despacho/primas-de-riesgo"
   | "/api/v1/diot"
+  | "/api/v1/equipo"
+  | "/api/v1/equipo/invitaciones"
+  | "/api/v1/equipo/invitaciones/aceptar"
+  | "/api/v1/equipo/invitaciones/{invitacion_id}"
+  | "/api/v1/equipo/plan"
+  | "/api/v1/equipo/usuarios/{uid}/clientes/{clave}"
+  | "/api/v1/equipo/usuarios/{uid}/desactivar"
+  | "/api/v1/equipo/usuarios/{uid}/reactivar"
+  | "/api/v1/equipo/usuarios/{uid}/rol"
   | "/api/v1/estado-cuenta"
   | "/api/v1/impuestos/clientes/{clave}/anual"
   | "/api/v1/impuestos/clientes/{clave}/anual/papeles"
@@ -2149,6 +2234,54 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: unknown;
   };
+  "POST /api/v1/cobranza/cargos/generar": {
+    cuerpo: GenerarIgualas;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/cobranza/clientes/{clave}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/cobranza/clientes/{clave}/cargos": {
+    cuerpo: CargoNuevo;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}/factura": {
+    cuerpo: FacturaCargo;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/cobranza/clientes/{clave}/estado-cuenta": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "PUT /api/v1/cobranza/clientes/{clave}/honorarios": {
+    cuerpo: Honorarios;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/cobranza/clientes/{clave}/pagos": {
+    cuerpo: PagoNuevo;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/cobranza/clientes/{clave}/pagos/{pago_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/cobranza/clientes/{clave}/recordatorios": {
+    cuerpo: RecordatorioNuevo;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/cobranza/clientes/{clave}/recordatorios/{rec_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/cobranza/resumen": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "POST /api/v1/comparar-regimenes": {
     cuerpo: CompararRegimenRequest;
     respuesta: CompararRegimenResponse;
@@ -2369,6 +2502,10 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: Record<string, unknown>;
   };
+  "GET /api/v1/dashboard": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "POST /api/v1/deducciones-personales": {
     cuerpo: DeduccionesPersonalesRequest;
     respuesta: DeduccionesPersonalesResponse;
@@ -2396,6 +2533,46 @@ export interface OperacionesApi {
   "POST /api/v1/diot": {
     cuerpo: DIOTRequest;
     respuesta: DIOTResponse;
+  };
+  "GET /api/v1/equipo": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/equipo/invitaciones": {
+    cuerpo: InvitacionNueva;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/equipo/invitaciones/aceptar": {
+    cuerpo: AceptarInvitacion;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/equipo/invitaciones/{invitacion_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/equipo/plan": {
+    cuerpo: CambioPlan;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/equipo/usuarios/{uid}/clientes/{clave}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/equipo/usuarios/{uid}/clientes/{clave}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/equipo/usuarios/{uid}/desactivar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/equipo/usuarios/{uid}/reactivar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/equipo/usuarios/{uid}/rol": {
+    cuerpo: CambioRol;
+    respuesta: Record<string, unknown>;
   };
   "POST /api/v1/estado-cuenta": {
     cuerpo: EstadoCuentaRequest;

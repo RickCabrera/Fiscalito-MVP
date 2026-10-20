@@ -2091,3 +2091,88 @@ Versión nueva por cliente; `POST /api/v1/diot` y `POST …/calculos/diot` no ca
 - `POST /api/v1/agenda/tareas/desde-obligaciones` `{desde, hasta, cliente?, responsable_uid?}`
   → una tarea por obligación pendiente o vencida del rango; idempotente (`creadas: 0` al
   repetir).
+
+## Equipo del despacho (P5-01)
+
+Sólo el **dueño** gestiona (403 para contador y auxiliar). Todo cambio queda en la auditoría
+(`equipo.*`). Los límites salen de `apps/api/app/planes.py` (fuente única; el front pinta los
+mismos números en `planes.ts`): usuarios activos + invitaciones vigentes ≤ `max_usuarios`.
+
+- `GET /api/v1/equipo` → `{yo: {uid, rol, despacho_id}, puede_gestionar, plan: {id, nombre,
+  max_usuarios, max_clientes, usuarios_activos, invitaciones_pendientes, clientes},
+  usuarios: [{uid, nombre, email, rol, activo, clientes: [clave]}], invitaciones: [{id,
+  correo, rol, expira_en, creado_por}]}` (las invitaciones sólo para el dueño).
+- `POST /api/v1/equipo/invitaciones` `{correo, rol: dueno|contador|auxiliar}` → manda el
+  correo (adaptador `correo`) con `${FISCALITO_URL_APP}/aceptar-invitacion?token=…`. Token de
+  un solo uso (se guarda su SHA-256), vence a los 7 días. Reinvitar al mismo correo revoca la
+  anterior. 409 si el plan ya no alcanza o el correo ya es usuario activo.
+- `DELETE /api/v1/equipo/invitaciones/{id}` → revoca (libera el lugar). 404 si es de otro
+  despacho; 409 si ya se aceptó.
+- `POST /api/v1/equipo/invitaciones/aceptar` `{token, nombre?}` → `{despacho_id, rol}`. NO usa
+  `contexto_actual`: el usuario de la sesión se une al despacho de la invitación. 404 token
+  inválido/revocado, 409 ya usado / ya es miembro / pertenece a otro despacho / su despacho
+  autocreado tiene datos / el plan llegó al tope, 410 vencido. Un despacho propio VACÍO se
+  abandona (el usuario se mueve; el renglón del despacho se queda).
+- `PUT /api/v1/equipo/usuarios/{uid}/rol` `{rol}` · `POST .../{uid}/desactivar` ·
+  `POST .../{uid}/reactivar` (revisa el tope). Siempre queda al menos un dueño activo (409);
+  nadie se desactiva a sí mismo (422). Usuario de otro despacho = 404.
+- `POST|DELETE /api/v1/equipo/usuarios/{uid}/clientes/{clave}` → asigna / desasigna (lo que ve
+  un auxiliar). Cliente de otro despacho = 404.
+- `PUT /api/v1/equipo/plan` `{plan: contador|despacho}` → el plan del despacho. Bajar a uno más
+  chico se permite (se conserva todo; no entra ni un cliente ni un usuario más).
+- El alta de clientes (`PUT /api/v1/cartera/clientes/{id}` nuevo) responde 409 al llegar a
+  `max_clientes` del plan.
+
+## Dashboard del despacho (P5-02)
+
+- `GET /api/v1/dashboard?hoy` → una sola llamada, sobre los clientes VISIBLES (el auxiliar,
+  sólo los asignados), con consultas agregadas (sin N+1). Cada bloque trae `enlace` (y cada
+  renglón el suyo) a la pantalla de detalle:
+  `{hoy, rol, clientes,
+   vencimientos: {semana, vencidas, renglones: [obligación + enlace]},` (próximos 7 días y
+   vencidas de los últimos 30 sin presentar, de `/calendario/cartera`)
+  `credenciales: {total, vencidas, renglones: [{cliente, tipo, nombre, vence, dias, vencida}]},`
+   (e.firma/CSD que vencen en ≤ 30 días)
+  `alertas: {total, alta, media, baja, enlaces},` (abiertas, P3-09)
+  `descarga_sat: {resumen: {al_dia, en_proceso, con_error, pausada, sin_configurar},
+   renglones: [{cliente, estado, ultima_descarga, en_proceso, alertas}]},`
+  `opinion: {verde, amarillo, rojo, gris, renglones: [{cliente, semaforo, origen, marca,
+   resultado, fecha}]},`
+  `nominas: {por_cerrar, por_timbrar, renglones: [{id, cliente, inicio, fin, fecha_pago,
+   estado, accion: cerrar|timbrar}]},`
+  `agenda: {total, atrasadas, renglones},` (tareas del usuario no hechas, hasta hoy+7)
+  `cobranza: {vencido, clientes, renglones} | null}` (`null` para el auxiliar).
+
+## Cuentas por cobrar del despacho (P5-03)
+
+Sólo **dueño y contador** (403 el auxiliar). Importes como texto decimal. Saldo = cargos no
+cancelados − pagos; los pagos se aplican FIFO del cargo más viejo. Antigüedad por días desde
+la FECHA del cargo: `0_30`, `31_60`, `61_90`, `mas_90`; `vencido` = pendiente con
+vencimiento anterior a hoy; `desde` = fecha del cargo abierto más viejo.
+
+- `GET /api/v1/cobranza/resumen?hoy` → `{hoy, clientes: [{cliente, cliente_nombre,
+  iguala_mensual, total_cargos, total_pagos, saldo, vencido, antiguedad, desde,
+  vencido_desde}], totales}`.
+- `GET /api/v1/cobranza/clientes/{clave}?hoy` → saldo + `movimientos` (con saldo corrido),
+  `cargos`, `pagos`, `abiertos`, `honorarios`, `recordatorios`.
+- `PUT /api/v1/cobranza/clientes/{clave}/honorarios` `{iguala_mensual, concepto, dia_cargo
+  (1-28), dias_credito, activo, facturar, correo, telefono, recordatorio_automatico,
+  canal_recordatorio: correo|whatsapp, dias_entre_recordatorios}`.
+- `POST /api/v1/cobranza/cargos/generar` `{periodo?: YYYY-MM}` → igualas del mes de los
+  clientes visibles; idempotente (`iguala:YYYY-MM` única por cliente). El trabajo diario
+  `cobranza.cargos_mensuales` (6:00) las genera solo en el día de cargo de cada cliente.
+- `POST /api/v1/cobranza/clientes/{clave}/cargos` `{concepto, importe, fecha, vencimiento?,
+  facturar}` (servicio extra) · `DELETE .../cargos/{id}` (cancela; 409 si ya tiene UUID).
+- `PUT /api/v1/cobranza/clientes/{clave}/cargos/{id}/factura` `{facturar, uuid_cfdi?}` —
+  gancho para P5-04.
+- `POST /api/v1/cobranza/clientes/{clave}/pagos` `{fecha, importe, forma_pago, referencia,
+  cfdi_uuid?, nota}` — el UUID, si viene, debe ser un CFDI EMITIDO en la bóveda de algún
+  cliente del despacho (el despacho como cliente propio) y a este RFC (422 si no) ·
+  `DELETE .../pagos/{id}`.
+- `GET /api/v1/cobranza/clientes/{clave}/estado-cuenta?formato=pdf|xlsx` → archivo.
+- `POST /api/v1/cobranza/clientes/{clave}/recordatorios` `{canal, programado_para?}` → sin
+  fecha (o pasada) se envía ya con el adaptador `correo`/`whatsapp`; con fecha futura queda
+  `programado` y lo manda el trabajo `cobranza.recordatorio`. 422 sin correo/teléfono de
+  cobranza. `DELETE .../recordatorios/{id}` cancela uno programado. El trabajo diario
+  `cobranza.recordatorios_automaticos` (10:00) avisa a los clientes con
+  `recordatorio_automatico` y saldo vencido, cada `dias_entre_recordatorios`.

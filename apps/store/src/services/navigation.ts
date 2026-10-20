@@ -31,7 +31,7 @@ import { MARCA_CORTA } from './marca';
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
   | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario'
-  | 'calculadoras';
+  | 'calculadoras' | 'inicio' | 'cobranza';
 
 export interface SidebarLink {
   id: NavId;
@@ -49,6 +49,8 @@ export interface SidebarLink {
  * aplican; ahora lleva al calendario **patronal** de sus clientes.
  */
 const LINKS_CONTADOR: SidebarLink[] = [
+  // P5-02: el dashboard del despacho es la pantalla de entrada; va primero.
+  { id: 'inicio', to: '/app/inicio', label: 'Inicio' },
   { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
   // R-05: Empleados y Dispositivos son entradas propias, no pestañas escondidas
   // dentro de la ficha. Operan sobre el cliente activo, igual que Nómina.
@@ -80,6 +82,9 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // cliente activo), por eso no está en `RUTAS_CON_CLIENTE`. Va antes de Perfil:
   // es herramienta, no ajuste.
   { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
+  // P5-03: cuentas por cobrar del despacho a TODA su cartera (sin cliente activo).
+  // Sólo dueño y contador la usan; al auxiliar la pantalla le dice que no es suya.
+  { id: 'cobranza', to: '/app/cobranza', label: 'Cobranza' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -173,7 +178,8 @@ export function getSidebarLinks(): SidebarLink[] {
 
 /** Ruta a la que entra la cuenta al terminar el onboarding o al pedir `/app`. */
 export function rutaInicial(): string {
-  return '/app/clientes';
+  // P5-02: el dashboard del despacho es la pantalla de entrada.
+  return '/app/inicio';
 }
 
 // ────────────────────────────────────────────────────────────

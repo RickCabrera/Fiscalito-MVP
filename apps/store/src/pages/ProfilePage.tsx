@@ -13,7 +13,7 @@ import { useProfile } from '../context/ProfileContext';
 import { useCartera } from '../context/carteraStore';
 import TarjetaPlan from '../components/perfil/TarjetaPlan';
 import { Link } from 'react-router-dom';
-import { ScrollText, Save, User } from 'lucide-react';
+import { ScrollText, UsersRound, Save, User } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -68,6 +68,19 @@ export default function ProfilePage() {
         <span style={{ fontWeight: 600 }}>Bitácora de auditoría</span>
         <span style={{ fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
           Quién hizo cada cambio en el despacho, a qué cliente y cuándo.
+        </span>
+      </Link>
+
+      {/* P5-01: el equipo del despacho (usuarios, invitaciones, roles y asignaciones). */}
+      <Link
+        to="/app/equipo"
+        className="card animate-in"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: 'var(--text-primary)' }}
+      >
+        <UsersRound size={18} color="var(--accent-active)" />
+        <span style={{ fontWeight: 600 }}>Equipo del despacho</span>
+        <span style={{ fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
+          Invita usuarios, asigna roles y decide qué clientes ve cada auxiliar.
         </span>
       </Link>
 

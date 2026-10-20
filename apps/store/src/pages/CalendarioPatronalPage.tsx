@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Loader } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import {
   actualizarTarea, crearTarea, generarTareas, iso, marcarObligacion, obtenerCalendario,
@@ -34,10 +35,14 @@ const SIGUIENTE_ESTADO: Record<TareaAgenda['estado'], TareaAgenda['estado']> = {
 
 export default function CalendarioPatronalPage({ hoy = new Date() }: { hoy?: Date }) {
   const { clientes } = useClienteActivo();
-  const [vista, setVista] = useState<Vista>('semana');
+  // P5-02: el dashboard entra con filtros en la URL (`?cliente=`, `?tipo=`, `?vista=agenda`).
+  const [params] = useSearchParams();
+  const [vista, setVista] = useState<Vista>(() =>
+    (['semana', 'mes', 'agenda'] as string[]).includes(params.get('vista') ?? '')
+      ? params.get('vista') as Vista : 'semana');
   const [ancla, setAncla] = useState<Date>(hoy);
-  const [cliente, setCliente] = useState('');
-  const [tipo, setTipo] = useState('');
+  const [cliente, setCliente] = useState(() => params.get('cliente') ?? '');
+  const [tipo, setTipo] = useState(() => params.get('tipo') ?? '');
   const [responsable, setResponsable] = useState('');
   const [datos, setDatos] = useState<CalendarioCartera | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioDespacho[]>([]);

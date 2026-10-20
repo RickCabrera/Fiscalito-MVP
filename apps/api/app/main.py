@@ -31,16 +31,19 @@ from app.routes import (
     calculos_cliente,
     calendario,
     cartera,
+    cobranza,
     comparador,
     conciliacion,
     contabilidad,
     contabilidad_electronica,
     contabilidad_reportes,
     credenciales,
+    dashboard,
     declaraciones,
     despacho,
     diot,
     diot_cliente,
+    equipo,
     estado_cuenta,
     health,
     impuestos,
@@ -173,6 +176,10 @@ ROUTERS_PROTEGIDOS = (
     diot_cliente.router,
     alertas.router,
     agenda.router,
+    # P5-01 equipo del despacho, P5-02 dashboard, P5-03 cuentas por cobrar.
+    equipo.router,
+    dashboard.router,
+    cobranza.router,
 )
 
 app.include_router(health.router)

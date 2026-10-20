@@ -200,8 +200,8 @@ describe('sidebar de AppLayout', () => {
     // alcanzaba tecleando la URL. P0-03 sumó la Bóveda de CFDI del cliente activo
     // y P1-02 la Descarga SAT, que la llena.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Descarga SAT', 'Nómina', 'Calendario',
-      MARCA_CORTA, 'Contabilito', 'Calculadoras', 'Perfil',
+      'Inicio', 'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Descarga SAT', 'Nómina',
+      'Calendario', MARCA_CORTA, 'Contabilito', 'Calculadoras', 'Cobranza', 'Perfil',
     ]);
   });
 

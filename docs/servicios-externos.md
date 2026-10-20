@@ -69,6 +69,10 @@ pierde, todas las e.firma y CSD guardados son ilegibles** y hay que volver a sub
 **A quién contratar.** Resend (el más simple) o SendGrid; SES si ya hay AWS. Hay que verificar
 el dominio con SPF y DKIM (EXT-08, EXT-13).
 
+**Invitaciones al equipo (P5-01).** El enlace del correo de invitación se arma con
+`FISCALITO_URL_APP` (la URL pública del front, p. ej. `https://app.fiscalito.mx`; default
+`http://localhost:5173`). Los recordatorios de cobro (P5-03) usan este mismo adaptador.
+
 ---
 
 ## WhatsApp

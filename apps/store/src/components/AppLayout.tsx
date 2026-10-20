@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { Scale, BookOpen, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint, Archive, CloudDownload, Calculator } from 'lucide-react';
+import { Scale, BookOpen, User, LogOut, Loader, Radio, Users, Calendar, Contact, Fingerprint, Archive, CloudDownload, Calculator, LayoutDashboard, Wallet } from 'lucide-react';
 import { esContador, getSidebarLinks, navActivo, type NavId } from '../services/navigation';
 import { useClienteActivo } from '../context/clienteActivoStore';
 // DEMO E-02: barra de cliente activo, sólo en las rutas con alcance de cliente.
@@ -30,6 +30,8 @@ const ICONOS: Record<NavId, React.ReactNode> = {
   calendario: <Calendar size={20} />,
   calculadoras: <Calculator size={20} />,
   perfil: <User size={20} />,
+  inicio: <LayoutDashboard size={20} />,
+  cobranza: <Wallet size={20} />,
 };
 
 export default function AppLayout() {
