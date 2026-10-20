@@ -28,6 +28,7 @@ from app.modelos.imss import LoteImss, MovimientoImss
 from app.modelos.nucleo import Cliente
 from app.nomina_engine import imss_layouts as L
 from app.nomina_engine.cuotas_mensuales import TramoSBC, sbc_vigente
+from app.nomina_engine.integracion import clamp_sbc
 from app.nomina_imss.historial import historial_de
 from app.schemas.empleado import EmpleadoCarteraSchema
 
@@ -93,7 +94,10 @@ def _registro_idse(
         if mov.sbc is None:
             raise FiscalValidationError("falta el SBC del movimiento")
         valores.update({
-            "sbc": L.importe_implicito(mov.sbc, 4), "tipo_salario": mov.tipo_salario,
+            # Art. 28 LSS: el IDSE rechaza un SBC fuera de [1 SM, 25 UMA]; se acota igual que
+            # las cuotas (`clamp_sbc`).
+            "sbc": L.importe_implicito(clamp_sbc(mov.sbc, mov.fecha, f.zona).valor, 4),
+            "tipo_salario": mov.tipo_salario,
             "jornada": f.jornada, "curp": f.curp,
         })
         if mov.tipo == L.TIPO_ALTA_REINGRESO:

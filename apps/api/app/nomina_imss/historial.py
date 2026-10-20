@@ -118,8 +118,12 @@ def registrar_sbc(
         raise FiscalAgentError(
             f"{ficha.empleado_no} es asimilado a salarios: no cotiza al IMSS.", status_code=422)
     alta = _pendiente(db, cliente, ficha.empleado_no, "08")
-    if alta is not None and alta.fecha <= fecha and motivo != "bimestre_variable":
-        # El IMSS aún no conoce al trabajador: se corrige el alta, no se avisa un 07.
+    corrige_alta = motivo in ("edicion_ficha", "correccion") or (
+        alta is not None and fecha == alta.fecha)
+    if alta is not None and alta.fecha <= fecha and corrige_alta:
+        # El IMSS aún no conoce al trabajador y el cambio corrige el dato del alta (no es un
+        # aumento con fecha propia): se corrige el 08, no se avisa un 07. Un aumento posterior
+        # al alta conserva su fecha y genera su 07 aunque el 08 siga pendiente (revisor B1).
         fila = guardar_sbc(db, cliente, ficha.empleado_no, alta.fecha, sbc,
                            tipo_salario=tipo_salario, motivo=alta.origen or "alta", uid=uid,
                            salario_diario=ficha.salario_diario, nota=nota)

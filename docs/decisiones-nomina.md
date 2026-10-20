@@ -1160,3 +1160,26 @@ Cada una está marcada en el código con su `DECISIÓN PROVISIONAL` o `POR CONFI
   captura no trae los días. Horas fraccionarias se redondean hacia arriba.
 - `NumDiasPagados` de una nómina extraordinaria (finiquito, aguinaldo, PTU) = 1.
 - QR del PDF: `tt` con 25 posiciones (18.6), igual que retenciones. POR CONFIRMAR.
+
+## §D37 · Abiertas tras la revisión de motor de P4 (2026-10-19)
+
+Corregido en la misma rama: un aumento con fecha posterior al alta ya no reescribe el 08
+pendiente (conserva su fecha y genera 07); el SBC del IDSE se acota a [1 SM, 25 UMA] como las
+cuotas; Emisor/Curp se exige si el patrón es persona física; horas extra sin cantidad capturada
+→ 422 (antes declaraba 1 hora); enlaces firmados fallan cerrado fuera de desarrollo/pruebas y la
+descarga va con `Cache-Control: no-store`.
+
+Quedan para Ricardo y la contadora:
+1. **Bimestre variable:** sólo promedia nóminas ordinarias y asigna cada periodo por su fecha
+   final. Lo variable pagado en extraordinarias no entra (no conservador) y un periodo que cruza
+   bimestre entra completo en uno.
+2. **Cuotas por tramos:** se redondea por concepto en cada tramo y luego se suma; contra la cédula
+   del SUA puede diferir centavos en meses con 07 a medio mes. Confirmar con una cédula real.
+3. **Finiquito con separación:** un solo CFDI (TipoRegimen 13) con las percepciones ordinarias
+   del finiquito, o dos CFDI. Si llevara subsidio, sólo se admite con régimen 02.
+4. **Layouts:** IDSE viene de O-04; SUA y EMA/EBA sin fuente oficial (POR CONFIRMAR). Dispersión:
+   sólo Banamex y Banorte verificados; BBVA, Santander, HSBC, Scotiabank y BanBajío POR CONFIRMAR
+   con el manual del banco antes de subir un archivo.
+5. **P4-13:** posible reenvío duplicado si el worker cae entre la aceptación del proveedor y el
+   guardado del estado; un enlace firmado sigue vigente aunque se cancele después el CFDI.
+6. **XSLT de la cadena original:** tomado de `satcfdi` (minificado); verificar contra el del SAT.

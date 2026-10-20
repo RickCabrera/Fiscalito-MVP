@@ -28,7 +28,9 @@ def _secreto() -> bytes:
     valor = os.environ.get("FISCALITO_ENLACES_SECRETO", "").strip()
     if valor:
         return valor.encode()
-    if settings.ENTORNO == "produccion":
+    # Falla cerrado fuera de desarrollo/pruebas: un staging con datos reales no debe firmar
+    # con un secreto que está en el repo (revisor P4, obs. 15).
+    if settings.ENTORNO not in ("desarrollo", "test", "pruebas"):
         raise FiscalAgentError(
             "Falta FISCALITO_ENLACES_SECRETO (ver docs/servicios-externos.md).", 503)
     return b"secreto-de-desarrollo-no-usar-en-produccion"

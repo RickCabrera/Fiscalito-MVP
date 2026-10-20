@@ -143,7 +143,11 @@ def _extras(
             continue
         tipo, cantidad = ("02", var.get("horas_triples")) if p.clave.endswith("T") else (
             "01", var.get("horas_dobles"))
-        n = math.ceil(Decimal(str(cantidad or "0"))) or 1
+        if not cantidad or Decimal(str(cantidad)) <= 0:
+            # Sin horas capturadas no se declara una hora inventada (revisor P4, obs. 6).
+            raise FiscalAgentError(
+                f"{rec.empleado_no}: falta capturar las horas extra ({p.clave}) del periodo.", 422)
+        n = math.ceil(Decimal(str(cantidad)))
         horas.append(HorasExtraCfdi(p.clave, max(1, math.ceil(n / HORAS_EXTRA_MAX_DIA)), tipo, n,
                                     p.importe))
     incapacidades = tuple(
@@ -185,6 +189,9 @@ def armar(
         ("RFC del trabajador", ficha.rfc), ("CURP del trabajador", ficha.curp),
         ("código postal (domicilio fiscal) del trabajador", ficha.codigo_postal),
     ) if not v]
+    if len(str(cliente.rfc or datos.get("rfc") or "")) == 13 and not datos.get("curp"):
+        # Guía de llenado nómina 1.2, Emisor/Curp: obligatoria si el patrón es persona física.
+        falta.append("CURP del cliente (patrón persona física)")
     if con_imss:
         falta += [n for n, v in (
             ("registro patronal del cliente", datos.get("registro_patronal")),
