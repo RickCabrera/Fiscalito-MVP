@@ -58,5 +58,6 @@ def cargar_manejadores() -> None:
     import app.alertas.trabajos  # noqa: F401 — P3-09
     import app.contabilidad.trabajos  # noqa: F401 — P2-03
     import app.nomina_cfdi.servicio  # noqa: F401 — P4-11 timbrado de nómina
+    import app.nomina_envio.trabajos  # noqa: F401 — P4-13
     import app.sat_descarga.trabajos  # noqa: F401
     import app.sat_verificacion.trabajos  # noqa: F401 — P1-03/04/05

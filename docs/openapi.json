@@ -1925,6 +1925,800 @@
         }
       }
     },
+    "/api/v1/nomina/dispersion/layouts": {
+      "get": {
+        "tags": [
+          "Nómina — dispersión"
+        ],
+        "summary": "Layouts de dispersión disponibles, con su fuente y estado",
+        "operationId": "layouts_api_v1_nomina_dispersion_layouts_get",
+        "parameters": [
+          {
+            "name": "cliente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cliente"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayoutsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion": {
+      "post": {
+        "tags": [
+          "Nómina — dispersión"
+        ],
+        "summary": "Generar el archivo de dispersión de una nómina cerrada",
+        "operationId": "dispersar_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__dispersion_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispersionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/recibos/plantillas": {
+      "get": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Plantillas del envío de recibos del despacho",
+        "operationId": "ver_plantillas_api_v1_nomina_recibos_plantillas_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantillasResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/recibos/plantillas/{canal}": {
+      "put": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Editar la plantilla de un canal",
+        "operationId": "editar_plantilla_api_v1_nomina_recibos_plantillas__canal__put",
+        "parameters": [
+          {
+            "name": "canal",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "correo",
+                "whatsapp"
+              ],
+              "type": "string",
+              "title": "Canal"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__routes__nomina_envio__PlantillaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantillaSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios": {
+      "post": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Enviar los recibos de una nómina cerrada (en segundo plano)",
+        "operationId": "enviar_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__envios_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnviarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoEnviosResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Estado del envío de recibos por canal",
+        "operationId": "estado_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__envios_get",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "canal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "correo",
+                "whatsapp"
+              ],
+              "type": "string",
+              "default": "correo",
+              "title": "Canal"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoEnviosResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar": {
+      "post": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Reenviar un recibo (individual)",
+        "operationId": "reenviar_api_v1_nomina_clientes__cliente_id__periodos__periodo_id__envios__envio_id__reenviar_post",
+        "parameters": [
+          {
+            "name": "cliente_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "envio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Envio Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoEnviosResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/recibos/envios/rebote": {
+      "post": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Marcar como rebotado un envío (aviso del proveedor u operador)",
+        "operationId": "rebote_api_v1_nomina_recibos_envios_rebote_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReboteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvioSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/nomina/clientes/{cliente_id}/aguinaldo": {
       "post": {
         "tags": [
@@ -12348,7 +13142,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PlantillaEntrada"
+                "$ref": "#/components/schemas/app__routes__conciliacion__PlantillaEntrada"
               }
             }
           }
@@ -15520,6 +16314,83 @@
           }
         }
       }
+    },
+    "/api/v1/recibos/descarga/{envio_id}/{archivo}": {
+      "get": {
+        "tags": [
+          "Nómina — envío de recibos"
+        ],
+        "summary": "Descarga del recibo para WhatsApp (enlace firmado, sin sesión)",
+        "operationId": "descargar_api_v1_recibos_descarga__envio_id___archivo__get",
+        "parameters": [
+          {
+            "name": "envio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Envio Id"
+            }
+          },
+          {
+            "name": "archivo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Archivo"
+            }
+          },
+          {
+            "name": "vence",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vence"
+            }
+          },
+          {
+            "name": "firma",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Firma"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -15862,6 +16733,34 @@
         ],
         "title": "AnualRequest",
         "description": "`POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`."
+      },
+      "ArchivoSchema": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "mime": {
+            "type": "string",
+            "title": "Mime"
+          },
+          "base64": {
+            "type": "string",
+            "title": "Base64"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "mime",
+          "base64",
+          "sha256"
+        ],
+        "title": "ArchivoSchema"
       },
       "BimestreVariable": {
         "properties": {
@@ -18280,6 +19179,39 @@
         "title": "DIOTResponse",
         "description": "Respuesta del endpoint DIOT."
       },
+      "DatoBancoSchema": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "patron": {
+            "type": "string",
+            "title": "Patron"
+          },
+          "obligatorio": {
+            "type": "boolean",
+            "title": "Obligatorio"
+          },
+          "default": {
+            "type": "string",
+            "title": "Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "etiqueta",
+          "patron",
+          "obligatorio",
+          "default"
+        ],
+        "title": "DatoBancoSchema"
+      },
       "DatosAnualesPMSchema": {
         "properties": {
           "coeficiente_utilidad": {
@@ -19261,6 +20193,155 @@
         ],
         "title": "DiferenciaEmpleado"
       },
+      "DispersionRequest": {
+        "properties": {
+          "layout": {
+            "type": "string",
+            "title": "Layout",
+            "description": "bbva | banamex | santander | banorte | hsbc | scotiabank | banbajio | generico"
+          },
+          "cuenta_cargo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cuenta Cargo Id",
+            "description": "Cuenta bancaria del cliente (conciliación P2-06). Obligatoria salvo en el genérico."
+          },
+          "fecha_aplicacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Aplicacion"
+          },
+          "datos_banco": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Datos Banco"
+          },
+          "columnas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columnas",
+            "description": "Sólo genérico."
+          },
+          "separador": {
+            "type": "string",
+            "title": "Separador",
+            "description": "Sólo genérico: , | ; tab",
+            "default": ","
+          },
+          "formato": {
+            "type": "string",
+            "title": "Formato",
+            "description": "Sólo genérico: csv | xlsx",
+            "default": "csv"
+          },
+          "encabezado": {
+            "type": "boolean",
+            "title": "Encabezado",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "layout"
+        ],
+        "title": "DispersionRequest"
+      },
+      "DispersionResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "layout": {
+            "$ref": "#/components/schemas/LayoutSchema"
+          },
+          "archivo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArchivoSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incluidos": {
+            "items": {
+              "$ref": "#/components/schemas/IncluidoSchema"
+            },
+            "type": "array",
+            "title": "Incluidos"
+          },
+          "excluidos": {
+            "items": {
+              "$ref": "#/components/schemas/ExcluidoSchema"
+            },
+            "type": "array",
+            "title": "Excluidos"
+          },
+          "total_nomina": {
+            "type": "string",
+            "title": "Total Nomina"
+          },
+          "total_archivo": {
+            "type": "string",
+            "title": "Total Archivo"
+          },
+          "total_excluidos": {
+            "type": "string",
+            "title": "Total Excluidos"
+          },
+          "cuadra": {
+            "type": "boolean",
+            "title": "Cuadra"
+          },
+          "advertencias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advertencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layout",
+          "archivo",
+          "incluidos",
+          "excluidos",
+          "total_nomina",
+          "total_archivo",
+          "total_excluidos",
+          "cuadra",
+          "advertencias"
+        ],
+        "title": "DispersionResponse"
+      },
       "DispositivoGuardadoResponse": {
         "properties": {
           "exito": {
@@ -19495,6 +20576,50 @@
       },
       "EmpleadoCarteraSchema-Input": {
         "properties": {
+          "forma_pago": {
+            "$ref": "#/components/schemas/FormaPagoEmpleado",
+            "description": "P4-12: transferencia | efectivo | cheque. Efectivo y cheque no se dispersan.",
+            "default": "transferencia"
+          },
+          "banco": {
+            "type": "string",
+            "pattern": "^(\\d{3})?$",
+            "title": "Banco",
+            "description": "P4-12: clave c_Banco (3 dígitos). Vacío = la de la CLABE.",
+            "default": ""
+          },
+          "clabe": {
+            "type": "string",
+            "title": "Clabe",
+            "description": "P4-12: CLABE de 18 dígitos (verificador Banxico).",
+            "default": ""
+          },
+          "numero_cuenta": {
+            "type": "string",
+            "pattern": "^(\\d{10,12}|\\d{16})?$",
+            "title": "Numero Cuenta",
+            "description": "P4-12: cuenta (10-12 dígitos) o tarjeta (16) del mismo banco.",
+            "default": ""
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Correo",
+            "description": "P4-13: correo para recibos.",
+            "default": ""
+          },
+          "celular": {
+            "type": "string",
+            "title": "Celular",
+            "description": "P4-13: E.164 mexicano (+52 y 10 dígitos).",
+            "default": ""
+          },
+          "consentimiento_whatsapp": {
+            "type": "boolean",
+            "title": "Consentimiento Whatsapp",
+            "description": "P4-13: el trabajador aceptó recibir sus recibos por WhatsApp.",
+            "default": false
+          },
           "empleado_no": {
             "type": "string",
             "minLength": 1,
@@ -19700,6 +20825,50 @@
       },
       "EmpleadoCarteraSchema-Output": {
         "properties": {
+          "forma_pago": {
+            "$ref": "#/components/schemas/FormaPagoEmpleado",
+            "description": "P4-12: transferencia | efectivo | cheque. Efectivo y cheque no se dispersan.",
+            "default": "transferencia"
+          },
+          "banco": {
+            "type": "string",
+            "pattern": "^(\\d{3})?$",
+            "title": "Banco",
+            "description": "P4-12: clave c_Banco (3 dígitos). Vacío = la de la CLABE.",
+            "default": ""
+          },
+          "clabe": {
+            "type": "string",
+            "title": "Clabe",
+            "description": "P4-12: CLABE de 18 dígitos (verificador Banxico).",
+            "default": ""
+          },
+          "numero_cuenta": {
+            "type": "string",
+            "pattern": "^(\\d{10,12}|\\d{16})?$",
+            "title": "Numero Cuenta",
+            "description": "P4-12: cuenta (10-12 dígitos) o tarjeta (16) del mismo banco.",
+            "default": ""
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Correo",
+            "description": "P4-13: correo para recibos.",
+            "default": ""
+          },
+          "celular": {
+            "type": "string",
+            "title": "Celular",
+            "description": "P4-13: E.164 mexicano (+52 y 10 dígitos).",
+            "default": ""
+          },
+          "consentimiento_whatsapp": {
+            "type": "boolean",
+            "title": "Consentimiento Whatsapp",
+            "description": "P4-13: el trabajador aceptó recibir sus recibos por WhatsApp.",
+            "default": false
+          },
           "empleado_no": {
             "type": "string",
             "minLength": 1,
@@ -20162,6 +21331,80 @@
         "title": "EncolarDiagnostico",
         "description": "Cuerpo de `POST /trabajos/clientes/{clave}/diagnostico`."
       },
+      "EnviarRequest": {
+        "properties": {
+          "canal": {
+            "type": "string",
+            "enum": [
+              "correo",
+              "whatsapp"
+            ],
+            "title": "Canal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "canal"
+        ],
+        "title": "EnviarRequest"
+      },
+      "EnvioSchema": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "destino": {
+            "type": "string",
+            "title": "Destino"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "description": "pendiente | enviado | fallido | rebotado"
+          },
+          "intentos": {
+            "type": "integer",
+            "title": "Intentos"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "timbrado": {
+            "type": "boolean",
+            "title": "Timbrado"
+          },
+          "enviado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enviado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "empleado_no",
+          "destino",
+          "estado",
+          "intentos",
+          "error",
+          "timbrado",
+          "enviado_en"
+        ],
+        "title": "EnvioSchema"
+      },
       "ErrorResponse": {
         "properties": {
           "exito": {
@@ -20320,6 +21563,77 @@
         ],
         "title": "EstadoCuentaResponse",
         "description": "Respuesta del endpoint de estado de cuenta."
+      },
+      "EstadoEnviosResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "canal": {
+            "type": "string",
+            "enum": [
+              "correo",
+              "whatsapp"
+            ],
+            "title": "Canal"
+          },
+          "envios": {
+            "items": {
+              "$ref": "#/components/schemas/EnvioSchema"
+            },
+            "type": "array",
+            "title": "Envios"
+          },
+          "omitidos": {
+            "items": {
+              "$ref": "#/components/schemas/OmitidoSchema"
+            },
+            "type": "array",
+            "title": "Omitidos"
+          },
+          "resumen": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Resumen"
+          },
+          "trabajo": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trabajo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "canal",
+          "envios",
+          "omitidos",
+          "resumen",
+          "trabajo"
+        ],
+        "title": "EstadoEnviosResponse"
       },
       "EstatusEnrolamiento": {
         "type": "string",
@@ -20554,6 +21868,50 @@
           "eventos"
         ],
         "title": "EventosResponse"
+      },
+      "ExcluidoSchema": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "neto": {
+            "type": "string",
+            "title": "Neto"
+          },
+          "causa": {
+            "type": "string",
+            "title": "Causa",
+            "description": "sin_ficha | neto_cero | efectivo | cheque | sin_cuenta | layout"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "nombre",
+          "neto",
+          "causa",
+          "motivo"
+        ],
+        "title": "ExcluidoSchema"
+      },
+      "FormaPagoEmpleado": {
+        "type": "string",
+        "enum": [
+          "transferencia",
+          "efectivo",
+          "cheque"
+        ],
+        "title": "FormaPagoEmpleado",
+        "description": "Cómo se le paga el neto. Sólo `transferencia` entra a la dispersión."
       },
       "FuenteChecada": {
         "type": "string",
@@ -20973,6 +22331,55 @@
         "title": "IncidenciasEmpleadoSchema",
         "description": "Incidencias de un empleado, tal como las devuelve `cerrar-periodo`.\n\n`dias_periodo` son **días naturales**, no laborables ni cotizados.\n`dias_ausentismo` alimenta `DiasDelPeriodo`; `faltas` descuenta días\npagados. Hoy son el mismo número; en F1-09 divergen."
       },
+      "IncluidoSchema": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "importe": {
+            "type": "string",
+            "title": "Importe"
+          },
+          "banco": {
+            "type": "string",
+            "title": "Banco"
+          },
+          "banco_nombre": {
+            "type": "string",
+            "title": "Banco Nombre"
+          },
+          "tipo_cuenta": {
+            "type": "string",
+            "title": "Tipo Cuenta"
+          },
+          "cuenta": {
+            "type": "string",
+            "title": "Cuenta",
+            "description": "Enmascarada: sólo los últimos 4 dígitos."
+          },
+          "interbancario": {
+            "type": "boolean",
+            "title": "Interbancario"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "nombre",
+          "importe",
+          "banco",
+          "banco_nombre",
+          "tipo_cuenta",
+          "cuenta",
+          "interbancario"
+        ],
+        "title": "IncluidoSchema"
+      },
       "InfonavitSchema": {
         "properties": {
           "tipo": {
@@ -21268,6 +22675,116 @@
         ],
         "title": "IvaPeriodoRequest",
         "description": "`POST /impuestos/clientes/{clave}/iva`."
+      },
+      "LayoutSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "banco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banco"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "description": "verificado | por_confirmar"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "interbancario": {
+            "type": "boolean",
+            "title": "Interbancario"
+          },
+          "datos_requeridos": {
+            "items": {
+              "$ref": "#/components/schemas/DatoBancoSchema"
+            },
+            "type": "array",
+            "title": "Datos Requeridos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "banco",
+          "estado",
+          "fuente",
+          "interbancario",
+          "datos_requeridos"
+        ],
+        "title": "LayoutSchema"
+      },
+      "LayoutsResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "layouts": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutSchema"
+            },
+            "type": "array",
+            "title": "Layouts"
+          },
+          "columnas_genericas": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Columnas Genericas"
+          },
+          "columnas_default": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas Default"
+          },
+          "bancos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Bancos"
+          },
+          "datos_guardados": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Datos Guardados",
+            "description": "Lo último que se usó por layout, si se pidió cliente."
+          }
+        },
+        "type": "object",
+        "required": [
+          "layouts",
+          "columnas_genericas",
+          "columnas_default",
+          "bancos"
+        ],
+        "title": "LayoutsResponse"
       },
       "ListaTrabajos": {
         "properties": {
@@ -21650,6 +23167,29 @@
         ],
         "title": "ObligacionPatronalSchema",
         "description": "Una obligación del patrón, ya etiquetada con el cliente al que pertenece.\n\n**`regimen_de_plazo` no es decorativo.** Dice qué regla produjo\n`fecha_limite`, y existe para que una vista que junta obligaciones del IMSS\ny del SAT no las presente como si obedecieran la misma norma: el viernes es\ninhábil para el IMSS (Art. 3 RACERF) y hábil para el SAT (CFF Art. 12), así\nque el mismo mes puede tener dos fechas distintas. `imss_sin_prorroga` es\ndel IMSS pero **no** se corre (§D23): son cinco valores, no cuatro, porque\netiquetar esa como `imss` prometería una prórroga que no ocurre. Ver\n`knowledge_base/nomina/25_calendario_laboral_2026.md` §4 y §5."
+      },
+      "OmitidoSchema": {
+        "properties": {
+          "empleado_no": {
+            "type": "string",
+            "title": "Empleado No"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empleado_no",
+          "nombre",
+          "motivo"
+        ],
+        "title": "OmitidoSchema"
       },
       "OperacionResponse": {
         "properties": {
@@ -22499,41 +24039,80 @@
         "title": "PlantillaDemoResponse",
         "description": "Todo lo que la pantalla de la demo necesita y **no puede inventarse**.\n\nExiste para que el front no escriba ni una constante fiscal. Sin este\nendpoint tendría que hardcodear los nueve empleados y la prima de riesgo\n—que tiene fundamento legal (Art. 72/74 LSS) y dueño en `demo_nomina.py`—\nen TypeScript, donde ningún test verifica que no diverjan.\n\n`periodo_sugerido` sale de la **regla de quincena real**, no de las fechas\nde las checadas: deducirlo de la primera y la última da 15 días donde la\nquincena tiene 16 —el día 16 cae en fin de semana— y ese día de menos\nentra a `DiasDelPeriodo` y a los días pagados, o sea a las cuotas y al ISR."
       },
-      "PlantillaEntrada": {
+      "PlantillaSchema": {
         "properties": {
-          "nombre": {
-            "type": "string",
-            "maxLength": 80,
-            "minLength": 1,
-            "title": "Nombre"
-          },
-          "banco": {
-            "type": "string",
-            "maxLength": 3,
-            "title": "Banco",
-            "default": ""
-          },
-          "formato": {
+          "canal": {
             "type": "string",
             "enum": [
-              "csv",
-              "xlsx"
+              "correo",
+              "whatsapp"
             ],
-            "title": "Formato",
-            "default": "csv"
+            "title": "Canal"
           },
-          "mapeo": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Mapeo"
+          "asunto": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Asunto",
+            "default": ""
+          },
+          "cuerpo": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Cuerpo",
+            "default": ""
+          },
+          "plantilla_whatsapp": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Plantilla Whatsapp",
+            "default": ""
+          },
+          "idioma": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Idioma",
+            "default": "es_MX"
+          },
+          "personalizada": {
+            "type": "boolean",
+            "title": "Personalizada",
+            "default": false
           }
         },
         "type": "object",
         "required": [
-          "nombre",
-          "mapeo"
+          "canal"
         ],
-        "title": "PlantillaEntrada"
+        "title": "PlantillaSchema"
+      },
+      "PlantillasResponse": {
+        "properties": {
+          "exito": {
+            "type": "boolean",
+            "title": "Exito",
+            "default": true
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Variables"
+          },
+          "plantillas": {
+            "items": {
+              "$ref": "#/components/schemas/PlantillaSchema"
+            },
+            "type": "array",
+            "title": "Plantillas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variables",
+          "plantillas"
+        ],
+        "title": "PlantillasResponse"
       },
       "PolizaCambio": {
         "properties": {
@@ -23198,6 +24777,36 @@
           "motivo"
         ],
         "title": "Reapertura"
+      },
+      "ReboteRequest": {
+        "properties": {
+          "canal": {
+            "type": "string",
+            "enum": [
+              "correo",
+              "whatsapp"
+            ],
+            "title": "Canal"
+          },
+          "id_mensaje": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Id Mensaje"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Motivo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "canal",
+          "id_mensaje"
+        ],
+        "title": "ReboteRequest"
       },
       "ReciboCFDISchema": {
         "properties": {
@@ -24953,6 +26562,42 @@
         ],
         "title": "_ConExplicacion"
       },
+      "app__routes__conciliacion__PlantillaEntrada": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "banco": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Banco",
+            "default": ""
+          },
+          "formato": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "xlsx"
+            ],
+            "title": "Formato",
+            "default": "csv"
+          },
+          "mapeo": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Mapeo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "mapeo"
+        ],
+        "title": "PlantillaEntrada"
+      },
       "app__routes__conciliacion__Rango": {
         "properties": {
           "desde": {
@@ -25179,6 +26824,36 @@
           "hasta"
         ],
         "title": "Rango"
+      },
+      "app__routes__nomina_envio__PlantillaEntrada": {
+        "properties": {
+          "asunto": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Asunto",
+            "default": ""
+          },
+          "cuerpo": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Cuerpo",
+            "default": ""
+          },
+          "plantilla_whatsapp": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Plantilla Whatsapp",
+            "default": ""
+          },
+          "idioma": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Idioma",
+            "default": "es_MX"
+          }
+        },
+        "type": "object",
+        "title": "PlantillaEntrada"
       },
       "app__routes__sat_descarga__ConfigEntrada": {
         "properties": {

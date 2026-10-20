@@ -56,6 +56,7 @@ from app.nomina_engine.integracion import (
     PRIMA_VACACIONAL_DE_LEY,
     dias_vacaciones_de_ley,
 )
+from app.schemas.empleado_pago import DatosPagoContactoSchema
 
 
 class TipoContrato(str, Enum):
@@ -142,7 +143,7 @@ class PrestacionesSchema(BaseModel):
         return vacaciones_efectivas(self.dias_vacaciones, anios_servicio_cumplidos)
 
 
-class EmpleadoCarteraSchema(BaseModel):
+class EmpleadoCarteraSchema(DatosPagoContactoSchema):
     """
     Un empleado tal como lo guarda el despacho.
 
