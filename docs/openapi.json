@@ -2277,6 +2277,1504 @@
         }
       }
     },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss": {
+      "get": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Movimientos afiliatorios del cliente",
+        "operationId": "listar_api_v1_nomina_clientes__clave__movimientos_imss_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Api V1 Nomina Clientes  Clave  Movimientos Imss Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss/archivo": {
+      "post": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Generar el archivo IDSE o SUA",
+        "operationId": "generar_api_v1_nomina_clientes__clave__movimientos_imss_archivo_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerarArchivo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Generar Api V1 Nomina Clientes  Clave  Movimientos Imss Archivo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes": {
+      "get": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Archivos generados",
+        "operationId": "lotes_api_v1_nomina_clientes__clave__movimientos_imss_lotes_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Lotes Api V1 Nomina Clientes  Clave  Movimientos Imss Lotes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes/{lote_id}/archivo": {
+      "get": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Descargar un archivo generado",
+        "operationId": "descargar_api_v1_nomina_clientes__clave__movimientos_imss_lotes__lote_id__archivo_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "lote_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lote Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss/marcar": {
+      "post": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Marcar enviados, con acuse o cancelados",
+        "operationId": "marcar_api_v1_nomina_clientes__clave__movimientos_imss_marcar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarcarMovimientos"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Marcar Api V1 Nomina Clientes  Clave  Movimientos Imss Marcar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/historial-sbc": {
+      "get": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Historial de SBC del empleado",
+        "operationId": "historial_api_v1_nomina_clientes__clave__empleados__empleado_no__historial_sbc_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "empleado_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Empleado No"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Historial Api V1 Nomina Clientes  Clave  Empleados  Empleado No  Historial Sbc Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/sbc": {
+      "post": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Registrar un cambio de SBC (genera el 07)",
+        "operationId": "cambiar_sbc_api_v1_nomina_clientes__clave__empleados__empleado_no__sbc_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "empleado_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Empleado No"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioSBC"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Sbc Api V1 Nomina Clientes  Clave  Empleados  Empleado No  Sbc Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/movimientos-imss/bimestre-variable": {
+      "post": {
+        "tags": [
+          "Nómina — IMSS"
+        ],
+        "summary": "Promedio bimestral de la parte variable del SBC (Art. 30 fr. II LSS)",
+        "operationId": "variable_api_v1_nomina_clientes__clave__movimientos_imss_bimestre_variable_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BimestreVariable"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Variable Api V1 Nomina Clientes  Clave  Movimientos Imss Bimestre Variable Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/cuotas-imss": {
+      "get": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Cuotas del mes (EMA) o del bimestre (EBA) por trabajador",
+        "operationId": "calcular_api_v1_nomina_clientes__clave__cuotas_imss_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "ejercicio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2030,
+              "minimum": 2026,
+              "title": "Ejercicio"
+            }
+          },
+          {
+            "name": "mes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 12,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mes"
+            }
+          },
+          {
+            "name": "bimestre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 6,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bimestre"
+            }
+          },
+          {
+            "name": "tope_ausentismo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 31,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 7,
+              "title": "Tope Ausentismo"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string",
+              "default": "json",
+              "title": "Formato"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Calcular Api V1 Nomina Clientes  Clave  Cuotas Imss Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/cedulas/plantilla": {
+      "get": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Plantilla CSV de la cédula EMA o EBA",
+        "operationId": "plantilla_api_v1_nomina_clientes__clave__cedulas_plantilla_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "EMA",
+                "EBA"
+              ],
+              "type": "string",
+              "default": "EMA",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/cedulas": {
+      "post": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Importar la cédula EMA/EBA y conciliarla",
+        "operationId": "importar_api_v1_nomina_clientes__clave__cedulas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_api_v1_nomina_clientes__clave__cedulas_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Importar Api V1 Nomina Clientes  Clave  Cedulas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Cédulas importadas",
+        "operationId": "listar_api_v1_nomina_clientes__clave__cedulas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Api V1 Nomina Clientes  Clave  Cedulas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}": {
+      "get": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Una cédula con su conciliación",
+        "operationId": "abrir_api_v1_nomina_clientes__clave__cedulas__cedula_id__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cedula_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cedula Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Abrir Api V1 Nomina Clientes  Clave  Cedulas  Cedula Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}/reporte": {
+      "get": {
+        "tags": [
+          "Nómina — cuotas IMSS"
+        ],
+        "summary": "Reporte de la conciliación (CSV o XLSX)",
+        "operationId": "reporte_api_v1_nomina_clientes__clave__cedulas__cedula_id__reporte_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "cedula_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cedula Id"
+            }
+          },
+          {
+            "name": "formato",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv",
+                "xlsx"
+              ],
+              "type": "string",
+              "default": "csv",
+              "title": "Formato"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/timbrar": {
+      "post": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "Timbrar la nómina completa (trabajo en segundo plano)",
+        "operationId": "timbrar_api_v1_nomina_clientes__clave__periodos__periodo_id__timbrar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Timbrar Api V1 Nomina Clientes  Clave  Periodos  Periodo Id  Timbrar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi": {
+      "get": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "Estado del timbrado por recibo",
+        "operationId": "estado_api_v1_nomina_clientes__clave__periodos__periodo_id__cfdi_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Api V1 Nomina Clientes  Clave  Periodos  Periodo Id  Cfdi Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/xml": {
+      "get": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "XML timbrado de un recibo",
+        "operationId": "xml_api_v1_nomina_clientes__clave__periodos__periodo_id__cfdi__cfdi_id__xml_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "cfdi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cfdi Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/pdf": {
+      "get": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "Recibo PDF con QR",
+        "operationId": "recibo_pdf_api_v1_nomina_clientes__clave__periodos__periodo_id__cfdi__cfdi_id__pdf_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "cfdi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cfdi Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi.zip": {
+      "get": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "ZIP con el XML y el PDF de todos los recibos timbrados",
+        "operationId": "zip_periodo_api_v1_nomina_clientes__clave__periodos__periodo_id__cfdi_zip_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/cancelar": {
+      "post": {
+        "tags": [
+          "Nómina — timbrado"
+        ],
+        "summary": "Cancelar el CFDI de un recibo con motivo",
+        "operationId": "cancelar_api_v1_nomina_clientes__clave__periodos__periodo_id__cfdi__cfdi_id__cancelar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "periodo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Periodo Id"
+            }
+          },
+          {
+            "name": "cfdi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cfdi Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarCfdi"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Api V1 Nomina Clientes  Clave  Periodos  Periodo Id  Cfdi  Cfdi Id  Cancelar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/despacho/clientes": {
       "get": {
         "tags": [
@@ -14365,6 +15863,74 @@
         "title": "AnualRequest",
         "description": "`POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`."
       },
+      "BimestreVariable": {
+        "properties": {
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 2026.0,
+            "title": "Ejercicio"
+          },
+          "bimestre": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Bimestre",
+            "description": "El bimestre que se promedia."
+          },
+          "aplicar": {
+            "type": "boolean",
+            "title": "Aplicar",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "ejercicio",
+          "bimestre"
+        ],
+        "title": "BimestreVariable"
+      },
+      "Body_importar_api_v1_nomina_clientes__clave__cedulas_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "EMA",
+              "EBA"
+            ],
+            "title": "Tipo"
+          },
+          "ejercicio": {
+            "type": "integer",
+            "maximum": 2030.0,
+            "minimum": 2026.0,
+            "title": "Ejercicio"
+          },
+          "periodo": {
+            "type": "integer",
+            "title": "Periodo"
+          },
+          "configuracion": {
+            "type": "string",
+            "title": "Configuracion",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "tipo",
+          "ejercicio",
+          "periodo"
+        ],
+        "title": "Body_importar_api_v1_nomina_clientes__clave__cedulas_post"
+      },
       "Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post": {
         "properties": {
           "archivos": {
@@ -15078,6 +16644,71 @@
         "title": "CalendarioResponse",
         "description": "Respuesta con el calendario de obligaciones fiscales."
       },
+      "CambioSBC": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "sbc": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Sbc"
+          },
+          "tipo_salario": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "0",
+                  "1",
+                  "2"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Salario"
+          },
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "aumento",
+              "prestaciones",
+              "correccion"
+            ],
+            "title": "Motivo",
+            "default": "aumento"
+          },
+          "nota": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Nota",
+            "default": ""
+          },
+          "actualizar_ficha": {
+            "type": "boolean",
+            "title": "Actualizar Ficha",
+            "description": "Copia el SBC a la ficha si ya está vigente (fecha <= hoy).",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha",
+          "sbc"
+        ],
+        "title": "CambioSBC"
+      },
       "Cancelacion": {
         "properties": {
           "motivo": {
@@ -15089,6 +16720,32 @@
         },
         "type": "object",
         "title": "Cancelacion"
+      },
+      "CancelarCfdi": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "pattern": "^0[1-4]$",
+            "title": "Motivo"
+          },
+          "folio_sustitucion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9A-Fa-f-]{36}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folio Sustitucion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelarCfdi"
       },
       "CancelarRetencion": {
         "properties": {
@@ -17935,6 +19592,71 @@
             "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
             "default": "02"
           },
+          "causa_baja": {
+            "type": "string",
+            "pattern": "^([1-9A]?)$",
+            "title": "Causa Baja",
+            "description": "Catálogo IMSS de causas de baja (posición 149 del layout): 1 término de contrato, 2 separación voluntaria, 3 abandono, 4 defunción, 5 clausura, 6 otras, 7 ausentismo, 8 rescisión, 9 jubilación, A pensión.",
+            "default": ""
+          },
+          "tipo_salario": {
+            "type": "string",
+            "pattern": "^[012]$",
+            "title": "Tipo Salario",
+            "description": "IMSS: 0 fijo, 1 variable, 2 mixto.",
+            "default": "0"
+          },
+          "tipo_trabajador": {
+            "type": "string",
+            "pattern": "^[1-4]$",
+            "title": "Tipo Trabajador",
+            "description": "IMSS: 1 permanente, 2 eventual de la ciudad, 3 eventual de la construcción, 4 eventual del campo.",
+            "default": "1"
+          },
+          "jornada": {
+            "type": "string",
+            "pattern": "^[0-6]$",
+            "title": "Jornada",
+            "description": "IMSS: 0 normal; 1-5 días de semana reducida; 6 jornada reducida.",
+            "default": "0"
+          },
+          "umf": {
+            "type": "string",
+            "pattern": "^(\\d{3})?$",
+            "title": "Umf",
+            "description": "Unidad de Medicina Familiar.",
+            "default": ""
+          },
+          "rfc": {
+            "type": "string",
+            "pattern": "^([A-ZÑ&]{4}\\d{6}[A-Z0-9]{3})?$",
+            "title": "Rfc",
+            "default": ""
+          },
+          "curp": {
+            "type": "string",
+            "pattern": "^([A-Z][AEIOUX][A-Z]{2}\\d{6}[HM][A-Z]{5}[A-Z0-9]\\d)?$",
+            "title": "Curp",
+            "default": ""
+          },
+          "codigo_postal": {
+            "type": "string",
+            "pattern": "^(\\d{5})?$",
+            "title": "Codigo Postal",
+            "description": "Domicilio fiscal del receptor: obligatorio en CFDI 4.0.",
+            "default": ""
+          },
+          "departamento": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Departamento",
+            "default": ""
+          },
+          "sindicalizado": {
+            "type": "boolean",
+            "title": "Sindicalizado",
+            "default": false
+          },
           "tipo_contrato": {
             "$ref": "#/components/schemas/TipoContrato",
             "default": "indeterminado"
@@ -18058,6 +19780,71 @@
             "title": "Tipo Regimen",
             "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
             "default": "02"
+          },
+          "causa_baja": {
+            "type": "string",
+            "pattern": "^([1-9A]?)$",
+            "title": "Causa Baja",
+            "description": "Catálogo IMSS de causas de baja (posición 149 del layout): 1 término de contrato, 2 separación voluntaria, 3 abandono, 4 defunción, 5 clausura, 6 otras, 7 ausentismo, 8 rescisión, 9 jubilación, A pensión.",
+            "default": ""
+          },
+          "tipo_salario": {
+            "type": "string",
+            "pattern": "^[012]$",
+            "title": "Tipo Salario",
+            "description": "IMSS: 0 fijo, 1 variable, 2 mixto.",
+            "default": "0"
+          },
+          "tipo_trabajador": {
+            "type": "string",
+            "pattern": "^[1-4]$",
+            "title": "Tipo Trabajador",
+            "description": "IMSS: 1 permanente, 2 eventual de la ciudad, 3 eventual de la construcción, 4 eventual del campo.",
+            "default": "1"
+          },
+          "jornada": {
+            "type": "string",
+            "pattern": "^[0-6]$",
+            "title": "Jornada",
+            "description": "IMSS: 0 normal; 1-5 días de semana reducida; 6 jornada reducida.",
+            "default": "0"
+          },
+          "umf": {
+            "type": "string",
+            "pattern": "^(\\d{3})?$",
+            "title": "Umf",
+            "description": "Unidad de Medicina Familiar.",
+            "default": ""
+          },
+          "rfc": {
+            "type": "string",
+            "pattern": "^([A-ZÑ&]{4}\\d{6}[A-Z0-9]{3})?$",
+            "title": "Rfc",
+            "default": ""
+          },
+          "curp": {
+            "type": "string",
+            "pattern": "^([A-Z][AEIOUX][A-Z]{2}\\d{6}[HM][A-Z]{5}[A-Z0-9]\\d)?$",
+            "title": "Curp",
+            "default": ""
+          },
+          "codigo_postal": {
+            "type": "string",
+            "pattern": "^(\\d{5})?$",
+            "title": "Codigo Postal",
+            "description": "Domicilio fiscal del receptor: obligatorio en CFDI 4.0.",
+            "default": ""
+          },
+          "departamento": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Departamento",
+            "default": ""
+          },
+          "sindicalizado": {
+            "type": "boolean",
+            "title": "Sindicalizado",
+            "default": false
           },
           "tipo_contrato": {
             "$ref": "#/components/schemas/TipoContrato",
@@ -18778,6 +20565,77 @@
         "title": "FuenteChecada",
         "description": "De donde vino el evento. `csv` queda para el plan C (import manual)."
       },
+      "GenerarArchivo": {
+        "properties": {
+          "destino": {
+            "type": "string",
+            "enum": [
+              "idse_08",
+              "idse_07",
+              "idse_02",
+              "sua_trabajadores",
+              "sua_movimientos"
+            ],
+            "title": "Destino"
+          },
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids"
+          },
+          "al": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Al",
+            "description": "SUA trabajadores: plantilla vigente a esta fecha."
+          },
+          "desde": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desde"
+          },
+          "hasta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hasta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "destino"
+        ],
+        "title": "GenerarArchivo"
+      },
       "GenerarTareas": {
         "properties": {
           "desde": {
@@ -19431,6 +21289,39 @@
           "trabajos"
         ],
         "title": "ListaTrabajos"
+      },
+      "MarcarMovimientos": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Ids"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "enviado",
+              "acuse",
+              "cancelado"
+            ],
+            "title": "Estado"
+          },
+          "acuse": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Acuse",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids",
+          "estado"
+        ],
+        "title": "MarcarMovimientos"
       },
       "MarcarObligacion": {
         "properties": {

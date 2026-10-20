@@ -56,6 +56,14 @@ export interface EmpleadoCartera {
   /** P4-04: c_TipoRegimen. '02' sueldos; '05'-'11' asimilados (Art. 94 LISR, sin IMSS). */
   tipo_regimen?: string;
   enrolamiento: EstatusEnrolamiento;
+  /** P4-09: catálogo IMSS de causas de baja (1-9, A). Vacío = no capturada. */
+  causa_baja?: string;
+  /** P4-09: IMSS 0 fijo, 1 variable, 2 mixto. */
+  tipo_salario?: string;
+  /** P4-11: datos del receptor del CFDI de nómina. Vacíos = no se puede timbrar. */
+  rfc?: string;
+  curp?: string;
+  codigo_postal?: string;
 }
 
 /** El horario contra el que el checador mide retardos y faltas. (O-03) */

@@ -18,6 +18,7 @@ import {
 } from '../../services/nominaApi';
 import { fmtMoney } from '../../utils/format';
 import DesgloseRecibos, { type ReciboDesglosado } from './DesgloseRecibos';
+import TimbradoPeriodo from './TimbradoPeriodo';
 import { envoltura, fila, tabla, td, tdNum, th, thNum, tituloSeccion } from './estilosTabla';
 
 export default function HistorialNominas({ clienteId }: { clienteId: string }) {
@@ -147,6 +148,9 @@ export default function HistorialNominas({ clienteId }: { clienteId: string }) {
               .join(', ')}
             . Se muestra tal como se guardó.
           </p>
+          {(abierto.periodo.estado === 'cerrada' || abierto.periodo.estado === 'timbrada') && (
+            <TimbradoPeriodo key={abierto.periodo.id} clienteId={clienteId} periodoId={abierto.periodo.id} onCambio={cargar} />
+          )}
           <DesgloseRecibos recibos={(abierto.resultado.recibos as ReciboDesglosado[] | undefined) ?? []} />
         </>
       )}

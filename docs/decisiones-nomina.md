@@ -1117,3 +1117,46 @@ cliente (`criterios_nomina.ptu_remanente`):
 La LFT no lo resuelve expresamente. **Pregunta:** ¿qué hace el despacho con ese remanente?
 **FUENTE POR CONFIRMAR** también: la numeración de las fracciones del Art. 127 tras la reforma
 de 2021 no se pudo cotejar contra el DOF.
+
+---
+
+## D36 · IMSS y timbrado de nómina (P4-09, P4-10, P4-11) — PROVISIONALES, para la contadora y Ricardo
+
+Cada una está marcada en el código con su `DECISIÓN PROVISIONAL` o `POR CONFIRMAR`.
+
+**Movimientos afiliatorios (P4-09).**
+- Una edición de la ficha que cambia el SDI no trae fecha de efecto: el 07 se fecha **hoy**
+  (zona CDMX). Para un cambio con fecha propia está `POST .../empleados/{no}/sbc`.
+- Si el 08 del alta sigue pendiente (no se ha presentado), un cambio de SBC **corrige el 08** en
+  vez de crear un 07.
+- Bimestre variable (Art. 30 fr. II/III, 34 fr. II LSS): la ficha guarda el SBC **fijo** integrado
+  y el declarado vive en el historial; el promedio es `sbc_variable_integrable ÷ dias_pagados` de
+  las nóminas ordinarias cerradas cuyo fin cae en el bimestre, con efecto el día 1 del bimestre
+  siguiente.
+- Catálogo de causas de baja con la clave "A" (pensión): POR CONFIRMAR contra la Guía DISP-MAG.
+- Layouts de importación al SUA (trabajadores 164 posiciones, movimientos 49): **POR CONFIRMAR**
+  contra el manual del SUA; no se pudo descargar ni hallar copia pública verificable.
+- Ñ y acentos se transliteran a ASCII (como O-04). POR CONFIRMAR si IDSE espera otro carácter.
+
+**Cuotas mensuales y bimestrales (P4-10).**
+- Tope de **7 días de ausentismo por mes** (regla del SUA, Art. 31 fr. I LSS, texto no
+  transcrito, §D20). Con tope se cobra igual o más: es la dirección conservadora. Configurable
+  (`tope_ausentismo`).
+- Las incidencias de una nómina que cruza de mes se asignan al mes de su **fecha final**, y dentro
+  del mes al primer tramo de SBC.
+- Sin historial de SBC (cartera anterior a P4-09) se usa el SBC de la ficha desde el alta, y la
+  respuesta lo advierte.
+- La EMA/EBA del IMSS no tiene layout público accesible: el parser es **configurable** (CSV, XLSX,
+  TXT delimitado o de posiciones) con plantilla por default. Se compara `dias` contra los días
+  naturales vigentes del periodo; la EBA compara total menos amortización Infonavit.
+
+**CFDI de nómina (P4-11).**
+- `FormaPago` se omite (la Guía de llenado no lo enumera para nómina). POR CONFIRMAR con el PAC.
+- Finiquito con separación (022/023/025): `TipoRegimen` **13**, `TipoContrato` **99** y sin datos
+  del IMSS (la matriz del SAT sólo admite TipoRegimen 02-04 con TipoContrato 01-08). POR CONFIRMAR.
+- `SeparacionIndemnizacion/@IngresoAcumulable` = menor entre el último sueldo mensual ordinario y
+  la parte GRAVADA de la separación. POR CONFIRMAR con la Guía.
+- `HorasExtra/@Dias` = horas ÷ 3 redondeado hacia arriba (máximo diario del Art. 66 LFT): la
+  captura no trae los días. Horas fraccionarias se redondean hacia arriba.
+- `NumDiasPagados` de una nómina extraordinaria (finiquito, aguinaldo, PTU) = 1.
+- QR del PDF: `tt` con 25 posiciones (18.6), igual que retenciones. POR CONFIRMAR.

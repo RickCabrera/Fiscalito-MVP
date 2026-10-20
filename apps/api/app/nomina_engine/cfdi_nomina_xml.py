@@ -34,6 +34,7 @@ contenedor de Cloud Run, donde `pyproject.toml` no lo instala. Se genera con
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -67,6 +68,58 @@ COMENTARIO_CABECERA = (
 # El CFDI de nomina siempre usa esta clave de producto y esta unidad.
 CLAVE_PROD_SERV_NOMINA = "84111505"
 CLAVE_UNIDAD_NOMINA = "ACT"
+
+
+@dataclass(frozen=True)
+class HorasExtraCfdi:
+    """Nodo `HorasExtra` de una percepción 019 (Guía de llenado: obligatorio con la 019)."""
+
+    clave_percepcion: str  # la `Clave` interna de la percepción a la que cuelga
+    dias: int
+    tipo_horas: str  # c_TipoHoras: 01 dobles, 02 triples, 03 simples
+    horas: int
+    importe: Decimal
+
+
+@dataclass(frozen=True)
+class IncapacidadCfdi:
+    """Nodo `Incapacidad`. `importe` sólo si hay deducción 006 o percepción 014."""
+
+    dias: int
+    tipo: str  # c_TipoIncapacidad: 01 riesgo de trabajo, 02 enfermedad general, 03 maternidad
+    importe: Decimal | None = None
+
+
+@dataclass(frozen=True)
+class SeparacionCfdi:
+    """Nodo `SeparacionIndemnizacion` (percepciones 022, 023 y 025)."""
+
+    total_pagado: Decimal
+    anios_servicio: int
+    ultimo_sueldo_mensual: Decimal
+    ingreso_acumulable: Decimal
+    ingreso_no_acumulable: Decimal
+
+
+@dataclass(frozen=True)
+class JubilacionCfdi:
+    """Nodo `JubilacionPensionRetiro` (039 una exhibición; 044 parcialidades)."""
+
+    ingreso_acumulable: Decimal
+    ingreso_no_acumulable: Decimal
+    total_una_exhibicion: Decimal | None = None
+    total_parcialidad: Decimal | None = None
+    monto_diario: Decimal | None = None
+
+
+@dataclass(frozen=True)
+class ExtrasNomina:
+    """Los nodos opcionales del complemento que el recibo no trae por sí solo (P4-11)."""
+
+    horas_extra: tuple[HorasExtraCfdi, ...] = field(default_factory=tuple)
+    incapacidades: tuple[IncapacidadCfdi, ...] = field(default_factory=tuple)
+    separacion: SeparacionCfdi | None = None
+    jubilacion: JubilacionCfdi | None = None
 
 
 def _importe(valor: Decimal) -> str:
@@ -111,7 +164,9 @@ def _comprobante(recibo: Recibo, patron: DatosPatron, fecha: datetime, serie, fo
     return raiz
 
 
-def _nodo_percepciones(nomina: ET.Element, recibo: Recibo) -> None:
+def _nodo_percepciones(
+    nomina: ET.Element, recibo: Recibo, extras: ExtrasNomina | None = None
+) -> None:
     atributos = {
         "TotalSueldos": _importe(recibo.total_sueldos),
         "TotalGravado": _importe(recibo.total_gravado),
@@ -126,8 +181,9 @@ def _nodo_percepciones(nomina: ET.Element, recibo: Recibo) -> None:
             recibo.total_jubilacion_pension_retiro
         )
     nodo = _sub(nomina, f"{{{NS_NOMINA}}}Percepciones", atributos)
+    extras = extras or ExtrasNomina()
     for p in recibo.percepciones:
-        _sub(
+        percepcion = _sub(
             nodo,
             f"{{{NS_NOMINA}}}Percepcion",
             {
@@ -138,6 +194,33 @@ def _nodo_percepciones(nomina: ET.Element, recibo: Recibo) -> None:
                 "ImporteExento": _importe(p.exento),
             },
         )
+        if p.tipo == "019":
+            for h in extras.horas_extra:
+                if h.clave_percepcion == p.clave:
+                    _sub(percepcion, f"{{{NS_NOMINA}}}HorasExtra", {
+                        "Dias": str(h.dias), "TipoHoras": h.tipo_horas,
+                        "HorasExtra": str(h.horas), "ImportePagado": _importe(h.importe),
+                    })
+    if extras.jubilacion is not None:
+        j = extras.jubilacion
+        _sub(nodo, f"{{{NS_NOMINA}}}JubilacionPensionRetiro", {
+            "TotalUnaExhibicion": _importe(j.total_una_exhibicion)
+            if j.total_una_exhibicion is not None else "",
+            "TotalParcialidad": _importe(j.total_parcialidad)
+            if j.total_parcialidad is not None else "",
+            "MontoDiario": _importe(j.monto_diario) if j.monto_diario is not None else "",
+            "IngresoAcumulable": _importe(j.ingreso_acumulable),
+            "IngresoNoAcumulable": _importe(j.ingreso_no_acumulable),
+        })
+    if extras.separacion is not None:
+        sep = extras.separacion
+        _sub(nodo, f"{{{NS_NOMINA}}}SeparacionIndemnizacion", {
+            "TotalPagado": _importe(sep.total_pagado),
+            "NumAñosServicio": str(sep.anios_servicio),
+            "UltimoSueldoMensOrd": _importe(sep.ultimo_sueldo_mensual),
+            "IngresoAcumulable": _importe(sep.ingreso_acumulable),
+            "IngresoNoAcumulable": _importe(sep.ingreso_no_acumulable),
+        })
 
 
 def _nodo_deducciones(nomina: ET.Element, recibo: Recibo) -> None:
@@ -185,6 +268,17 @@ def _nodo_otros_pagos(nomina: ET.Element, recibo: Recibo) -> None:
             )
 
 
+def _nodo_incapacidades(nomina: ET.Element, extras: ExtrasNomina | None) -> None:
+    if extras is None or not extras.incapacidades:
+        return
+    nodo = ET.SubElement(nomina, f"{{{NS_NOMINA}}}Incapacidades")
+    for i in extras.incapacidades:
+        _sub(nodo, f"{{{NS_NOMINA}}}Incapacidad", {
+            "DiasIncapacidad": str(i.dias), "TipoIncapacidad": i.tipo,
+            "ImporteMonetario": _importe(i.importe) if i.importe is not None else "",
+        })
+
+
 def generar_cfdi_nomina(
     recibo: Recibo,
     patron: DatosPatron,
@@ -197,6 +291,7 @@ def generar_cfdi_nomina(
     tipo_nomina: str = "O",
     serie: str = "",
     folio: str = "",
+    extras: ExtrasNomina | None = None,
 ) -> str:
     """
     Serializa un pre-recibo de nomina a XML.
@@ -254,23 +349,28 @@ def generar_cfdi_nomina(
             "FechaFinalPago": fecha_final_pago.isoformat(),
             "NumDiasPagados": f"{dias_pagados:.3f}",
             "TotalPercepciones": _importe(recibo.total_percepciones),
-            "TotalDeducciones": _importe(recibo.total_deducciones),
-            "TotalOtrosPagos": _importe(recibo.total_otros_pagos),
+            # Guía de llenado: TotalDeducciones/TotalOtrosPagos sólo si existe su nodo.
+            "TotalDeducciones": _importe(recibo.total_deducciones) if recibo.deducciones else "",
+            "TotalOtrosPagos": _importe(recibo.total_otros_pagos) if recibo.otros_pagos else "",
         },
     )
-    _sub(
-        nomina,
-        f"{{{NS_NOMINA}}}Emisor",
-        {"RegistroPatronal": patron.registro_patronal},
-    )
+    # Guía de llenado: si NO hay RegistroPatronal (asimilados, régimen 13) no debe existir
+    # ninguno de NumSeguridadSocial, FechaInicioRelLaboral, Antigüedad, RiesgoPuesto,
+    # SalarioBaseCotApor ni SalarioDiarioIntegrado.
+    con_imss = bool(patron.registro_patronal)
+    emisor = {"Curp": patron.curp, "RegistroPatronal": patron.registro_patronal}
+    if any(emisor.values()):
+        _sub(nomina, f"{{{NS_NOMINA}}}Emisor", emisor)
+    inicio = trabajador.fecha_inicio_relacion_laboral
+    sbc, sdi = trabajador.salario_base_cotizacion, trabajador.salario_diario_integrado
     _sub(
         nomina,
         f"{{{NS_NOMINA}}}Receptor",
         {
             "Curp": trabajador.curp,
-            "NumSeguridadSocial": trabajador.numero_seguridad_social,
-            "FechaInicioRelLaboral": trabajador.fecha_inicio_relacion_laboral.isoformat(),
-            ATRIBUTO_ANTIGUEDAD: trabajador.antiguedad,
+            "NumSeguridadSocial": trabajador.numero_seguridad_social if con_imss else "",
+            "FechaInicioRelLaboral": inicio.isoformat() if con_imss and inicio else "",
+            ATRIBUTO_ANTIGUEDAD: trabajador.antiguedad if con_imss else "",
             "TipoContrato": trabajador.tipo_contrato,
             "Sindicalizado": trabajador.sindicalizado,
             "TipoJornada": trabajador.tipo_jornada,
@@ -278,16 +378,17 @@ def generar_cfdi_nomina(
             "NumEmpleado": trabajador.numero_empleado,
             "Departamento": trabajador.departamento,
             "Puesto": trabajador.puesto,
-            "RiesgoPuesto": trabajador.riesgo_puesto,
+            "RiesgoPuesto": trabajador.riesgo_puesto if con_imss else "",
             "PeriodicidadPago": trabajador.periodicidad_pago,
-            "SalarioBaseCotApor": _importe(trabajador.salario_base_cotizacion),
-            "SalarioDiarioIntegrado": _importe(trabajador.salario_diario_integrado),
+            "SalarioBaseCotApor": _importe(sbc) if con_imss and sbc is not None else "",
+            "SalarioDiarioIntegrado": _importe(sdi) if con_imss and sdi is not None else "",
             "ClaveEntFed": patron.clave_entidad,
         },
     )
-    _nodo_percepciones(nomina, recibo)
+    _nodo_percepciones(nomina, recibo, extras)
     _nodo_deducciones(nomina, recibo)
     _nodo_otros_pagos(nomina, recibo)
+    _nodo_incapacidades(nomina, extras)
 
     cuerpo = ET.tostring(raiz, encoding="unicode")
     return (

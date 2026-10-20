@@ -30,6 +30,7 @@ from pydantic import ValidationError
 
 from app import almacen_cartera as almacen
 from app.exceptions import FiscalAgentError
+from app.nomina_imss.historial import registrar_desde_ficha
 from app.schemas.cartera import (
     ClienteCarteraSchema,
     ClientesCarteraResponse,
@@ -194,8 +195,15 @@ def guardar_empleado(
     # No se crea el cliente al vuelo: un empleado colgando de un cliente que no existe
     # es invisible en la lista y aparece en el cálculo.
     cliente = cliente_o_404(ctx, cliente_id)
+    previo = almacen.buscar_empleado(ctx.db, cliente, empleado_no)
+    datos_previos = dict(previo.datos or {}) if previo is not None else None
     almacen.guardar_empleado(ctx.db, cliente, empleado_no, empleado.model_dump(mode="json"))
-    return OperacionResponse(mensaje=f"Empleado {empleado_no} guardado.")
+    # P4-09: alta, baja, reingreso o cambio de SBC dejan su movimiento IMSS pendiente.
+    movimientos = registrar_desde_ficha(ctx.db, cliente, datos_previos, empleado, ctx.uid)
+    aviso = (
+        f" {len(movimientos)} movimiento(s) IMSS pendiente(s) por enviar." if movimientos else ""
+    )
+    return OperacionResponse(mensaje=f"Empleado {empleado_no} guardado.{aviso}")
 
 
 @router.delete(
