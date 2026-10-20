@@ -219,4 +219,5 @@ def descargar(envio_id: int, archivo: str, vence: int = Query(), firma: str = Qu
         raise no_existe
     mime = "application/pdf" if archivo == "recibo.pdf" else "application/xml"
     return Response(contenido, media_type=mime, headers={
-        "Content-Disposition": f'attachment; filename="{docs.nombre_base}.{archivo[-3:]}"'})
+        "Content-Disposition": f'attachment; filename="{docs.nombre_base}.{archivo[-3:]}"',
+        "Cache-Control": "no-store"})

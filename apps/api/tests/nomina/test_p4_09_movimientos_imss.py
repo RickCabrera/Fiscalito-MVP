@@ -175,6 +175,27 @@ class TestFlujo:
         (m,) = _movs(http)
         assert (m["tipo"], m["sbc"]) == ("08", "430.00")
 
+    def test_aumento_posterior_con_alta_pendiente_conserva_su_fecha_y_genera_07(self, http):
+        # Revisor B1: un aumento con fecha propia no reescribe el SBC del alta hacia atrás.
+        r = http.post(f"{BASE}/empleados/E1/sbc", json={
+            "fecha": "2026-04-01", "sbc": "455.50", "motivo": "aumento"})
+        assert r.status_code == 200, r.text
+        assert r.json()["movimiento"]["tipo"] == "07"
+        movs = {m["tipo"]: m for m in _movs(http)}
+        assert movs["08"]["sbc"] == "420.00" and movs["07"]["fecha"] == "2026-04-01"
+        h = http.get(f"{BASE}/empleados/E1/historial-sbc").json()["historial"]
+        assert [(x["fecha"], x["sbc"]) for x in h] == [
+            ("2026-03-02", "420.00"), ("2026-04-01", "455.50")]
+
+    def test_idse_acota_el_sbc_a_25_uma(self, http):
+        http.put("/api/v1/cartera/clientes/imss/empleados/E1",
+                 json=_emp(salario_diario_integrado="9000.00"))
+        r = http.post(f"{BASE}/movimientos-imss/archivo", json={"destino": "idse_08"})
+        alta = http.get(f"{BASE}/movimientos-imss/lotes/{r.json()['lote']['id']}/archivo") \
+            .content.decode("ascii").split("\r\n")[0]
+        # 25 UMA de marzo 2026 = 25 × 117.31 = 2,932.75 (`clamp_sbc`, Art. 28 LSS).
+        assert _campo(alta, 104, 109) == "293275"
+
     def test_sin_nss_queda_fuera_con_su_razon(self, api):
         c = api("uid-imss-sin-nss")
         _sembrar(c, [_emp(), _emp("E2", nss="")])
