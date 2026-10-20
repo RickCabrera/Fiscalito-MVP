@@ -778,6 +778,25 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/clientes/{cliente_id}/ptu",
       "metodos": [
         "POST"
@@ -796,9 +815,33 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/dispersion/layouts",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/periodo-sugerido",
       "metodos": [
         "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/envios/rebote",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/plantillas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/plantillas/{canal}",
+      "metodos": [
+        "PUT"
       ]
     },
     {
@@ -817,6 +860,12 @@
       "path": "/api/v1/pre-declaracion-anual",
       "metodos": [
         "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/recibos/descarga/{envio_id}/{archivo}",
+      "metodos": [
+        "GET"
       ]
     },
     {

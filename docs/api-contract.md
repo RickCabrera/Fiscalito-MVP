@@ -1162,6 +1162,71 @@ guardado del ejercicio. Por trabajador: `procede`, `motivo` (causales del Art. 9
 `impuesto_anual` (Art. 152 − subsidio), `saldo_a_cargo` / `saldo_a_favor` y su tratamiento.
 No se guarda en el historial.
 
+### Ficha del empleado: pago y contacto (P4-12, P4-13)
+
+`PUT /api/v1/cartera/clientes/{c}/empleados/{e}` acepta además (todo opcional):
+`forma_pago` (`transferencia` | `efectivo` | `cheque`), `banco` (clave c_Banco, 3 dígitos; si
+falta se toma de la CLABE), `clabe` (18 dígitos, **dígito verificador de Banxico**: una CLABE que
+no cuadra es 422; banco y CLABE que no coinciden también), `numero_cuenta` (10-12 dígitos, o 16
+de tarjeta), `correo`, `celular` (E.164 mexicano; se normaliza a `+52` + 10 dígitos) y
+`consentimiento_whatsapp` (exige celular).
+
+## Nómina — dispersión bancaria (P4-12)
+
+Sólo sobre un periodo `cerrada` o `timbrada` (otro estado → 409). Tenencia: `cliente_o_404` +
+periodo del cliente; la cuenta de cargo es una `cuentas_bancarias` del cliente (P2-06) del
+**mismo banco** que el layout (si no, 422).
+
+### `GET /api/v1/nomina/dispersion/layouts?cliente=`
+`{layouts: [{id, nombre, banco, estado: verificado|por_confirmar, fuente, interbancario,
+datos_requeridos: [{clave, etiqueta, patron, obligatorio, default}]}], columnas_genericas,
+columnas_default, bancos, datos_guardados}`. Layouts: `bbva`, `banamex`, `santander`, `banorte`,
+`hsbc`, `scotiabank`, `banbajio`, `generico`. Verificados contra documentación pública del banco:
+Banamex (LayOut D) y Banorte (NE); los demás **POR CONFIRMAR CON MANUAL DEL BANCO** (su `fuente`
+dice por qué). `datos_guardados` = lo último usado por layout para ese cliente.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion`
+`{layout, cuenta_cargo_id?, fecha_aplicacion?, datos_banco?, columnas?, separador?, formato?:
+csv|xlsx, encabezado?}` (`columnas`/`separador`/`formato` sólo para `generico`). Respuesta:
+`{layout, archivo: {nombre, mime, base64, sha256} | null, incluidos: [{empleado_no, nombre,
+importe, banco, banco_nombre, tipo_cuenta, cuenta (****1234), interbancario}], excluidos:
+[{empleado_no, nombre, neto, causa: sin_ficha|neto_cero|efectivo|cheque|sin_cuenta|layout,
+motivo}], total_nomina, total_archivo, total_excluidos, cuadra, advertencias}`.
+**Cuadre:** el backend relee el archivo generado; `total_archivo + total_excluidos =
+total_nomina` al centavo o responde 500 sin archivo. Sin pagos incluibles: `archivo: null`.
+Audita `nomina.dispersion.generar`.
+
+## Nómina — envío de recibos (P4-13)
+
+Sobre un periodo `cerrada`/`timbrada` (otro → 409). Un renglón por (recibo, canal); el envío
+corre en segundo plano (`nomina.enviar_recibos`, idempotente: no reenvía los `enviado`).
+Documentos: XML timbrado (+ PDF fiscal si existe) cuando el recibo tiene `uuid_cfdi` en la
+bóveda; si no, PDF del recibo marcado "SIN TIMBRAR".
+
+### `GET /api/v1/nomina/recibos/plantillas` · `PUT /api/v1/nomina/recibos/plantillas/{canal}`
+Por despacho; `canal` = `correo` | `whatsapp`. `{asunto, cuerpo, plantilla_whatsapp, idioma}`.
+Variables `{nombre}`, `{periodo}`, `{neto}`. En WhatsApp se usa la plantilla aprobada
+(`plantilla_whatsapp`) con el PDF en el encabezado y `[nombre, periodo, neto]` como parámetros.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios`
+`{canal}` → prepara los envíos, encola el trabajo y devuelve el estado (abajo). Repetirlo no
+duplica; los `fallido` vuelven a `pendiente`.
+
+### `GET /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios?canal=`
+`{canal, envios: [{id, empleado_no, destino, estado: pendiente|enviado|fallido|rebotado,
+intentos, error, timbrado, enviado_en}], omitidos: [{empleado_no, nombre, motivo}], resumen,
+trabajo: {id, estado, error} | null}`.
+
+### `POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar`
+Reenvío individual explícito (vuelve a `pendiente` y encola).
+
+### `POST /api/v1/nomina/recibos/envios/rebote`
+`{canal, id_mensaje, motivo?}` → marca `rebotado` el envío de ese despacho (404 si no es suyo).
+
+### `GET /api/v1/recibos/descarga/{envio_id}/{archivo}?vence=&firma=` (pública)
+`archivo` = `recibo.pdf` | `recibo.xml`. Sin sesión: enlace firmado HMAC-SHA256 con vigencia de
+7 días que se manda a WhatsApp. Firma inválida, vencida o documento inexistente → 404.
+
 ---
 
 ## Declaraciones — regímenes sin motor (T6)

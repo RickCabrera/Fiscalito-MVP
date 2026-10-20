@@ -64,6 +64,13 @@ export interface AnualRequest {
   pagos_provisionales?: Record<string, number | string>;
 }
 
+export interface ArchivoSchema {
+  nombre: string;
+  mime: string;
+  base64: string;
+  sha256: string;
+}
+
 export interface Body_importar_cfdi_api_v1_boveda_clientes__clave__cfdi_post {
   archivos: string[];
 }
@@ -470,6 +477,14 @@ export interface DIOTResponse {
   explicacion?: string | null;
 }
 
+export interface DatoBancoSchema {
+  clave: string;
+  etiqueta: string;
+  patron: string;
+  obligatorio: boolean;
+  default: string;
+}
+
 /** Datos de un cliente persona moral para un ejercicio (P3-01). */
 export interface DatosAnualesPMSchema {
   coeficiente_utilidad?: number | string | null;
@@ -626,6 +641,30 @@ export interface DiferenciaEmpleado {
   diferencia: string;
 }
 
+export interface DispersionRequest {
+  layout: string;
+  cuenta_cargo_id?: number | null;
+  fecha_aplicacion?: string | null;
+  datos_banco?: Record<string, string>;
+  columnas?: string[] | null;
+  separador?: string;
+  formato?: string;
+  encabezado?: boolean;
+}
+
+export interface DispersionResponse {
+  exito?: boolean;
+  layout: LayoutSchema;
+  archivo: ArchivoSchema | null;
+  incluidos: IncluidoSchema[];
+  excluidos: ExcluidoSchema[];
+  total_nomina: string;
+  total_archivo: string;
+  total_excluidos: string;
+  cuadra: boolean;
+  advertencias: string[];
+}
+
 export interface DispositivoGuardadoResponse {
   exito?: boolean;
   id: string;
@@ -670,6 +709,13 @@ export interface EmitirTokenRequest {
 
 /** Un empleado tal como lo guarda el despacho. */
 export interface EmpleadoCarteraSchemaInput {
+  forma_pago?: FormaPagoEmpleado;
+  banco?: string;
+  clabe?: string;
+  numero_cuenta?: string;
+  correo?: string;
+  celular?: string;
+  consentimiento_whatsapp?: boolean;
   empleado_no: string;
   nombre: string;
   apellido_paterno?: string;
@@ -691,6 +737,13 @@ export interface EmpleadoCarteraSchemaInput {
 
 /** Un empleado tal como lo guarda el despacho. */
 export interface EmpleadoCarteraSchemaOutput {
+  forma_pago?: FormaPagoEmpleado;
+  banco?: string;
+  clabe?: string;
+  numero_cuenta?: string;
+  correo?: string;
+  celular?: string;
+  consentimiento_whatsapp?: boolean;
   empleado_no: string;
   nombre: string;
   apellido_paterno?: string;
@@ -770,6 +823,21 @@ export interface EncolarDiagnostico {
   fallar_intentos?: number;
 }
 
+export interface EnviarRequest {
+  canal: "correo" | "whatsapp";
+}
+
+export interface EnvioSchema {
+  id: number;
+  empleado_no: string;
+  destino: string;
+  estado: string;
+  intentos: number;
+  error: string;
+  timbrado: boolean;
+  enviado_en: string | null;
+}
+
 /** Respuesta de error estandar. */
 export interface ErrorResponse {
   exito?: boolean;
@@ -803,6 +871,15 @@ export interface EstadoCuentaResponse {
   mes_mayor_gasto: string;
   advertencias: string[];
   explicacion?: string | null;
+}
+
+export interface EstadoEnviosResponse {
+  exito?: boolean;
+  canal: "correo" | "whatsapp";
+  envios: EnvioSchema[];
+  omitidos: OmitidoSchema[];
+  resumen: Record<string, number>;
+  trabajo: Record<string, string | number | null> | null;
 }
 
 /** Si la persona ya tiene su rostro dado de alta en el checador. */
@@ -852,6 +929,17 @@ export interface EventosResponse {
   cliente: string;
   eventos: EventoChecada[];
 }
+
+export interface ExcluidoSchema {
+  empleado_no: string;
+  nombre: string;
+  neto: string;
+  causa: string;
+  motivo: string;
+}
+
+/** Cómo se le paga el neto. Sólo `transferencia` entra a la dispersión. */
+export type FormaPagoEmpleado = "transferencia" | "efectivo" | "cheque";
 
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
@@ -929,6 +1017,17 @@ export interface IncidenciasEmpleadoSchema {
   dias_incapacidad?: number;
 }
 
+export interface IncluidoSchema {
+  empleado_no: string;
+  nombre: string;
+  importe: string;
+  banco: string;
+  banco_nombre: string;
+  tipo_cuenta: string;
+  cuenta: string;
+  interbancario: boolean;
+}
+
 export interface InfonavitSchema {
   tipo: "porcentaje" | "cuota_fija" | "factor";
   valor: number | string;
@@ -970,6 +1069,25 @@ export interface IvaPeriodoRequest {
   meses: number[];
   saldo_favor_inicial?: number | string | null;
   opciones_saldo?: Record<string, "acreditar" | "devolucion" | "compensacion">;
+}
+
+export interface LayoutSchema {
+  id: string;
+  nombre: string;
+  banco: string | null;
+  estado: string;
+  fuente: string;
+  interbancario: boolean;
+  datos_requeridos: DatoBancoSchema[];
+}
+
+export interface LayoutsResponse {
+  exito?: boolean;
+  layouts: LayoutSchema[];
+  columnas_genericas: Record<string, string>;
+  columnas_default: string[];
+  bancos: Record<string, string>;
+  datos_guardados?: Record<string, Record<string, string>>;
 }
 
 export interface ListaTrabajos {
@@ -1041,6 +1159,12 @@ export interface ObligacionPatronalSchema {
   regimen_de_plazo: RegimenDePlazo;
   condicional: boolean;
   nota?: string;
+}
+
+export interface OmitidoSchema {
+  empleado_no: string;
+  nombre: string;
+  motivo: string;
 }
 
 export interface OperacionResponse {
@@ -1202,11 +1326,19 @@ export interface PlantillaDemoResponse {
   periodo_sugerido: PeriodoNomina;
 }
 
-export interface PlantillaEntrada {
-  nombre: string;
-  banco?: string;
-  formato?: "csv" | "xlsx";
-  mapeo: Record<string, unknown>;
+export interface PlantillaSchema {
+  canal: "correo" | "whatsapp";
+  asunto?: string;
+  cuerpo?: string;
+  plantilla_whatsapp?: string;
+  idioma?: string;
+  personalizada?: boolean;
+}
+
+export interface PlantillasResponse {
+  exito?: boolean;
+  variables: string[];
+  plantillas: PlantillaSchema[];
 }
 
 export interface PolizaCambio {
@@ -1331,6 +1463,12 @@ export interface RangoEstatus {
 
 export interface Reapertura {
   motivo: string;
+}
+
+export interface ReboteRequest {
+  canal: "correo" | "whatsapp";
+  id_mensaje: string;
+  motivo?: string;
 }
 
 /** Lo que el CFDI necesita de un recibo, y nada más. */
@@ -1637,6 +1775,13 @@ export interface _ConExplicacion {
   incluir_explicacion?: boolean;
 }
 
+export interface app__routes__conciliacion__PlantillaEntrada {
+  nombre: string;
+  banco?: string;
+  formato?: "csv" | "xlsx";
+  mapeo: Record<string, unknown>;
+}
+
 export interface app__routes__conciliacion__Rango {
   desde?: string | null;
   hasta?: string | null;
@@ -1663,6 +1808,13 @@ export interface app__routes__contabilidad__Rango {
   desde: string;
   hasta: string;
   segundo_plano?: boolean | null;
+}
+
+export interface app__routes__nomina_envio__PlantillaEntrada {
+  asunto?: string;
+  cuerpo?: string;
+  plantilla_whatsapp?: string;
+  idioma?: string;
 }
 
 export interface app__routes__sat_descarga__ConfigEntrada {
@@ -1851,13 +2003,21 @@ export type RutaApi =
   | "/api/v1/nomina/clientes/{cliente_id}/historial"
   | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}"
   | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar"
+  | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion"
+  | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios"
+  | "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar"
   | "/api/v1/nomina/clientes/{cliente_id}/ptu"
   | "/api/v1/nomina/criterios"
   | "/api/v1/nomina/demo/plantilla"
+  | "/api/v1/nomina/dispersion/layouts"
   | "/api/v1/nomina/periodo-sugerido"
+  | "/api/v1/nomina/recibos/envios/rebote"
+  | "/api/v1/nomina/recibos/plantillas"
+  | "/api/v1/nomina/recibos/plantillas/{canal}"
   | "/api/v1/nomina/sbc"
   | "/api/v1/pre-declaracion"
   | "/api/v1/pre-declaracion-anual"
+  | "/api/v1/recibos/descarga/{envio_id}/{archivo}"
   | "/api/v1/retenciones-terceros"
   | "/api/v1/sat/cartera/semaforo"
   | "/api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender"
@@ -2214,7 +2374,7 @@ export interface OperacionesApi {
     respuesta: Record<string, unknown>;
   };
   "PUT /api/v1/conciliacion/clientes/{clave}/plantillas": {
-    cuerpo: PlantillaEntrada;
+    cuerpo: app__routes__conciliacion__PlantillaEntrada;
     respuesta: Record<string, unknown>;
   };
   "DELETE /api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}": {
@@ -2481,6 +2641,22 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: PeriodoGuardadoResponse;
   };
+  "POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion": {
+    cuerpo: DispersionRequest;
+    respuesta: DispersionResponse;
+  };
+  "GET /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios": {
+    cuerpo: never;
+    respuesta: EstadoEnviosResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios": {
+    cuerpo: EnviarRequest;
+    respuesta: EstadoEnviosResponse;
+  };
+  "POST /api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar": {
+    cuerpo: never;
+    respuesta: EstadoEnviosResponse;
+  };
   "POST /api/v1/nomina/clientes/{cliente_id}/ptu": {
     cuerpo: PTURequest;
     respuesta: CalculoResponse;
@@ -2493,9 +2669,25 @@ export interface OperacionesApi {
     cuerpo: never;
     respuesta: PlantillaDemoResponse;
   };
+  "GET /api/v1/nomina/dispersion/layouts": {
+    cuerpo: never;
+    respuesta: LayoutsResponse;
+  };
   "GET /api/v1/nomina/periodo-sugerido": {
     cuerpo: never;
     respuesta: PeriodoSugeridoResponse;
+  };
+  "POST /api/v1/nomina/recibos/envios/rebote": {
+    cuerpo: ReboteRequest;
+    respuesta: EnvioSchema;
+  };
+  "GET /api/v1/nomina/recibos/plantillas": {
+    cuerpo: never;
+    respuesta: PlantillasResponse;
+  };
+  "PUT /api/v1/nomina/recibos/plantillas/{canal}": {
+    cuerpo: app__routes__nomina_envio__PlantillaEntrada;
+    respuesta: PlantillaSchema;
   };
   "POST /api/v1/nomina/sbc": {
     cuerpo: SBCRequest;
@@ -2508,6 +2700,10 @@ export interface OperacionesApi {
   "POST /api/v1/pre-declaracion-anual": {
     cuerpo: PreDeclaracionRequest;
     respuesta: PreDeclaracionResponse;
+  };
+  "GET /api/v1/recibos/descarga/{envio_id}/{archivo}": {
+    cuerpo: never;
+    respuesta: unknown;
   };
   "POST /api/v1/retenciones-terceros": {
     cuerpo: RetencionesRequest;

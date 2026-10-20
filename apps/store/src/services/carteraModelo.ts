@@ -56,7 +56,22 @@ export interface EmpleadoCartera {
   /** P4-04: c_TipoRegimen. '02' sueldos; '05'-'11' asimilados (Art. 94 LISR, sin IMSS). */
   tipo_regimen?: string;
   enrolamiento: EstatusEnrolamiento;
+  /** P4-12: cómo se le paga. Sólo `transferencia` entra a la dispersión. */
+  forma_pago?: FormaPagoEmpleado;
+  /** P4-12: clave c_Banco (3 dígitos). Vacío = la toma el backend de la CLABE. */
+  banco?: string;
+  /** P4-12: 18 dígitos con verificador de Banxico (`services/clabe.ts`). */
+  clabe?: string;
+  /** P4-12: cuenta (10-12 dígitos) o tarjeta (16) del mismo banco. */
+  numero_cuenta?: string;
+  /** P4-13: contacto para mandarle sus recibos. */
+  correo?: string;
+  /** P4-13: E.164 mexicano (+52 y 10 dígitos). El backend lo normaliza. */
+  celular?: string;
+  consentimiento_whatsapp?: boolean;
 }
+
+export type FormaPagoEmpleado = 'transferencia' | 'efectivo' | 'cheque';
 
 /** El horario contra el que el checador mide retardos y faltas. (O-03) */
 export interface HorarioLaboral {

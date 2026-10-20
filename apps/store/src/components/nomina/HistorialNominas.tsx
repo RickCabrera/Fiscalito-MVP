@@ -18,6 +18,8 @@ import {
 } from '../../services/nominaApi';
 import { fmtMoney } from '../../utils/format';
 import DesgloseRecibos, { type ReciboDesglosado } from './DesgloseRecibos';
+import PanelDispersion from './PanelDispersion';
+import PanelEnvioRecibos from './PanelEnvioRecibos';
 import { envoltura, fila, tabla, td, tdNum, th, thNum, tituloSeccion } from './estilosTabla';
 
 export default function HistorialNominas({ clienteId }: { clienteId: string }) {
@@ -26,6 +28,8 @@ export default function HistorialNominas({ clienteId }: { clienteId: string }) {
   const [abierto, setAbierto] = useState<PeriodoGuardado | null>(null);
   const [marcados, setMarcados] = useState<number[]>([]);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null);
+  // P4-12/13: sobre una nómina cerrada, la dispersión o el envío de recibos.
+  const [panel, setPanel] = useState<{ tipo: 'dispersion' | 'envio'; id: number } | null>(null);
 
   const cargar = useCallback(() => {
     setError(null);
@@ -110,6 +114,16 @@ export default function HistorialNominas({ clienteId }: { clienteId: string }) {
                         Cerrar
                       </button>
                     )}
+                    {(p.estado === 'cerrada' || p.estado === 'timbrada') && (
+                      <>
+                        <button className="btn-secondary" onClick={() => setPanel({ tipo: 'dispersion', id: p.id })}>
+                          Dispersión
+                        </button>
+                        <button className="btn-secondary" onClick={() => setPanel({ tipo: 'envio', id: p.id })}>
+                          Enviar recibos
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -117,6 +131,8 @@ export default function HistorialNominas({ clienteId }: { clienteId: string }) {
           </table>
         </div>
       )}
+      {panel?.tipo === 'dispersion' && <PanelDispersion key={`d${panel.id}`} clienteId={clienteId} periodoId={panel.id} />}
+      {panel?.tipo === 'envio' && <PanelEnvioRecibos key={`e${panel.id}`} clienteId={clienteId} periodoId={panel.id} />}
       <div>
         <button
           className="btn-primary"

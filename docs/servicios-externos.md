@@ -92,6 +92,16 @@ el dominio con SPF y DKIM (EXT-08, EXT-13).
 aprobadas) o Twilio/360dialog como intermediario (EXT-07). Mensajes fuera de la ventana de
 24 h sólo con plantilla aprobada.
 
+**Recibos de nómina (P4-13).** `enviar_plantilla(..., documento=DocumentoPlantilla(url,
+nombre))`: en Meta el documento va como `header` de tipo `document` (la plantilla aprobada debe
+tener encabezado DOCUMENT y tres variables de cuerpo: nombre, periodo, neto). En Twilio la URL
+va como la variable siguiente de `ContentVariables` (POR CONFIRMAR contra la plantilla de
+Content API). Meta baja el PDF de una URL pública firmada:
+- `FISCALITO_URL_PUBLICA_API` — URL con la que Meta/Twilio llegan a esta API (default
+  `http://localhost:8000`, que no sirve fuera de desarrollo).
+- `FISCALITO_ENLACES_SECRETO` — secreto HMAC de los enlaces de descarga. **Obligatorio en
+  producción** (sin él, 503); en desarrollo hay uno fijo.
+
 ---
 
 ## Pagos de suscripción
