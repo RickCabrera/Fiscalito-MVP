@@ -425,6 +425,12 @@ export interface ConfigProveedorDiotSchema {
   efectos_fiscales?: "01" | "02";
 }
 
+export interface ContactoEntrada {
+  telefono: string;
+  nombre?: string;
+  consentimiento: true;
+}
+
 export interface Contrapartida {
   cuenta_id: number;
   importe: number | string;
@@ -1018,6 +1024,11 @@ export type FormaPagoEmpleado = "transferencia" | "efectivo" | "cheque";
 /** De donde vino el evento. `csv` queda para el plan C (import manual). */
 export type FuenteChecada = "hikvision" | "simulado" | "csv";
 
+export interface FuncionSchema {
+  name: string;
+  arguments?: string;
+}
+
 export interface GenerarArchivo {
   destino: "idse_08" | "idse_07" | "idse_02" | "sua_trabajadores" | "sua_movimientos";
   ids?: number[] | null;
@@ -1041,11 +1052,25 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+/** `POST /asistente/hablar`. */
+export interface HablarRequest {
+  texto: string;
+}
+
 /** Modelo de respuesta del endpoint de salud. */
 export interface HealthResponse {
   status: string;
   service: string;
   version: string;
+}
+
+export interface HerramientaEjecutada {
+  id: string;
+  nombre: string;
+  argumentos: Record<string, unknown>;
+  ok: boolean;
+  datos?: Record<string, unknown> | null;
+  error?: string | null;
 }
 
 export interface HistorialResponse {
@@ -1200,6 +1225,18 @@ export interface ListaTrabajos {
   trabajos: TrabajoSalida[];
 }
 
+export interface LlamadaNavegador {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface LlamadaSchema {
+  id: string;
+  type?: "function";
+  function: FuncionSchema;
+}
+
 export interface MarcarMovimientos {
   ids: number[];
   estado: "enviado" | "acuse" | "cancelado";
@@ -1212,6 +1249,14 @@ export interface MarcarObligacion {
   fecha_presentacion?: string | null;
   responsable_uid?: string | null;
   nota?: string;
+}
+
+export interface MensajeTurno {
+  role: "user" | "assistant" | "tool";
+  content?: string | null;
+  tool_calls?: LlamadaSchema[] | null;
+  tool_call_id?: string | null;
+  firma?: string | null;
 }
 
 export interface MovimientoEntrada {
@@ -1858,6 +1903,27 @@ export interface TrabajoSalida {
   carga: Record<string, unknown>;
 }
 
+export interface TranscripcionResponse {
+  exito?: boolean;
+  texto: string;
+}
+
+/** `POST /asistente/turno`. */
+export interface TurnoRequest {
+  cliente?: string | null;
+  contador?: string;
+  historial: MensajeTurno[];
+}
+
+export interface TurnoResponse {
+  exito?: boolean;
+  type: "text" | "tool_calls";
+  text?: string;
+  toolCalls?: LlamadaNavegador[];
+  mensajes?: MensajeTurno[];
+  herramientas_servidor?: HerramientaEjecutada[];
+}
+
 export interface UnTrabajo {
   exito?: boolean;
   trabajo: TrabajoSalida;
@@ -2016,6 +2082,9 @@ export type RutaApi =
   | "/api/v1/asistencia/eventos"
   | "/api/v1/asistencia/tokens"
   | "/api/v1/asistencia/tokens/{token_id}"
+  | "/api/v1/asistente/hablar"
+  | "/api/v1/asistente/transcribir"
+  | "/api/v1/asistente/turno"
   | "/api/v1/auditoria"
   | "/api/v1/boveda/clientes/{clave}/cfdi"
   | "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}"
@@ -2206,6 +2275,11 @@ export type RutaApi =
   | "/api/v1/trabajos/{trabajo_id}"
   | "/api/v1/trabajos/{trabajo_id}/cancelar"
   | "/api/v1/trabajos/{trabajo_id}/reintentar"
+  | "/api/v1/whatsapp/clientes/{clave}/contactos"
+  | "/api/v1/whatsapp/clientes/{clave}/contactos/{contacto_id}"
+  | "/api/v1/whatsapp/clientes/{clave}/conversacion"
+  | "/api/v1/whatsapp/documentos/{mensaje_id}/{archivo}"
+  | "/api/v1/whatsapp/webhook"
   | "/health"
   | "/health/integraciones";
 
@@ -2278,6 +2352,18 @@ export interface OperacionesApi {
   "DELETE /api/v1/asistencia/tokens/{token_id}": {
     cuerpo: never;
     respuesta: TokenRevocadoResponse;
+  };
+  "POST /api/v1/asistente/hablar": {
+    cuerpo: HablarRequest;
+    respuesta: unknown;
+  };
+  "POST /api/v1/asistente/transcribir": {
+    cuerpo: never;
+    respuesta: TranscripcionResponse;
+  };
+  "POST /api/v1/asistente/turno": {
+    cuerpo: TurnoRequest;
+    respuesta: TurnoResponse;
   };
   "GET /api/v1/auditoria": {
     cuerpo: never;
@@ -3134,6 +3220,34 @@ export interface OperacionesApi {
   "POST /api/v1/trabajos/{trabajo_id}/reintentar": {
     cuerpo: never;
     respuesta: UnTrabajo;
+  };
+  "GET /api/v1/whatsapp/clientes/{clave}/contactos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/whatsapp/clientes/{clave}/contactos": {
+    cuerpo: ContactoEntrada;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/whatsapp/clientes/{clave}/contactos/{contacto_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/whatsapp/clientes/{clave}/conversacion": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/whatsapp/documentos/{mensaje_id}/{archivo}": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/whatsapp/webhook": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "POST /api/v1/whatsapp/webhook": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
   };
   "GET /health": {
     cuerpo: never;

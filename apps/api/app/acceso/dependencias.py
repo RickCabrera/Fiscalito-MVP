@@ -29,6 +29,15 @@ RUTAS_PUBLICAS: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/recibos/descarga/{envio_id}/{archivo}"): (
         "P4-13: WhatsApp baja el recibo de aquí; enlace firmado con HMAC y vigencia."
     ),
+    ("GET", "/api/v1/whatsapp/webhook"): (
+        "P5-06: verificación de suscripción de Meta; compara hub.verify_token."
+    ),
+    ("POST", "/api/v1/whatsapp/webhook"): (
+        "P5-06: mensajes del bot; firma del proveedor (X-Hub-Signature-256 / Twilio)."
+    ),
+    ("GET", "/api/v1/whatsapp/documentos/{mensaje_id}/{archivo}"): (
+        "P5-06: WhatsApp baja el documento del bot; enlace firmado con HMAC y vigencia."
+    ),
 }
 
 

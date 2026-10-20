@@ -19,6 +19,7 @@ Para ver qué está configurado: `GET /health/integraciones`.
 | Pagos | `FISCALITO_PAGOS` | falso, stripe, mercadopago | P0-06 hecho |
 | Monitoreo | `FISCALITO_MONITOREO` | falso, log, sentry | P0-06 hecho |
 | LLM | `FISCALITO_LLM` | falso, openai, anthropic | P0-06 hecho |
+| Voz del asistente | `FISCALITO_VOZ` | falso, openai | P5-07 hecho |
 | Almacenamiento | `FISCALITO_ALMACENAMIENTO` | falso, local, s3 | P0-03 hecho |
 | Descarga masiva SAT | `FISCALITO_SAT_DESCARGA` | falso, sat | P1-01 hecho |
 | Estatus de CFDI | `FISCALITO_SAT_ESTATUS` | falso, sat | P1-03 hecho |
@@ -96,6 +97,16 @@ el dominio con SPF y DKIM (EXT-08, EXT-13).
 aprobadas) o Twilio/360dialog como intermediario (EXT-07). Mensajes fuera de la ventana de
 24 h sólo con plantilla aprobada.
 
+**Bot del despacho (P5-06).** Webhook público `POST /api/v1/whatsapp/webhook` (firma del
+proveedor) y `GET` del mismo path para la verificación de Meta con
+`FISCALITO_WHATSAPP_VERIFY_TOKEN` (el "Verify token" que se pega en la consola de Meta; sin
+él, la verificación responde 403). `FISCALITO_WHATSAPP_BOT_POR_MINUTO` (default 6): mensajes
+por minuto por número. Los documentos se bajan de un enlace firmado con
+`FISCALITO_ENLACES_SECRETO` y `FISCALITO_URL_PUBLICA_API` (las mismas de P4-13). Twilio firma
+sobre la URL pública: con `FISCALITO_URL_PUBLICA_API` puesta, el webhook la usa para verificar.
+Respuestas dentro de la ventana de 24 h que abre el cliente: texto y documento libres, sin
+plantilla.
+
 **Recibos de nómina (P4-13).** `enviar_plantilla(..., documento=DocumentoPlantilla(url,
 nombre))`: en Meta el documento va como `header` de tipo `document` (la plantilla aprobada debe
 tener encabezado DOCUMENT y tres variables de cuerpo: nombre, periodo, neto). En Twilio la URL
@@ -161,11 +172,35 @@ adaptador (EXT-11).
 **A quién contratar.** OpenAI o Anthropic; la llave sólo en el servidor, con tope de gasto en la
 consola del proveedor (EXT-09).
 
+**Herramientas (P5-07).** El adaptador habla también el loop de herramientas en forma neutral
+(`{"role": "assistant", "llamadas": [...]}` y `{"role": "herramienta", "id", "nombre",
+"content"}`), que cada real traduce: OpenAI a `tool_calls` / `role: tool`; Anthropic a
+`tool_use` / `tool_result` (los resultados consecutivos en UN mensaje `user`). Los nombres de
+propiedad de los esquemas van sin `ñ` (Anthropic los rechaza): `anio`, no `año`.
+
 **Límites propios (P0-02).** Además del tope del proveedor, la API corta antes:
 `FISCALITO_RATE_LIMIT_LLM_POR_MINUTO` (default 20, por usuario) y
 `FISCALITO_TOPE_LLM_DIARIO_LLAMADAS` (default 500, por despacho y día de la CDMX, contado en la
 tabla `consumo_llm`). Los dos responden 429 con `Retry-After`. Ver `docs/api-contract.md`,
 "Autenticación, límites y tope de LLM".
+
+---
+
+## Voz del asistente (`voz`) — P5-07
+
+**Qué es.** Voz a texto (`transcribir(audio, mime) -> str`, Whisper `whisper-1`, español) y
+texto a voz (`sintetizar(texto) -> bytes`, `tts-1` voz `nova`, MP3) del asistente del despacho.
+Sustituye las llamadas que el navegador hacía con una llave en el bundle (S-00): **el front ya
+no tiene ninguna llave de LLM** (`apps/store/src/sinLlavesLLM.test.ts`).
+
+**Variables.** `FISCALITO_VOZ` = `falso` | `openai`. La real usa `OPENAI_API_KEY` (la misma
+del LLM, sólo en el servidor). Sin llave → 503.
+
+**Cómo probar.** El falso devuelve `[falso] audio de N bytes` y un MP3 mínimo; guarda lo
+recibido. Real: `test_voz_openai_whisper_y_tts` con `httpx.MockTransport`.
+
+**A quién contratar.** OpenAI (EXT-09, la misma cuenta del LLM). Cada transcripción y cada
+síntesis cuenta contra el tope diario de LLM del despacho.
 
 ---
 

@@ -83,6 +83,8 @@ import * as impuestosApi from './impuestosApi';
 import * as anualApi from './anualApi';
 import * as conciliacionApi from './conciliacionApi';
 import * as contabilidadElectronicaApi from './contabilidadElectronicaApi';
+// P5-07: asistente IA (chat y voz por el backend). Se registra el día que nace.
+import * as asistenteApi from './asistenteApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -372,6 +374,12 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
     obtenerEstadoCuenta: () => fiscalAgentApi.obtenerEstadoCuenta({} as never),
     llamarAgentePreDeclaracion: () => fiscalAgentApi.llamarAgentePreDeclaracion({} as never),
   },
+  'asistenteApi.ts': {
+    turnoAsistente: () =>
+      asistenteApi.turnoAsistente({ cliente: 'taller', contador: '', historial: [] }),
+    transcribirAudio: () => asistenteApi.transcribirAudio(new Blob(['x'], { type: 'audio/webm' })),
+    sintetizarVoz: () => asistenteApi.sintetizarVoz('hola'),
+  },
 };
 
 /**
@@ -404,6 +412,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'anualApi.ts': anualApi,
   'conciliacionApi.ts': conciliacionApi,
   'contabilidadElectronicaApi.ts': contabilidadElectronicaApi,
+  'asistenteApi.ts': asistenteApi,
 };
 
 /**

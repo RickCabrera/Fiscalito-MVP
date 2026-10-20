@@ -1,8 +1,10 @@
 /**
- * Definición de tools del agente Fiscalito + ejecutores.
+ * Ejecutores de las tools del agente que operan la PANTALLA.
  *
- * Schema en formato OpenAI tool calling (chat completions API).
- * Ver: https://platform.openai.com/docs/guides/function-calling
+ * P5-07: el catálogo que ve el LLM (nombres, descripciones y esquemas) vive en el SERVIDOR
+ * (`apps/api/app/asistente/herramientas.py`); el navegador ya no manda esquemas. Aquí quedan
+ * los ejecutores, que vuelven a validar sus argumentos, y `RUTAS_BASE`, espejo de
+ * `RUTAS_NAVEGAR` del servidor.
  *
  * Día 1 — tres tools:
  *   1. navegar               → cambia de ruta (reemplaza tags [NAVEGAR:])
@@ -23,12 +25,12 @@ import { getAgentActions, getAgentSnapshot } from './AgentContext';
 import type { ToolName, ToolResult } from './types';
 
 // ────────────────────────────────────────────────────────────
-// Schema OpenAI
+// Rutas válidas de `navegar`
 // ────────────────────────────────────────────────────────────
 
 /**
- * Rutas válidas que la tool `navegar` puede recibir. Se enumeran para que el
- * LLM no invente rutas inexistentes.
+ * Rutas válidas que la tool `navegar` puede recibir. El servidor las anuncia como `enum`
+ * y el ejecutor las vuelve a revisar: el LLM puede mandar cualquier cadena.
  */
 function rutasValidas(): string[] {
   return [...RUTAS_BASE];
@@ -63,82 +65,6 @@ const RUTAS_BASE = [
   '/app/store/fiscalito/use?tab=deducciones',
   '/app/store/fiscalito/use?tab=pagospm',
 ] as const;
-
-/** El catálogo de tools que viaja al LLM. */
-export function toolsOpenAI() {
-  return [
-    {
-      type: 'function' as const,
-      function: {
-        name: 'navegar',
-        description:
-          'Navega a una sección específica de la aplicación cambiando la ruta del navegador. ' +
-          'Úsala cuando el usuario pida ver, ir, entrar, mostrar o acceder a cualquier sección o tab.',
-        parameters: {
-          type: 'object',
-          properties: {
-            ruta: {
-              type: 'string',
-              enum: rutasValidas(),
-              description:
-                // O-02: la descripción viaja al LLM, así que aquí tampoco puede
-                // quedar la marca vieja: el modelo la repetiría en el chat. Las
-                // RUTAS sí se quedan literales (`/app/store/fiscalito/use`): son
-                // nombres internos y cambiarlas rompería enlaces guardados.
-                'Ruta exacta a la que navegar. Para los tabs del servicio fiscal del ' +
-                'cliente activo usa la ruta con ?tab=... Por ejemplo, ' +
-                '"/app/store/fiscalito/use?tab=declaracion" lleva al tab de pre-declaración. ' +
-                '"/app/clientes" es la cartera del despacho, "/app/nomina" la nómina del ' +
-                'cliente activo y "/app/calendario" las obligaciones patronales (IMSS, ISR ' +
-                'retenido, avisos) de toda la cartera.',
-            },
-          },
-          required: ['ruta'],
-        },
-      },
-    },
-    {
-      type: 'function' as const,
-      function: {
-        name: 'cargar_xmls_demo',
-        description:
-          'Carga un conjunto de facturas CFDI de demostración para un periodo dado. ' +
-          'Lee archivos XML de /demo-xmls/{año}/{mes}/ y los parsea como CFDIs listos para calcular. ' +
-          'Úsala cuando el usuario pida calcular una pre-declaración pero no tenga facturas cargadas, ' +
-          'o cuando esté demostrando el sistema. Las facturas cargadas quedan disponibles para ' +
-          'la tool calcular_predeclaracion.',
-        parameters: {
-          type: 'object',
-          properties: {
-            año: { type: 'integer', description: 'Año del periodo (ej: 2026)', minimum: 2020, maximum: 2030 },
-            mes: { type: 'integer', description: 'Mes del periodo (1-12)', minimum: 1, maximum: 12 },
-          },
-          required: ['año', 'mes'],
-        },
-      },
-    },
-    {
-      type: 'function' as const,
-      function: {
-        name: 'calcular_predeclaracion',
-        description:
-          'Calcula una pre-declaración mensual de ISR e IVA llamando al Fiscal Agent API. ' +
-          'Usa el perfil del contribuyente actual y las facturas que ya están cargadas en el agente ' +
-          '(ya sea por el usuario manualmente o por la tool cargar_xmls_demo). ' +
-          'Devuelve el desglose con montos a pagar y la explicación generada por IA. ' +
-          'IMPORTANTE: si no hay facturas cargadas, esta tool fallará — primero llama a cargar_xmls_demo.',
-        parameters: {
-          type: 'object',
-          properties: {
-            año: { type: 'integer', description: 'Año del periodo a declarar', minimum: 2020, maximum: 2030 },
-            mes: { type: 'integer', description: 'Mes del periodo a declarar (1-12)', minimum: 1, maximum: 12 },
-          },
-          required: ['año', 'mes'],
-        },
-      },
-    },
-  ] as const;
-}
 
 // ────────────────────────────────────────────────────────────
 // Dependencias inyectadas a los ejecutores

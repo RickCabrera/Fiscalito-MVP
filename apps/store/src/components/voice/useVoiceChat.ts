@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../../context/ProfileContext';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { obtenerHistorial } from '../../services/declaracionesHistory';
 import {
   startRecording, stopRecording, transcribeAudio,
   speakText, stopSpeaking,
@@ -22,10 +21,6 @@ export interface BubbleMsg {
 }
 
 // ── Helpers ──
-
-function fmtMoney(n: number): string {
-  return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-}
 
 // Whisper hallucinations: phrases it produces when there's no real speech (silence, noise)
 const WHISPER_NOISE_PHRASES = new Set([
@@ -44,24 +39,6 @@ function isNoiseTranscription(text: string): boolean {
   return WHISPER_NOISE_PHRASES.has(trimmed.toLowerCase());
 }
 
-/** K: el historial del CLIENTE ACTIVO; sin cliente no hay de quién hablar. */
-async function buildHistorialResumen(uid: string, clienteId: string | null): Promise<string> {
-  if (!clienteId) return 'Sin cliente activo.';
-  try {
-    const records = await obtenerHistorial(uid, 3, 'predeclaracion', clienteId);
-    if (records.length === 0) return 'Sin historial aun.';
-    return records
-      .map((r) => {
-        const isr = r.desglose?.isr_a_pagar ?? 0;
-        const iva = r.desglose?.iva_a_pagar ?? 0;
-        return `${r.periodo}: ISR ${fmtMoney(isr)}, IVA ${fmtMoney(iva)}`;
-      })
-      .join(' | ');
-  } catch {
-    return 'No se pudo cargar historial.';
-  }
-}
-
 // ── Hook ──
 
 export function useVoiceChat() {
@@ -76,8 +53,6 @@ export function useVoiceChat() {
   const [input, setInput] = useState('');
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceLoopActive, setVoiceLoopActive] = useState(false);
-  const [historialResumen, setHistorialResumen] = useState('');
-  const [ready, setReady] = useState(false);
 
   // Refs to avoid stale closures in the voice loop
   const loopActiveRef = useRef(false);
@@ -85,7 +60,6 @@ export function useVoiceChat() {
   const chatHistoryRef = useRef<ChatMessage[]>([]);
   const profileRef = useRef(profile);
   const perfilFiscalRef = useRef(perfilFiscal);
-  const historialRef = useRef('');
   const uidRef = useRef<string | null>(user?.uid ?? null);
   const vadCleanupRef = useRef<(() => void) | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -93,7 +67,6 @@ export function useVoiceChat() {
   // Sync refs
   useEffect(() => { profileRef.current = profile; }, [profile]);
   useEffect(() => { perfilFiscalRef.current = perfilFiscal; }, [perfilFiscal]);
-  useEffect(() => { historialRef.current = historialResumen; }, [historialResumen]);
   useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
   useEffect(() => { openRef.current = open; }, [open]);
   useEffect(() => { uidRef.current = user?.uid ?? null; }, [user?.uid]);
@@ -103,47 +76,27 @@ export function useVoiceChat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  // Load context + welcome message on first open
-  useEffect(() => {
-    if (!open || ready) return;
-    (async () => {
-      const resumen = user?.uid ? await buildHistorialResumen(user.uid, perfilFiscal.clienteId) : '';
-      setHistorialResumen(resumen);
-      const nombre = profile.nombre || 'contador';
-      const welcome = `Hola ${nombre}! Soy ${ASISTENTE}, tu asistente de nomina. Puedes escribirme o hablar conmigo. En que te ayudo hoy?`;
-      setMessages([{ role: 'assistant', content: welcome }]);
-      const hist: ChatMessage[] = [{ role: 'assistant', content: welcome }];
-      setChatHistory(hist);
-      chatHistoryRef.current = hist;
-      setReady(true);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- el cambio de cliente lo cubre el efecto de abajo
-  }, [open, ready, user?.uid, profile.nombre]);
-
-  // K: al cambiar de cliente activo, el historial que ve el asistente cambia con él.
-  useEffect(() => {
-    if (!ready || !user?.uid) return;
-    let vigente = true;
-    buildHistorialResumen(user.uid, perfilFiscal.clienteId).then((r) => {
-      if (vigente) setHistorialResumen(r);
-    });
-    return () => { vigente = false; };
-  }, [ready, user?.uid, perfilFiscal.clienteId]);
+  // La bienvenida se DERIVA del perfil: no se guarda con un efecto. El contexto del cliente
+  // activo tampoco se arma aquí: P5-07, el servidor lo lee de su base y el asistente lo
+  // consulta con herramientas.
+  const bienvenida = `Hola ${profile.nombre || 'contador'}! Soy ${ASISTENTE}, tu asistente de nomina. Puedes escribirme o hablar conmigo. En que te ayudo hoy?`;
+  const bienvenidaRef = useRef(bienvenida);
+  useEffect(() => { bienvenidaRef.current = bienvenida; }, [bienvenida]);
 
   // Process a user message (text) through the agent loop + optional TTS.
-  // Las refs vivas (profileRef, historialRef, chatHistoryRef) se leen en el
+  // Las refs vivas (profileRef, chatHistoryRef) se leen en el
   // llamado, no en el closure de React, para respetar el voice loop continuo.
   const processUserMessage = useCallback(async (text: string, speakResponse: boolean): Promise<void> => {
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    const saludo = { role: 'assistant' as const, content: bienvenidaRef.current };
+    setMessages((prev) => [...(prev.length ? prev : [saludo]), { role: 'user', content: text }]);
 
     setVoiceState('processing');
     try {
       const { reply, newHistory } = await runAgentLoop({
-        history: chatHistoryRef.current,
+        history: chatHistoryRef.current.length ? chatHistoryRef.current : [saludo],
         userMessage: text,
         profile: profileRef.current,
         perfilFiscal: perfilFiscalRef.current,
-        historialResumen: historialRef.current,
         navigate,
         uid: uidRef.current,
       });
@@ -268,7 +221,7 @@ export function useVoiceChat() {
 
   return {
     open, setOpen,
-    messages,
+    messages: messages.length || !open ? messages : [{ role: 'assistant' as const, content: bienvenida }],
     input, setInput,
     voiceState,
     voiceLoopActive,

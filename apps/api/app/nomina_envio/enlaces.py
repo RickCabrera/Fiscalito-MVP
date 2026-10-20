@@ -34,6 +34,12 @@ def _secreto() -> bytes:
     return b"secreto-de-desarrollo-no-usar-en-produccion"
 
 
+def secreto() -> bytes:
+    """El secreto de firmas del servidor; también firma los resultados del asistente (P5-07)
+    y los enlaces del bot de WhatsApp (P5-06), cada uno con su propio prefijo."""
+    return _secreto()
+
+
 def firma(envio_id: int, archivo: str, vence: int) -> str:
     return hmac.new(_secreto(), f"{envio_id}:{archivo}:{vence}".encode(),
                     hashlib.sha256).hexdigest()

@@ -24,6 +24,7 @@ from app.routes import (
     agente,
     alertas,
     asistencia,
+    asistente,
     auditoria,
     boveda,
     calculadoras,
@@ -64,6 +65,7 @@ from app.routes import (
     sat_descarga,
     sat_verificacion,
     trabajos,
+    whatsapp,
 )
 
 # Inicializar logging estructurado al arrancar la aplicacion
@@ -192,6 +194,9 @@ ROUTERS_PROTEGIDOS = (
     equipo.router,
     dashboard.router,
     cobranza.router,
+    # P5-06 bot de WhatsApp (contactos y bitácora) y P5-07 asistente IA (chat y voz).
+    whatsapp.router,
+    asistente.router,
 )
 
 app.include_router(health.router)
@@ -203,6 +208,8 @@ for _router in ROUTERS_PROTEGIDOS:
 app.include_router(asistencia.router_publico, prefix="/api/v1")
 # - P4-13: descarga del recibo para WhatsApp, con enlace firmado (HMAC) y vigencia.
 app.include_router(nomina_envio.router_publico, prefix="/api/v1")
+# - P5-06: webhook del bot (firma del proveedor) y descarga del documento (enlace firmado).
+app.include_router(whatsapp.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":
