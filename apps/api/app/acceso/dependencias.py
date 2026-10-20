@@ -32,6 +32,9 @@ RUTAS_PUBLICAS: dict[tuple[str, str], str] = {
     ("POST", "/api/v1/pagos/webhook"): (
         "P5-08: webhook del proveedor de pagos; firma del proveedor verificada (400 si no)."
     ),
+    ("GET", "/api/v1/documentos/descarga/{envio_id}/{archivo}"): (
+        "P5-05: WhatsApp baja el documento del cliente de aquí; enlace firmado con HMAC."
+    ),
 }
 
 

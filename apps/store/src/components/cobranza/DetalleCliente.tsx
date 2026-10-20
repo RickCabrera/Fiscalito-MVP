@@ -4,12 +4,13 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Download, Loader, Send, X } from 'lucide-react';
+import { Download, Loader, Receipt, Send, X } from 'lucide-react';
 import {
   borrarPago, cancelarCargo, detalleCobranza, enviarRecordatorio, estadoDeCuenta,
   guardarHonorarios, NOMBRE_TRAMO, nuevoCargo, nuevoPago, pesos,
   type DetalleCobranza, type Tramo,
 } from '../../services/cobranzaApi';
+import { facturarCargo } from '../../services/facturacionApi';
 import FormHonorarios from './FormHonorarios';
 import FormMovimiento, { type DatosMovimiento } from './FormMovimiento';
 import ErrorAlert from '../common/ErrorAlert';
@@ -131,7 +132,15 @@ export default function DetalleCliente({ clave, onCambio }: Props) {
               <td>{Number(m.cargo) ? pesos(m.cargo) : ''}</td>
               <td>{Number(m.abono) ? pesos(m.abono) : ''}</td>
               <td>{pesos(m.saldo)}</td>
-              <td>
+              <td style={{ display: 'flex', gap: 4 }}>
+                {m.tipo === 'cargo' && !m.uuid && (
+                  // P5-04: CFDI de los honorarios, emitido desde el cliente marcado como el despacho.
+                  <button className="btn-secondary" style={{ padding: '2px 6px' }} disabled={ocupado}
+                    aria-label={`Facturar ${m.concepto}`}
+                    onClick={() => void hacer(() => facturarCargo(m.id), 'Cargo facturado (CFDI timbrado).')}>
+                    <Receipt size={12} />
+                  </button>
+                )}
                 <button className="btn-secondary" style={{ padding: '2px 6px' }} disabled={ocupado}
                   aria-label={m.tipo === 'cargo' ? `Cancelar cargo ${m.concepto}` : `Borrar pago ${m.concepto}`}
                   onClick={() => void hacer(() => (m.tipo === 'cargo' ? cancelarCargo(clave, m.id) : borrarPago(clave, m.id)))}>

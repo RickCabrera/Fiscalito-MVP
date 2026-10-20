@@ -43,8 +43,10 @@ from app.routes import (
     despacho,
     diot,
     diot_cliente,
+    envio_documentos,
     equipo,
     estado_cuenta,
+    facturacion,
     health,
     impuestos,
     impuestos_anual,
@@ -195,6 +197,9 @@ ROUTERS_PROTEGIDOS = (
     cobranza.router,
     # P5-08 suscripción y cobro de planes.
     suscripcion.router,
+    # P5-04 facturación CFDI 4.0 y P5-05 envío de documentos al cliente.
+    facturacion.router,
+    envio_documentos.router,
 )
 
 app.include_router(health.router)
@@ -208,6 +213,8 @@ app.include_router(asistencia.router_publico, prefix="/api/v1")
 app.include_router(nomina_envio.router_publico, prefix="/api/v1")
 # - P5-08: webhook del proveedor de pagos, autenticado con la firma del proveedor.
 app.include_router(suscripcion.router_publico, prefix="/api/v1")
+# P5-05: descarga de documentos del cliente por enlace firmado.
+app.include_router(envio_documentos.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

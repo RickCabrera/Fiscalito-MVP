@@ -25,3 +25,5 @@ from app.modelos import cobranza  # noqa: F401, I001 — P5-03
 from app.modelos import imss  # noqa: F401, I001 — P4-09/10/11
 from app.modelos import nomina_envio  # noqa: F401, I001 — P4-13
 from app.modelos import suscripciones  # noqa: F401, I001 — P5-08
+from app.modelos import facturacion  # noqa: F401, I001 — P5-04
+from app.modelos import envio_documentos  # noqa: F401, I001 — P5-05
