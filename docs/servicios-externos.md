@@ -106,6 +106,14 @@ Content API). Meta baja el PDF de una URL pública firmada:
 - `FISCALITO_ENLACES_SECRETO` — secreto HMAC de los enlaces de descarga. **Obligatorio en
   producción** (sin él, 503); en desarrollo hay uno fijo.
 
+**Documentos al cliente (P5-05).** Mismo mecanismo, ámbito `documentos`
+(`/api/v1/documentos/descarga/...`, firma distinta a la de los recibos).
+- `FISCALITO_WHATSAPP_PLANTILLA_DOCUMENTOS` — nombre de la plantilla aprobada por Meta (o
+  Content SID de Twilio) con encabezado DOCUMENT y dos variables de cuerpo: {{1}} nombre del
+  contacto y {{2}} descripción del documento. Default `documento_cliente`, idioma `es_MX`.
+  Sólo se manda a contactos con consentimiento de WhatsApp registrado en la ficha.
+  Correo: los mismos adaptadores de "Correo transaccional", con el PDF y el XML adjuntos.
+
 ---
 
 ## Pagos de suscripción
@@ -459,6 +467,10 @@ cancelación de retenciones.
 
 **A quién contratar.** Cualquiera de los tres con sandbox (EXT-04, DP-4). Finkok y SW timbran
 XML presellado (encaja con el diseño); Facturama obliga a subirle el CSD de cada cliente.
+
+**Facturación (P5-04).** El CFDI 4.0 de ingreso, egreso y pago (complemento 2.0) usa el mismo
+`FISCALITO_PAC` con `tipo="cfdi"`, sin variables nuevas. Con `facturama` responde 501 (no
+recibe XML presellado). Pruebas: `pytest tests/plan_p/test_facturacion.py` (PAC falso).
 
 ## Límite de peticiones (`limitador`) — P0-02
 

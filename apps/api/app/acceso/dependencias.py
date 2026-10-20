@@ -29,6 +29,9 @@ RUTAS_PUBLICAS: dict[tuple[str, str], str] = {
     ("GET", "/api/v1/recibos/descarga/{envio_id}/{archivo}"): (
         "P4-13: WhatsApp baja el recibo de aquí; enlace firmado con HMAC y vigencia."
     ),
+    ("GET", "/api/v1/documentos/descarga/{envio_id}/{archivo}"): (
+        "P5-05: WhatsApp baja el documento del cliente de aquí; enlace firmado con HMAC."
+    ),
 }
 
 

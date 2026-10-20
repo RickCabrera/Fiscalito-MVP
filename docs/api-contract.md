@@ -2284,3 +2284,60 @@ Prefijo `/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}`. El periodo debe
 - `GET /cfdi/{id}/xml` · `GET /cfdi/{id}/pdf` (recibo con QR) · `GET /cfdi.zip`.
 - `POST /cfdi/{id}/cancelar` `{motivo: 01..04, folio_sustitucion?}` → el periodo vuelve a
   `cerrada`; `POST /timbrar` re-timbra sólo lo que no tiene CFDI vigente.
+
+## Facturación CFDI 4.0 (P5-04)
+
+El cliente de la URL es el **emisor** (su RFC, régimen y CP de la cartera; su CSD de la bóveda
+de credenciales). Emisión síncrona: calcula (motor determinístico), sella, valida contra
+cfdv40 + Pagos20 + TFD (si no valida, 422 y no va al PAC), timbra con `FISCALITO_PAC` y guarda
+el XML en la bóveda del emisor (origen `emision`) y, si el receptor es otro cliente del
+despacho, también en la suya. Las facturas del **propio despacho** salen del cliente marcado en
+`/facturacion/config`; sólo `dueno`/`contador` emiten o cancelan a su nombre (403).
+
+- `GET /api/v1/facturacion/catalogos` → forma/método de pago, uso CFDI, régimen, objeto de
+  impuesto, tipo de relación, unidades, claves sugeridas, motivos de cancelación y `presets`
+  de impuestos.
+- `GET|PUT /api/v1/facturacion/config` `{cliente_propio: clave|null}`.
+- `GET /api/v1/facturacion/cargos/{cargo_id}/borrador` → factura sugerida para un cargo de
+  cobranza (P5-03); 409 si no hay cliente propio.
+- `GET /api/v1/clientes/{clave}/facturas?tipo=I|E|P` → `{es_propio, facturas[]}`.
+- `POST /api/v1/clientes/{clave}/facturas` `{tipo: I|E, receptor: {clave_cliente? | rfc,
+  nombre, regimen, codigo_postal}, uso_cfdi}, conceptos[{clave_prod_serv, cantidad,
+  clave_unidad, descripcion, valor_unitario, descuento?, objeto_imp: 01|02|03,
+  impuestos[{tipo: traslado|retencion, impuesto: 001|002, tipo_factor: Tasa|Exento, tasa}]}],
+  forma_pago, metodo_pago: PUE|PPD, serie?, relacionados[{tipo_relacion, uuids}], cargo_id?}`
+  → `{factura}`. PPD exige forma 99; egreso exige PUE y un relacionado. Con `cargo_id` el
+  cargo guarda el UUID (409 si ya estaba facturado sin relación 04).
+- `POST /api/v1/clientes/{clave}/facturas/pagos` `{fecha_pago, forma_pago, documentos[{factura_id,
+  importe_pagado}], num_operacion?}` → CFDI de pago con complemento 2.0 (sólo MXN, facturas
+  PPD vigentes del mismo emisor y receptor; parcialidad y saldos calculados).
+- `GET /api/v1/clientes/{clave}/facturas/{id}` · `.../{id}/xml` · `.../{id}/pdf` (con QR).
+- `POST /api/v1/clientes/{clave}/facturas/{id}/cancelar` `{motivo: 01|02|03|04,
+  folio_sustitucion?}`. 01 exige una factura vigente del mismo emisor que relacione a ésta con
+  TipoRelacion 04. Una factura con pagos vigentes → 409. Marca `cancelado` en la bóveda y
+  libera el cargo de cobranza.
+
+`factura`: `{id, tipo, serie, folio, uuid, rfc_receptor, nombre_receptor, metodo_pago,
+forma_pago, uso_cfdi, subtotal, descuento, traslados, retenciones, total, saldo (PPD), estado:
+timbrado|cancelacion_en_proceso|cancelado, es_prueba, fecha_emision, cargo_id,
+motivo_cancelacion, folio_sustitucion, relacionados}`.
+
+## Envío de documentos al cliente (P5-05)
+
+Prefijo `/api/v1/clientes/{clave}` (`cliente_o_404`).
+
+- `GET|POST /contactos` · `PUT|DELETE /contactos/{id}` `{nombre, puesto, correo, telefono,
+  consentimiento_whatsapp, activo}`. El consentimiento guarda fecha y usuario.
+- `POST /expediente` (multipart: `tipo` declaracion|acuse|otro, `descripcion`, `periodo`
+  AAAA-MM, `archivo` PDF/XML ≤ 10 MB).
+- `GET /documentos-enviables` → `documentos[{tipo, ref, nombre_tipo, descripcion, fecha,
+  estado}]`; tipos: factura, cfdi, retencion, opinion, constancia, declaracion, acuse, otro,
+  recibo_nomina.
+- `GET /documentos/{tipo}/{ref}/{indice}` → descarga un archivo del documento.
+- `POST /envios` `{documentos[{tipo, ref}], canales[correo|whatsapp], contactos[id], mensaje?}`
+  → un envío por (documento, contacto, canal), encola `documentos.enviar` (segundo plano,
+  commit por envío, 3 intentos, backoff) y devuelve `{envios, resumen, trabajo, omitidos}`
+  (sin correo, sin celular o sin consentimiento de WhatsApp → omitido con motivo).
+- `GET /envios` · `POST /envios/{id}/reenviar`.
+- Pública: `GET /api/v1/documentos/descarga/{envio_id}/{documento.pdf|documento.xml}?vence&firma`
+  (enlace HMAC de 7 días para que WhatsApp baje el archivo; inválido → 404).

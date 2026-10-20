@@ -17873,6 +17873,1408 @@
         }
       }
     },
+    "/api/v1/facturacion/catalogos": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Catálogos SAT mínimos para facturar",
+        "operationId": "obtener_catalogos_api_v1_facturacion_catalogos_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Obtener Catalogos Api V1 Facturacion Catalogos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facturacion/config": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Qué cliente de la cartera es el propio despacho",
+        "operationId": "obtener_config_api_v1_facturacion_config_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Obtener Config Api V1 Facturacion Config Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Marcar el cliente que es el propio despacho",
+        "operationId": "guardar_config_api_v1_facturacion_config_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardar Config Api V1 Facturacion Config Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facturacion/cargos/{cargo_id}/borrador": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Factura sugerida para un cargo de cobranza (honorarios del despacho)",
+        "operationId": "borrador_api_v1_facturacion_cargos__cargo_id__borrador_get",
+        "parameters": [
+          {
+            "name": "cargo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Cargo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrador Api V1 Facturacion Cargos  Cargo Id  Borrador Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Facturas emitidas por el cliente",
+        "operationId": "listar_api_v1_clientes__clave__facturas_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "I",
+                    "E",
+                    "P"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Api V1 Clientes  Clave  Facturas Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Emitir CFDI de ingreso o egreso",
+        "operationId": "emitir_api_v1_clientes__clave__facturas_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacturaIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Emitir Api V1 Clientes  Clave  Facturas Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas/pagos": {
+      "post": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Emitir CFDI de pago (complemento de recepción de pagos 2.0)",
+        "operationId": "emitir_pago_api_v1_clientes__clave__facturas_pagos_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Emitir Pago Api V1 Clientes  Clave  Facturas Pagos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas/{factura_id}": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Detalle de una factura",
+        "operationId": "detalle_api_v1_clientes__clave__facturas__factura_id__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "factura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Factura Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Detalle Api V1 Clientes  Clave  Facturas  Factura Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas/{factura_id}/xml": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "XML timbrado",
+        "operationId": "xml_api_v1_clientes__clave__facturas__factura_id__xml_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "factura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Factura Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas/{factura_id}/pdf": {
+      "get": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "PDF con QR",
+        "operationId": "descargar_pdf_api_v1_clientes__clave__facturas__factura_id__pdf_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "factura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Factura Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/facturas/{factura_id}/cancelar": {
+      "post": {
+        "tags": [
+          "Facturación"
+        ],
+        "summary": "Cancelar con motivo 01 (con sustituta), 02, 03 o 04",
+        "operationId": "cancelar_api_v1_clientes__clave__facturas__factura_id__cancelar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "factura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Factura Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Api V1 Clientes  Clave  Facturas  Factura Id  Cancelar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/contactos": {
+      "get": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Contactos del cliente",
+        "operationId": "listar_contactos_api_v1_clientes__clave__contactos_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Listar Contactos Api V1 Clientes  Clave  Contactos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Agregar un contacto (con consentimiento de WhatsApp)",
+        "operationId": "crear_contacto_api_v1_clientes__clave__contactos_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Crear Contacto Api V1 Clientes  Clave  Contactos Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/contactos/{contacto_id}": {
+      "put": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Editar un contacto",
+        "operationId": "editar_contacto_api_v1_clientes__clave__contactos__contacto_id__put",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "contacto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Contacto Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Editar Contacto Api V1 Clientes  Clave  Contactos  Contacto Id  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Borrar un contacto",
+        "operationId": "borrar_contacto_api_v1_clientes__clave__contactos__contacto_id__delete",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "contacto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Contacto Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Contacto Api V1 Clientes  Clave  Contactos  Contacto Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/expediente": {
+      "post": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Subir una declaración, acuse u otro PDF/XML",
+        "operationId": "subir_api_v1_clientes__clave__expediente_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_subir_api_v1_clientes__clave__expediente_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Subir Api V1 Clientes  Clave  Expediente Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/documentos-enviables": {
+      "get": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Documentos del cliente que se pueden enviar",
+        "operationId": "enviables_api_v1_clientes__clave__documentos_enviables_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Enviables Api V1 Clientes  Clave  Documentos Enviables Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/documentos/{tipo}/{ref}/{indice}": {
+      "get": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Descargar un archivo de un documento",
+        "operationId": "descargar_api_v1_clientes__clave__documentos__tipo___ref___indice__get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          },
+          {
+            "name": "indice",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Indice"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/envios": {
+      "post": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Enviar documentos por correo y/o WhatsApp (segundo plano)",
+        "operationId": "enviar_api_v1_clientes__clave__envios_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnviarIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Enviar Api V1 Clientes  Clave  Envios Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Estado de los envíos de documentos del cliente",
+        "operationId": "estado_api_v1_clientes__clave__envios_get",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Api V1 Clientes  Clave  Envios Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{clave}/envios/{envio_id}/reenviar": {
+      "post": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Reenviar un documento",
+        "operationId": "reenviar_api_v1_clientes__clave__envios__envio_id__reenviar_post",
+        "parameters": [
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clave"
+            }
+          },
+          {
+            "name": "envio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Envio Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reenviar Api V1 Clientes  Clave  Envios  Envio Id  Reenviar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/recibos/descarga/{envio_id}/{archivo}": {
       "get": {
         "tags": [
@@ -17936,6 +19338,73 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documentos/descarga/{envio_id}/{archivo}": {
+      "get": {
+        "tags": [
+          "Envío de documentos"
+        ],
+        "summary": "Descarga del documento para WhatsApp (enlace firmado, sin sesión)",
+        "operationId": "descarga_publica_api_v1_documentos_descarga__envio_id___archivo__get",
+        "parameters": [
+          {
+            "name": "envio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Envio Id"
+            }
+          },
+          {
+            "name": "archivo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Archivo"
+            }
+          },
+          {
+            "name": "vence",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vence"
+            }
+          },
+          {
+            "name": "firma",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Firma"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -18480,6 +19949,40 @@
           "archivo"
         ],
         "title": "Body_importar_estado_api_v1_conciliacion_clientes__clave__cuentas__cuenta_id__estados_post"
+      },
+      "Body_subir_api_v1_clientes__clave__expediente_post": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "declaracion",
+              "acuse",
+              "otro"
+            ],
+            "title": "Tipo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo",
+            "default": ""
+          },
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "archivo"
+        ],
+        "title": "Body_subir_api_v1_clientes__clave__expediente_post"
       },
       "Body_subir_credencial_api_v1_clientes__clave__credenciales_post": {
         "properties": {
@@ -19258,6 +20761,36 @@
         ],
         "title": "CancelarCfdi"
       },
+      "CancelarIn": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "enum": [
+              "01",
+              "02",
+              "03",
+              "04"
+            ],
+            "title": "Motivo"
+          },
+          "folio_sustitucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folio Sustitucion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelarIn"
+      },
       "CancelarRetencion": {
         "properties": {
           "motivo": {
@@ -19965,6 +21498,103 @@
         "title": "CompararRegimenResponse",
         "description": "Respuesta con ISR estimado para cada regimen fiscal, ordenado de menor a mayor."
       },
+      "ConceptoIn": {
+        "properties": {
+          "clave_prod_serv": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "title": "Clave Prod Serv"
+          },
+          "cantidad": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Cantidad"
+          },
+          "clave_unidad": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 1,
+            "title": "Clave Unidad"
+          },
+          "unidad": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Unidad",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "valor_unitario": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Valor Unitario"
+          },
+          "descuento": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Descuento",
+            "default": "0"
+          },
+          "objeto_imp": {
+            "type": "string",
+            "enum": [
+              "01",
+              "02",
+              "03"
+            ],
+            "title": "Objeto Imp",
+            "default": "02"
+          },
+          "no_identificacion": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "No Identificacion",
+            "default": ""
+          },
+          "impuestos": {
+            "items": {
+              "$ref": "#/components/schemas/ImpuestoIn"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Impuestos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave_prod_serv",
+          "cantidad",
+          "clave_unidad",
+          "descripcion",
+          "valor_unitario"
+        ],
+        "title": "ConceptoIn"
+      },
       "ConciliacionManual": {
         "properties": {
           "banco": {
@@ -20116,6 +21746,23 @@
         "title": "ConfigImpuestosSchema",
         "description": "Criterio del despacho por cliente (DP-3). Cada default está documentado.\n\n- `modo_factor` (default `truncar`): cómo se corta al diezmilésimo el factor de\n  actualización y la proporción de IVA (Art. 17-A CFF último párrafo). FUENTE POR CONFIRMAR.\n- `tipo_recargo` (default `mora`): tasa de recargos del resumen (Art. 21 CFF + LIF).\n- `tope_meses_recargos` (default 60 = cinco años, Art. 21 CFF; 120 en los supuestos del\n  Art. 67).\n- `region_fronteriza` (default no): el cliente aplica el estímulo de IVA al 8 %.\n- `proporcion_iva_modo` (default `calculada` mes a mes, Art. 5o. fr. V c) LIVA) o `fija`\n  con `proporcion_iva_fija` (Art. 5o.-B, proporción del ejercicio anterior).\n- `asignacion_iva`: UUID → gravado | exento | indistinto (default indistinto).\n- `iva_no_objeto_excluidos` (default vacío): UUID de CFDI emitidos cuyo valor no objeto NO\n  entra al denominador de la proporción (no es acto del Art. 4o.-A o es concepto del Art.\n  5o.-C LIVA, p. ej. dividendos). Por default todo el no objeto cobrado entra (Art. 5o.\n  fr. V c), reforma 2022).\n- `isn_aplicar_adicional` (default sí): adicional estatal sobre el ISN (Veracruz 15 %).\n- `isn_claves_excluidas` / `isn_claves_incluidas`: ajustes a la base del ISN.\n- `saldo_favor_iva_inicial`: saldo a favor de IVA anterior al primer mes en la bóveda."
       },
+      "ConfigIn": {
+        "properties": {
+          "cliente_propio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cliente Propio"
+          }
+        },
+        "type": "object",
+        "title": "ConfigIn"
+      },
       "ConfigProveedorDiotSchema": {
         "properties": {
           "tipo_tercero": {
@@ -20230,6 +21877,50 @@
         "type": "object",
         "title": "ConfigProveedorDiotSchema",
         "description": "Clasificación de un proveedor en la DIOT. `None` = se deduce de los CFDI.\n\nDefaults (DP-3, documentados): IVA acreditable \"exclusivamente de actividades gravadas\";\nel 8 % se reporta en la región fronteriza NORTE; la importación, como bienes tangibles;\nefectos fiscales 01 (Sí)."
+      },
+      "ContactoIn": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "puesto": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Puesto",
+            "default": ""
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 320,
+            "pattern": "^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$",
+            "title": "Correo",
+            "default": ""
+          },
+          "telefono": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Telefono",
+            "default": ""
+          },
+          "consentimiento_whatsapp": {
+            "type": "boolean",
+            "title": "Consentimiento Whatsapp",
+            "default": false
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "ContactoIn"
       },
       "Contrapartida": {
         "properties": {
@@ -22125,6 +23816,63 @@
         ],
         "title": "DispositivosResponse"
       },
+      "DocPagoIn": {
+        "properties": {
+          "factura_id": {
+            "type": "integer",
+            "title": "Factura Id"
+          },
+          "importe_pagado": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Importe Pagado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "factura_id",
+          "importe_pagado"
+        ],
+        "title": "DocPagoIn"
+      },
+      "DocumentoRef": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "factura",
+              "cfdi",
+              "retencion",
+              "opinion",
+              "constancia",
+              "declaracion",
+              "acuse",
+              "otro",
+              "recibo_nomina"
+            ],
+            "title": "Tipo"
+          },
+          "ref": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "ref"
+        ],
+        "title": "DocumentoRef"
+      },
       "EmitirRetencion": {
         "properties": {
           "rfc_tercero": {
@@ -22995,6 +24743,54 @@
         "title": "EncolarDiagnostico",
         "description": "Cuerpo de `POST /trabajos/clientes/{clave}/diagnostico`."
       },
+      "EnviarIn": {
+        "properties": {
+          "documentos": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentoRef"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Documentos"
+          },
+          "canales": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "correo",
+                "whatsapp"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Canales"
+          },
+          "contactos": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Contactos"
+          },
+          "mensaje": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Mensaje",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "documentos",
+          "canales",
+          "contactos"
+        ],
+        "title": "EnviarIn"
+      },
       "EnviarRequest": {
         "properties": {
           "canal": {
@@ -23592,6 +25388,90 @@
         ],
         "title": "FacturaCargo"
       },
+      "FacturaIn": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "I",
+              "E"
+            ],
+            "title": "Tipo",
+            "default": "I"
+          },
+          "receptor": {
+            "$ref": "#/components/schemas/ReceptorIn"
+          },
+          "conceptos": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptoIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Conceptos"
+          },
+          "forma_pago": {
+            "type": "string",
+            "pattern": "^[0-9]{2}$",
+            "title": "Forma Pago"
+          },
+          "metodo_pago": {
+            "type": "string",
+            "enum": [
+              "PUE",
+              "PPD"
+            ],
+            "title": "Metodo Pago"
+          },
+          "serie": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 25,
+                "pattern": "^[^|]{1,25}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serie"
+          },
+          "condiciones_pago": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Condiciones Pago",
+            "default": ""
+          },
+          "relacionados": {
+            "items": {
+              "$ref": "#/components/schemas/RelacionIn"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Relacionados"
+          },
+          "cargo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cargo Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "receptor",
+          "conceptos",
+          "forma_pago",
+          "metodo_pago"
+        ],
+        "title": "FacturaIn"
+      },
       "FormaPagoEmpleado": {
         "type": "string",
         "enum": [
@@ -23998,6 +25878,57 @@
         "type": "object",
         "title": "HorarioSchema",
         "description": "El horario contra el que el checador mide retardos y faltas. (O-03)\n\nEs el mismo `HorarioLaboral` de `schemas/asistencia.py`, con los mismos\ndefaults (08:00-17:00, 15 minutos de tolerancia, lunes a viernes). Vive\naparte porque **aquel es de transporte y éste es de almacenamiento**: el del\ncierre viaja en un request y se descarta; éste se guarda con la empresa y\ntiene que sobrevivir a un reinicio.\n\n`dias_laborables` usa la convención de `datetime.weekday()`: 0 = lunes."
+      },
+      "ImpuestoIn": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "traslado",
+              "retencion"
+            ],
+            "title": "Tipo"
+          },
+          "impuesto": {
+            "type": "string",
+            "enum": [
+              "001",
+              "002"
+            ],
+            "title": "Impuesto"
+          },
+          "tipo_factor": {
+            "type": "string",
+            "enum": [
+              "Tasa",
+              "Exento"
+            ],
+            "title": "Tipo Factor",
+            "default": "Tasa"
+          },
+          "tasa": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "impuesto"
+        ],
+        "title": "ImpuestoIn"
       },
       "IncapacidadSchema": {
         "properties": {
@@ -25170,6 +27101,64 @@
           "por_pagina"
         ],
         "title": "PaginaAuditoria"
+      },
+      "PagoIn": {
+        "properties": {
+          "fecha_pago": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Pago"
+          },
+          "forma_pago": {
+            "type": "string",
+            "pattern": "^[0-9]{2}$",
+            "title": "Forma Pago"
+          },
+          "documentos": {
+            "items": {
+              "$ref": "#/components/schemas/DocPagoIn"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Documentos"
+          },
+          "num_operacion": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[^|]{0,100}$",
+            "title": "Num Operacion",
+            "default": ""
+          },
+          "serie": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 25,
+                "pattern": "^[^|]{1,25}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serie"
+          },
+          "relacionados": {
+            "items": {
+              "$ref": "#/components/schemas/RelacionIn"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Relacionados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha_pago",
+          "forma_pago",
+          "documentos"
+        ],
+        "title": "PagoIn"
       },
       "PagoNuevo": {
         "properties": {
@@ -26684,6 +28673,53 @@
         ],
         "title": "ReboteRequest"
       },
+      "ReceptorIn": {
+        "properties": {
+          "clave_cliente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clave Cliente"
+          },
+          "rfc": {
+            "type": "string",
+            "maxLength": 13,
+            "title": "Rfc",
+            "default": ""
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Nombre",
+            "default": ""
+          },
+          "regimen": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Regimen",
+            "default": ""
+          },
+          "codigo_postal": {
+            "type": "string",
+            "pattern": "^([0-9]{5})?$",
+            "title": "Codigo Postal",
+            "default": ""
+          },
+          "uso_cfdi": {
+            "type": "string",
+            "maxLength": 4,
+            "title": "Uso Cfdi",
+            "default": "G03"
+          }
+        },
+        "type": "object",
+        "title": "ReceptorIn"
+      },
       "ReciboCFDISchema": {
         "properties": {
           "empleado_no": {
@@ -27131,6 +29167,30 @@
           "cuenta_numero"
         ],
         "title": "ReglaEntrada"
+      },
+      "RelacionIn": {
+        "properties": {
+          "tipo_relacion": {
+            "type": "string",
+            "pattern": "^0[1-9]$",
+            "title": "Tipo Relacion"
+          },
+          "uuids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Uuids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo_relacion",
+          "uuids"
+        ],
+        "title": "RelacionIn"
       },
       "ResultadoRegimen": {
         "properties": {

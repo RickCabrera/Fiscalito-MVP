@@ -265,6 +265,20 @@
       ]
     },
     {
+      "path": "/api/v1/clientes/{clave}/contactos",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/contactos/{contacto_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
       "path": "/api/v1/clientes/{clave}/credenciales",
       "metodos": [
         "GET",
@@ -303,6 +317,74 @@
     },
     {
       "path": "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/documentos-enviables",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/documentos/{tipo}/{ref}/{indice}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/envios",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/envios/{envio_id}/reenviar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/expediente",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas/pagos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas/{factura_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas/{factura_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas/{factura_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/facturas/{factura_id}/xml",
       "metodos": [
         "GET"
       ]
@@ -740,6 +822,12 @@
       ]
     },
     {
+      "path": "/api/v1/documentos/descarga/{envio_id}/{archivo}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/equipo",
       "metodos": [
         "GET"
@@ -798,6 +886,25 @@
       "path": "/api/v1/estado-cuenta",
       "metodos": [
         "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/facturacion/cargos/{cargo_id}/borrador",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/facturacion/catalogos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/facturacion/config",
+      "metodos": [
+        "GET",
+        "PUT"
       ]
     },
     {

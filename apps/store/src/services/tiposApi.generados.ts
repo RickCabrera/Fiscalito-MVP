@@ -101,6 +101,13 @@ export interface Body_importar_estado_api_v1_conciliacion_clientes__clave__cuent
   mapeo?: string | null;
 }
 
+export interface Body_subir_api_v1_clientes__clave__expediente_post {
+  tipo: "declaracion" | "acuse" | "otro";
+  descripcion?: string;
+  periodo?: string;
+  archivo: string;
+}
+
 export interface Body_subir_credencial_api_v1_clientes__clave__credenciales_post {
   tipo: string;
   password: string;
@@ -250,6 +257,11 @@ export interface CancelarCfdi {
   folio_sustitucion?: string | null;
 }
 
+export interface CancelarIn {
+  motivo: "01" | "02" | "03" | "04";
+  folio_sustitucion?: string | null;
+}
+
 export interface CancelarRetencion {
   motivo: string;
   folio_sustitucion?: string | null;
@@ -388,6 +400,19 @@ export interface CompararRegimenResponse {
   explicacion?: string | null;
 }
 
+export interface ConceptoIn {
+  clave_prod_serv: string;
+  cantidad: number | string;
+  clave_unidad: string;
+  unidad?: string;
+  descripcion: string;
+  valor_unitario: number | string;
+  descuento?: number | string;
+  objeto_imp?: "01" | "02" | "03";
+  no_identificacion?: string;
+  impuestos?: ImpuestoIn[];
+}
+
 export interface ConciliacionManual {
   banco: string[];
   libros: string[];
@@ -410,6 +435,10 @@ export interface ConfigImpuestosSchema {
   iva_no_objeto_excluidos?: string[];
 }
 
+export interface ConfigIn {
+  cliente_propio?: string | null;
+}
+
 /** Clasificación de un proveedor en la DIOT. `None` = se deduce de los CFDI. */
 export interface ConfigProveedorDiotSchema {
   tipo_tercero?: "04" | "05" | "15" | null;
@@ -423,6 +452,15 @@ export interface ConfigProveedorDiotSchema {
   pais?: string;
   jurisdiccion?: string;
   efectos_fiscales?: "01" | "02";
+}
+
+export interface ContactoIn {
+  nombre: string;
+  puesto?: string;
+  correo?: string;
+  telefono?: string;
+  consentimiento_whatsapp?: boolean;
+  activo?: boolean;
 }
 
 export interface Contrapartida {
@@ -739,6 +777,16 @@ export interface DispositivosResponse {
   dispositivos: Record<string, unknown>[];
 }
 
+export interface DocPagoIn {
+  factura_id: number;
+  importe_pagado: number | string;
+}
+
+export interface DocumentoRef {
+  tipo: "factura" | "cfdi" | "retencion" | "opinion" | "constancia" | "declaracion" | "acuse" | "otro" | "recibo_nomina";
+  ref: string;
+}
+
 export interface EmitirRetencion {
   rfc_tercero: string;
   ejercicio: number;
@@ -892,6 +940,13 @@ export interface EncolarDiagnostico {
   fallar_intentos?: number;
 }
 
+export interface EnviarIn {
+  documentos: DocumentoRef[];
+  canales: ("correo" | "whatsapp")[];
+  contactos: number[];
+  mensaje?: string;
+}
+
 export interface EnviarRequest {
   canal: "correo" | "whatsapp";
 }
@@ -1012,6 +1067,18 @@ export interface FacturaCargo {
   uuid_cfdi?: string | null;
 }
 
+export interface FacturaIn {
+  tipo?: "I" | "E";
+  receptor: ReceptorIn;
+  conceptos: ConceptoIn[];
+  forma_pago: string;
+  metodo_pago: "PUE" | "PPD";
+  serie?: string | null;
+  condiciones_pago?: string;
+  relacionados?: RelacionIn[];
+  cargo_id?: number | null;
+}
+
 /** Cómo se le paga el neto. Sólo `transferencia` entra a la dispersión. */
 export type FormaPagoEmpleado = "transferencia" | "efectivo" | "cheque";
 
@@ -1088,6 +1155,13 @@ export interface HorarioSchema {
   hora_salida?: string;
   tolerancia_minutos?: number;
   dias_laborables?: number[];
+}
+
+export interface ImpuestoIn {
+  tipo: "traslado" | "retencion";
+  impuesto: "001" | "002";
+  tipo_factor?: "Tasa" | "Exento";
+  tasa?: number | string | null;
 }
 
 export interface IncapacidadSchema {
@@ -1305,6 +1379,15 @@ export interface PaginaAuditoria {
   total: number;
   pagina: number;
   por_pagina: number;
+}
+
+export interface PagoIn {
+  fecha_pago: string;
+  forma_pago: string;
+  documentos: DocPagoIn[];
+  num_operacion?: string;
+  serie?: string | null;
+  relacionados?: RelacionIn[];
 }
 
 export interface PagoNuevo {
@@ -1591,6 +1674,15 @@ export interface ReboteRequest {
   motivo?: string;
 }
 
+export interface ReceptorIn {
+  clave_cliente?: string | null;
+  rfc?: string;
+  nombre?: string;
+  regimen?: string;
+  codigo_postal?: string;
+  uso_cfdi?: string;
+}
+
 /** Lo que el CFDI necesita de un recibo, y nada más. */
 export interface ReciboCFDISchema {
   empleado_no: string;
@@ -1662,6 +1754,11 @@ export interface ReglaEntrada {
   cuenta_numero: string;
   prioridad?: number;
   activa?: boolean;
+}
+
+export interface RelacionIn {
+  tipo_relacion: string;
+  uuids: string[];
 }
 
 /** Resultado ISR estimado para un regimen fiscal especifico. */
@@ -2045,6 +2142,8 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/calculos/pre-declaracion"
   | "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual"
   | "/api/v1/clientes/{clave}/calculos/retenciones-terceros"
+  | "/api/v1/clientes/{clave}/contactos"
+  | "/api/v1/clientes/{clave}/contactos/{contacto_id}"
   | "/api/v1/clientes/{clave}/credenciales"
   | "/api/v1/clientes/{clave}/credenciales/{credencial_id}"
   | "/api/v1/clientes/{clave}/declaraciones"
@@ -2052,6 +2151,17 @@ export type RutaApi =
   | "/api/v1/clientes/{clave}/diot/proveedores/{rfc}"
   | "/api/v1/clientes/{clave}/diot/{anio}/{mes}"
   | "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt"
+  | "/api/v1/clientes/{clave}/documentos-enviables"
+  | "/api/v1/clientes/{clave}/documentos/{tipo}/{ref}/{indice}"
+  | "/api/v1/clientes/{clave}/envios"
+  | "/api/v1/clientes/{clave}/envios/{envio_id}/reenviar"
+  | "/api/v1/clientes/{clave}/expediente"
+  | "/api/v1/clientes/{clave}/facturas"
+  | "/api/v1/clientes/{clave}/facturas/pagos"
+  | "/api/v1/clientes/{clave}/facturas/{factura_id}"
+  | "/api/v1/clientes/{clave}/facturas/{factura_id}/cancelar"
+  | "/api/v1/clientes/{clave}/facturas/{factura_id}/pdf"
+  | "/api/v1/clientes/{clave}/facturas/{factura_id}/xml"
   | "/api/v1/clientes/{clave}/obligaciones/estado"
   | "/api/v1/clientes/{clave}/retenciones-cfdi"
   | "/api/v1/clientes/{clave}/retenciones-cfdi/terceros"
@@ -2122,6 +2232,7 @@ export type RutaApi =
   | "/api/v1/despacho/clientes/{cliente_id}/empleados"
   | "/api/v1/despacho/primas-de-riesgo"
   | "/api/v1/diot"
+  | "/api/v1/documentos/descarga/{envio_id}/{archivo}"
   | "/api/v1/equipo"
   | "/api/v1/equipo/invitaciones"
   | "/api/v1/equipo/invitaciones/aceptar"
@@ -2132,6 +2243,9 @@ export type RutaApi =
   | "/api/v1/equipo/usuarios/{uid}/reactivar"
   | "/api/v1/equipo/usuarios/{uid}/rol"
   | "/api/v1/estado-cuenta"
+  | "/api/v1/facturacion/cargos/{cargo_id}/borrador"
+  | "/api/v1/facturacion/catalogos"
+  | "/api/v1/facturacion/config"
   | "/api/v1/impuestos/clientes/{clave}/anual"
   | "/api/v1/impuestos/clientes/{clave}/anual/papeles"
   | "/api/v1/impuestos/clientes/{clave}/config"
@@ -2415,6 +2529,22 @@ export interface OperacionesApi {
     cuerpo: RetencionesCliente;
     respuesta: Record<string, unknown>;
   };
+  "GET /api/v1/clientes/{clave}/contactos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/contactos": {
+    cuerpo: ContactoIn;
+    respuesta: Record<string, unknown>;
+  };
+  "DELETE /api/v1/clientes/{clave}/contactos/{contacto_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/clientes/{clave}/contactos/{contacto_id}": {
+    cuerpo: ContactoIn;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/clientes/{clave}/credenciales": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -2444,6 +2574,58 @@ export interface OperacionesApi {
     respuesta: Record<string, unknown>;
   };
   "GET /api/v1/clientes/{clave}/diot/{anio}/{mes}/txt": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/clientes/{clave}/documentos-enviables": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/documentos/{tipo}/{ref}/{indice}": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/clientes/{clave}/envios": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/envios": {
+    cuerpo: EnviarIn;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/envios/{envio_id}/reenviar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/expediente": {
+    cuerpo: Body_subir_api_v1_clientes__clave__expediente_post;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/facturas": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/facturas": {
+    cuerpo: FacturaIn;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/facturas/pagos": {
+    cuerpo: PagoIn;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/facturas/{factura_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/clientes/{clave}/facturas/{factura_id}/cancelar": {
+    cuerpo: CancelarIn;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/clientes/{clave}/facturas/{factura_id}/pdf": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "GET /api/v1/clientes/{clave}/facturas/{factura_id}/xml": {
     cuerpo: never;
     respuesta: unknown;
   };
@@ -2775,6 +2957,10 @@ export interface OperacionesApi {
     cuerpo: DIOTRequest;
     respuesta: DIOTResponse;
   };
+  "GET /api/v1/documentos/descarga/{envio_id}/{archivo}": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
   "GET /api/v1/equipo": {
     cuerpo: never;
     respuesta: Record<string, unknown>;
@@ -2818,6 +3004,22 @@ export interface OperacionesApi {
   "POST /api/v1/estado-cuenta": {
     cuerpo: EstadoCuentaRequest;
     respuesta: EstadoCuentaResponse;
+  };
+  "GET /api/v1/facturacion/cargos/{cargo_id}/borrador": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/facturacion/catalogos": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/facturacion/config": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/facturacion/config": {
+    cuerpo: ConfigIn;
+    respuesta: Record<string, unknown>;
   };
   "POST /api/v1/impuestos/clientes/{clave}/anual": {
     cuerpo: AnualRequest;

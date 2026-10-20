@@ -43,8 +43,10 @@ from app.routes import (
     despacho,
     diot,
     diot_cliente,
+    envio_documentos,
     equipo,
     estado_cuenta,
+    facturacion,
     health,
     impuestos,
     impuestos_anual,
@@ -192,6 +194,9 @@ ROUTERS_PROTEGIDOS = (
     equipo.router,
     dashboard.router,
     cobranza.router,
+    # P5-04 facturación CFDI 4.0 y P5-05 envío de documentos al cliente.
+    facturacion.router,
+    envio_documentos.router,
 )
 
 app.include_router(health.router)
@@ -203,6 +208,8 @@ for _router in ROUTERS_PROTEGIDOS:
 app.include_router(asistencia.router_publico, prefix="/api/v1")
 # - P4-13: descarga del recibo para WhatsApp, con enlace firmado (HMAC) y vigencia.
 app.include_router(nomina_envio.router_publico, prefix="/api/v1")
+# - P5-05: descarga del documento enviado al cliente por WhatsApp, mismo esquema de enlace.
+app.include_router(envio_documentos.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

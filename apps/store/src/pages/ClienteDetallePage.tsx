@@ -28,6 +28,9 @@ import PlantillaReferencia from '../components/cartera/PlantillaReferencia';
 import CriteriosNominaCliente from '../components/cartera/CriteriosNominaCliente';
 // P0-04: procesos en segundo plano del cliente (demo de EstadoTrabajos).
 import ProcesosCliente from '../components/cartera/ProcesosCliente';
+// P5-04 facturación (el cliente emite) y P5-05 envío de documentos al cliente.
+import FacturacionCliente from '../components/facturacion/FacturacionCliente';
+import EnviarDocumentos from '../components/envios/EnviarDocumentos';
 import { useCartera } from '../context/carteraStore';
 import { useAuth } from '../context/AuthContext';
 import { esCuentaDeDesarrollo } from '../services/entorno';
@@ -256,6 +259,14 @@ export default function ClienteDetallePage() {
 
           {id && <AlertasCliente clave={id} />}
           {id && <CumplimientoCliente clave={id} />}
+          {id && (
+            <FacturacionCliente
+              key={`fact-${id}`}
+              clave={id}
+              receptores={cartera.clientes.filter((c) => c.id !== id).map((c) => ({ id: c.id, nombre: c.nombre }))}
+            />
+          )}
+          {id && <EnviarDocumentos key={`env-${id}`} clave={id} />}
           {id && <ProcesosCliente cliente={id} />}
         </>
       )}
