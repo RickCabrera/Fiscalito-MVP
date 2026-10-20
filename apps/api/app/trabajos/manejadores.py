@@ -63,3 +63,4 @@ def cargar_manejadores() -> None:
     import app.nomina_envio.trabajos  # noqa: F401 — P4-13
     import app.sat_descarga.trabajos  # noqa: F401
     import app.sat_verificacion.trabajos  # noqa: F401 — P1-03/04/05
+    import app.whatsapp_bot.trabajos  # noqa: F401 — P5-06 bot de WhatsApp

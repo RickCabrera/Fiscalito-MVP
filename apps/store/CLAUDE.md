@@ -51,7 +51,7 @@ El primer servicio es **Fiscalito**: un asistente fiscal cuyo backend es el **Fi
 - **DB**: Firestore (plan gratuito) para perfiles de usuario y historial de declaraciones
 - **Backend fiscal**: Fiscal Agent API (FastAPI/Python) corriendo en localhost:8000 o Cloud Run
 - **LLM (backend)**: OpenAI / Anthropic (configurable via env, usado por el Fiscal Agent API)
-- **LLM (frontend)**: OpenAI API directa desde el cliente — Whisper STT, GPT-4o-mini (chat de voz), TTS-1 voz "nova"
+- **LLM (frontend)**: NINGUNO desde P5-07. La voz y el chat del asistente pasan por el backend (`/api/v1/asistente/*`, `services/asistenteApi.ts`); el front no tiene llaves de IA (lo vigila `src/sinLlavesLLM.test.ts`)
 - **Styling**: CSS custom con variables (NO Tailwind, NO component libraries)
 - **Icons**: lucide-react ^0.468.0
 - **Router**: react-router-dom v7
@@ -206,7 +206,8 @@ fiscalito-store-app/
 │   │   ├── contabilidadApi.ts       # Contabilito (P2): catalogo, config, polizas, balanza (API)
 │   │   ├── deduccionesPersonales.ts # Campos y clasificacion por ClaveProdServ (compartido)
 │   │   ├── pdfUtils.ts              # Helpers compartidos para exports PDF (colores, tablas)
-│   │   └── voiceChatService.ts      # OpenAI Whisper STT + GPT-4o-mini chat + TTS-1 (voz nova) + VAD
+│   │   ├── asistenteApi.ts          # P5-07: turno del asistente, voz a texto y texto a voz (backend)
+│   │   └── voiceChatService.ts      # Grabacion, VAD y reproduccion; STT/TTS via asistenteApi (sin llaves)
 │   └── utils/
 │       ├── format.ts                # fmtMoney y helpers de formateo
 │       └── styles.ts                # Objetos de estilo inline compartidos (tablas, badges)
@@ -627,7 +628,7 @@ DB: Firestore
 ### Variables de entorno (`.env`):
 - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, etc. — Config Firebase
 - `VITE_FISCAL_AGENT_URL` — URL del Fiscal Agent API (default: `http://localhost:8000`)
-- `VITE_OPENAI_API_KEY` — API key de OpenAI para voice chat (Whisper + GPT-4o-mini + TTS). **NOTA**: esta key se expone en el bundle del cliente; aceptable para demo/hackathon, no para produccion.
+- **No hay variables de LLM** (P5-07): la llave de OpenAI vivia aqui y Vite la incrustaba en el bundle; se retiro. El asistente (chat, voz a texto, texto a voz) va por `/api/v1/asistente/*` con la sesion de Firebase. El prompt y el catalogo de herramientas son del servidor; las herramientas de consulta (boveda, balanza, nomina, vencimientos, alertas, impuestos) corren alla sobre el cliente activo y las cifras salen del motor. `agent/tools.ts` conserva solo los ejecutores de pantalla (navegar, demo, pre-declaracion).
 
 #### La cartera va por la API (P0-01)
 
@@ -715,7 +716,7 @@ solo ve lo suyo y el contribuyente nunca ve lo de un cliente.
 - ✅ Rutas protegidas
 - ✅ Repo en GitHub
 - ✅ Dashboard adaptado al perfil (filtra servicios y stats por contributorType)
-- ✅ Chat de voz con IA (Whisper STT → GPT-4o-mini → TTS-1) — boton flotante en toda la app via AppLayout
+- ✅ Chat de voz con IA — boton flotante en toda la app via AppLayout; desde P5-07 todo pasa por el backend (`/api/v1/asistente/*`), sin llaves en el navegador
 
 **Pendiente:**
 - ⏳ Deploy inicial a producción. Firebase Hosting configurado (`firebase.json` con `public: dist`, SPA rewrites y headers de caché inmutable); falta correr `firebase deploy`.

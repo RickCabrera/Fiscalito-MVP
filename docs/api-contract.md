@@ -2380,3 +2380,69 @@ Prefijo `/api/v1/clientes/{clave}` (`cliente_o_404`).
 - `GET /envios` · `POST /envios/{id}/reenviar`.
 - Pública: `GET /api/v1/documentos/descarga/{envio_id}/{documento.pdf|documento.xml}?vence&firma`
   (enlace HMAC de 7 días para que WhatsApp baje el archivo; inválido → 404).
+## Asistente IA del despacho (P5-07, absorbe S-00)
+
+Prefijo `/api/v1/asistente`. Sesión de Firebase (`PROTEGIDO`). **El navegador no tiene ninguna
+llave de LLM**: la voz y el chat pasan por aquí. Cada llamada al proveedor cobra el límite por
+minuto del usuario (`FISCALITO_RATE_LIMIT_LLM_POR_MINUTO`) y el tope diario del despacho
+(`FISCALITO_TOPE_LLM_DIARIO_LLAMADAS`) → 429 con `Retry-After`.
+
+- `POST /turno` `{cliente: clave|null, contador: str≤120 sin saltos de línea, historial: [≤40
+  mensajes, ≤20 000 caracteres]}`. Mensajes con forma de Chat Completions: `role` `user` |
+  `assistant` (con `tool_calls` opcional) | `tool` (`tool_call_id`, y `firma` si respondió una
+  herramienta de servidor). **`system` → 422**: el prompt lo arma el servidor con el cliente
+  que lee de su base (`cliente_o_404`: de otro despacho o no asignado a un auxiliar → 404).
+  El catálogo de herramientas también es del servidor:
+  - de servidor (se corren en el request, sobre el cliente activo): `consultar_boveda(anio,
+    mes)`, `consultar_balanza(anio, mes, nivel?)`, `consultar_nomina(periodo_id?)`,
+    `consultar_vencimientos(dias?)`, `consultar_alertas()`, `consultar_impuestos_mes(anio, mes)`;
+  - de navegador (las corre `agent/tools.ts`): `navegar(ruta)`, `cargar_xmls_demo(anio, mes)`,
+    `calcular_predeclaracion(anio, mes)`.
+
+  Respuesta `{type: "text", text, herramientas_servidor}` o `{type: "tool_calls", toolCalls:
+  [{id, name, args}], mensajes, herramientas_servidor}`. `mensajes` (el assistant con TODAS sus
+  llamadas + los resultados de servidor con `firma` HMAC) se agrega al historial antes de los
+  resultados del navegador. `herramientas_servidor: [{id, nombre, argumentos, ok, datos|error}]`
+  trae lo que dijeron la base y los motores: **las cifras salen de ahí, nunca del modelo**.
+  Historial inválido → 422: resultado que no responde a una llamada, llamadas sin resultado,
+  resultado de una herramienta de servidor sin firma válida (o firmado para otro usuario o
+  cliente), último mensaje que no es `user`/`tool`.
+- `POST /transcribir` — audio CRUDO en el cuerpo, `Content-Type` `audio/webm` | `audio/ogg` |
+  `audio/mp4` | `audio/mpeg` | `audio/wav` (se compara el tipo base: `audio/webm;codecs=opus`
+  vale). Otro tipo → 415; más de 8 MB → 413 (por `Content-Length` y contando el flujo); vacío →
+  422. → `{exito, texto}`.
+- `POST /hablar` `{texto: 1..4096}` → `audio/mpeg`.
+
+## Bot de WhatsApp (P5-06)
+
+Prefijo `/api/v1/whatsapp`.
+
+Protegidas (sesión + `cliente_o_404`; escribir exige rol `dueno`/`contador`):
+- `GET /clientes/{clave}/contactos` → `{contactos: [{id, telefono, nombre, consentimiento,
+  consentimiento_en}]}`.
+- `POST /clientes/{clave}/contactos` `{telefono: +52 y 10 dígitos (o 10 sueltos), nombre?,
+  consentimiento: true}` → alta o reactivación. Sin `consentimiento: true` o número no
+  mexicano → 422.
+- `DELETE /clientes/{clave}/contactos/{id}` → baja (no borra la bitácora).
+- `GET /clientes/{clave}/conversacion?limite` → `{mensajes: [{id, fecha, direccion
+  entrante|saliente, telefono, texto, intencion, estado, documento}]}`.
+
+Públicas (`RUTAS_PUBLICAS`, cada una con su verificación):
+- `GET /webhook?hub.mode=subscribe&hub.verify_token&hub.challenge` → el reto en texto plano si
+  el token coincide con `FISCALITO_WHATSAPP_VERIFY_TOKEN`; si no (o sin variable) → 403.
+- `POST /webhook` — cuerpo del proveedor. Firma (`X-Hub-Signature-256` de Meta o
+  `X-Twilio-Signature`) verificada por el adaptador ANTES de todo; inválida → 401 y nada se
+  anota. → `{exito, encolados, repetidos, limitados}`. Idempotente por id del mensaje (Meta
+  reintenta). Límite por número `FISCALITO_WHATSAPP_BOT_POR_MINUTO` (default 6): lo que pase
+  se anota `limitado` y no se contesta. La respuesta va en el trabajo `whatsapp.responder`:
+  número sin contacto activo con consentimiento → un aviso de rechazo por día, sin LLM ni
+  datos; número de varias empresas → pide el RFC; identificado → cobra el tope diario del
+  despacho y el LLM sólo interpreta la intención (`enviar_opinion_cumplimiento`,
+  `enviar_constancia`, `enviar_facturas_del_mes(anio?, mes?)`, `consultar_pago_del_mes`). Los
+  textos con cifras los arma el servidor con la base y el motor (resumen de impuestos P3-07 de
+  la declaración que vence este mes; conteos de la bóveda); texto libre del modelo con dígitos
+  se reemplaza por el menú.
+- `GET /documentos/{mensaje_id}/{archivo}?vence&firma` — `opinion.pdf`, `constancia.pdf` o
+  `facturas.zip` (XML no cancelados del mes) entregado en ese mensaje. Enlace firmado
+  (HMAC con `FISCALITO_ENLACES_SECRETO`, prefijo propio) con vigencia de 7 días; inválido o
+  vencido → 404.

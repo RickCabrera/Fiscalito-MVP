@@ -229,7 +229,7 @@ Documentación interactiva en `http://localhost:8000/docs`.
 
 ```bash
 cd apps/store
-cp .env.example .env          # configurar Firebase + VITE_OPENAI_API_KEY
+cp .env.example .env          # configurar Firebase (sin llaves de IA: van en apps/api/.env)
 npm install
 npm run dev
 ```
