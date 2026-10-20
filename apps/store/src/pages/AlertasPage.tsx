@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bell, Loader, RefreshCw } from 'lucide-react';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import { evaluarAlertas, NOMBRE_TIPO_ALERTA, type FiltrosAlertas } from '../services/alertasApi';
@@ -20,7 +21,10 @@ const campo: React.CSSProperties = {
 
 export default function AlertasPage() {
   const { clientes } = useClienteActivo();
-  const [filtros, setFiltros] = useState<FiltrosAlertas>({});
+  // P5-02: el dashboard entra con `?severidad=` en la URL.
+  const [params] = useSearchParams();
+  const [filtros, setFiltros] = useState<FiltrosAlertas>(() =>
+    (params.get('severidad') ? { severidad: params.get('severidad') ?? undefined } : {}));
   const [version, setVersion] = useState(0);
   const [revisando, setRevisando] = useState(false);
   const [error, setError] = useState('');

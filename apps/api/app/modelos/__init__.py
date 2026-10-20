@@ -20,3 +20,5 @@ from app.modelos import retenciones_cfdi  # noqa: F401, I001 — P3-04
 from app.modelos import diot  # noqa: F401, I001 — P3-05
 from app.modelos import alertas  # noqa: F401, I001 — P3-09
 from app.modelos import agenda  # noqa: F401, I001 — P3-10
+from app.modelos import equipo  # noqa: F401, I001 — P5-01
+from app.modelos import cobranza  # noqa: F401, I001 — P5-03

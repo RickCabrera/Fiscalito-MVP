@@ -345,6 +345,78 @@
       ]
     },
     {
+      "path": "/api/v1/cobranza/cargos/generar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/cargos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/cargos/{cargo_id}/factura",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/estado-cuenta",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/honorarios",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/pagos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/pagos/{pago_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/recordatorios",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/clientes/{clave}/recordatorios/{rec_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/cobranza/resumen",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/comparar-regimenes",
       "metodos": [
         "POST"
@@ -620,6 +692,12 @@
       ]
     },
     {
+      "path": "/api/v1/dashboard",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/deducciones-personales",
       "metodos": [
         "POST"
@@ -659,6 +737,61 @@
       "path": "/api/v1/diot",
       "metodos": [
         "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/invitaciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/invitaciones/aceptar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/invitaciones/{invitacion_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/plan",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/usuarios/{uid}/clientes/{clave}",
+      "metodos": [
+        "DELETE",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/usuarios/{uid}/desactivar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/usuarios/{uid}/reactivar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/equipo/usuarios/{uid}/rol",
+      "metodos": [
+        "PUT"
       ]
     },
     {

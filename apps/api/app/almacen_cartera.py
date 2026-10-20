@@ -30,7 +30,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.exceptions import FiscalAgentError
-from app.modelos.nucleo import Cliente, Dispositivo, Empleado
+from app.modelos.nucleo import Cliente, Despacho, Dispositivo, Empleado
+from app.planes import plan as plan_de
 
 # Cotas de lo que un despacho puede guardar por la API. No son reglas de negocio: sin
 # tope, un bucle de `curl` con un token válido llena la base. Se aplican sólo a ALTAS
@@ -76,11 +77,21 @@ def documento_cliente(cliente: Cliente) -> dict[str, Any]:
 def crear_cliente(
     db: Session, despacho_id: str, clave: str, datos: dict[str, Any], *, con_tope: bool = True
 ) -> Cliente:
-    """Alta de un cliente que no existe. Con `con_tope`, respeta la cota del despacho."""
+    """
+    Alta de un cliente que no existe. Con `con_tope`, respeta el límite del plan del
+    despacho (`app/planes.py`, P5-01) y la cota técnica `MAX_CLIENTES_POR_DESPACHO`.
+    """
     if con_tope:
         cuantos = db.scalar(
             select(func.count()).select_from(Cliente).where(Cliente.despacho_id == despacho_id)
         )
+        despacho = db.get(Despacho, despacho_id)
+        el_plan = plan_de(despacho.plan if despacho is not None else None)
+        if (cuantos or 0) >= el_plan.max_clientes:
+            raise FiscalAgentError(
+                f"El plan {el_plan.nombre} llega hasta {el_plan.max_clientes} clientes. "
+                "Cambia de plan para dar de alta más.", status_code=409
+            )
         if (cuantos or 0) >= MAX_CLIENTES_POR_DESPACHO:
             raise FiscalAgentError(
                 f"Llegaste al tope de {MAX_CLIENTES_POR_DESPACHO} clientes.", status_code=409

@@ -25,6 +25,8 @@ import { MARCA_CORTA } from './marca';
 describe('getSidebarLinks', () => {
   it('el contador ve Clientes / Empleados / Dispositivos / Bóveda / Descarga SAT / Nómina / Calendario / Fiscalito / Contabilito / Perfil, en ese orden', () => {
     expect(getSidebarLinks()).toEqual([
+      // P5-02: el dashboard del despacho es la entrada y va primero.
+      { id: 'inicio', to: '/app/inicio', label: 'Inicio' },
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
       // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
       // a la ficha del cliente y cambiando de pestaña, y los dispositivos no
@@ -56,6 +58,8 @@ describe('getSidebarLinks', () => {
       { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
       // P3-08: calculadoras fiscales sueltas, sin alcance de cliente.
       { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
+      // P5-03: cuentas por cobrar de la cartera del despacho.
+      { id: 'cobranza', to: '/app/cobranza', label: 'Cobranza' },
       { id: 'perfil', to: '/app/profile', label: 'Perfil' },
     ]);
   });
@@ -66,8 +70,8 @@ describe('getSidebarLinks', () => {
     expect(ids).not.toContain('historial');
   });
 
-  it('rutaInicial manda a la cartera', () => {
-    expect(rutaInicial()).toBe('/app/clientes');
+  it('rutaInicial manda al dashboard del despacho (P5-02)', () => {
+    expect(rutaInicial()).toBe('/app/inicio');
   });
 
   it('esContador solo es cierto para el contador', () => {

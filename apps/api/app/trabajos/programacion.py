@@ -96,6 +96,15 @@ def _encolar_alertas(db: Session, ranura: datetime) -> object:
     return encolar_diario(db, ranura)
 
 
+def _cobranza(nombre: str) -> Callable[[Session, datetime], object]:
+    def encolar_cobranza(db: Session, ranura: datetime) -> object:
+        from app.cobranza import trabajos as cobranza
+
+        return getattr(cobranza, nombre)(db, ranura)
+
+    return encolar_cobranza
+
+
 # La lista que revisa el worker. Cada dominio agrega aquí las suyas.
 TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("purgar_trabajos", _encolar_purga, hora=time(3, 0)),
@@ -108,6 +117,10 @@ TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("sat_cumplimiento", _sat("encolar_cumplimiento_diario"), hora=time(7, 0)),
     # P3-09: alertas fiscales, después de listas (6:30) y opinión (7:00) para integrarlas.
     TareaRecurrente("alertas_fiscales", _encolar_alertas, hora=time(7, 30)),
+    # P5-03: igualas del mes (cada cliente en su día de cargo) y recordatorios de cobro.
+    TareaRecurrente("cobranza_cargos", _cobranza("encolar_cargos"), hora=time(6, 0)),
+    TareaRecurrente("cobranza_recordatorios", _cobranza("encolar_recordatorios"),
+                    hora=time(10, 0)),
 ]
 
 

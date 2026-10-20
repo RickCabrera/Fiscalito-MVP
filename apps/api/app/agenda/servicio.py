@@ -71,8 +71,38 @@ def _es_patron(db: Session, cliente: Cliente) -> bool:
         Empleado.cliente_id == cliente.id)))
 
 
+@dataclass
+class Precarga:
+    """Lo que `obligaciones_cliente` consulta por cliente, leído de una vez para toda la
+    cartera (P5-02: el dashboard no hace tres consultas por cliente)."""
+
+    patrones: set[int]
+    credenciales: dict[int, list[CredencialCliente]]
+    estados: dict[int, dict[str, EstadoObligacion]]
+
+
+def precargar(db: Session, clientes: list[Cliente]) -> Precarga:
+    """Tres consultas para todos los `clientes`, en vez de tres por cliente."""
+    ids = [c.id for c in clientes]
+    p = Precarga(patrones=set(), credenciales={}, estados={})
+    if not ids:
+        return p
+    con_empleados = set(db.scalars(select(Empleado.cliente_id).where(
+        Empleado.cliente_id.in_(ids)).distinct()))
+    p.patrones = {c.id for c in clientes if c.id in con_empleados
+                  or str((c.datos or {}).get("registro_patronal") or "").strip()}
+    for cred in db.scalars(select(CredencialCliente).where(
+            CredencialCliente.cliente_id.in_(ids), CredencialCliente.activo.is_(True))
+            .order_by(CredencialCliente.id)):
+        p.credenciales.setdefault(cred.cliente_id, []).append(cred)
+    for e in db.scalars(select(EstadoObligacion).where(EstadoObligacion.cliente_id.in_(ids))):
+        p.estados.setdefault(e.cliente_id, {})[e.clave] = e
+    return p
+
+
 def obligaciones_cliente(
-    db: Session, cliente: Cliente, desde: date, hasta: date, hoy: date | None = None
+    db: Session, cliente: Cliente, desde: date, hasta: date, hoy: date | None = None,
+    precarga: Precarga | None = None,
 ) -> list[Obligacion]:
     """Todas las obligaciones del cliente con fecha límite en [desde, hasta], con estado."""
     datos = cliente.datos or {}
@@ -89,7 +119,8 @@ def obligaciones_cliente(
                                          fundamento=v.fundamento, condicional=v.condicional,
                                          nota=v.nota, **base))
     tiene_mensual = any(o.clave.startswith("mensual:") for o in salida)
-    if _es_patron(db, cliente):
+    es_patron = (cliente.id in precarga.patrones) if precarga else _es_patron(db, cliente)
+    if es_patron:
         for anio in anios:
             if not ANIO_MINIMO <= anio <= ANIO_MAXIMO:
                 continue
@@ -100,8 +131,10 @@ def obligaciones_cliente(
                     clave=f"patronal:{o.clave}:{o.periodo_cubierto}", tipo="patronal",
                     nombre=o.nombre, periodo=o.periodo_cubierto, fecha_limite=o.fecha_limite,
                     fundamento=o.fundamento, condicional=o.condicional, nota=o.nota, **base))
-    for cred in db.scalars(select(CredencialCliente).where(
-            CredencialCliente.cliente_id == cliente.id, CredencialCliente.activo.is_(True))):
+    creds = precarga.credenciales.get(cliente.id, []) if precarga else db.scalars(
+        select(CredencialCliente).where(CredencialCliente.cliente_id == cliente.id,
+                                        CredencialCliente.activo.is_(True)))
+    for cred in creds:
         vence = cred.valido_hasta.date()
         salida.append(Obligacion(
             clave=f"credencial:{cred.tipo}:{cred.id}", tipo="credencial",
@@ -110,8 +143,9 @@ def obligaciones_cliente(
             fecha_limite=vence, fundamento="Art. 17-D CFF (vigencia del certificado)",
             condicional=False, nota="Renovarla antes de esa fecha.", **base))
     salida = [o for o in salida if desde <= o.fecha_limite <= hasta]
-    estados = {e.clave: e for e in db.scalars(select(EstadoObligacion).where(
-        EstadoObligacion.cliente_id == cliente.id))}
+    estados = precarga.estados.get(cliente.id, {}) if precarga else {
+        e.clave: e for e in db.scalars(select(EstadoObligacion).where(
+            EstadoObligacion.cliente_id == cliente.id))}
     hoy = hoy or date.today()
     for o in salida:
         e = estados.get(o.clave)
@@ -135,10 +169,10 @@ def calendario(
     if tipo and tipo not in TIPOS:
         raise FiscalAgentError(f"Tipo inválido: usa uno de {', '.join(TIPOS)}.", 422)
     salida: list[Obligacion] = []
-    for c in clientes_visibles(ctx):
-        if cliente and c.clave != cliente:
-            continue
-        salida += obligaciones_cliente(ctx.db, c, desde, hasta)
+    cartera = [c for c in clientes_visibles(ctx) if not cliente or c.clave == cliente]
+    precarga = precargar(ctx.db, cartera)
+    for c in cartera:
+        salida += obligaciones_cliente(ctx.db, c, desde, hasta, precarga=precarga)
     salida = [o for o in salida if (not tipo or o.tipo == tipo)
               and (not responsable or o.responsable_uid == responsable)
               and (not estado or o.estado == estado)]
