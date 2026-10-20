@@ -22,3 +22,5 @@ from app.modelos import alertas  # noqa: F401, I001 — P3-09
 from app.modelos import agenda  # noqa: F401, I001 — P3-10
 from app.modelos import equipo  # noqa: F401, I001 — P5-01
 from app.modelos import cobranza  # noqa: F401, I001 — P5-03
+from app.modelos import imss  # noqa: F401, I001 — P4-09/10/11
+from app.modelos import nomina_envio  # noqa: F401, I001 — P4-13

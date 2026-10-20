@@ -26,6 +26,9 @@ from app.exceptions import LimiteExcedido
 # (firma del proveedor) dentro de la ruta, y se monta SIN `PROTEGIDO`.
 RUTAS_PUBLICAS: dict[tuple[str, str], str] = {
     ("POST", "/api/v1/asistencia/eventos"): "Push del checador: token de dispositivo.",
+    ("GET", "/api/v1/recibos/descarga/{envio_id}/{archivo}"): (
+        "P4-13: WhatsApp baja el recibo de aquí; enlace firmado con HMAC y vigencia."
+    ),
 }
 
 

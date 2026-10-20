@@ -21,6 +21,8 @@ import { useCartera } from '../context/carteraStore';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
 import SinClienteActivo from '../components/common/SinClienteActivo';
+import MovimientosImss from '../components/cartera/MovimientosImss';
+import CuotasCedula from '../components/cartera/CuotasCedula';
 
 export default function EmpleadosPage() {
   const { clienteId, cliente, loading } = useClienteActivo();
@@ -59,6 +61,12 @@ export default function EmpleadosPage() {
           onBorrar={(no) => cartera.borrarEmpleado(clienteId as string, no)}
         />
       </div>
+      {clienteId && (
+        <>
+          <MovimientosImss key={`mov-${clienteId}`} clienteId={clienteId} />
+          <CuotasCedula key={`cuotas-${clienteId}`} clienteId={clienteId} />
+        </>
+      )}
     </div>
   );
 }

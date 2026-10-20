@@ -22,6 +22,14 @@ from app.integraciones.comun import cliente_http, env, revisar
 
 
 @dataclass(frozen=True)
+class DocumentoPlantilla:
+    """Documento del encabezado de una plantilla aprobada (P4-13): URL pública y nombre."""
+
+    url: str
+    nombre: str
+
+
+@dataclass(frozen=True)
 class MensajeEntrante:
     telefono: str
     texto: str
@@ -43,7 +51,7 @@ class WhatsApp(Protocol):
     ) -> str: ...
     def enviar_plantilla(
         self, telefono: str, plantilla: str, idioma: str = "es_MX",
-        parametros: Sequence[str] = (),
+        parametros: Sequence[str] = (), documento: DocumentoPlantilla | None = None,
     ) -> str: ...
     def verificar_firma_webhook(
         self, cuerpo: bytes, encabezados: Mapping[str, str], url: str = ""
@@ -71,9 +79,10 @@ class WhatsAppFalso:
         return self._guardar(tipo="documento", telefono=telefono, url=url_documento,
                              nombre=nombre, leyenda=leyenda)
 
-    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=()):
+    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=(),
+                         documento=None):
         return self._guardar(tipo="plantilla", telefono=telefono, plantilla=plantilla,
-                             idioma=idioma, parametros=list(parametros))
+                             idioma=idioma, parametros=list(parametros), documento=documento)
 
     def verificar_firma_webhook(self, cuerpo, encabezados, url=""):
         return _firma_meta_valida(self.secreto, cuerpo, encabezados)
@@ -130,13 +139,23 @@ class WhatsAppMeta:
             doc["caption"] = leyenda
         return self._mandar(telefono, type="document", document=doc)
 
-    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=()):
+    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=(),
+                         documento=None):
         plantilla_cuerpo: dict[str, Any] = {"name": plantilla, "language": {"code": idioma}}
+        componentes: list[dict[str, Any]] = []
+        if documento is not None:
+            # Plantilla con encabezado de tipo DOCUMENT (Cloud API, "template" → "header").
+            componentes.append({"type": "header", "parameters": [{
+                "type": "document",
+                "document": {"link": documento.url, "filename": documento.nombre},
+            }]})
         if parametros:
-            plantilla_cuerpo["components"] = [{
+            componentes.append({
                 "type": "body",
                 "parameters": [{"type": "text", "text": p} for p in parametros],
-            }]
+            })
+        if componentes:
+            plantilla_cuerpo["components"] = componentes
         return self._mandar(telefono, type="template", template=plantilla_cuerpo)
 
     def verificar_firma_webhook(self, cuerpo, encabezados, url=""):
@@ -172,9 +191,13 @@ class WhatsAppTwilio:
     def enviar_documento(self, telefono, url_documento, nombre, leyenda=""):
         return self._mandar(telefono, Body=leyenda or nombre, MediaUrl=url_documento)
 
-    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=()):
-        # En Twilio la plantilla es un Content SID (HX...) y las variables van numeradas.
-        variables = json.dumps({str(i + 1): p for i, p in enumerate(parametros)})
+    def enviar_plantilla(self, telefono, plantilla, idioma="es_MX", parametros=(),
+                         documento=None):
+        # En Twilio la plantilla es un Content SID (HX...) y las variables van numeradas. El
+        # documento va como la variable siguiente: la plantilla de Content API debe declarar
+        # su media con esa variable (POR CONFIRMAR contra la plantilla aprobada).
+        valores = [*parametros, *([documento.url] if documento is not None else [])]
+        variables = json.dumps({str(i + 1): p for i, p in enumerate(valores)})
         return self._mandar(telefono, ContentSid=plantilla, ContentVariables=variables)
 
     def verificar_firma_webhook(self, cuerpo, encabezados, url=""):

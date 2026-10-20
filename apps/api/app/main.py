@@ -52,8 +52,13 @@ from app.routes import (
     nomina,
     nomina_anual,
     nomina_calculos,
+    nomina_cuotas,
+    nomina_dispersion,
+    nomina_envio,
     nomina_historial,
+    nomina_imss,
     nomina_periodo,
+    nomina_timbrado,
     retenciones,
     retenciones_cfdi,
     sat_descarga,
@@ -146,8 +151,15 @@ ROUTERS_PROTEGIDOS = (
     # P4: nómina con plantilla de la cartera, historial y extraordinarias.
     nomina_periodo.router,
     nomina_historial.router,
+    # P4-12 dispersión bancaria y P4-13 envío de recibos.
+    nomina_dispersion.router,
+    nomina_envio.router,
     nomina_calculos.router,
     nomina_anual.router,
+    # P4-09 movimientos IMSS, P4-10 cuotas y cédulas, P4-11 timbrado de nómina.
+    nomina_imss.router,
+    nomina_cuotas.router,
+    nomina_timbrado.router,
     despacho.router,
     # R-07: la cartera ya exigía su propio token; aquí además entra al límite por usuario.
     cartera.router,
@@ -189,6 +201,8 @@ for _router in ROUTERS_PROTEGIDOS:
 # Públicas (sin sesión de Firebase): cada una se autentica por dentro.
 # - El push del checador: token de dispositivo (o la sesión, para el simulador).
 app.include_router(asistencia.router_publico, prefix="/api/v1")
+# - P4-13: descarga del recibo para WhatsApp, con enlace firmado (HMAC) y vigencia.
+app.include_router(nomina_envio.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":
