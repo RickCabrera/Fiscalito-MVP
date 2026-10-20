@@ -63,6 +63,7 @@ from app.routes import (
     retenciones_cfdi,
     sat_descarga,
     sat_verificacion,
+    suscripcion,
     trabajos,
 )
 
@@ -192,6 +193,8 @@ ROUTERS_PROTEGIDOS = (
     equipo.router,
     dashboard.router,
     cobranza.router,
+    # P5-08 suscripción y cobro de planes.
+    suscripcion.router,
 )
 
 app.include_router(health.router)
@@ -203,6 +206,8 @@ for _router in ROUTERS_PROTEGIDOS:
 app.include_router(asistencia.router_publico, prefix="/api/v1")
 # - P4-13: descarga del recibo para WhatsApp, con enlace firmado (HMAC) y vigencia.
 app.include_router(nomina_envio.router_publico, prefix="/api/v1")
+# - P5-08: webhook del proveedor de pagos, autenticado con la firma del proveedor.
+app.include_router(suscripcion.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

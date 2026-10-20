@@ -2184,9 +2184,48 @@ mismos números en `planes.ts`): usuarios activos + invitaciones vigentes ≤ `m
 - `POST|DELETE /api/v1/equipo/usuarios/{uid}/clientes/{clave}` → asigna / desasigna (lo que ve
   un auxiliar). Cliente de otro despacho = 404.
 - `PUT /api/v1/equipo/plan` `{plan: contador|despacho}` → el plan del despacho. Bajar a uno más
-  chico se permite (se conserva todo; no entra ni un cliente ni un usuario más).
+  chico se permite (se conserva todo; no entra ni un cliente ni un usuario más). Desde P5-08
+  es lo mismo que `PUT /api/v1/suscripcion/plan` (también cambia el plan en el proveedor).
 - El alta de clientes (`PUT /api/v1/cartera/clientes/{id}` nuevo) responde 409 al llegar a
   `max_clientes` del plan.
+
+## Suscripción y cobro de planes (P5-08)
+
+El plan vigente vive en `despachos.plan`; lo que incluye cada plan (límites, módulos, precio
+por variable) en `apps/api/app/planes.py`; el estado del cobro en `suscripciones`. Sólo el
+**dueño** modifica (403 para los demás); todo queda en la auditoría (`suscripcion.*`).
+Cobro vía el adaptador `pagos` (ver `docs/servicios-externos.md`).
+
+**Restricciones en el backend:** clientes (409 en el alta), usuarios (409 al invitar/aceptar/
+reactivar), módulos por plan (403 con el motivo: `dispersion` en
+`POST .../periodos/{id}/dispersion`, `imss_archivos` en `POST .../movimientos-imss/archivo`).
+**Solo lectura:** si la suscripción no está vigente, todo POST/PUT/PATCH/DELETE que pase por
+`contexto_actual` responde **402** con el aviso, salvo `/api/v1/suscripcion*`. Leer y
+descargar sigue funcionando; nada se borra.
+
+Estados (efectivos, consideran la fecha): `prueba` (hasta `fin_periodo`), `activa`, `morosa`
+(pago fallido o periodo vencido sin renovación; vigente durante los días de gracia),
+`vencida`, `cancelada` (vigente hasta `fin_periodo`).
+
+- `GET /api/v1/suscripcion` → `{puede_gestionar, proveedor, suscripcion: {plan, plan_nombre,
+  estado, vigente, solo_lectura, aviso, inicio_periodo, fin_periodo, acceso_hasta,
+  plan_pendiente, con_cobro}, uso: {clientes, usuarios, invitaciones_pendientes},
+  bloqueos: [{tipo: solo_lectura|clientes|usuarios|modulo:<id>, motivo}],
+  planes: [{id, nombre, max_usuarios, max_clientes, modulos: [{id, nombre}],
+  precio_mensual: "499.00"|null, moneda, bloquearia: [{tipo, motivo}]}],
+  pagos: [{id, fecha, estado: pagado|fallido, plan, monto, moneda, fin_periodo}]}`.
+  Un despacho sin suscripción recibe una en `prueba` al consultarla.
+- `POST /api/v1/suscripcion` `{plan, correo?}` → alta del cobro. `{estado, plan,
+  plan_pendiente, url_pago}`: si el proveedor la deja activa, el plan se aplica ya; si pide
+  pagar primero, queda `plan_pendiente` y el primer `pago_exitoso` lo aplica. 409 si ya hay
+  una suscripción con cobro activa o morosa; 422 plan inválido o sin correo (proveedor real).
+- `PUT /api/v1/suscripcion/plan` `{plan}` → `{plan}`. Con cobro vivo se cambia primero en el
+  proveedor. Bajar a un plan más chico no borra nada: sólo bloquea altas.
+- `POST /api/v1/suscripcion/cancelar` → `{estado: "cancelada", acceso_hasta}`; 409 si ya lo
+  está. Conserva el acceso hasta el fin del periodo pagado.
+- `POST /api/v1/pagos/webhook` (PÚBLICA, sin sesión) → el proveedor manda el evento firmado;
+  400 si la firma no cuadra. `{duplicado, resultado: aplicado|ignorado|sin_suscripcion}`.
+  Idempotente por (proveedor, id del evento).
 
 ## Dashboard del despacho (P5-02)
 

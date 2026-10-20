@@ -32,6 +32,8 @@ def _emp(no="E1", **extra):
 
 def _sembrar(http, empleados=None):
     sembrar_cliente(http, "imss", empleados or [_emp()])
+    # P5-08: los archivos IDSE/SUA son un módulo del plan Despacho.
+    assert http.put("/api/v1/suscripcion/plan", json={"plan": "despacho"}).status_code == 200
     r = http.put("/api/v1/cartera/clientes/imss", json={
         "id": "imss", "nombre": "CLIENTE IMSS", "prima_riesgo": "0.0054355",
         "registro_patronal": RP, "guia_subdelegacion": GUIA, "rfc": "EKU9003173C9",

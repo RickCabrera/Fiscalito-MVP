@@ -38,7 +38,7 @@ from app.exceptions import FiscalAgentError
 from app.integraciones import registro
 from app.modelos.equipo import DIAS_VIGENCIA_INVITACION, ROLES, Invitacion
 from app.modelos.nucleo import AsignacionCliente, Cliente, Despacho, Usuario
-from app.planes import PLANES, Plan
+from app.planes import Plan
 from app.planes import plan as plan_de
 from app.tenancy import Contexto, cliente_o_404, exigir_rol
 
@@ -321,17 +321,10 @@ def cambiar_plan(ctx: Contexto, id_plan: str) -> Plan:
     El dueño elige el plan. Bajar a uno más chico que lo que ya hay SE PERMITE (mismo criterio
     que la pantalla de planes, T8): se conserva todo, pero no entra ni un cliente ni un usuario
     más hasta quedar debajo del tope.
+
+    P5-08: delega en `app/suscripciones/servicio.cambiar_plan`, que también cambia el plan
+    en el proveedor de pagos cuando hay una suscripción con cobro.
     """
-    exigir_rol(ctx, "dueno")
-    if id_plan not in PLANES:
-        raise FiscalAgentError(f"Plan inválido: usa uno de {', '.join(PLANES)}.", 422)
-    nuevo = PLANES[id_plan]
-    db = ctx.db
-    despacho = db.get(Despacho, ctx.despacho_id)
-    if despacho is None:
-        raise FiscalAgentError("No existe tu despacho.", 404)
-    anterior, despacho.plan = despacho.plan, nuevo.id
-    db.flush()
-    registrar(ctx, "equipo.cambiar_plan", "despacho", ctx.despacho_id,
-              {"de": anterior, "a": nuevo.id})
-    return nuevo
+    from app.suscripciones import servicio as suscripciones
+
+    return suscripciones.cambiar_plan(ctx, id_plan, accion="equipo.cambiar_plan")

@@ -1,0 +1,19 @@
+{
+  "id": "evt_FACTURA_PAGADA",
+  "object": "event",
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_PRUEBA789",
+      "object": "invoice",
+      "subscription": "sub_PRUEBA456",
+      "amount_paid": 49900,
+      "currency": "mxn",
+      "lines": {
+        "data": [
+          {"period": {"start": 1791676800, "end": 1794355200}}
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "sub_PRUEBA456",
+  "object": "subscription",
+  "status": "active",
+  "items": {
+    "data": [
+      {"id": "si_RENGLON1", "price": {"id": "price_contador"}}
+    ]
+  }
+}

@@ -17873,6 +17873,228 @@
         }
       }
     },
+    "/api/v1/suscripcion": {
+      "get": {
+        "tags": [
+          "Suscripción"
+        ],
+        "summary": "Plan, estado de la suscripción, uso, bloqueos y pagos",
+        "operationId": "estado_api_v1_suscripcion_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Api V1 Suscripcion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Suscripción"
+        ],
+        "summary": "Suscribirse a un plan (alta del cobro)",
+        "operationId": "suscribirse_api_v1_suscripcion_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AltaSuscripcion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Suscribirse Api V1 Suscripcion Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suscripcion/plan": {
+      "put": {
+        "tags": [
+          "Suscripción"
+        ],
+        "summary": "Cambiar de plan",
+        "operationId": "cambiar_plan_api_v1_suscripcion_plan_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioPlan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cambiar Plan Api V1 Suscripcion Plan Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/suscripcion/cancelar": {
+      "post": {
+        "tags": [
+          "Suscripción"
+        ],
+        "summary": "Cancelar la suscripción (acceso hasta fin de periodo)",
+        "operationId": "cancelar_api_v1_suscripcion_cancelar_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancelar Api V1 Suscripcion Cancelar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/recibos/descarga/{envio_id}/{archivo}": {
       "get": {
         "tags": [
@@ -17943,6 +18165,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pagos/webhook": {
+      "post": {
+        "tags": [
+          "Suscripción"
+        ],
+        "summary": "Webhook del proveedor de pagos (firmado)",
+        "operationId": "webhook_api_v1_pagos_webhook_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Webhook Api V1 Pagos Webhook Post"
                 }
               }
             }
@@ -18281,6 +18526,27 @@
           "isr_retenido"
         ],
         "title": "AjusteAnualTrabajador"
+      },
+      "AltaSuscripcion": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Plan"
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 320,
+            "title": "Correo",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "title": "AltaSuscripcion"
       },
       "AnualRequest": {
         "properties": {
