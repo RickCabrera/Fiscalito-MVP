@@ -220,6 +220,8 @@ class DatosPatron:
     registro_patronal: str
     codigo_postal: str
     clave_entidad: str = "VER"
+    # P4-11: CURP del patrón persona física (Guía de llenado: las morales no tienen).
+    curp: str = ""
 
 
 @dataclass(frozen=True)
@@ -237,7 +239,7 @@ class DatosTrabajador:
     curp: str
     numero_seguridad_social: str
     codigo_postal: str
-    fecha_inicio_relacion_laboral: date
+    fecha_inicio_relacion_laboral: date | None
     antiguedad: str
     tipo_contrato: str
     tipo_regimen: str
@@ -245,8 +247,8 @@ class DatosTrabajador:
     puesto: str
     riesgo_puesto: str
     periodicidad_pago: str
-    salario_base_cotizacion: Decimal
-    salario_diario_integrado: Decimal
+    salario_base_cotizacion: Decimal | None
+    salario_diario_integrado: Decimal | None
     sindicalizado: str = "No"
     tipo_jornada: str = "01"
     # Opcional en el complemento: 61 de los 70 recibos del caso real lo traen.

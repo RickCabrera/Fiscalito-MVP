@@ -9,4 +9,5 @@ COPY app/ app/
 
 ENV PORT=8000
 
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# --no-access-log: el checador manda su token en ?token= y el access log lo escribiría.
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-access-log

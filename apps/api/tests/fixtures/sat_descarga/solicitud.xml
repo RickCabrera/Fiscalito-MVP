@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Respuesta de SolicitaDescargaEmitidos / SolicitaDescargaRecibidos (SAT WS v1.5). {OPERACION}, {ID}, {CODIGO}, {MENSAJE} los llena el test. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+        <{OPERACION}Response xmlns="http://DescargaMasivaTerceros.sat.gob.mx">
+            <{OPERACION}Result IdSolicitud="{ID}" RfcSolicitante="XAXX010101AB1" CodEstatus="{CODIGO}" Mensaje="{MENSAJE}" />
+        </{OPERACION}Response>
+    </s:Body>
+</s:Envelope>

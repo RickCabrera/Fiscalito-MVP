@@ -1,0 +1,8 @@
+<!-- Respuesta de VerificaSolicitudDescarga (SAT WS v1.5). EstadoSolicitud: 1 aceptada, 2 en proceso, 3 terminada, 4 error, 5 rechazada, 6 vencida. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+    <s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+        <VerificaSolicitudDescargaResponse xmlns="http://DescargaMasivaTerceros.sat.gob.mx">
+            <VerificaSolicitudDescargaResult CodEstatus="{CODIGO}" EstadoSolicitud="{ESTADO}" CodigoEstadoSolicitud="{CODIGO_ESTADO}" NumeroCFDIs="{NUMERO}" Mensaje="{MENSAJE}">{PAQUETES}</VerificaSolicitudDescargaResult>
+        </VerificaSolicitudDescargaResponse>
+    </s:Body>
+</s:Envelope>

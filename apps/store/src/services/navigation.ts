@@ -30,7 +30,8 @@ import { MARCA_CORTA } from './marca';
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
-  | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
+  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario'
+  | 'calculadoras';
 
 export interface SidebarLink {
   id: NavId;
@@ -53,6 +54,12 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // dentro de la ficha. Operan sobre el cliente activo, igual que Nómina.
   { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
   { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
+  // P0-03: la bóveda de CFDI del cliente activo. Va antes de Nómina porque es
+  // de donde todo lo demás leerá sus comprobantes (P1-06).
+  { id: 'boveda', to: '/app/boveda', label: 'Bóveda' },
+  // P1-02: la descarga masiva del SAT llena la bóveda del cliente activo; va
+  // justo después de ella porque es de donde salen sus comprobantes.
+  { id: 'sat', to: '/app/sat', label: 'Descarga SAT' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   // T1: el despacho recupera el servicio fiscal, pero **el del CLIENTE ACTIVO**,
@@ -69,6 +76,10 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // que opera sobre el CLIENTE ACTIVO, y la ruta es la misma que ya usaba el
   // botón del detalle: no hay una segunda forma de entrar que mantener.
   { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
+  // P3-08: herramientas sueltas del despacho. SIN alcance de cliente (no lee el
+  // cliente activo), por eso no está en `RUTAS_CON_CLIENTE`. Va antes de Perfil:
+  // es herramienta, no ajuste.
+  { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -179,6 +190,12 @@ export function rutaInicial(): string {
  */
 const RUTAS_CON_CLIENTE = [
   '/app/clientes', '/app/empleados', '/app/dispositivos',
+  // P0-03: CUMPLE la regla — `BovedaPage` lee `useClienteActivo` y pide la
+  // bóveda de ESE cliente (`/boveda/clientes/{clave}/cfdi`).
+  '/app/boveda',
+  // P1-02: CUMPLE la regla — `DescargaSatPage` lee `useClienteActivo` y pide
+  // config, bitácora y solicitudes de ESE cliente (`/sat/clientes/{clave}/...`).
+  '/app/sat',
   // K: `/app/nomina` sin cliente activo pinta "Elige un cliente primero"; con el
   // selector encima se elige ahí mismo y `NominaDelClienteActivo` redirige a la
   // nómina de ese cliente. Con cliente, la nómina vive en
@@ -225,7 +242,7 @@ export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
 
 export type TabFiscalito =
   | 'declaracion' | 'anual' | 'deducciones' | 'calendario' | 'comparar'
-  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm';
+  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm' | 'resumen';
 
 /**
  * Los tabs de una PERSONA MORAL (601) — T6, cascarón.
@@ -243,7 +260,11 @@ export type TabFiscalito =
  * que pintar en ellas para una moral.
  */
 const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
-  'pagospm', 'calendario', 'declaracion',
+  // P3-01/P3-06: con el motor PM, `pagospm` ya calcula en el backend y la moral
+  // tiene su anual (ajuste por inflación, PTU, pérdidas, papeles de trabajo).
+  'pagospm', 'anual', 'calendario', 'declaracion',
+  // P3-02: el resumen de impuestos; su ISR propio sale del motor PM (P3-01).
+  'resumen',
 ]);
 
 /**
@@ -259,6 +280,7 @@ const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
  */
 const TABS_COMPLETOS: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
   'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
+  'resumen',
 ]);
 
 /** Copia fresca del set completo, para no repartir la misma referencia. */
@@ -273,8 +295,13 @@ function tabsCompletos(): TabFiscalito[] {
  * Sin cliente elegido (`regimen` vacío) no hay tabs: la pantalla pinta el estado
  * vacío con el selector en vez de tabs sobre un cliente inexistente.
  */
-export function getTabsForProfile(regimen: string | null): TabFiscalito[] {
+export function getTabsForProfile(regimen: string | null, rfc?: string | null): TabFiscalito[] {
   if (!regimen) return [];
+  // P3-01: un 626 con RFC de persona moral (12 caracteres) es RESICO PM (Arts. 206-215
+  // LISR): su ISR es el del motor de morales, no el RESICO de personas físicas.
+  if (regimen === '626' && (rfc ?? '').trim().length === 12) {
+    return ['pagospm', 'anual', 'calendario', 'resumen'];
+  }
   return tabsPorRegimenDeCliente(regimen);
 }
 
@@ -303,9 +330,11 @@ function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
   // esta rama no es hipotética como las de 605/606/625.
   if (regimen === '601') return [...TABS_601];
   if (regimen === '605') return ['deducciones', 'calendario'];
-  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
-  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado'];
+  // P3-02: `resumen` (resumen y actualización de impuestos) al final de cada régimen
+  // que declara mensualmente; no cambia el tab por defecto. El 605 no declara mensual.
+  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado', 'resumen'];
+  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado', 'resumen'];
+  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado', 'resumen'];
   // 612 y cualquier otro: el set completo, que es el de `pyme`.
   return tabsCompletos();
 }

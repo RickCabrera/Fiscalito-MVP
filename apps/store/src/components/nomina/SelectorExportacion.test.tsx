@@ -25,7 +25,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import SelectorExportacion from './SelectorExportacion';
 import { FORMATOS } from '../../services/exportadores/registro';
-import type { DatosExportacion } from '../../services/exportadores/tipos';
+import type { DatosExportacion, FormatoExportacion } from '../../services/exportadores/tipos';
 import type { ClienteDetalle } from '../../services/despachoApi';
 import type { EmpleadoCartera } from '../../services/carteraApi';
 import type { NominaPeriodo, ReciboNomina } from '../../services/nominaDemoApi';
@@ -133,7 +133,23 @@ const DATOS: DatosExportacion = {
 };
 
 const ID_IMSS = 'imss';
-const ID_BANCO = FORMATOS.find((f) => f.fuente.estado === 'por-validar')!.id;
+/**
+ * Desde P4-12 ningún formato del front es `por-validar`: los tres layouts bancarios se
+ * mudaron al backend (`apps/api/app/dispersion/`). La advertencia del selector sigue
+ * existiendo para el próximo formato sin fuente, así que se mide con una SONDA registrada
+ * sólo en este archivo (cada archivo de vitest tiene su propia copia de `FORMATOS`).
+ */
+const SONDA: FormatoExportacion = {
+  id: 'sonda-por-validar',
+  nombre: 'Sonda por validar',
+  descripcion: 'Formato de prueba sin fuente publicada.',
+  fuente: { estado: 'por-validar', cita: 'Sonda de prueba: no hay manual contra el cual medirla.' },
+  generar: () => {
+    throw new Error('La sonda no emite archivos.');
+  },
+};
+FORMATOS.push(SONDA);
+const ID_BANCO = SONDA.id;
 
 /** Elige un formato en el `<select>` del paso 4. */
 function elegir(id: string): void {

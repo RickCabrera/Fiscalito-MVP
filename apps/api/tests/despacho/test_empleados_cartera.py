@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.despacho_demo import CLIENTES
-from app.main import app
 from app.schemas.empleado import (
     EmpleadoCarteraSchema,
     EstatusEnrolamiento,
@@ -27,8 +26,9 @@ from app.schemas.nomina import EmpleadoNominaSchema
 
 
 @pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+def cliente_http(http_nomina) -> TestClient:
+    """P4-01: autenticado y con la cartera sembrada; la nómina lee de ahí."""
+    return http_nomina
 
 
 def semilla(cliente_http: TestClient, cliente_id: str = "demo") -> dict:

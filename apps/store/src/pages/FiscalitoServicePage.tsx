@@ -28,7 +28,10 @@ import RetencionesTab from '../components/fiscalito/RetencionesTab';
 import MultiPeriodoTab from '../components/fiscalito/MultiPeriodoTab';
 import EstadoCuentaTab from '../components/fiscalito/EstadoCuentaTab';
 import PagosProvisionalesPMTab from '../components/fiscalito/PagosProvisionalesPMTab';
-import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator } from 'lucide-react';
+import AnualClienteTab from '../components/fiscalito/AnualClienteTab';
+import AvisoMotorPM from '../components/fiscalito/AvisoMotorPM';
+import ResumenImpuestosTab from '../components/fiscalito/ResumenImpuestosTab';
+import { ArrowLeft, Building2, FileText, FileCheck, Calendar, BarChart3, FileSpreadsheet, Users, TrendingUp, Wallet, Calculator, Table } from 'lucide-react';
 import { MARCA_CORTA } from '../services/marca';
 
 type Tab = TabFiscalito;
@@ -50,6 +53,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'retenciones', label: 'Retenciones', icon: <Users size={16} /> },
   { id: 'multiperiodo', label: 'Multi-periodo', icon: <TrendingUp size={16} /> },
   { id: 'estado', label: 'Estado de cuenta', icon: <Wallet size={16} /> },
+  { id: 'resumen', label: 'Resumen de impuestos', icon: <Table size={16} /> },
 ];
 
 /** Cabecera compartida entre el estado vacío del despacho y la pantalla llena. */
@@ -77,6 +81,7 @@ const TAB_PARAM_MAP: Record<string, Tab> = {
   multiperiodo: 'multiperiodo',
   'estado-cuenta': 'estado',
   estado: 'estado',
+  resumen: 'resumen',
 };
 
 export default function FiscalitoServicePage() {
@@ -103,13 +108,14 @@ export default function FiscalitoServicePage() {
   const regimenSupuesto = perfilFiscal.regimenSupuesto;
   const regimenEnUso = perfilFiscal.regimenParaTabs;
   /** T6: el régimen que se está trabajando es el de una persona moral (601). */
-  const esPersonaMoral = regimenEnUso === '601';
+  const esPersonaMoral = regimenEnUso === '601'
+    || (regimenEnUso === '626' && (perfilFiscal.rfc ?? '').trim().length === 12);
 
   // Memoize so the array reference is stable across renders — otherwise the
   // sync effect below would fire on every render and clobber manual tab clicks.
   const allowedTabIds = useMemo(
-    () => (esContadorActual ? getTabsForProfile(regimenEnUso ?? null) : []),
-    [esContadorActual, regimenEnUso],
+    () => (esContadorActual ? getTabsForProfile(regimenEnUso ?? null, perfilFiscal.rfc) : []),
+    [esContadorActual, regimenEnUso, perfilFiscal.rfc],
   );
   const tabs = ALL_TABS.filter(t => allowedTabIds.includes(t.id));
   // `Tab | undefined`, no `Tab`: la lista puede venir vacía —un despacho sin
@@ -201,14 +207,9 @@ export default function FiscalitoServicePage() {
               que es el mismo modo de falla que E-03 cerró en la nómina. */}
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {esContadorActual
-              ? /* El encabezado NO puede afirmar un régimen que nadie capturó.
-                   Decía "régimen 612" con la misma tipografía y el mismo aplomo
-                   para un cliente con 612 en su ficha y para uno sin régimen
-                   alguno, y tres renglones más abajo el aviso amarillo lo
-                   desmentía. Dos frases contradictorias en la misma pantalla:
-                   la de arriba, que es la que se lee de un vistazo, era la
-                   falsa. El aviso de abajo se queda —dice qué hacer— pero ya no
-                   tiene que corregir al título. */
+              ? /* El encabezado NO afirma un régimen que nadie capturó: antes decía
+                   "régimen 612" también para un cliente sin régimen, y el aviso de
+                   abajo lo desmentía. */
                 `${cliente?.nombre} · ${regimenSupuesto
                   ? `régimen sin capturar (mostrando ${regimenEnUso})`
                   : `régimen ${regimenEnUso}`}`
@@ -278,7 +279,13 @@ export default function FiscalitoServicePage() {
             porque con él la tira sigue siendo la única que decide qué se pinta. */}
         {activeTab === 'declaracion' && (esPersonaMoral ? <AvisoMotorPM /> : <PreDeclaracionTab />)}
         {activeTab === 'pagospm' && <PagosProvisionalesPMTab />}
-        {activeTab === 'anual' && <DeclaracionAnualTab />}
+        {/* P3-06: anual del cliente con papeles; abajo, la estimación PF con XML. */}
+        {activeTab === 'anual' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <AnualClienteTab />
+            {!esPersonaMoral && <DeclaracionAnualTab />}
+          </div>
+        )}
         {activeTab === 'deducciones' && <DeduccionesPersonalesTab />}
         {activeTab === 'calendario' && <CalendarioTab />}
         {activeTab === 'comparar' && <CompararRegimenTab />}
@@ -286,33 +293,8 @@ export default function FiscalitoServicePage() {
         {activeTab === 'retenciones' && <RetencionesTab />}
         {activeTab === 'multiperiodo' && <MultiPeriodoTab />}
         {activeTab === 'estado' && <EstadoCuentaTab />}
+        {activeTab === 'resumen' && <ResumenImpuestosTab />}
       </div>
-    </div>
-  );
-}
-
-/**
- * Lo que ve una persona moral donde iría la pre-declaración (T6).
- *
- * No es un "próximamente" decorativo: el API **rechaza** el 601 con un 400 en
- * `routes/declaraciones.py` antes de que llegue a `calculadora.py`, así que
- * dejar el formulario puesto sería ofrecer un botón que sólo sabe fallar.
- */
-function AvisoMotorPM() {
-  return (
-    <div className="card" style={{ textAlign: 'center', padding: 'var(--space-lg)' }}>
-      <Building2 size={28} color="var(--warning)" />
-      <h3 style={{ margin: '12px 0 6px', fontSize: '1rem', fontWeight: 600 }}>
-        Motor de personas morales en desarrollo
-      </h3>
-      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-        La pre-declaración de ISR/IVA que calcula {MARCA_CORTA} es la de personas físicas.
-        Para el régimen 601 todavía no hay cálculo que presentar.
-      </p>
-      <p style={{ margin: '10px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-        Mientras tanto, <strong>Pagos provisionales PM</strong> estima el pago del periodo
-        con tu coeficiente de utilidad.
-      </p>
     </div>
   );
 }

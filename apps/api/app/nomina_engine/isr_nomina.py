@@ -39,7 +39,7 @@ from decimal import Decimal
 from app.constants import uma_vigente
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.subsidio import subsidio_empleo
-from app.nomina_engine.tablas_isr_periodicas import isr_periodo
+from app.nomina_engine.tablas_isr_periodicas import RenglonTarifa, isr_con_tarifa, isr_periodo
 from app.redondeo import redondear
 
 # Topes de exencion en veces la UMA diaria vigente a la fecha de pago.
@@ -257,6 +257,7 @@ def isr_retenido(
     ingreso_gravado_mensual: Decimal,
     dias_periodo: int,
     es_trabajador_de_salario_minimo: bool = False,
+    tarifa: tuple[RenglonTarifa, ...] | None = None,
 ) -> ResultadoISR:
     """
     ISR a retener del periodo.
@@ -274,7 +275,8 @@ def isr_retenido(
     entrega en efectivo, y se reporta en `subsidio_no_entregado` porque el CFDI
     lo declara aparte (`SubsidioCausado`) del importe entregado.
     """
-    causado = isr_periodo(base, clave_periodicidad, fecha)
+    # P4-03: `tarifa` explicita = la de un periodo PARCIAL (§D26).
+    causado = isr_con_tarifa(base, tarifa) if tarifa else isr_periodo(base, clave_periodicidad, fecha)  # noqa: E501
     subsidio = subsidio_empleo(fecha, ingreso_gravado_mensual, dias_periodo)
     # DECISIÓN PROVISIONAL (nocturno): al trabajador de salario minimo el
     # subsidio no se acredita —no hay ISR retenido contra el cual hacerlo— y

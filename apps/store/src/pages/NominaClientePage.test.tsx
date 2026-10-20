@@ -16,6 +16,14 @@
  */
 
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
+
+// P4-01: el cálculo va por `apiFetch` (adjunta el ID token). Sin este doble,
+// `services/firebase` lanza al importarse sin llaves (ver sinLlavesDeFirebase.test.ts).
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -50,7 +58,7 @@ vi.mock('../context/carteraStore', async () => {
     useCartera: () =>
       carteraDePrueba({
         clientes: [CLIENTE],
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         clientePorId: (id: string) => (id === CLIENTE.id ? CLIENTE : null),
       }),

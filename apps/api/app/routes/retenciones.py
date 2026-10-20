@@ -1,7 +1,8 @@
 """Endpoint de resumen de retenciones a terceros."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.constants import NOMBRES_BIMESTRES, NOMBRES_MESES
 from app.fiscal_engine.retenciones import generar_resumen_retenciones
 from app.schemas.retenciones import RetencionesRequest, RetencionesResponse
@@ -16,7 +17,9 @@ router = APIRouter(tags=["PYME"])
     summary="Resumen de retenciones a terceros",
     description="Genera resumen de retenciones de ISR e IVA agrupadas por tercero.",
 )
-async def retenciones_terceros(req: RetencionesRequest):
+async def retenciones_terceros(
+    req: RetencionesRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if not req.facturas:
         raise HTTPException(status_code=400, detail="Se requiere al menos una factura.")
 
@@ -53,6 +56,7 @@ async def retenciones_terceros(req: RetencionesRequest):
                 for t in terceros
             ],
         }
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_retenciones(resultado_ret)
 
     return RetencionesResponse(

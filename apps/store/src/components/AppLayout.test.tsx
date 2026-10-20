@@ -115,7 +115,9 @@ function enlace(container: HTMLElement, etiqueta: string): HTMLElement {
  * una de su cliente. El nombre del cliente se asserta aparte, más abajo.
  */
 function enlacesDelSidebar(container: HTMLElement): string[] {
-  const aside = container.querySelector('.sidebar-full');
+  // P3-09: la campana de alertas vive en la cabecera del sidebar, fuera del `<nav>`; los
+  // enlaces de navegación son los del `<nav>`.
+  const aside = container.querySelector('.sidebar-full nav');
   if (!aside) throw new Error('no se renderizó el sidebar');
   return within(aside as HTMLElement).getAllByRole('link').map((a) => {
     const soloEtiqueta = a.cloneNode(true) as HTMLElement;
@@ -186,7 +188,7 @@ describe('resaltado del sidebar en la nómina de un cliente', () => {
 });
 
 describe('sidebar de AppLayout', () => {
-  it('el contador ve exactamente sus ocho enlaces', () => {
+  it('el contador ve exactamente sus nueve enlaces', () => {
     perfilMock.actual = { ...perfilBase, contributorType: 'contador', regimen: '612' };
     const { container } = montar();
 
@@ -195,10 +197,11 @@ describe('sidebar de AppLayout', () => {
     // T1 sumó el servicio fiscal, que abre el del CLIENTE ACTIVO —no el del
     // despacho, que es lo que E-07 quitó y sigue sin existir. Contabilito entró
     // después: la portada ya lo anunciaba en BETA y su pantalla (T7) sólo se
-    // alcanzaba tecleando la URL.
+    // alcanzaba tecleando la URL. P0-03 sumó la Bóveda de CFDI del cliente activo
+    // y P1-02 la Descarga SAT, que la llena.
     expect(enlacesDelSidebar(container)).toEqual([
-      'Clientes', 'Empleados', 'Dispositivos', 'Nómina', 'Calendario',
-      MARCA_CORTA, 'Contabilito', 'Perfil',
+      'Clientes', 'Empleados', 'Dispositivos', 'Bóveda', 'Descarga SAT', 'Nómina', 'Calendario',
+      MARCA_CORTA, 'Contabilito', 'Calculadoras', 'Perfil',
     ]);
   });
 

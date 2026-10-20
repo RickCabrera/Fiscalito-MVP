@@ -16,7 +16,7 @@
  * qué lo sabe así— vive en `useNominaCliente`.
  */
 
-import { Calculator, CalendarCheck, FileDown, Loader } from 'lucide-react';
+import { Calculator, CalendarCheck, Loader } from 'lucide-react';
 import AvisoNomina from '../components/nomina/AvisoNomina';
 import EncabezadoNomina from '../components/nomina/EncabezadoNomina';
 import PanelChecador, { ContadorChecadas } from '../components/nomina/PanelChecador';
@@ -25,13 +25,17 @@ import TablaIncidencias from '../components/nomina/TablaIncidencias';
 import TablaRecibos from '../components/nomina/TablaRecibos';
 import CuotasPorRamo from '../components/nomina/CuotasPorRamo';
 import { useNominaCliente } from '../components/nomina/useNominaCliente';
-import { exportarNominaPDF } from '../services/pdfExportNomina';
 import { etiquetaOrigen } from '../services/despachoApi';
 import { useParams } from 'react-router-dom';
 import { motivoDelPaso2 } from '../components/nomina/motivoDelPaso2';
-import SelectorExportacion from '../components/nomina/SelectorExportacion';
-import PanelCFDINomina from '../components/nomina/PanelCFDINomina';
 import { labelStyle } from '../utils/styles';
+import { useState } from 'react';
+import PasoExportar from '../components/nomina/PasoExportar';
+import SelectorTipoNomina, { type VistaNomina } from '../components/nomina/SelectorTipoNomina';
+import CapturaVariables from '../components/nomina/CapturaVariables';
+import DesgloseRecibos, { type ReciboDesglosado } from '../components/nomina/DesgloseRecibos';
+import HistorialNominas from '../components/nomina/HistorialNominas';
+import NominaExtraordinaria from '../components/nomina/NominaExtraordinaria';
 
 /** Botón de acción: el icono y el texto en una línea, sin saltos. */
 const ACCION: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8 };
@@ -58,30 +62,22 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
   const clienteId = fijo ?? deLaRuta;
   const n = useNominaCliente(clienteId);
   const { cliente, cierre, nomina } = n;
-
-  const exportar = () => {
-    // Guarda propia, no sólo `disabled`: desde E-06 el botón se renderiza
-    // siempre —para que el paso 4 exista en pantalla desde el principio— y
-    // `disabled` es una propiedad del DOM, no una garantía del handler.
-    if (!nomina || !cliente) return;
-    exportarNominaPDF(nomina, cliente, n.sinVincular);
+  // P4: qué nómina se corre. Las de un solo pago y el historial tienen su propia pantalla.
+  const [vista, setVista] = useState<VistaNomina>('ordinaria');
+  const cambiarVista = (v: VistaNomina) => {
+    setVista(v);
+    if (v === 'ordinaria' || v === 'asimilados' || v === 'extraordinaria') n.setTipo(v);
   };
+  const asimilados = n.tipo === 'asimilados';
+  const deEsteRegimen = n.empleadosDeLaCartera.filter(
+    (e) => ((e.tipo_regimen ?? '02') !== '02') === asimilados,
+  );
+
 
   /**
-   * Los estados se derivan en cascada: un paso está bloqueado mientras no
-   * exista lo que produce el anterior.
-   *
-   * El paso 2 espera también a la CARTERA, no sólo a la ficha: la ficha llega
-   * del backend antes que Firestore (hasta 2500 ms), y en esa ventana el cierre
-   * usaría las llaves del catálogo en vez de las del aparato — cero checadas
-   * para quien tenga número propio, y luego la plantilla vuelve a cuadrar por
-   * `empleado_no` sin que nada levante. Recibo con faltas de más, en silencio:
-   * el bug de G-02 entrando por la puerta del tiempo.
-   */
-  /**
-   * Los motivos por los que el paso 2 puede estar bloqueado y su redacción
-   * viven en `motivoDelPaso2`. Aquí sólo se
-   * decide SI está bloqueado; el porqué se dice allá.
+   * Los estados se derivan en cascada. El paso 2 espera también a la CARTERA: en la
+   * ventana en que sólo hay ficha, el cierre usaría las llaves del catálogo (bug de G-02
+   * por la puerta del tiempo). El porqué de cada bloqueo vive en `motivoDelPaso2`.
    */
   const sinPeriodo = Boolean(cliente) && (!n.inicio || !n.fin);
   const estadoPaso2: EstadoPaso = cierre
@@ -89,7 +85,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
     : cliente && !n.carteraCargando && !n.ajenoALaCartera && !sinPeriodo
       ? 'disponible'
       : 'bloqueado';
-  const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre ? 'disponible' : 'bloqueado';
+  const estadoPaso3: EstadoPaso = nomina ? 'listo' : cierre || asimilados ? 'disponible' : 'bloqueado';
   const estadoPaso4: EstadoPaso = nomina ? 'disponible' : 'bloqueado';
 
   return (
@@ -98,6 +94,13 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}
     >
       <EncabezadoNomina cliente={cliente} cargando={n.cargandoCliente} />
+      <SelectorTipoNomina vista={vista} onCambiar={cambiarVista} />
+      {vista === 'historial' && clienteId && <HistorialNominas key={clienteId} clienteId={clienteId} />}
+      {(vista === 'finiquito' || vista === 'aguinaldo' || vista === 'ptu') && clienteId && (
+        <NominaExtraordinaria key={vista} tipo={vista} clienteId={clienteId} empleados={n.empleadosDeLaCartera} />
+      )}
+      {(vista === 'ordinaria' || vista === 'asimilados' || vista === 'extraordinaria') && (
+      <>
 
       {n.error && (
         <AvisoNomina severidad="error" conIcono={false}>
@@ -243,7 +246,7 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
           <button
             className="btn-primary"
             onClick={n.calcular}
-            disabled={n.ocupado || !cierre}
+            disabled={n.ocupado || (!cierre && !asimilados)}
             style={ACCION}
           >
             <Calculator size={16} /> Calcular nómina
@@ -268,53 +271,26 @@ export default function NominaClientePage({ clienteId: fijo }: Props = {}) {
         </>
       )}
 
-      <PasoNomina
-        numero={4}
-        titulo="Exportar"
-        descripcion="El PDF con los recibos y las cuotas, los archivos TXT para el IMSS y el banco, y el XML del CFDI de nómina sin timbrar."
+      {(cierre || asimilados) && (
+        <CapturaVariables
+          empleados={deEsteRegimen}
+          variables={n.variables}
+          onCambiar={n.setVariables}
+          deshabilitado={n.ocupado}
+        />
+      )}
+      {nomina && <DesgloseRecibos recibos={nomina.recibos as ReciboDesglosado[]} />}
+      <PasoExportar
         estado={estadoPaso4}
-        motivoBloqueo="Calcula la nómina primero (paso 3)."
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <div>
-            <button
-              className="btn-secondary"
-              onClick={exportar}
-              disabled={!nomina || !cliente}
-              style={ACCION}
-            >
-              <FileDown size={16} /> Exportar PDF
-            </button>
-          </div>
-          {/* O-04: los TXT van junto al PDF, no en su lugar. El PDF es el
-              documento que leen el contador y el patrón; los TXT son para las
-              máquinas — el IMSS y el banco. */}
-          <SelectorExportacion
-            deshabilitado={!nomina || !cliente}
-            datos={
-              nomina && cliente
-                ? {
-                    nomina,
-                    cliente,
-                    empleados: n.empleadosDeLaCartera,
-                    registroPatronal: n.registroPatronal,
-                    guia: n.guiaSubdelegacion,
-                  }
-                : null
-            }
-          />
-          {/* T4: el XML del recibo, sin timbrar. Va DESPUÉS de los TXT porque
-              es lo más nuevo y lo menos terminado — el PDF sigue siendo el
-              documento que el contador y el patrón leen. */}
-          <PanelCFDINomina
-            nomina={nomina}
-            cliente={cliente}
-            empleados={n.empleadosDeLaCartera}
-            registroPatronal={n.registroPatronal}
-            deshabilitado={!nomina || !cliente}
-          />
-        </div>
-      </PasoNomina>
+        nomina={nomina}
+        cliente={cliente}
+        empleados={n.empleadosDeLaCartera}
+        registroPatronal={n.registroPatronal}
+        guia={n.guiaSubdelegacion}
+        sinVincular={n.sinVincular}
+      />
+      </>
+      )}
     </div>
   );
 }

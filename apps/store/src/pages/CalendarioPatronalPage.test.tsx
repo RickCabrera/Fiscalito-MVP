@@ -1,239 +1,163 @@
 /**
- * Calendario patronal (E-07).
+ * Calendario de la cartera y agenda (P3-10). Ruta `/app/calendario`.
  *
- * `hoy` SE INYECTA EN TODOS LOS CASOS. "Vencida" y "próxima" dependen de la
- * fecha del sistema, y un test que dependa del reloj pasa hoy y falla el mes
- * que viene sin que nadie toque una línea. Es la misma regla que
- * `despacho_demo.py` impuso al backend con `FECHA_REFERENCIA_DEMO`.
+ * Las fechas (prórroga por sexto dígito, día 17 inhábil, reglas del IMSS) las calcula el
+ * backend; aquí se mide que la semana muestre cada vencimiento de cada cliente en su día, que
+ * los filtros viajen en la consulta, que se pueda marcar presentada, crear tareas y generar
+ * tareas desde los vencimientos. `hoy` SE INYECTA: nada depende del reloj.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import type { UserProfile } from '../context/ProfileContext';
-import type { ObligacionPatronal } from '../services/despachoApi';
-
-const perfilContador: UserProfile = {
-  contributorType: 'contador',
-  rfc: '', regimen: '', nombre: 'Contadora Demo', actividad: '', cp: '', telefono: '',
-  nombreNegocio: '', numEmpleados: '', nombreDespacho: 'Despacho Demo',
-  onboardingComplete: true,
-};
-
-const perfilMock = { actual: perfilContador };
-
-vi.mock('../context/ProfileContext', () => ({
-  useProfile: () => ({ profile: perfilMock.actual, loading: false }),
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { ClienteActivoContext, type ClienteActivoContextType } from '../context/clienteActivoStore';
+import type { ObligacionCartera } from '../services/agendaApi';
 
 const { default: CalendarioPatronalPage } = await import('./CalendarioPatronalPage');
-// Puras y fuera de la pantalla: un módulo que mezcla componentes con otras
-// exportaciones rompe el fast refresh de Vite, igual que `clienteActivoStore`.
-const { agrupar, estadoDeFecha } = await import('../services/calendarioPatronal');
 
-function obligacion(over: Partial<ObligacionPatronal> = {}): ObligacionPatronal {
+/** Lunes 19 de octubre de 2026. */
+const HOY = new Date(2026, 9, 19);
+
+function obligacion(over: Partial<ObligacionCartera> = {}): ObligacionCartera {
   return {
-    cliente_id: 'demo',
-    cliente_nombre: 'Cliente Uno',
-    clave: 'imss_mensual',
-    nombre: 'Cuotas IMSS de marzo 2026',
-    descripcion: 'Entero mensual.',
-    fecha_limite: '2026-04-20',
-    periodicidad: 'mensual',
-    periodo_cubierto: 'marzo 2026',
-    fundamento: 'Art. 39 LSS',
-    regimen_de_plazo: 'imss',
-    condicional: false,
-    nota: '',
+    clave: 'mensual:2026-09', cliente: 'pm', cliente_nombre: 'Moral Patrón', tipo: 'fiscal',
+    nombre: 'Declaración mensual ISR e IVA de septiembre 2026', periodo: '2026-09',
+    fecha_limite: '2026-10-19', fundamento: 'Arts. 14/106 LISR', condicional: false, nota: '',
+    estado: 'pendiente', origen_estado: '', fecha_presentacion: null, responsable_uid: '',
     ...over,
   };
 }
 
-const RESPUESTA = {
+const CALENDARIO = {
   exito: true,
-  anio_de_las_cuotas: 2026,
-  cubre_desde: '2026-02-17',
-  cubre_hasta: '2027-01-18',
-  total_obligaciones: 4,
   obligaciones: [
     obligacion(),
-    obligacion({ cliente_id: 'taller', cliente_nombre: 'Cliente Dos' }),
-    obligacion({
-      clave: 'isr_retenido',
-      nombre: 'Entero del ISR retenido de marzo 2026',
-      fecha_limite: '2026-04-17',
-      regimen_de_plazo: 'sat',
-      fundamento: 'LISR Art. 96; CFF Art. 12',
-    }),
-    obligacion({
-      clave: 'ptu_moral',
-      nombre: 'Reparto de utilidades (PTU) — persona moral',
-      fecha_limite: '2026-05-30',
-      regimen_de_plazo: 'lft',
-      condicional: true,
-      nota: 'El modelo de cliente no registra la personalidad jurídica del patrón.',
-    }),
+    obligacion({ cliente: 'pf', cliente_nombre: 'Persona Física', fecha_limite: '2026-10-23',
+      nota: 'Incluye 5 día(s) hábil(es) de prórroga por el sexto dígito del RFC.' }),
+    obligacion({ clave: 'patronal:imss_mensual:septiembre 2026', tipo: 'patronal',
+      nombre: 'Cuotas IMSS de septiembre 2026', fecha_limite: '2026-10-19', estado: 'presentada' }),
   ],
-  advertencias: ['No cubre el ISN (Impuesto Sobre Nóminas).'],
+  tareas: [{ id: 7, titulo: 'Pedir estados de cuenta', descripcion: '', cliente: 'pm',
+    cliente_nombre: 'Moral Patrón', responsable_uid: 'uid-a', fecha: '2026-10-21',
+    estado: 'pendiente', origen: 'manual', obligacion_clave: null }],
 };
 
-function stub(cuerpo: unknown = RESPUESTA, ok = true) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => ({
-      ok,
-      status: ok ? 200 : 500,
-      json: async () => cuerpo,
-    })),
-  );
-}
+const ACTIVO: ClienteActivoContextType = {
+  clientes: [
+    { id: 'pm', nombre: 'Moral Patrón' }, { id: 'pf', nombre: 'Persona Física' },
+  ] as ClienteActivoContextType['clientes'],
+  clienteId: 'pm', cliente: null, loading: false, error: null,
+  setClienteId: () => {}, recargar: () => {},
+};
 
-/** 15 de abril de 2026: el ISR de marzo está próximo y las cuotas también. */
-const HOY = new Date(2026, 3, 15);
+let peticiones: { url: string; method: string; body?: string }[] = [];
 
-function montar(hoy = HOY) {
+beforeEach(() => {
+  peticiones = [];
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
+    const method = init.method ?? 'GET';
+    peticiones.push({ url, method, body: init.body as string | undefined });
+    if (url.includes('/calendario/cartera')) return Response.json(CALENDARIO);
+    if (url.endsWith('/agenda/usuarios')) {
+      return Response.json({ usuarios: [{ uid: 'uid-a', nombre: 'Contadora', rol: 'dueno' }] });
+    }
+    if (url.includes('/obligaciones/estado')) return Response.json({ exito: true, estado: 'presentada' });
+    if (url.endsWith('/agenda/tareas') && method === 'POST') return Response.json({ exito: true, tarea: {} });
+    if (url.endsWith('/agenda/tareas/desde-obligaciones')) return Response.json({ exito: true, creadas: 2 });
+    if (url.includes('/agenda/tareas/7')) return Response.json({ exito: true, tarea: {} });
+    return Response.json({ exito: false, error: `no stubbeado: ${url}` }, { status: 500 });
+  }));
+});
+
+afterEach(() => cleanup());
+
+function montar() {
   return render(
-    <MemoryRouter initialEntries={['/app/calendario']}>
-      <Routes>
-        <Route path="/app/calendario" element={<CalendarioPatronalPage hoy={hoy} />} />
-        <Route path="/app/store/fiscalito/use" element={<div>tab de contribuyente</div>} />
-      </Routes>
+    <MemoryRouter>
+      <ClienteActivoContext.Provider value={ACTIVO}>
+        <CalendarioPatronalPage hoy={HOY} />
+      </ClienteActivoContext.Provider>
     </MemoryRouter>,
   );
 }
 
-afterEach(() => {
-  perfilMock.actual = perfilContador;
-  vi.unstubAllGlobals();
-  cleanup();
-});
-
-describe('estadoDeFecha', () => {
-  it('clasifica contra el `hoy` que recibe, no contra el reloj', () => {
-    expect(estadoDeFecha('2026-04-20', HOY)).toBe('proxima');
-    expect(estadoDeFecha('2026-03-17', HOY)).toBe('vencida');
-    expect(estadoDeFecha('2026-12-19', HOY)).toBe('futura');
-  });
-
-  it('el mismo día NO está vencido', () => {
-    /** Vence hoy: todavía se puede presentar. Marcarlo vencido es un error. */
-    expect(estadoDeFecha('2026-04-15', HOY)).toBe('proxima');
-  });
-});
-
-describe('agrupar', () => {
-  it('junta la misma obligación de varios clientes en un renglón', () => {
-    const grupos = agrupar([
-      obligacion({ cliente_nombre: 'Uno' }),
-      obligacion({ cliente_id: 'b', cliente_nombre: 'Dos' }),
-    ]);
-    expect(grupos).toHaveLength(1);
-    const [[fecha, renglones]] = grupos;
-    expect(fecha).toBe('2026-04-20');
-    expect(renglones).toHaveLength(1);
-    expect(renglones[0].clientes).toEqual(['Uno', 'Dos']);
-  });
-
-  it('NO junta dos que difieren en `condicional` o en `nota`', () => {
-    /**
-     * EL CASO QUE VALE ESTE TEST. Hoy los tres calendarios son idénticos, pero
-     * `condicional` y `nota` dependen de datos por cliente en cuanto F1-09 los
-     * registre. Sin ellos en la clave, dos clientes con distinta personalidad
-     * jurídica se colapsarían en un renglón y uno de los dos textos
-     * desaparecería sin que nada fallara.
-     */
-    const grupos = agrupar([
-      obligacion({ clave: 'ptu_moral', condicional: true, nota: 'no consta' }),
-      obligacion({ clave: 'ptu_moral', cliente_id: 'b', condicional: false, nota: '' }),
-    ]);
-    expect(grupos[0][1]).toHaveLength(2);
-  });
-
-  it('devuelve las fechas en orden ascendente', () => {
-    const grupos = agrupar([
-      obligacion({ fecha_limite: '2026-05-30' }),
-      obligacion({ fecha_limite: '2026-04-17' }),
-    ]);
-    expect(grupos.map(([f]) => f)).toEqual(['2026-04-17', '2026-05-30']);
-  });
-});
-
-describe('CalendarioPatronalPage', () => {
-  it('agrupa por fecha y dice a qué clientes aplica cada obligación', async () => {
-    stub();
+describe('Calendario de la cartera (P3-10)', () => {
+  it('la semana muestra cada vencimiento de cada cliente en su día', async () => {
     montar();
-    const titulo = await screen.findByText(/Cuotas IMSS de marzo 2026/);
-    const grupo = titulo.closest('section') as HTMLElement;
-    expect(within(grupo).getByText(/Cliente Uno · Cliente Dos/)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Calendario de la cartera/ })).toBeTruthy();
+    const lunes = await screen.findByRole('region', { name: 'Día 2026-10-19' });
+    expect(within(lunes).getAllByText('Moral Patrón', { selector: 'span' })).toHaveLength(2);
+    expect(within(lunes).getByText(/Cuotas IMSS de septiembre/)).toBeTruthy();
+    const viernes = screen.getByRole('region', { name: 'Día 2026-10-23' });
+    expect(within(viernes).getByText('Persona Física')).toBeTruthy();
+    const miercoles = screen.getByRole('region', { name: 'Día 2026-10-21' });
+    expect(within(miercoles).getByText(/Pedir estados de cuenta/)).toBeTruthy();
+    const pedida = peticiones.find((p) => p.url.includes('/calendario/cartera'))!;
+    expect(pedida.url).toContain('desde=2026-10-19');
+    expect(pedida.url).toContain('hasta=2026-10-25');
+    expect(screen.getByText(/1 presentadas/)).toBeTruthy();
   });
 
-  it('no funde la regla del IMSS con la del SAT', async () => {
-    /**
-     * El doc 25 §4 advierte que juntarlas sin distinguir "es un bug esperando":
-     * las cuotas de marzo vencen el 20-abr y su ISR el 17-abr.
-     */
-    stub();
+  it('los filtros de cliente, tipo y responsable viajan en la consulta', async () => {
     montar();
-    await screen.findByText(/Cuotas IMSS de marzo 2026/);
-    expect(screen.getByText('2026-04-20')).toBeTruthy();
-    expect(screen.getByText('2026-04-17')).toBeTruthy();
+    await screen.findByRole('region', { name: 'Día 2026-10-19' });
+    fireEvent.change(screen.getByLabelText('Filtrar por cliente'), { target: { value: 'pf' } });
+    fireEvent.change(screen.getByLabelText('Filtrar por tipo'), { target: { value: 'patronal' } });
+    await waitFor(() => expect(screen.getAllByRole('option', { name: 'Contadora' }).length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByLabelText('Filtrar por responsable'), { target: { value: 'uid-a' } });
+    await waitFor(() => {
+      const ultima = peticiones.filter((p) => p.url.includes('/calendario/cartera')).slice(-1)[0]!;
+      expect(ultima.url).toContain('cliente=pf');
+      expect(ultima.url).toContain('tipo=patronal');
+      expect(ultima.url).toContain('responsable=uid-a');
+    });
   });
 
-  it('marca las condicionales y muestra su nota', async () => {
-    stub();
+  it('marca presentada una obligación pendiente', async () => {
     montar();
-    expect(await screen.findByText('Verificar')).toBeTruthy();
-    expect(screen.getByText(/no registra la personalidad jurídica/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', {
+      name: /Marcar presentada: Declaración mensual ISR e IVA de septiembre 2026 de Moral Patrón/ }));
+    await waitFor(() => expect(peticiones.some((p) => p.method === 'PUT')).toBe(true));
+    const put = peticiones.find((p) => p.method === 'PUT')!;
+    expect(put.url).toContain('/clientes/pm/obligaciones/estado');
+    expect(JSON.parse(put.body!)).toEqual({ clave: 'mensual:2026-09', estado: 'presentada' });
   });
 
-  it('dice qué rango cubre, para que enero vacío no sea un misterio', async () => {
-    stub();
+  it('crea tareas a mano y desde los vencimientos de la semana', async () => {
     montar();
-    await waitFor(() => expect(screen.getByText('2026-02-17')).toBeTruthy());
-    expect(screen.getByText('2027-01-18')).toBeTruthy();
+    await screen.findByRole('region', { name: 'Día 2026-10-19' });
+    fireEvent.change(screen.getByLabelText('Título de la tarea'), { target: { value: 'Llamar al cliente' } });
+    fireEvent.change(screen.getByLabelText('Cliente de la tarea'), { target: { value: 'pf' } });
+    fireEvent.click(screen.getByRole('button', { name: /Agregar/ }));
+    await waitFor(() => expect(peticiones.some((p) => p.url.endsWith('/agenda/tareas') && p.method === 'POST')).toBe(true));
+    const alta = peticiones.find((p) => p.url.endsWith('/agenda/tareas') && p.method === 'POST')!;
+    expect(JSON.parse(alta.body!)).toMatchObject({ titulo: 'Llamar al cliente', cliente: 'pf', fecha: '2026-10-19' });
+
+    fireEvent.click(screen.getByRole('button', { name: /Tareas desde vencimientos/ }));
+    await waitFor(() => expect(peticiones.some((p) => p.url.endsWith('/desde-obligaciones'))).toBe(true));
+    const gen = peticiones.find((p) => p.url.endsWith('/desde-obligaciones'))!;
+    expect(JSON.parse(gen.body!)).toMatchObject({ desde: '2026-10-19', hasta: '2026-10-25' });
   });
 
-  it('imprime las advertencias que redactó el backend', async () => {
-    stub();
+  it('la vista de mes y la agenda piden su rango', async () => {
     montar();
-    expect(await screen.findByText(/No cubre el ISN/)).toBeTruthy();
+    await screen.findByRole('region', { name: 'Día 2026-10-19' });
+    fireEvent.click(screen.getByRole('button', { name: 'mes' }));
+    await waitFor(() => expect(peticiones.slice(-1)[0]!.url).toContain('desde=2026-09-28'));
+    expect(peticiones.filter((p) => p.url.includes('/calendario/cartera')).slice(-1)[0]!.url).toContain('hasta=2026-11-01');
+    fireEvent.click(screen.getByRole('button', { name: 'agenda' }));
+    await waitFor(() => {
+      const u = peticiones.filter((p) => p.url.includes('/calendario/cartera')).slice(-1)[0]!.url;
+      expect(u).toContain('desde=2026-10-01');
+      expect(u).toContain('hasta=2026-10-31');
+    });
+    expect(await screen.findByRole('heading', { name: /Lun 19\/10\/2026/ })).toBeTruthy();
   });
 
-  it('declara al contador que este calendario es el de sus clientes', async () => {
-    /**
-     * §D21 resuelta: la app dejó de calcular las obligaciones propias del
-     * despacho. Decirlo sólo en el registro de decisiones dejaría al contador
-     * sin enterarse de por qué su calendario cambió de contenido.
-     */
-    stub();
+  it('un error del backend se ve, no deja la pantalla en blanco', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      Response.json({ exito: false, error: 'El rango del calendario va de 1 día a 400 días.' }, { status: 422 })));
     montar();
-    expect(await screen.findByText(/no calcula las obligaciones fiscales propias/)).toBeTruthy();
-  });
-
-  it('un error de red se ve, no deja la pantalla en blanco', async () => {
-    stub({ error: 'conexión rechazada' }, false);
-    montar();
-    expect(await screen.findByText(/conexión rechazada/)).toBeTruthy();
-  });
-
-  it('la lista vacía se dice, no se deja en blanco', async () => {
-    stub({ ...RESPUESTA, obligaciones: [], total_obligaciones: 0 });
-    montar();
-    expect(await screen.findByText(/No hay obligaciones para este periodo/)).toBeTruthy();
-  });
-
-  it('un contribuyente no ve esta pantalla: va a la suya', async () => {
-    perfilMock.actual = { ...perfilContador, contributorType: 'independiente', regimen: '626' };
-    stub();
-    montar();
-    expect(await screen.findByText('tab de contribuyente')).toBeTruthy();
-  });
-
-  it('pide el año explícito, no lo deja al default del backend', async () => {
-    stub();
-    montar();
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
-    const url = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls[0][0];
-    expect(url).toContain('anio_de_las_cuotas=2026');
+    expect(await screen.findByText(/El rango del calendario va de 1 día a 400 días/)).toBeTruthy();
   });
 });

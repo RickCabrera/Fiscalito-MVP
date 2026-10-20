@@ -7,7 +7,9 @@ Genera obligaciones fiscales segun el tipo de contribuyente, regimen y RFC.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
+
+from app.fiscal_engine.vencimientos import fecha_dia_17
 
 
 @dataclass
@@ -46,16 +48,33 @@ def _dias_habiles_extra(sexto_digito: int | None) -> int:
 
 
 def _fecha_limite_dia_17(year: int, month: int, dias_extra: int) -> str:
-    """Calcula fecha limite partiendo del dia 17 mas dias habiles extra."""
-    base = date(year, month, 17)
-    dias_agregados = 0
-    current = base
-    while dias_agregados < dias_extra:
-        current += timedelta(days=1)
-        # Saltar fines de semana (lunes=0 ... domingo=6)
-        if current.weekday() < 5:
-            dias_agregados += 1
-    return current.isoformat()
+    """
+    Fecha limite: dia 17 mas los dias habiles extra del sexto digito (P3-10).
+
+    Usa el mismo computo que el calendario de la cartera (`vencimientos.fecha_dia_17`):
+    dias inhabiles del Art. 12 CFF, no solo fines de semana, y sin prorroga el 17 inhabil
+    corre al siguiente dia habil (antes se quedaba en sabado o domingo).
+    """
+    return fecha_dia_17(year, month, dias_extra).isoformat()
+
+
+def es_persona_moral(regimen: str, rfc: str) -> bool:
+    """601, o RESICO (626) con RFC de persona moral (12 caracteres)."""
+    return regimen == "601" or (regimen == "626" and len((rfc or "").strip()) == 12)
+
+
+def fecha_limite_anual(year: int, regimen: str, rfc: str) -> str:
+    """
+    Fecha límite de la anual del ejercicio `year`.
+
+    - Personas morales (601 y RESICO PM): dentro de los tres meses siguientes al cierre del
+      ejercicio, o sea el 31 de marzo (Arts. 9 último párrafo y 76 fr. V LISR; Art. 212 para
+      RESICO PM).
+    - Personas físicas: en el mes de abril (Art. 150 LISR).
+    """
+    if es_persona_moral(regimen, rfc):
+        return f"{year + 1}-03-31"
+    return f"{year + 1}-04-30"
 
 
 def generar_calendario(
@@ -77,6 +96,7 @@ def generar_calendario(
     sexto_digito = _obtener_sexto_digito_rfc(rfc)
     dias_extra = _dias_habiles_extra(sexto_digito)
     obligaciones: list[ObligacionFiscal] = []
+    fecha_anual = fecha_limite_anual(year, regimen, rfc)
 
     if contributor_type == "asalariado":
         # Solo declaracion anual en abril
@@ -127,7 +147,7 @@ def generar_calendario(
         obligaciones.append(ObligacionFiscal(
             nombre="Declaracion anual",
             descripcion="Declaracion anual del ejercicio fiscal",
-            fecha_limite=f"{year + 1}-04-30",
+            fecha_limite=fecha_anual,
             periodicidad="anual",
         ))
 
@@ -150,7 +170,7 @@ def generar_calendario(
         obligaciones.append(ObligacionFiscal(
             nombre="Declaracion anual",
             descripcion="Declaracion anual del ejercicio fiscal",
-            fecha_limite=f"{year + 1}-04-30",
+            fecha_limite=fecha_anual,
             periodicidad="anual",
         ))
 
@@ -173,7 +193,7 @@ def generar_calendario(
         obligaciones.append(ObligacionFiscal(
             nombre="Declaracion anual",
             descripcion="Declaracion anual del ejercicio fiscal",
-            fecha_limite=f"{year + 1}-04-30",
+            fecha_limite=fecha_anual,
             periodicidad="anual",
         ))
 
@@ -209,7 +229,7 @@ def generar_calendario(
         obligaciones.append(ObligacionFiscal(
             nombre="Declaracion anual",
             descripcion="Declaracion anual del ejercicio fiscal",
-            fecha_limite=f"{year + 1}-04-30",
+            fecha_limite=fecha_anual,
             periodicidad="anual",
         ))
 

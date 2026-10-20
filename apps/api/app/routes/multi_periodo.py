@@ -1,7 +1,8 @@
 """Endpoint multi-periodo — calcula multiples periodos a la vez."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.fiscal_engine.multi_periodo import calcular_multi_periodo
 from app.schemas.multi_periodo import MultiPeriodoRequest, MultiPeriodoResponse
 from app.services.llm_service import generar_explicacion_multi_periodo
@@ -16,7 +17,9 @@ router = APIRouter(tags=["PYME"])
     description="Calcula declaraciones para multiples meses o bimestres "
     "y genera resumen acumulado con tendencia.",
 )
-async def multi_periodo(req: MultiPeriodoRequest):
+async def multi_periodo(
+    req: MultiPeriodoRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if not req.facturas:
         raise HTTPException(status_code=400, detail="Se requiere al menos una factura.")
     if not req.periodos:
@@ -38,6 +41,7 @@ async def multi_periodo(req: MultiPeriodoRequest):
             "promedio_mensual": acumulado.promedio_mensual,
             "tendencia": acumulado.tendencia,
         }
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_multi_periodo(
             acumulado=acumulado_dict,
             year=req.periodo_year,

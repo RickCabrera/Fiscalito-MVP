@@ -56,6 +56,7 @@ from app.nomina_engine.integracion import (
     PRIMA_VACACIONAL_DE_LEY,
     dias_vacaciones_de_ley,
 )
+from app.schemas.empleado_pago import DatosPagoContactoSchema
 
 
 class TipoContrato(str, Enum):
@@ -142,7 +143,7 @@ class PrestacionesSchema(BaseModel):
         return vacaciones_efectivas(self.dias_vacaciones, anios_servicio_cumplidos)
 
 
-class EmpleadoCarteraSchema(BaseModel):
+class EmpleadoCarteraSchema(DatosPagoContactoSchema):
     """
     Un empleado tal como lo guarda el despacho.
 
@@ -193,6 +194,55 @@ class EmpleadoCarteraSchema(BaseModel):
         default=None,
         description="`null` cuando no se conoce, y NO se inventa (§D9).",
     )
+
+    fecha_baja: date | None = Field(
+        default=None,
+        description="P4-03: fecha de baja. Un periodo que la contiene se calcula PARCIAL "
+        "con el criterio §D26 del cliente; los periodos posteriores ya no lo incluyen.",
+    )
+    tipo_regimen: str = Field(
+        default="02",
+        pattern=r"^(02|05|06|07|08|09|10|11)$",
+        description="P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a "
+        "salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 "
+        "acciones, 11 otros.",
+    )
+
+    # P4-09: movimientos afiliatorios. Vacíos por default para no romper la cartera previa.
+    causa_baja: str = Field(
+        default="",
+        pattern=r"^([1-9A]?)$",
+        description="Catálogo IMSS de causas de baja (posición 149 del layout): 1 término de "
+        "contrato, 2 separación voluntaria, 3 abandono, 4 defunción, 5 clausura, 6 otras, "
+        "7 ausentismo, 8 rescisión, 9 jubilación, A pensión.",
+    )
+    tipo_salario: str = Field(
+        default="0", pattern=r"^[012]$", description="IMSS: 0 fijo, 1 variable, 2 mixto."
+    )
+    tipo_trabajador: str = Field(
+        default="1",
+        pattern=r"^[1-4]$",
+        description="IMSS: 1 permanente, 2 eventual de la ciudad, 3 eventual de la "
+        "construcción, 4 eventual del campo.",
+    )
+    jornada: str = Field(
+        default="0",
+        pattern=r"^[0-6]$",
+        description="IMSS: 0 normal; 1-5 días de semana reducida; 6 jornada reducida.",
+    )
+    umf: str = Field(default="", pattern=r"^(\d{3})?$", description="Unidad de Medicina Familiar.")
+
+    # P4-11: datos del receptor del CFDI de nómina 4.0. Vacíos = no se puede timbrar
+    # (el timbrado lo dice con su razón); NUNCA se inventan.
+    rfc: str = Field(default="", pattern=r"^([A-ZÑ&]{4}\d{6}[A-Z0-9]{3})?$")
+    curp: str = Field(default="", pattern=r"^([A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d)?$")
+    codigo_postal: str = Field(
+        default="",
+        pattern=r"^(\d{5})?$",
+        description="Domicilio fiscal del receptor: obligatorio en CFDI 4.0.",
+    )
+    departamento: str = Field(default="", max_length=100)
+    sindicalizado: bool = False
 
     tipo_contrato: TipoContrato = TipoContrato.INDETERMINADO
     prestaciones: PrestacionesSchema = Field(default_factory=PrestacionesSchema)

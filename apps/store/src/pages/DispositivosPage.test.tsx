@@ -45,7 +45,7 @@ vi.mock('../context/carteraStore', async () => {
   return {
     useCartera: () =>
       carteraDePrueba({
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         // Cliente completo y no `{ empleados }` a secas: el tipo del contexto
         // es `ClienteCartera | null`, y un doble más flojo que el contrato deja
@@ -67,18 +67,19 @@ vi.mock('../context/carteraStore', async () => {
 // tres primeros tests pasaban y los de después veían la pantalla sin aparatos—
 // porque el doble se vaciaba a mitad de la suite, no al principio.
 const escrituras = { guardados: [] as DispositivoChecador[], borrados: [] as string[] };
-vi.mock('../services/dispositivosFirestore', () => ({
+// P0-01: los dispositivos van por la API (`services/dispositivos`), sin uid.
+vi.mock('../services/dispositivos', () => ({
   listarDispositivos: async () => dispositivosGuardados.actual,
   // El doble ESCRIBE en el mismo almacén que lee: así "guardar y ver" se puede
   // medir de verdad. Con un doble que sólo dice que sí, borrar el `recargar()`
   // de la página dejaba las pruebas en verde y el criterio de R-04 —"doy de
   // alta un dispositivo y VEO qué empleados están enrolados"— sin cubrir.
-  guardarDispositivo: async (_uid: string, _cliente: string, d: DispositivoChecador) => {
+  guardarDispositivo: async (_cliente: string, d: DispositivoChecador) => {
     escrituras.guardados.push(d);
     dispositivosGuardados.actual = [...dispositivosGuardados.actual, { ...d, id: 'nuevo-id' }];
     return 'nuevo-id';
   },
-  borrarDispositivo: async (_uid: string, _cliente: string, id: string) => {
+  borrarDispositivo: async (_cliente: string, id: string) => {
     escrituras.borrados.push(id);
     dispositivosGuardados.actual = dispositivosGuardados.actual.filter((x) => x.id !== id);
   },

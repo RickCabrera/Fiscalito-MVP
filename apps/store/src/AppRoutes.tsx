@@ -23,6 +23,8 @@ import ServiceDetailPage from './pages/ServiceDetailPage';
 import ProfilePage from './pages/ProfilePage';
 // T8: planes de la cuenta. Se entra desde Perfil, no desde el sidebar.
 import PlanesPage from './pages/PlanesPage';
+// P0-07: bitácora de auditoría. Se entra desde Perfil, no desde el sidebar.
+import AuditoriaPage from './pages/AuditoriaPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
@@ -37,8 +39,14 @@ import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
 // R-05: empleados y dispositivos del cliente activo, entradas propias del sidebar.
 import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
-// DEMO E-07: calendario patronal de la cartera. Se borra en F2.
+// P0-03: bóveda de CFDI del cliente activo.
+import BovedaPage from './pages/BovedaPage';
+import CalculadorasPage from './pages/CalculadorasPage';
+import DescargaSatPage from './pages/DescargaSatPage';
+// P3-10: calendario unificado (fiscal + patronal + credenciales) y agenda del despacho.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
+// P3-09: alertas fiscales de la cartera (se entra por la campana del layout).
+import AlertasPage from './pages/AlertasPage';
 
 export default function AppRoutes() {
   return (
@@ -75,8 +83,14 @@ export default function AppRoutes() {
             piden en vez de caer en un default silencioso. */}
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="dispositivos" element={<DispositivosPage />} />
-        {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
+        <Route path="boveda" element={<BovedaPage />} />
+        {/* P1-02: descarga masiva del SAT del cliente activo. */}
+        <Route path="sat" element={<DescargaSatPage />} />
+        {/* P3-10: vencimientos fiscales y patronales de la cartera + agenda semanal. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
+        <Route path="alertas" element={<AlertasPage />} />
+        {/* P3-08: calculadoras fiscales sueltas del despacho (sin cliente). */}
+        <Route path="calculadoras" element={<CalculadorasPage />} />
         <Route path="store" element={<MarketplacePage />} />
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
         {/* T7. Va ANTES de `store/:serviceId` por legibilidad, no por necesidad:
@@ -91,6 +105,7 @@ export default function AppRoutes() {
             diaria por una pantalla que se visita una vez. Se llega desde la
             tarjeta de plan del Perfil. */}
         <Route path="planes" element={<PlanesPage />} />
+        <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
             y los enlaces viejos apuntan ahí. */}

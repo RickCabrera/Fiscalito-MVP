@@ -4,7 +4,57 @@
   "_para_que_sirve": "Contrato de rutas entre apps/api y apps/store. apps/store/src/services/contratoRutas.test.ts afirma que cada URL que el front construye está aquí.",
   "rutas": [
     {
+      "path": "/api/v1/agenda/tareas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/tareas/desde-obligaciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/tareas/{tarea_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/agenda/usuarios",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/agente/predeclaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/conteo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/evaluar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/alertas/{alerta_id}/resolver",
       "metodos": [
         "POST"
       ]
@@ -23,9 +73,119 @@
       ]
     },
     {
+      "path": "/api/v1/asistencia/tokens",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/tokens/{token_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/auditoria",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/facturas-calculo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/resumen",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/actualizacion-recargos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/aguinaldo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/fecha-limite",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/finiquito",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isn",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isn/tasas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isr-resico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/isr-sueldos",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calculadoras/ptu",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/calendario/cartera",
+      "metodos": [
+        "GET"
       ]
     },
     {
@@ -36,6 +196,20 @@
     },
     {
       "path": "/api/v1/cartera/clientes/{cliente_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}",
       "metodos": [
         "DELETE",
         "PUT"
@@ -55,9 +229,394 @@
       ]
     },
     {
+      "path": "/api/v1/clientes/{clave}/calculos/diot",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/estado-cuenta",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/multi-periodo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/pre-declaracion-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/calculos/retenciones-terceros",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales/{credencial_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/declaraciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/proveedores",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/proveedores/{rfc}",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/{anio}/{mes}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/diot/{anio}/{mes}/txt",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/obligaciones/estado",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/terceros",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/retenciones-cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/comparar-regimenes",
       "metodos": [
         "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/bancos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliaciones/{conciliacion_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/conciliar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/estados",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/poliza",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/movimientos/{movimiento_id}/sugerencia",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/cuentas/{cuenta_id}/reporte",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/plantillas",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/conciliacion/clientes/{clave}/plantillas/{plantilla_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/enviar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/validar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/clientes/{clave}/zip",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad-electronica/documentos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/balanza",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/deshacer",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cierre-anual/{anio}/validacion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/sembrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/cuentas/{cuenta_id}/auxiliar",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos-cerrados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/cerrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/reabrir",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/periodos/{anio}/{mes}/validacion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/generar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}",
+      "metodos": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/polizas/{poliza_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reglas",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reglas/{regla_id}",
+      "metodos": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/balance-general",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/estado-resultados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/excel",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/reportes/polizas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/clientes/{clave}/saldos-iniciales",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/contabilidad/codigo-agrupador",
+      "metodos": [
+        "GET"
       ]
     },
     {
@@ -109,6 +668,56 @@
       ]
     },
     {
+      "path": "/api/v1/impuestos/clientes/{clave}/anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/anual/papeles",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/isn",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/iva",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/pm/datos/{anio}",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/pm/pagos-provisionales",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/impuestos/clientes/{clave}/resumen",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/multi-periodo",
       "metodos": [
         "POST"
@@ -127,7 +736,201 @@
       ]
     },
     {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/plantilla",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cedulas/{cedula_id}/reporte",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/cuotas-imss",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/historial-sbc",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/empleados/{empleado_no}/sbc",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/archivo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/bimestre-variable",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/lotes/{lote_id}/archivo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/movimientos-imss/marcar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi.zip",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/cfdi/{cfdi_id}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{clave}/periodos/{periodo_id}/timbrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/aguinaldo",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/ajuste-anual",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/comparar",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/finiquito",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/historial",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/cerrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/dispersion",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/periodos/{periodo_id}/envios/{envio_id}/reenviar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/clientes/{cliente_id}/ptu",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/criterios",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/nomina/demo/plantilla",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/dispersion/layouts",
       "metodos": [
         "GET"
       ]
@@ -136,6 +939,24 @@
       "path": "/api/v1/nomina/periodo-sugerido",
       "metodos": [
         "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/envios/rebote",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/plantillas",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/nomina/recibos/plantillas/{canal}",
+      "metodos": [
+        "PUT"
       ]
     },
     {
@@ -157,13 +978,152 @@
       ]
     },
     {
+      "path": "/api/v1/recibos/descarga/{envio_id}/{archivo}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/retenciones-terceros",
       "metodos": [
         "POST"
       ]
     },
     {
+      "path": "/api/v1/sat/cartera/semaforo",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/alertas/{alerta_id}/atender",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/bitacora",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/config",
+      "metodos": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/constancia",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/descargar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/historica",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/config",
+      "metodos": [
+        "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/obtener",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/pdf",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/opinion/{doc_id}/pdf",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/riesgos-69b",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/solicitudes",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/clientes/{clave}/verificar-estatus",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/sat/listas/estado",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/clientes/{clave}/diagnostico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/reintentar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]
