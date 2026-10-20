@@ -110,21 +110,50 @@ Content API). Meta baja el PDF de una URL pública firmada:
 
 ## Pagos de suscripción
 
-**Qué es.** Cobro mensual al despacho. `crear_cliente`, `crear_suscripcion`, `cancelar`,
-`portal_url`, `parsear_webhook` (verifica firma; 400 si no cuadra).
+**Qué es.** Cobro mensual al despacho (P0-06, usado por P5-08). `crear_cliente`,
+`crear_suscripcion`, `cambiar_plan`, `cancelar`, `portal_url`, `parsear_webhook` (verifica
+firma; 400 si no cuadra). El dominio (`app/suscripciones/servicio.py`) sólo lee el evento
+NORMALIZADO (`EventoPago.clase`: `pago_exitoso`, `pago_fallido`, `suscripcion_actualizada`,
+`suscripcion_cancelada`) y su `id_evento` (llave de idempotencia).
+
+**Webhook.** `POST /api/v1/pagos/webhook` — ruta pública (sin sesión de Firebase), se
+autentica con la firma del proveedor. Configura esa URL en el panel del proveedor. Es
+idempotente: cada evento se guarda en `eventos_pago` y si se repite responde `duplicado`.
 
 **Variables.** `FISCALITO_PAGOS` = `falso` | `stripe` | `mercadopago`.
+- falso: `FISCALITO_PAGOS_FALSO_SECRETO` (opcional; secreto HMAC del webhook falso, encabezado
+  `X-Fiscalito-Firma` = HMAC-SHA256 hex del cuerpo). Sin ella usa uno fijo de pruebas.
 - stripe: `FISCALITO_STRIPE_API_KEY` (`sk_...`), `FISCALITO_STRIPE_WEBHOOK_SECRET`
-  (`whsec_...`). El `plan` es el id del Price.
+  (`whsec_...`). El `plan` es el id del Price. Eventos que se normalizan: `invoice.paid` /
+  `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.created|
+  updated|deleted`. Cambio de plan: cambia el Price del renglón con prorrateo.
 - mercadopago: `FISCALITO_MERCADOPAGO_ACCESS_TOKEN`, `FISCALITO_MERCADOPAGO_WEBHOOK_SECRET`.
   El `plan` es el `preapproval_plan_id` y el `cliente_id` de `crear_suscripcion` es el correo
   del pagador. Mercado Pago no tiene portal de cliente: `portal_url` manda a su página de
-  suscripciones.
+  suscripciones. **No permite cambiar el plan** de un `preapproval` (409: cancelar y volver a
+  suscribirse). **PENDIENTE:** su aviso sólo trae el id; falta consultar el estado
+  (`/preapproval/{id}`, `/authorized_payments/{id}`) para normalizarlo. Hoy sus eventos se
+  registran y se ignoran.
 
-**Cómo probar.** Falso en memoria. Reales: `test_pagos_*` (incluye firma vencida de Stripe).
+**Planes y precios (P5-08, `app/planes.py`).** Ninguna cifra vive en el código:
+- `FISCALITO_PLAN_<ID>_PRECIO` (p. ej. `FISCALITO_PLAN_CONTADOR_PRECIO=499.00`): el precio
+  mensual que se MUESTRA. Sin la variable, la pantalla dice "Precio por definir".
+- `FISCALITO_PLAN_MONEDA` (default `MXN`).
+- `FISCALITO_PAGOS_PRECIO_<ID>`: el id del precio en el proveedor (`price_...` de Stripe o el
+  `preapproval_plan_id` de Mercado Pago). Obligatorio con un proveedor real (sin él, 503 al
+  suscribirse); con el falso se usa el id del plan. Lo que se COBRA lo decide el proveedor.
+- `FISCALITO_PLANES_MODULOS`: JSON `{"contador": ["dispersion"]}` que reemplaza los módulos
+  de los planes que nombre (claves en `MODULOS`). JSON roto = se ignora (no abre nada).
+- `FISCALITO_SUSCRIPCION_DIAS_PRUEBA` (default 14) y `FISCALITO_SUSCRIPCION_DIAS_GRACIA`
+  (default 3): política comercial provisional, no norma.
+
+**Cómo probar.** Falso en memoria, con webhook firmado (`PagosFalso.firmar`). Reales:
+`test_pagos_*` y `tests/plan_p/test_suscripciones.py` (factura pagada y cambio de plan de
+Stripe con respuestas grabadas; firma vencida de Stripe).
 
 **A quién contratar.** Stripe (México soportado) o Mercado Pago; Conekta sería un tercer
-adaptador (EXT-11).
+adaptador (EXT-11): implementa la misma interfaz y su `parsear_webhook` normaliza a las
+mismas clases.
 
 ---
 

@@ -235,7 +235,7 @@ fiscalito-store-app/
 /app/store/contabilito/use     → ContabilitoPage (protegida, Contabilito: catalogo/polizas/balanza/buzon — T7)
 /app/store/:serviceId          → ServiceDetailPage (protegida)
 /app/profile                   → ProfilePage (protegida)
-/app/planes                    → PlanesPage (protegida, planes y limite de clientes — T8; se entra desde Perfil, no del sidebar)
+/app/planes                    → PlanesPage (protegida; P5-08: planes y suscripcion DEL BACKEND — suscribirse, cambiar, cancelar, estado, bloqueos y pagos via `services/suscripcionApi.ts`; se entra desde Perfil, no del sidebar)
 /app/admin                     → AdminPage (protegida)
 ```
 

@@ -8,7 +8,7 @@ puede pedir datos de otro ni adivinando ids, y un auxiliar sólo ve lo que tiene
 
 from dataclasses import dataclass
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -18,6 +18,7 @@ from app.auth_firebase import usuario_actual
 from app.db.session import obtener_db
 from app.exceptions import FiscalAgentError
 from app.modelos.nucleo import AsignacionCliente, Cliente, Despacho, Usuario
+from app.suscripciones.vigencia import exigir_escritura
 
 
 @dataclass(frozen=True)
@@ -64,11 +65,17 @@ def asegurar_usuario(db: Session, uid: str) -> Usuario:
 
 
 def contexto_actual(
-    uid: str = Depends(usuario_actual), db: Session = Depends(obtener_db)
+    request: Request, uid: str = Depends(usuario_actual), db: Session = Depends(obtener_db)
 ) -> Contexto:
-    """Dependencia de FastAPI: el contexto autenticado del request."""
+    """
+    Dependencia de FastAPI: el contexto autenticado del request.
+
+    P5-08: si el request ESCRIBE y la suscripción del despacho no está vigente, 402 (modo
+    solo lectura, ver `app/suscripciones/vigencia.py`). Leer nunca se bloquea.
+    """
     usuario = asegurar_usuario(db, uid)
     anotar_contexto(uid, usuario.despacho_id, db)  # P0-07: el middleware sabe quién fue
+    exigir_escritura(db, usuario.despacho_id, request.method, request.url.path)
     return Contexto(uid=uid, despacho_id=usuario.despacho_id, rol=usuario.rol, db=db)
 
 

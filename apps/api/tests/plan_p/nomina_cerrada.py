@@ -53,6 +53,8 @@ def nomina_cerrada(api: Any, sesionador: Any, uid: str = "uid-disp", clave: str 
     http = api(uid)
     lista = empleados if empleados is not None else EMPLEADOS
     sembrar_cliente(http, clave, lista)
+    # P5-08: la dispersión es un módulo del plan Despacho.
+    assert http.put("/api/v1/suscripcion/plan", json={"plan": "despacho"}).status_code == 200
     r = http.post("/api/v1/nomina/calcular-periodo", json={
         "cliente": clave, "periodo": QUINCENA,
         "incidencias": [{"empleado_no": e["empleado_no"], "dias_periodo": 16, "faltas": 0,

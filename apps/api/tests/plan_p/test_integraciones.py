@@ -211,8 +211,12 @@ def test_pagos_falso():
     s = p.crear_suscripcion(cid, "contador")
     p.cancelar(s.id)
     assert p.suscripciones[s.id]["estado"] == "canceled"
-    ev = p.parsear_webhook(b'{"tipo": "pago", "id": "x"}', {})
-    assert ev.tipo == "pago"
+    # P5-08: el webhook falso también va firmado, como los reales.
+    cuerpo = b'{"tipo": "pago", "id": "x"}'
+    ev = p.parsear_webhook(cuerpo, p.firmar(cuerpo))
+    assert ev.tipo == "pago" and ev.clase == ""
+    with pytest.raises(FiscalAgentError):
+        p.parsear_webhook(cuerpo, {})
 
 
 def test_pagos_stripe():

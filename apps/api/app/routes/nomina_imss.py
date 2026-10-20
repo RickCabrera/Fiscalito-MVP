@@ -22,6 +22,7 @@ from app.exceptions import FiscalAgentError
 from app.modelos.imss import LoteImss, MovimientoImss
 from app.nomina_imss import archivos, bimestre_variable
 from app.nomina_imss.historial import historial_de, hoy, registrar_sbc
+from app.suscripciones.vigencia import exigir_modulo
 from app.tenancy import Contexto, cliente_o_404, contexto_actual
 
 router = APIRouter(prefix="/nomina/clientes/{clave}", tags=["Nómina — IMSS"])
@@ -89,6 +90,7 @@ def listar(
 def generar(clave: str, cuerpo: GenerarArchivo, ctx: Contexto = Depends(contexto_actual)
             ) -> dict[str, Any]:
     cliente = cliente_o_404(ctx, clave)
+    exigir_modulo(ctx.db, ctx.despacho_id, "imss_archivos")  # P5-08: módulo por plan
     if cuerpo.destino.startswith("idse_"):
         r = archivos.generar_idse(ctx.db, cliente, cuerpo.destino[5:], ctx.uid, cuerpo.ids)
     elif cuerpo.destino == "sua_trabajadores":

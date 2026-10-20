@@ -63,6 +63,11 @@ export interface AjusteAnualTrabajador {
   tasa_impuesto_local?: number | string | null;
 }
 
+export interface AltaSuscripcion {
+  plan: string;
+  correo?: string;
+}
+
 /** `POST /impuestos/clientes/{clave}/anual` y `.../anual/papeles`. */
 export interface AnualRequest {
   anio: number;
@@ -2181,6 +2186,7 @@ export type RutaApi =
   | "/api/v1/nomina/recibos/plantillas"
   | "/api/v1/nomina/recibos/plantillas/{canal}"
   | "/api/v1/nomina/sbc"
+  | "/api/v1/pagos/webhook"
   | "/api/v1/pre-declaracion"
   | "/api/v1/pre-declaracion-anual"
   | "/api/v1/recibos/descarga/{envio_id}/{archivo}"
@@ -2201,6 +2207,9 @@ export type RutaApi =
   | "/api/v1/sat/clientes/{clave}/solicitudes"
   | "/api/v1/sat/clientes/{clave}/verificar-estatus"
   | "/api/v1/sat/listas/estado"
+  | "/api/v1/suscripcion"
+  | "/api/v1/suscripcion/cancelar"
+  | "/api/v1/suscripcion/plan"
   | "/api/v1/trabajos"
   | "/api/v1/trabajos/clientes/{clave}/diagnostico"
   | "/api/v1/trabajos/{trabajo_id}"
@@ -3031,6 +3040,10 @@ export interface OperacionesApi {
     cuerpo: SBCRequest;
     respuesta: SBCResponse;
   };
+  "POST /api/v1/pagos/webhook": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
   "POST /api/v1/pre-declaracion": {
     cuerpo: PreDeclaracionRequest;
     respuesta: PreDeclaracionResponse;
@@ -3113,6 +3126,22 @@ export interface OperacionesApi {
   };
   "GET /api/v1/sat/listas/estado": {
     cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/suscripcion": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/suscripcion": {
+    cuerpo: AltaSuscripcion;
+    respuesta: Record<string, unknown>;
+  };
+  "POST /api/v1/suscripcion/cancelar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "PUT /api/v1/suscripcion/plan": {
+    cuerpo: CambioPlan;
     respuesta: Record<string, unknown>;
   };
   "GET /api/v1/trabajos": {

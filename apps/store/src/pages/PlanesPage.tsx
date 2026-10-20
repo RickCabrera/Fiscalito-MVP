@@ -1,192 +1,182 @@
 /**
- * Planes de la cuenta — `/app/planes`. (T8)
+ * Planes y suscripción del despacho — `/app/planes`. (T8, P5-08)
  *
- * Una tarjeta por plan y un botón que guarda `users/{uid}.plan`. **No cobra nada**: no
- * hay pasarela, ni suscripción, ni precio publicado. Lo que el botón cambia es
- * el límite de clientes que `ClientesPage` hace cumplir, y eso es todo lo que
- * la pantalla promete. El porqué de cada número vive en `services/planes.ts`.
+ * DESDE P5-08 EL PLAN ES DEL BACKEND
+ * ----------------------------------
+ * El catálogo (límites, módulos, precio), el plan vigente, el estado de la suscripción y
+ * los bloqueos salen de `GET /suscripcion`; suscribirse, cambiar y cancelar van por el
+ * adaptador de pagos del backend. Esta pantalla no decide ningún límite: pinta lo que el
+ * backend hace cumplir, con el motivo que el backend escribe.
  *
- * ELEGIR UN PLAN MÁS CHICO QUE LA CARTERA NO BORRA NADA
- * ----------------------------------------------------
- * Un despacho con 30 clientes que se pasa al plan Contador (25) **conserva sus
- * 30**: lo único que pierde es poder dar de alta el 31. Borrar clientes para
- * que quepan sería destruir datos del usuario por un cambio de etiqueta
- * comercial, así que el plan chico se acepta y la pantalla dice, antes de
- * guardar, que va a quedar por encima del tope.
+ * `users/{uid}.plan` (Firestore) queda como ESPEJO de lo que dice el backend, sólo para los
+ * chips de uso de `ClientesPage`, `SelectorCliente` y `TarjetaPlan` del Perfil: se
+ * actualiza aquí al cargar y tras cada cambio. Si el espejo se atrasa, el backend sigue
+ * bloqueando con su propio dato.
+ *
+ * Bajar a un plan más chico NO borra nada: la tarjeta avisa antes qué se bloquearía.
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Check, Loader } from 'lucide-react';
+import { ArrowLeft, Loader } from 'lucide-react';
 import { useProfile } from '../context/ProfileContext';
-import { useCartera } from '../context/carteraStore';
-import { cambiarPlanDespacho } from '../services/equipoApi';
-import { PLANES, planDelPerfil, usoDeClientes, type IdPlan, type Plan } from '../services/planes';
-
-function TarjetaDePlan({
-  plan, actual, clientes, guardando, onElegir,
-}: {
-  plan: Plan;
-  actual: boolean;
-  clientes: number;
-  guardando: boolean;
-  onElegir: () => void;
-}) {
-  // Se avisa ANTES de guardar, no después: el usuario decide con el dato
-  // enfrente en vez de descubrirlo cuando el alta deje de funcionar.
-  const quedaCorto = clientes > plan.maxClientes;
-
-  return (
-    <div
-      className="card"
-      style={{
-        display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)',
-        border: `1.5px solid ${actual ? 'var(--accent-active)' : 'var(--border)'}`,
-        background: actual ? 'var(--accent-active-bg)' : 'var(--bg-card)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{plan.nombre}</h3>
-        {actual && (
-          <span
-            style={{
-              fontSize: '0.7rem', fontWeight: 600, letterSpacing: 0.3,
-              padding: '2px 8px', borderRadius: 'var(--radius-full)',
-              background: 'var(--accent-active)', color: 'var(--text-on-accent)',
-            }}
-          >
-            TU PLAN
-          </span>
-        )}
-      </div>
-
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-        {plan.descripcion}
-      </p>
-
-      <div style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
-        {plan.precio}
-      </div>
-
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
-        {plan.incluye.map((linea) => (
-          <li key={linea} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: '0.85rem' }}>
-            <Check size={14} color="var(--teal-light)" style={{ flexShrink: 0, marginTop: 3 }} />
-            <span style={{ color: 'var(--text-secondary)' }}>{linea}</span>
-          </li>
-        ))}
-      </ul>
-
-      {quedaCorto && (
-        <p role="status" style={{ fontSize: '0.78rem', color: 'var(--warning)', margin: 0 }}>
-          Ya llevas {clientes} clientes. Con este plan los conservas todos, pero no vas a
-          poder dar de alta otro.
-        </p>
-      )}
-
-      <button
-        className={actual ? 'btn-secondary' : 'btn-primary'}
-        onClick={onElegir}
-        disabled={actual || guardando}
-        style={{ marginTop: 'auto' }}
-      >
-        {actual ? 'Plan actual' : guardando ? 'Guardando…' : 'Seleccionar'}
-      </button>
-    </div>
-  );
-}
+import EstadoSuscripcionCard from '../components/planes/EstadoSuscripcionCard';
+import HistorialPagos from '../components/planes/HistorialPagos';
+import TarjetaPlanCatalogo, { type AccionPlan } from '../components/planes/TarjetaPlanCatalogo';
+import { planPorId } from '../services/planes';
+import {
+  cambiarPlan, cancelarSuscripcion, fechaCorta, obtenerSuscripcion, suscribirse,
+  type PlanCatalogo, type ResumenSuscripcion,
+} from '../services/suscripcionApi';
 
 export default function PlanesPage() {
-  const { profile, setProfile, loading } = useProfile();
-  const cartera = useCartera();
-  const [guardando, setGuardando] = useState<IdPlan | null>(null);
+  const { profile, setProfile } = useProfile();
+  const [resumen, setResumen] = useState<ResumenSuscripcion | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [ocupado, setOcupado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [guardado, setGuardado] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [urlPago, setUrlPago] = useState<string | null>(null);
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false);
 
-  const plan = planDelPerfil(profile.plan);
-  const uso = usoDeClientes(plan, cartera.clientes.length);
+  const cargar = useCallback(() => obtenerSuscripcion()
+    .then((r) => { setResumen(r); setError(null); })
+    .catch((e: unknown) => setError(e instanceof Error ? e.message : 'No se pudo cargar tu suscripción.'))
+    .finally(() => setCargando(false)), []);
 
-  const elegir = async (id: IdPlan) => {
-    setGuardando(id);
+  useEffect(() => { void cargar(); }, [cargar]);
+
+  // Espejo para los chips de uso; si falla, el backend sigue siendo el que manda.
+  const planBackend = resumen?.suscripcion.plan;
+  useEffect(() => {
+    const espejo = planBackend ? planPorId(planBackend) : undefined;
+    if (espejo && profile.plan !== espejo.id) {
+      setProfile({ plan: espejo.id }).catch(() => undefined);
+    }
+  }, [planBackend, profile.plan, setProfile]);
+
+  const accionDe = (p: PlanCatalogo): AccionPlan => {
+    if (!resumen?.puede_gestionar) return null;
+    const s = resumen.suscripcion;
+    const conCobroVivo = s.con_cobro && (s.estado === 'activa' || s.estado === 'morosa');
+    if (!conCobroVivo) return 'suscribirse';
+    return p.id === s.plan ? null : 'cambiar';
+  };
+
+  const ejecutar = async (clave: string, fn: () => Promise<string | null>) => {
+    setOcupado(clave);
     setError(null);
-    setGuardado(false);
+    setAviso(null);
     try {
-      // P5-01: el backend hace cumplir los límites (`app/planes.py`) con el plan del
-      // DESPACHO; primero se le avisa a él (sólo el dueño puede) y luego al perfil.
-      await cambiarPlanDespacho(id);
-      await setProfile({ plan: id });
-      setGuardado(true);
+      setAviso(await fn());
+      await cargar();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo guardar el plan.');
+      setError(e instanceof Error ? e.message : 'No se pudo completar la operación.');
     } finally {
-      setGuardando(null);
+      setOcupado(null);
     }
   };
 
+  const elegir = (p: PlanCatalogo) => void ejecutar(p.id, async () => {
+    if (accionDe(p) === 'suscribirse') {
+      const r = await suscribirse(p.id);
+      setUrlPago(r.url_pago);
+      return r.url_pago
+        ? `Completa el pago para activar el plan ${p.nombre}.`
+        : `Te suscribiste al plan ${p.nombre}.`;
+    }
+    await cambiarPlan(p.id);
+    return `Cambiaste al plan ${p.nombre}.`;
+  });
+
+  const cancelar = () => void ejecutar('cancelar', async () => {
+    const r = await cancelarSuscripcion();
+    setConfirmarCancelar(false);
+    return `Cancelaste tu suscripción. Conservas el acceso hasta el ${fechaCorta(r.acceso_hasta)}.`;
+  });
+
+  const s = resumen?.suscripcion;
+  const puedeCancelar = Boolean(resumen?.puede_gestionar && s && s.estado !== 'cancelada'
+    && s.estado !== 'vencida');
+
   return (
     <div className="page-container">
-      <Link
-        to="/app/profile"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 'var(--space-md)',
-        }}
-      >
+      <Link to="/app/profile" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        color: 'var(--text-primary)', fontSize: '0.85rem', marginBottom: 'var(--space-md)',
+      }}>
         <ArrowLeft size={16} /> Perfil
       </Link>
 
       <div className="page-header animate-in">
-        <h1>Planes</h1>
-        <p>
-          Tu plan decide cuántos clientes puedes llevar. Hoy llevas{' '}
-          <strong>{uso.texto}</strong>.
-        </p>
+        <h1>Planes y suscripción</h1>
+        <p>Tu plan decide cuántos clientes y usuarios caben y qué módulos tienes.</p>
       </div>
 
-      {loading && (
+      {cargando && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-secondary)' }}>
           <Loader size={16} className="spin" color="var(--accent-active)" />
-          Cargando tu plan…
+          Cargando tu suscripción…
         </div>
       )}
-
-      {error && (
-        <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.86rem' }}>
-          {error}
-        </p>
-      )}
-
-      {guardado && !error && (
+      {error && <p role="alert" style={{ color: 'var(--danger)', fontSize: '0.86rem' }}>{error}</p>}
+      {aviso && !error && (
         <p role="status" style={{ color: 'var(--success)', fontSize: '0.86rem' }}>
-          Plan actualizado.
+          {aviso}{' '}
+          {urlPago && <a href={urlPago} target="_blank" rel="noreferrer">Ir a pagar</a>}
         </p>
       )}
 
-      <div
-        className="animate-in"
-        style={{
-          display: 'grid', gap: 'var(--space-md)', marginTop: 'var(--space-md)',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        }}
-      >
-        {PLANES.map((p) => (
-          <TarjetaDePlan
-            key={p.id}
-            plan={p}
-            actual={p.id === plan.id}
-            clientes={cartera.clientes.length}
-            guardando={guardando === p.id}
-            onElegir={() => void elegir(p.id)}
+      {resumen && (
+        <>
+          <EstadoSuscripcionCard
+            resumen={resumen}
+            puedeCancelar={puedeCancelar && !confirmarCancelar}
+            cancelando={ocupado === 'cancelar'}
+            onCancelar={() => setConfirmarCancelar(true)}
           />
-        ))}
-      </div>
+          {confirmarCancelar && s && (
+            <div className="card" role="dialog" aria-label="Confirmar cancelación" style={{ marginTop: 'var(--space-sm)' }}>
+              <p style={{ margin: 0, fontSize: '0.88rem' }}>
+                Conservas el acceso completo hasta el {fechaCorta(s.fin_periodo)}. Después la
+                cuenta queda en solo lectura: no se borra nada.
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
+                <button className="btn-primary" onClick={cancelar} disabled={ocupado === 'cancelar'}>
+                  Sí, cancelar
+                </button>
+                <button className="btn-secondary" onClick={() => setConfirmarCancelar(false)}>
+                  No, conservarla
+                </button>
+              </div>
+            </div>
+          )}
+          {!resumen.puede_gestionar && (
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Sólo el dueño del despacho puede cambiar el plan o la suscripción.
+            </p>
+          )}
 
-      {/* Que no haya cobro se dice en la pantalla, no sólo en el código: quien
-          la ve en una demo tiene que saber qué acaba de pasar al dar clic. */}
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 'var(--space-lg)' }}>
-        Seleccionar un plan no genera ningún cobro: ajusta el límite de clientes de tu
-        cuenta. Los precios se acuerdan por separado.
-      </p>
+          <div className="animate-in" style={{
+            display: 'grid', gap: 'var(--space-md)', marginTop: 'var(--space-md)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          }}>
+            {resumen.planes.map((p) => (
+              <TarjetaPlanCatalogo
+                key={p.id}
+                plan={p}
+                actual={p.id === resumen.suscripcion.plan}
+                accion={accionDe(p)}
+                ocupado={ocupado === p.id}
+                onElegir={() => elegir(p)}
+              />
+            ))}
+          </div>
+
+          <h2 style={{ fontSize: '1.05rem', marginTop: 'var(--space-lg)' }}>Pagos</h2>
+          <HistorialPagos pagos={resumen.pagos} />
+        </>
+      )}
     </div>
   );
 }

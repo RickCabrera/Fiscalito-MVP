@@ -24,6 +24,7 @@ from app.dispersion.bancos.generico import COLUMNAS, DEFAULT
 from app.dispersion.catalogo import LAYOUTS, descripcion, layout_por_id
 from app.dispersion.clabe import BANCOS, nombre_banco
 from app.schemas.declaraciones import ErrorResponse
+from app.suscripciones.vigencia import exigir_modulo
 from app.tenancy import Contexto, cliente_o_404, contexto_actual
 
 router = APIRouter(tags=["Nómina — dispersión"])
@@ -133,6 +134,7 @@ def layouts(cliente: str | None = Query(default=None),
 def dispersar(cliente_id: str, periodo_id: int, req: DispersionRequest,
               ctx: Contexto = Depends(contexto_actual)) -> DispersionResponse:
     cliente = cliente_o_404(ctx, cliente_id)
+    exigir_modulo(ctx.db, ctx.despacho_id, "dispersion")  # P5-08: módulo por plan
     periodo = srv.periodo_o_404(ctx.db, cliente, periodo_id)
     servicio.exigir_cerrada(periodo)
     config: dict[str, Any] = {}
