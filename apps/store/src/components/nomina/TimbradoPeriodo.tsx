@@ -7,7 +7,7 @@
  * motivo del SAT. Con el PAC falso dice que los comprobantes NO son fiscales.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileCode, FileText, Loader, Stamp, XCircle } from 'lucide-react';
 import {
   cancelarCfdi, descargarCfdi, descargarZip, estadoTimbrado, timbrarPeriodo,
@@ -55,6 +55,15 @@ export default function TimbradoPeriodo({ clienteId, periodoId, onCambio }: Prop
     const t = setInterval(cargar, INTERVALO_MS);
     return () => clearInterval(t);
   }, [enCurso, cargar]);
+
+  // P6-04: cuando el trabajo termina, el periodo ya cambió de estado (cerrada → timbrada) y
+  // quien nos contiene tiene que releerlo. Avisar sólo al pedir el timbrado dejaba la lista
+  // del historial diciendo "cerrada" con todos los recibos ya timbrados. Lo cazó el e2e.
+  const estabaEnCurso = useRef(false);
+  useEffect(() => {
+    if (estabaEnCurso.current && !enCurso) onCambio?.();
+    estabaEnCurso.current = enCurso;
+  }, [enCurso, onCambio]);
 
   const accion = async (llave: string, fn: () => Promise<unknown>) => {
     setOcupado(llave);

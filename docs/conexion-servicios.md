@@ -137,6 +137,9 @@ No se contrata: es un servicio público del SAT que se usa con la **e.firma de c
    - `FISCALITO_SAT_URL_AUTENTICACION`, `FISCALITO_SAT_URL_SOLICITUD`,
      `FISCALITO_SAT_URL_VERIFICACION`, `FISCALITO_SAT_URL_DESCARGA`: **no las pongas**; el
      default son las de producción del SAT. Sólo sirven para apuntar a otro ambiente.
+   - `FISCALITO_SAT_SEGUNDOS_PRIMERA_VERIFICACION` y `FISCALITO_SAT_FALSO_DIR`: **no las
+     pongas en producción**; son de las pruebas de punta a punta (P6-04) y la segunda sólo
+     la lee la implementación `falso`.
 3. En la app, en la ficha de un cliente, sube su e.firma (`.cer`, `.key` y contraseña).
 4. Lanza una descarga de un mes conocido desde la pantalla del SAT de ese cliente.
 

@@ -291,9 +291,21 @@ def bloquear(db: Session, solicitud_id: int) -> SolicitudDescargaSat | None:
 # ── el paso ──
 
 
+def primera_verificacion() -> timedelta:
+    """
+    Cuánto se espera para la primera verificación (default 2 min, `PRIMERA_VERIFICACION`).
+
+    `FISCALITO_SAT_SEGUNDOS_PRIMERA_VERIFICACION` lo acorta para las pruebas de punta a
+    punta (P6-04), que con el SAT falso no tienen por qué esperar dos minutos. Las esperas
+    siguientes escalan desde aquí.
+    """
+    segundos = _env_int("FISCALITO_SAT_SEGUNDOS_PRIMERA_VERIFICACION", 0)
+    return timedelta(seconds=segundos) if segundos > 0 else PRIMERA_VERIFICACION
+
+
 def _espera(verificaciones: int) -> timedelta:
     """2, 4, 8, 16, 32, 64 min… con techo de 2 h."""
-    return min(PRIMERA_VERIFICACION * (2 ** max(verificaciones - 1, 0)), TECHO_VERIFICACION)
+    return min(primera_verificacion() * (2 ** max(verificaciones - 1, 0)), TECHO_VERIFICACION)
 
 
 def _fallar(db: Session, s: SolicitudDescargaSat, codigo: str, mensaje: str,
@@ -373,7 +385,7 @@ def _paso_solicitar(db: Session, cliente: Cliente, s: SolicitudDescargaSat,
         s.intentos = 0
         s.verificaciones = 0
         s.solicitada_en = s.solicitada_en or momento
-        s.proxima_verificacion = momento + PRIMERA_VERIFICACION
+        s.proxima_verificacion = momento + primera_verificacion()
     elif r.codigo == "5003":
         _dividir(db, cliente, s, momento)
     elif r.codigo == "5004":

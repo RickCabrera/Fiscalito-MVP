@@ -18,11 +18,15 @@ viven en `app/sat_descarga/servicio.py`, que es el que decide qué hacer con cad
 
 from __future__ import annotations
 
+import io
 import os
+import re
 import tempfile
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import IO, Protocol
 
 import httpx
@@ -308,8 +312,48 @@ def _real() -> DescargaSatReal:
     return DescargaSatReal(urls=urls)
 
 
+def paquetes_de_carpeta(carpeta: Path) -> Callable[[ParametrosSolicitud], list[bytes] | None]:
+    """
+    `al_solicitar` que entrega los XML de `carpeta/<emitidos|recibidos>/` (P6-04).
+
+    Un ZIP por solicitud con los CFDI cuya `Fecha` cae en el rango pedido; la metadata no
+    se simula (responde "sin información"). Es lo que hace que el recorrido e2e baje
+    comprobantes de verdad a la bóveda sin tocar la red.
+    """
+
+    def al_solicitar(p: ParametrosSolicitud) -> list[bytes] | None:
+        if p.tipo != "cfdi":
+            return None
+        buf = io.BytesIO()
+        n = 0
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for xml in sorted((carpeta / p.direccion).glob("*.xml")):
+                fecha = re.search(rb'Fecha="([0-9T:-]{19})"', xml.read_bytes())
+                if fecha is None:
+                    continue
+                momento = datetime.fromisoformat(fecha.group(1).decode())
+                if p.fecha_inicial <= momento <= p.fecha_final:
+                    zf.write(xml, xml.name)
+                    n += 1
+        return [buf.getvalue()] if n else None
+
+    return al_solicitar
+
+
+def _falso() -> DescargaSatFalso:
+    """
+    `falso` sin datos (5004 en todo); con `FISCALITO_SAT_FALSO_DIR` entrega los XML de esa
+    carpeta. Sólo es para desarrollo y e2e: con `FISCALITO_ENTORNO=produccion` no hay
+    default `falso` (ver `registro.elegida`).
+    """
+    carpeta = os.environ.get("FISCALITO_SAT_FALSO_DIR", "").strip()
+    if not carpeta:
+        return DescargaSatFalso()
+    return DescargaSatFalso(al_solicitar=paquetes_de_carpeta(Path(carpeta)))
+
+
 registro.registrar(
-    "sat_descarga", "falso", DescargaSatFalso,
+    "sat_descarga", "falso", _falso,
     "Descarga masiva de CFDI y metadata del web service del SAT (P1-01)",
 )
 registro.registrar("sat_descarga", "sat", _real)

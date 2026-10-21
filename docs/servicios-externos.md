@@ -294,6 +294,8 @@ por streaming). Se firma con `app.credenciales.obtener_firmante(db, cliente, "ef
 | `FISCALITO_SAT_DESCARGA` | `falso`, `sat` | `falso` fuera de producción | Elige la implementación |
 | `FISCALITO_SAT_DIAS_MAX_ESPERA` | entero | `7` | Días que se espera una solicitud "en proceso" antes de darla por fallida |
 | `FISCALITO_SAT_HORAS_AVISO` | entero | `24` | Horas en proceso a partir de las cuales queda una alerta "atorada" |
+| `FISCALITO_SAT_SEGUNDOS_PRIMERA_VERIFICACION` | entero | `120` (2 min) | Espera antes de la primera verificación; las siguientes escalan desde aquí. Sólo se baja en pruebas (e2e la pone en `1`) |
+| `FISCALITO_SAT_FALSO_DIR` | carpeta | vacío | Sólo con `falso`: entrega los XML de `<dir>/emitidos/` y `<dir>/recibidos/` cuya `Fecha` cae en el rango pedido (P6-04, lo usa el e2e). Sin ella, el falso responde "sin información" |
 | `FISCALITO_SAT_URL_AUTENTICACION` | URL | producción del SAT | Sólo para apuntar a otro ambiente |
 | `FISCALITO_SAT_URL_SOLICITUD` | URL | producción del SAT | ídem |
 | `FISCALITO_SAT_URL_VERIFICACION` | URL | producción del SAT | ídem |

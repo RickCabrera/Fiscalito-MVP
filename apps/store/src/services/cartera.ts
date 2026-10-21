@@ -86,9 +86,13 @@ export async function guardarCliente(cliente: Omit<ClienteCartera, 'empleados'>)
   // La plantilla y los ilegibles son de LECTURA: no son campos del cliente.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { empleados, ilegibles, ...datos } = cliente as ClienteCartera;
+  // P6-04: el primer cliente de una cuenta nueva nace SIN periodo (ver `CarteraContext`), y
+  // "sin periodo" es `null` para la API: las fechas vacías del modal eran un 422
+  // ("input is too short") y el alta del primer cliente fallaba. Lo cazó el e2e.
+  const periodo_sugerido = datos.periodo_sugerido?.inicio ? datos.periodo_sugerido : null;
   await apiFetch(ruta(cliente.id), {
     method: 'PUT',
-    json: datos,
+    json: { ...datos, periodo_sugerido },
     timeoutMs: TIMEOUT_ESCRITURA_MS,
   });
 }

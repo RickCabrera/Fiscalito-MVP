@@ -113,6 +113,22 @@ describe('TimbradoPeriodo', () => {
     expect(JSON.parse(llamadas[1].init?.body as string)).toEqual({ motivo: '03', folio_sustitucion: null });
   });
 
+  it('al terminar el timbrado en curso avisa para releer el periodo (P6-04)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    servidor([
+      { json: { estado_periodo: 'cerrada', por_estado: { pendiente: 1 }, trabajo: { id: 1, estado: 'corriendo', error: null }, recibos: [{ ...RECIBO, estado: 'pendiente' }] } },
+      { json: { estado_periodo: 'timbrada', por_estado: { timbrado: 1 }, trabajo: { id: 1, estado: 'hecho', error: null }, recibos: [RECIBO] } },
+    ]);
+    const onCambio = vi.fn();
+    render(<TimbradoPeriodo clienteId="taller" periodoId={4} onCambio={onCambio} />);
+    expect(await screen.findByText('Pendiente')).toBeTruthy();
+    expect(onCambio).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(3000);
+    await waitFor(() => expect(onCambio).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(RECIBO.uuid)).toBeTruthy();
+    vi.useRealTimers();
+  });
+
   it('muestra el error del servidor', async () => {
     servidor([{ status: 404, json: { exito: false, error: 'No existe el periodo 4 de este cliente.' } }]);
     render(<TimbradoPeriodo clienteId="otro" periodoId={4} />);

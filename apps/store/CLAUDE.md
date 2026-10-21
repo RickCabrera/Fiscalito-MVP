@@ -729,4 +729,7 @@ npm run dev          # Dev server en localhost:3000
 npm run build        # Build para produccion (tsc + vite build)
 npm run preview      # Preview del build de produccion
 npm test             # Suite de vitest (red bloqueada por default)
+npm run e2e          # P6-04: recorrido completo en Chromium (Playwright). Levanta la API
+                     # (e2e/levantar.sh, necesita PYTHON con las deps de apps/api) y Vite con
+                     # VITE_E2E=1. Ver docs/arquitectura-p.md, "Decisión P6-04".
 ```
