@@ -41,6 +41,6 @@ jobs:
       - run: npm ci
       # tsc + vite build: el gate mínimo de tipos del frontend
       - run: npm run build
-      # Se activa al cerrar S-02 (lint frontend a cero; hoy 20 errores).
-      # - run: npm run lint
+      # S-02 cerrada en P6-05: lint a cero errores.
+      - run: npm run lint
       - run: npm test

@@ -28,7 +28,6 @@ de la periodicidad. Percepción 046 "Ingresos asimilados a salarios".
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -48,7 +47,6 @@ from app.nomina_engine.isr_nomina import (
     exentar,
     isr_retenido,
 )
-from app.nomina_engine.jornada import tope_horas_extra_periodo, tope_horas_extra_semanal
 from app.nomina_engine.periodo_completo_tipos import (  # noqa: F401 — re-exportados
     REGIMEN_SUELDOS,
     REGIMENES_ASIMILADOS,
@@ -57,7 +55,7 @@ from app.nomina_engine.periodo_completo_tipos import (  # noqa: F401 — re-expo
     ReciboCompleto,
 )
 from app.nomina_engine.recibo import PartidaDeduccion, PartidaOtroPago, PartidaPercepcion, Recibo
-from app.nomina_engine.reglas_periodo import aplicar_tope_diario, avisos_consejero
+from app.nomina_engine.reglas_periodo import avisos_consejero, clasificar_horas_extra
 from app.nomina_engine.tablas_isr_periodicas import (
     TARIFAS_DERIVADAS,
     isr_con_tarifa,
@@ -144,19 +142,9 @@ def calcular_recibo(
             "Art. 82 LFT",
         )
     ]
-    v, avisos_he = aplicar_tope_diario(v, inc.dias_periodo, fin, e.empleado_no)
+    # Una sola clasificación de horas extra para el recibo y el CFDI (revisor P6-07, B1).
+    v, avisos_he = clasificar_horas_extra(v, inc.dias_periodo, fin, e.empleado_no)
     avisos.extend(avisos_he)
-    # B2: Art. 66 LFT y Transitorio Cuarto (DOF 01-05-2026). Las dobles que pasan del
-    # tope de la fecha se pagan triples (Art. 68) y van 100 % gravadas e integran.
-    tope_dobles = redondear(tope_horas_extra_periodo(fin, inc.dias_periodo))
-    if v.horas_dobles > tope_dobles:
-        exceso = v.horas_dobles - tope_dobles
-        avisos.append(
-            f"{e.empleado_no}: {v.horas_dobles} horas dobles exceden el tope de {tope_dobles} "
-            f"del periodo ({tope_horas_extra_semanal(fin)} por semana, Art. 66 LFT); las "
-            f"{exceso} de más se pagan triples (Art. 68) y van 100 % gravadas."
-        )
-        v = replace(v, horas_dobles=tope_dobles, horas_triples=v.horas_triples + exceso)
     extra, efecto = var.percepciones_variables(v, e.salario_diario, sbc.valor, pagados)
     conceptos.extend(extra)
     ctx = ContextoExencion(

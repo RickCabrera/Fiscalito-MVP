@@ -18,9 +18,19 @@ from app.fiscal_engine import iva as motor_iva
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.multi_periodo import calcular_multi_periodo
 from app.fiscal_engine.resumen_impuestos import ImporteSistema
+from app.impuestos.config_cliente import (  # noqa: F401 — se reexportan
+    _dec,
+    config_de,
+    entidad_de,
+    guardar_config,
+    regimen_de,
+)
 from app.impuestos.flujo import Efectivo, flujo_del_mes, nominas_del_mes
+from app.impuestos.isn_cliente import (  # noqa: F401 — ISN, se reexporta (P6-05)
+    isn_del_cliente,
+    percepciones_de_nomina,
+)
 from app.modelos.cfdi import Comprobante
-from app.modelos.impuestos import ConfigImpuestosCliente
 from app.modelos.nucleo import Cliente
 from app.redondeo import redondear
 from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura
@@ -35,42 +45,10 @@ REGIMEN_ASIMILADOS = {"05", "06", "07", "08", "09", "10", "11"}
 USOS_NO_ACREDITABLES = {f"D{n:02d}" for n in range(1, 11)} | {"S01", "CN01"}
 
 
-# ── configuración del cliente (DP-3) ──
-
-
-def config_de(db: Session, cliente: Cliente) -> ConfigImpuestosSchema:
-    """Criterio guardado del cliente o los defaults documentados."""
-    fila = db.get(ConfigImpuestosCliente, cliente.id)
-    return ConfigImpuestosSchema.model_validate(fila.datos if fila else {})
-
-
-def guardar_config(db: Session, cliente: Cliente, cfg: ConfigImpuestosSchema) -> None:
-    """Guarda el criterio del cliente (reemplaza el anterior)."""
-    fila = db.get(ConfigImpuestosCliente, cliente.id)
-    datos = cfg.model_dump(mode="json")
-    if fila is None:
-        db.add(ConfigImpuestosCliente(cliente_id=cliente.id, datos=datos))
-    else:
-        fila.datos = datos
-    db.flush()
-
-
-def regimen_de(cliente: Cliente) -> str:
-    return str((cliente.datos or {}).get("regimen") or "")
-
-
-def entidad_de(cliente: Cliente) -> str:
-    return str((cliente.datos or {}).get("clave_entidad") or "")
+# ── configuración del cliente (DP-3) ── y `_dec`: viven en `config_cliente.py` (P6-05).
 
 
 # ── IVA ──
-
-
-def _dec(v: object) -> Decimal:
-    try:
-        return Decimal(str(v)) if v not in (None, "") else Decimal("0")
-    except Exception:  # noqa: BLE001 - importe ilegible en un XML ajeno: cuenta como cero
-        return Decimal("0")
 
 
 def movimiento_iva(e: Efectivo) -> motor_iva.MovimientoIVA:

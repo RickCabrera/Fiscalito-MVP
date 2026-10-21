@@ -23,31 +23,42 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from lxml import etree
 
-NS_CFDI = {"3.3": "http://www.sat.gob.mx/cfd/3", "4.0": "http://www.sat.gob.mx/cfd/4"}
-NS_TFD = "http://www.sat.gob.mx/TimbreFiscalDigital"
-NS_PAGOS = {"1.0": "http://www.sat.gob.mx/Pagos", "2.0": "http://www.sat.gob.mx/Pagos20"}
-NS_NOMINA12 = "http://www.sat.gob.mx/nomina12"
-
-TIPOS = {"I", "E", "P", "N", "T"}
-# Catálogo c_Impuesto del SAT.
-ISR, IVA, IEPS = "001", "002", "003"
+from app.boveda_cfdi.complementos import (
+    _complemento_nomina,
+    _complemento_pagos,
+    _conceptos,
+    _relacionados,
+)
+from app.boveda_cfdi.xml_base import (  # noqa: F401 — se reexportan
+    CENTAVO,
+    IEPS,
+    ISR,
+    IVA,
+    NS_CFDI,
+    NS_NOMINA12,
+    NS_PAGOS,
+    NS_TFD,
+    TIPOS,
+    CfdiInvalido,
+    _attrs,
+    _centavos,
+    _dec,
+    _fecha,
+    _hijo,
+    _hijos,
+)
 
 _PARSER = etree.XMLParser(
     resolve_entities=False, no_network=True, huge_tree=False, remove_blank_text=False
 )
-CENTAVO = Decimal("0.01")
 
 
 _RE_UUID = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}")
-
-
-class CfdiInvalido(ValueError):
-    """El archivo no es un CFDI timbrado que la bóveda pueda guardar."""
 
 
 @dataclass
@@ -78,50 +89,6 @@ class CfdiLeido:
     isr_retenido: Decimal
     ieps: Decimal
     datos: dict[str, Any] = field(default_factory=dict)
-
-
-# ── utilidades ──
-
-
-def _dec(valor: str | None) -> Decimal:
-    if valor is None or str(valor).strip() == "":
-        return Decimal("0")
-    try:
-        return Decimal(str(valor).strip())
-    except InvalidOperation as e:
-        raise CfdiInvalido(f"Importe inválido: {valor!r}") from e
-
-
-def _centavos(valor: Decimal) -> Decimal:
-    return valor.quantize(CENTAVO, rounding=ROUND_HALF_UP)
-
-
-def _fecha(valor: str | None, campo: str) -> datetime:
-    if not valor:
-        raise CfdiInvalido(f"Falta {campo}.")
-    try:
-        # Sin zona: el CFDI expresa la hora local del lugar de expedición.
-        return datetime.fromisoformat(valor.strip()[:19])
-    except ValueError as e:
-        raise CfdiInvalido(f"{campo} inválida: {valor!r}") from e
-
-
-def _hijo(nodo: Any, ns: str, nombre: str) -> Any:
-    return nodo.find(f"{{{ns}}}{nombre}") if nodo is not None else None
-
-
-def _hijos(nodo: Any, ns: str, ruta: str) -> list[Any]:
-    if nodo is None:
-        return []
-    partes = "/".join(f"{{{ns}}}{p}" for p in ruta.split("/"))
-    return list(nodo.findall(partes))
-
-
-def _attrs(nodo: Any, *nombres: str) -> dict[str, str]:
-    """Los atributos pedidos que traiga el nodo, como texto."""
-    if nodo is None:
-        return {}
-    return {n: nodo.get(n) for n in nombres if nodo.get(n) is not None}
 
 
 # ── lectura ──
@@ -244,122 +211,3 @@ def parsear_cfdi(contenido: bytes) -> CfdiLeido:
         datos=datos,
     )
 
-
-def _conceptos(raiz: Any, ns: str) -> list[dict[str, Any]]:
-    salida = []
-    for c in _hijos(raiz, ns, "Conceptos/Concepto"):
-        concepto: dict[str, Any] = _attrs(
-            c, "ClaveProdServ", "NoIdentificacion", "Cantidad", "ClaveUnidad", "Unidad",
-            "Descripcion", "ValorUnitario", "Importe", "Descuento", "ObjetoImp",
-        )
-        imp = _hijo(c, ns, "Impuestos")
-        tras = [_attrs(n, "Base", "Impuesto", "TipoFactor", "TasaOCuota", "Importe")
-                for n in _hijos(imp, ns, "Traslados/Traslado")]
-        ret = [_attrs(n, "Base", "Impuesto", "TipoFactor", "TasaOCuota", "Importe")
-               for n in _hijos(imp, ns, "Retenciones/Retencion")]
-        if tras:
-            concepto["traslados"] = tras
-        if ret:
-            concepto["retenciones"] = ret
-        salida.append(concepto)
-    return salida
-
-
-def _relacionados(raiz: Any, ns: str) -> list[dict[str, Any]]:
-    """CfdiRelacionados: en 3.3 hay uno solo; en 4.0 puede repetirse por TipoRelacion."""
-    salida = []
-    for grupo in _hijos(raiz, ns, "CfdiRelacionados"):
-        uuids = [n.get("UUID", "").upper() for n in _hijos(grupo, ns, "CfdiRelacionado")]
-        salida.append({"tipo_relacion": grupo.get("TipoRelacion", ""), "uuids": uuids})
-    return salida
-
-
-def _complemento_pagos(complemento: Any) -> dict[str, Any] | None:
-    """Recepción de pagos 1.0 o 2.0: cada pago con sus documentos relacionados."""
-    if complemento is None:
-        return None
-    for version, ns in NS_PAGOS.items():
-        nodo = complemento.find(f"{{{ns}}}Pagos")
-        if nodo is None:
-            continue
-        pagos = []
-        for p in _hijos(nodo, ns, "Pago"):
-            documentos = []
-            for d in _hijos(p, ns, "DoctoRelacionado"):
-                doc = _attrs(d, "IdDocumento", "Serie", "Folio", "MonedaDR", "EquivalenciaDR",
-                             "TipoCambioDR", "MetodoDePagoDR", "NumParcialidad",
-                             "ImpSaldoAnt", "ImpPagado", "ImpSaldoInsoluto", "ObjetoImpDR")
-                if "IdDocumento" in doc:
-                    doc["IdDocumento"] = doc["IdDocumento"].upper()
-                documentos.append(doc)
-            pagos.append({
-                **_attrs(p, "FechaPago", "FormaDePagoP", "MonedaP", "TipoCambioP", "Monto",
-                         "NumOperacion"),
-                "documentos": documentos,
-            })
-        totales = _attrs(
-            nodo.find(f"{{{ns}}}Totales"),
-            "TotalRetencionesIVA", "TotalRetencionesISR", "TotalRetencionesIEPS",
-            "TotalTrasladosBaseIVA16", "TotalTrasladosImpuestoIVA16",
-            "TotalTrasladosBaseIVA8", "TotalTrasladosImpuestoIVA8",
-            "TotalTrasladosBaseIVA0", "TotalTrasladosImpuestoIVA0",
-            "TotalTrasladosBaseIVAExento", "MontoTotalPagos",
-        )
-        uuids = sorted({d["IdDocumento"] for p in pagos for d in p["documentos"]
-                        if d.get("IdDocumento")})
-        monto = sum((_dec(p.get("Monto")) for p in pagos), Decimal("0"))
-        return {
-            "version": version,
-            "pagos": pagos,
-            "totales": totales,
-            "uuids_relacionados": uuids,
-            "monto_total": str(monto),
-        }
-    return None
-
-
-def _complemento_nomina(complemento: Any) -> dict[str, Any] | None:
-    """Nómina 1.2: totales de percepciones, deducciones, otros pagos e ISR retenido."""
-    if complemento is None:
-        return None
-    nodo = complemento.find(f"{{{NS_NOMINA12}}}Nomina")
-    if nodo is None:
-        return None
-    ns = NS_NOMINA12
-    deducciones = _hijo(nodo, ns, "Deducciones")
-    isr = sum((_dec(d.get("Importe")) for d in _hijos(deducciones, ns, "Deduccion")
-               if d.get("TipoDeduccion") == "002"), Decimal("0"))
-    # Por tipo (c_TipoDeduccion / c_TipoOtroPago): la póliza de nómina separa IMSS obrero,
-    # otras deducciones, subsidio, viáticos y reintegros en cuentas propias (revisión P2).
-    deducciones_por_tipo: dict[str, Decimal] = {}
-    for d in _hijos(deducciones, ns, "Deduccion"):
-        tipo = d.get("TipoDeduccion", "")
-        deducciones_por_tipo[tipo] = deducciones_por_tipo.get(tipo, Decimal("0")) + \
-            _dec(d.get("Importe"))
-    otros_por_tipo: dict[str, Decimal] = {}
-    for o in _hijos(nodo, ns, "OtrosPagos/OtroPago"):
-        tipo = o.get("TipoOtroPago", "")
-        otros_por_tipo[tipo] = otros_por_tipo.get(tipo, Decimal("0")) + _dec(o.get("Importe"))
-    receptor = _hijo(nodo, ns, "Receptor")
-    subsidio = sum(
-        (_dec(s.get("SubsidioCausado"))
-         for s in _hijos(nodo, ns, "OtrosPagos/OtroPago/SubsidioAlEmpleo")),
-        Decimal("0"),
-    )
-    return {
-        "version": nodo.get("Version", ""),
-        **_attrs(nodo, "TipoNomina", "FechaPago", "FechaInicialPago", "FechaFinalPago",
-                 "NumDiasPagados", "TotalPercepciones", "TotalDeducciones", "TotalOtrosPagos"),
-        "percepciones": _attrs(_hijo(nodo, ns, "Percepciones"), "TotalSueldos",
-                               "TotalSeparacionIndemnizacion", "TotalJubilacionPensionRetiro",
-                               "TotalGravado", "TotalExento"),
-        "deducciones": _attrs(deducciones, "TotalOtrasDeducciones", "TotalImpuestosRetenidos"),
-        "isr_retenido": str(isr),
-        "deducciones_por_tipo": {k: str(v) for k, v in sorted(deducciones_por_tipo.items())},
-        "otros_pagos_por_tipo": {k: str(v) for k, v in sorted(otros_por_tipo.items())},
-        "subsidio_causado": str(subsidio),
-        "receptor": _attrs(receptor, "NumEmpleado", "Curp", "NumSeguridadSocial",
-                           "PeriodicidadPago", "TipoRegimen"),
-        "registro_patronal": (_hijo(nodo, ns, "Emisor").get("RegistroPatronal", "")
-                              if _hijo(nodo, ns, "Emisor") is not None else ""),
-    }

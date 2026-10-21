@@ -261,6 +261,29 @@ class TestTimbradoNomina:
         assert sorted(c["estado"] for c in estado["recibos"]) == [
             "cancelado", "timbrado", "timbrado"]
 
+    def test_horas_por_dia_con_bloque_partido_timbran_y_cuadran(self, entorno, sesionador):
+        # Revisor P6-07 B1: quincena al 15-08-2026, 3 h los días 1-3, 8-10 y 15. El tope
+        # proporcional deja dobles y triples; el CFDI debe declarar las mismas horas.
+        http = entorno
+        dias = ["3", "3", "3", "0", "0", "0", "0", "3", "3", "3", "0", "0", "0", "0", "3"]
+        r = http.post("/api/v1/nomina/calcular-periodo", json={
+            "cliente": "imss", "periodo": {"inicio": "2026-08-01", "fin": "2026-08-15"},
+            "incidencias": [
+                {"empleado_no": "E1", "dias_periodo": 15, "faltas": 0, "dias_ausentismo": 0},
+                {"empleado_no": "E2", "dias_periodo": 15, "faltas": 0, "dias_ausentismo": 0}],
+            "variables": [{"empleado_no": "E1", "horas_extra_por_dia": dias}]})
+        assert r.status_code == 200, r.text
+        pid = r.json()["periodo_id"]
+        assert http.post(f"{BASE}/periodos/{pid}/cerrar").status_code == 200
+        assert http.post(f"{BASE}/periodos/{pid}/timbrar").status_code == 200
+        assert procesar_siguiente(sesionador).estado == "hecho"
+        estado = http.get(f"{BASE}/periodos/{pid}/cfdi").json()
+        assert estado["por_estado"] == {"timbrado": 2}, estado
+        e1 = next(c for c in estado["recibos"] if c["empleado_no"] == "E1")
+        xml = http.get(f"{BASE}/periodos/{pid}/cfdi/{e1['id']}/xml").content
+        assert errores_de_validacion(xml) == []
+        assert b'TipoHoras="02"' in xml and b'TipoHoras="01"' in xml
+
     def test_no_timbra_una_nomina_abierta(self, entorno):
         r = entorno.post("/api/v1/nomina/calcular-periodo", json={
             "cliente": "imss", "periodo": {"inicio": "2026-06-01", "fin": "2026-06-15"},

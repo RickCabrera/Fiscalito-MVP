@@ -41,7 +41,6 @@ from app.nomina_engine.cfdi_nomina_xml import (
     IncapacidadCfdi,
     SeparacionCfdi,
 )
-from app.nomina_engine.jornada import clasificar_horas_por_dia
 from app.nomina_engine.periodo_completo_tipos import REGIMENES_ASIMILADOS
 from app.nomina_engine.recibo import (
     CLAVES_SEPARACION,
@@ -52,6 +51,8 @@ from app.nomina_engine.recibo import (
     PartidaPercepcion,
     Recibo,
 )
+from app.nomina_engine.reglas_periodo import clasificar_horas_extra
+from app.nomina_engine.variables_tipos import VariablesEmpleado
 from app.schemas.empleado import EmpleadoCarteraSchema
 
 CERO = Decimal("0.00")
@@ -138,12 +139,17 @@ def _extras(
     periodo: NominaPeriodo, rec: ReciboNomina, recibo: Recibo, separacion: bool
 ) -> ExtrasNomina:
     var = _variables(periodo, rec.empleado_no)
-    dobles, triples = var.get("horas_dobles"), var.get("horas_triples")
-    if var.get("horas_extra_por_dia"):
-        # P6-07: capturadas por día; se clasifican igual que en el cálculo (Art. 66 LFT).
-        c = clasificar_horas_por_dia(
-            [Decimal(str(h)) for h in var["horas_extra_por_dia"]], periodo.fin)
-        dobles, triples = c.dobles, Decimal(str(triples or 0)) + c.triples
+    # La MISMA clasificación que el cálculo del recibo (tope diario + semanal proporcional):
+    # si no, el CFDI declara horas que no cuadran con el importe (revisor P6-07, B1).
+    capturadas = VariablesEmpleado(
+        empleado_no=rec.empleado_no,
+        horas_dobles=Decimal(str(var.get("horas_dobles") or 0)),
+        horas_triples=Decimal(str(var.get("horas_triples") or 0)),
+        horas_extra_por_dia=tuple(Decimal(str(h)) for h in var.get("horas_extra_por_dia") or ()),
+    )
+    clasificadas, _ = clasificar_horas_extra(
+        capturadas, (periodo.fin - periodo.inicio).days + 1, periodo.fin, rec.empleado_no)
+    dobles, triples = clasificadas.horas_dobles, clasificadas.horas_triples
     horas = []
     for p in recibo.percepciones:
         if p.tipo != "019":

@@ -77,9 +77,11 @@ class TestConsejero:
         assert any("régimen 07 sin marcar" in a for a in avisos)
 
     def test_el_regimen_07_que_ademas_es_trabajador_usa_tarifa(self, api):
-        isr, _ = self._isr(api("uid-p607-2b"), tipo_regimen="07",
-                           consejero_es_trabajador=True)
+        isr, avisos = self._isr(api("uid-p607-2b"), tipo_regimen="07",
+                                consejero_es_trabajador=True)
         assert isr == D("2272.26")
+        assert any("se retiene con la tarifa" in a for a in avisos)
+        assert not any("se aplica la retención mínima" in a for a in avisos)
 
     def test_administrador_en_honorarios_09_marcado_lleva_la_minima(self, api):
         isr, avisos = self._isr(api("uid-p607-3"), tipo_regimen="09", es_consejero=True)

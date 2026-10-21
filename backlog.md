@@ -1135,7 +1135,7 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   dominical y subsidio), generar fixtures XML con RFC/nombres/CURP sintéticos y montos
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
-  `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
+  `conftest` que las cargue. Es el equivalente nómina del caso real fiscal (anonimizado como SINT010101PF1 en P6-05).
 ## D — Demo 2026-09-02: nómina + checador Hikvision
 
 Rama **vertical de demo**, no sustituye a F0/F1: cuando la demo pase, lo demo-only se borra y
@@ -1333,7 +1333,7 @@ Nada de esto entra a la cola nocturna. Se retoma cuando nomina este cerrada.
   el dashboard de OpenAI (confirmado por Ricardo).
 - [ ] **S-06 · (Opcional, prioridad baja) Reescribir historial para purgar
   `apps/api/pfebrero/`** — 12 XML de CFDI con RFC de terceros identificables
-  (CADG620317EE0, NIGE780321TK2, MCP2404207Q2, BMS170308GT7...) siguen alcanzables en los
+  (RFC del contribuyente y de contrapartes reales; en HEAD ya están anonimizados desde P6-05) siguen alcanzables en los
   commits `29245f6` y `29313de` aunque ya no existan en el arbol. **Prioridad baja a
   proposito:** el repo es privado y el historial no tiene ninguna API key (verificado el
   2026-08-31 blob por blob). Reescribir historial rompe clones y forks, asi que solo vale
@@ -1349,7 +1349,7 @@ Nada de esto entra a la cola nocturna. Se retoma cuando nomina este cerrada.
   Railway. *Listo cuando:* haya una razon de producto para tener produccion; entonces se
   desglosa (Cloud Run, CORS_ORIGINS explicito, build del front con la URL real, redeploy de
   Hosting). Bloqueada por S-00b.
-- [ ] **S-07 · Anonimizar las demo-xmls y el caso real CADG620317EE0** — las tres
+- [ ] **S-07 · Anonimizar las demo-xmls y el caso real del backend** — las tres
   fixtures de `apps/store/public/demo-xmls/2026/01/` llevan RFC y nombre reales, y
   `vite build` las copia tal cual a `dist/`, asi que viajan al bundle desplegado. Mismo
   tratamiento para el caso real del backend. RFC/nombre sinteticos, montos reales.

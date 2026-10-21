@@ -11,9 +11,10 @@ FUENTES
   diarias ni de tres veces en una semana" — 9 horas. Por eso cualquier fecha anterior a
   2028 da 9.
 - **LFT Art. 68, segundo párrafo:** la prolongación del tiempo extraordinario que exceda de
-  nueve horas a la semana (o de los límites del Art. 66) se paga con 200 % más (triples) y,
-  por estar fuera del límite de la ley, no tiene la exención del Art. 93 fr. I LISR (100 %
-  gravado).
+  nueve horas a la semana se paga con 200 % más (triples). Lo que excede los límites del
+  Art. 66 (3 h diarias, veces por semana) queda 100 % gravado por el Art. 93 fr. I LISR
+  ("dentro de los límites"); que además se PAGUE triple es interpretación laboral, no texto
+  del Art. 68 — DECISIÓN PROVISIONAL, confirmar con la contadora (§D38).
 
 TOPE DIARIO (P6-07)
 -------------------
@@ -28,7 +29,10 @@ diario no se verificó.
 # diario y el número de veces por semana. Se conserva el de 3 horas diarias del texto
 # anterior para todas las fechas, y 3 veces por semana mientras el tope semanal es 9; desde
 # 2028 se admiten las veces necesarias para alcanzar el tope semanal con 3 h diarias (4).
-# Es lo conservador para el patrón: clasifica como triples de más, nunca de menos.
+# Es la lectura conservadora en lo FISCAL (más horas gravadas, más ISR), no "para el patrón"
+# (más triples cuestan más). Las semanas son bloques de 7 días desde el inicio del periodo,
+# no semanas reales con días de periodos anteriores: puede clasificar de menos si una racha
+# cruza dos bloques. Decisión abierta (§D38).
 """
 
 from __future__ import annotations

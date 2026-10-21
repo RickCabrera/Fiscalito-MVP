@@ -57,3 +57,27 @@ Vitest + Testing Library, red cerrada (stub de `fetch`).
 ## Checks antes de entregar
 - `apps/api`: `pytest -q` verde, `ruff check .` limpio en lo tocado.
 - `apps/store`: `npm run build` limpio, `npm test` verde, `npm run lint` sin errores nuevos.
+- `apps/store`: `npm run lint` sale en 0 (P6-05, S-02) y corre en CI; quedan sólo *warnings* de
+  `react-refresh/only-export-components` en los contextos (`useAuth`, `useProfile`, `useAgent`
+  conviven con su provider; moverlos rompería los `vi.mock` de decenas de pruebas a cambio de
+  nada en producción).
+
+## Decisión R-11 · El emulador de Firestore NO entra al CI (P6-05)
+
+**Decisión: no se agrega un job con `firebase-tools` al CI.** No hace falta: desde P0-01 la
+cartera vive en SQL y los criterios que sólo medía el emulador —"sobrevive reinicio", borrado en
+cascada, merge, topes— se prueban contra la base de verdad (`tests/cartera/test_cartera_crud.py`,
+SQLite en tests, Postgres en producción). Ya no existe ningún test marcado `emulador`; el filtro
+`-m "not emulador"` se retiró de `pyproject.toml`, así que **verde en CI vuelve a significar "toda
+la suite corrió"**, sin skips.
+
+Lo que sigue tocando Firebase en el backend es la verificación del ID token
+(`app/auth_firebase.py`), que se prueba con tokens falsos y con la guardia de
+`FIRESTORE_EMULATOR_HOST` (`tests/cartera/test_auth_firebase.py`,
+`tests/plan_p/test_revision_p0.py`); ninguna de esas pruebas necesita el emulador corriendo.
+Firestore en el front sólo guarda el perfil (`users/{uid}`) y el historial de declaraciones, y
+sus pruebas usan mocks de `services/firebase`.
+
+**Cuándo revisar esta decisión:** si vuelve a aparecer código del backend que lea o escriba
+Firestore, o un test marcado `emulador`. En ese caso el job es `npx firebase-tools emulators:exec
+--only firestore "pytest -m emulador"` y entra al gate.

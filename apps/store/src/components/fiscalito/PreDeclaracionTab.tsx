@@ -41,13 +41,13 @@ export default function PreDeclaracionTab() {
   const [error, setError] = useState('');
   const [guardado, setGuardado] = useState(false);
   const [pagosAnteriores, setPagosAnteriores] = useState(0);
-  const [pagosAnterioresAuto, setPagosAnterioresAuto] = useState<number | null>(null);
-  const [loadingPagos, setLoadingPagos] = useState(false);
+  const [pagosAutoCargados, setPagosAnterioresAuto] = useState<number | null>(null);
   const [modoManual, setModoManual] = useState(false);
   const [predialPagado, setPredialPagado] = useState(0);
   const [incluyePredial, setIncluyePredial] = useState(false);
-  const [acumuladoAnterior, setAcumuladoAnterior] = useState<Acumulado106 | null>(null);
-  const [loadingAcumulado, setLoadingAcumulado] = useState(false);
+  const [acumuladoCargado, setAcumuladoAnterior] = useState<Acumulado106 | null>(null);
+  // Consulta del acumulado que ya respondió; "cargando" = la vigente aún no.
+  const [consultaResuelta, setConsultaResuelta] = useState<string | null>(null);
 
   // P1-06: por defecto, los CFDI del mes salen de la bóveda del cliente activo. Si el
   // asistente ya cargó XML (demo), se arranca en archivos sueltos para no esconderlos.
@@ -59,15 +59,21 @@ export default function PreDeclaracionTab() {
   const esArrendamiento = perfil.regimen === '606';
   const esEmpresarialOArr = ['612', '606'].includes(perfil.regimen);
 
+  // El acumulado del Art. 106 sólo aplica a 612/606 desde febrero y con sesión;
+  // fuera de eso se deriva `null` en el render en vez de borrarlo en el efecto.
+  const aplicaAcumulado = esEmpresarialOArr && month > 1 && !!user?.uid;
+  const acumuladoAnterior = aplicaAcumulado ? acumuladoCargado : null;
+  const pagosAnterioresAuto = aplicaAcumulado ? pagosAutoCargados : null;
+  const consultaVigente = aplicaAcumulado
+    ? `${year}|${month}|${user?.uid}|${perfil.clienteId ?? ''}|${modoManual}`
+    : null;
+  const loadingAcumulado = consultaVigente !== null && consultaResuelta !== consultaVigente;
+  const loadingPagos = loadingAcumulado;
+
   useEffect(() => {
-    if (!esEmpresarialOArr || month <= 1 || !user?.uid) {
-      setAcumuladoAnterior(null);
-      setPagosAnterioresAuto(null);
-      return;
-    }
+    if (!esEmpresarialOArr || month <= 1 || !user?.uid) return;
     let cancelled = false;
-    setLoadingAcumulado(true);
-    setLoadingPagos(true);
+    const consulta = `${year}|${month}|${user.uid}|${perfil.clienteId ?? ''}|${modoManual}`;
     obtenerAcumuladoAnterior(user.uid, year, month, perfil.clienteId)
       .then((result) => {
         if (cancelled) return;
@@ -82,10 +88,7 @@ export default function PreDeclaracionTab() {
         }
       })
       .finally(() => {
-        if (!cancelled) {
-          setLoadingAcumulado(false);
-          setLoadingPagos(false);
-        }
+        if (!cancelled) setConsultaResuelta(consulta);
       });
     return () => { cancelled = true; };
   }, [year, month, user?.uid, esEmpresarialOArr, modoManual, perfil.clienteId]);

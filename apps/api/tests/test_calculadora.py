@@ -1403,12 +1403,12 @@ class TestFlujoEfectivo:
 
 
 # ============================================================
-# Test Caso Real: CADG620317EE0 Enero 2026
+# Test Caso Real: SINT010101PF1 Enero 2026
 # ============================================================
 
-class TestCasoRealCADG:
+class TestCasoRealAnonimizado:
     """
-    Verificacion con datos del cliente CADG620317EE0, enero 2026.
+    Verificacion con datos del cliente SINT010101PF1, enero 2026.
     Regimen 612 (Act. Empresarial). Valida que PUE/PPD + Art. 106
     produzcan el ISR correcto de $1,782.87.
     """
@@ -1420,7 +1420,7 @@ class TestCasoRealCADG:
         -> Base ISR $17,120.80 -> ISR $1,782.87
         """
         perfil = PerfilContribuyente(
-            rfc="CADG620317EE0",
+            rfc="SINT010101PF1",
             regimen="612",
             nombre="Contribuyente Caso Real",
         )
@@ -1430,7 +1430,7 @@ class TestCasoRealCADG:
         # --- 1 factura PUE emitida (ingreso del contribuyente) ---
         facturas.append(CFDI(
             uuid="ING-PUE-001", fecha=date(2026, 1, 10), tipo=TipoFactura.INGRESO,
-            rfc_emisor="CADG620317EE0", rfc_receptor="CLIENTE_RFC_001",
+            rfc_emisor="SINT010101PF1", rfc_receptor="CLIENTE_RFC_001",
             subtotal=208_104.35, total=241_401.05,
             iva_trasladado=33_296.70,
             metodo_pago="PUE",
@@ -1440,44 +1440,44 @@ class TestCasoRealCADG:
         # Simplificadas en 3 facturas con el mismo total neto
         facturas.append(CFDI(
             uuid="EGR-PUE-001", fecha=date(2026, 1, 5), tipo=TipoFactura.INGRESO,
-            rfc_emisor="PROVEEDOR_A_RFC", rfc_receptor="CADG620317EE0",
+            rfc_emisor="PROVEEDOR_A_RFC", rfc_receptor="SINT010101PF1",
             subtotal=80_000.00, total=92_800.00, iva_trasladado=12_800.00,
             metodo_pago="PUE",
         ))
         facturas.append(CFDI(
             uuid="EGR-PUE-002", fecha=date(2026, 1, 12), tipo=TipoFactura.INGRESO,
-            rfc_emisor="PROVEEDOR_B_RFC", rfc_receptor="CADG620317EE0",
+            rfc_emisor="PROVEEDOR_B_RFC", rfc_receptor="SINT010101PF1",
             subtotal=70_000.00, total=81_200.00, iva_trasladado=11_200.00,
             metodo_pago="PUE",
         ))
         facturas.append(CFDI(
             uuid="EGR-PUE-003", fecha=date(2026, 1, 20), tipo=TipoFactura.INGRESO,
-            rfc_emisor="PROVEEDOR_C_RFC", rfc_receptor="CADG620317EE0",
+            rfc_emisor="PROVEEDOR_C_RFC", rfc_receptor="SINT010101PF1",
             subtotal=36_440.56, total=42_271.05, iva_trasladado=5_830.49,
             metodo_pago="PUE",
         ))
 
-        # --- 1 factura PPD de MXGA CONTADORES sin complemento (NO deducible) ---
+        # --- 1 factura PPD de DESPACHO PPD sin complemento (NO deducible) ---
         facturas.append(CFDI(
-            uuid="PPD-MXGA", fecha=date(2026, 1, 8), tipo=TipoFactura.INGRESO,
-            rfc_emisor="MXGA_CONTADORES", rfc_receptor="CADG620317EE0",
+            uuid="PPD-DESPACHO", fecha=date(2026, 1, 8), tipo=TipoFactura.INGRESO,
+            rfc_emisor="DESPACHO_PPD", rfc_receptor="SINT010101PF1",
             subtotal=8_295.00, total=9_622.20, iva_trasladado=1_327.20,
             metodo_pago="PPD",
         ))
 
-        # --- 1 factura PPD de BRIGHT MEXICO con complemento (SI deducible) ---
+        # --- 1 factura PPD de PROVEEDOR PPD con complemento (SI deducible) ---
         facturas.append(CFDI(
-            uuid="PPD-BRIGHT", fecha=date(2026, 1, 3), tipo=TipoFactura.INGRESO,
-            rfc_emisor="BRIGHT_MEXICO", rfc_receptor="CADG620317EE0",
+            uuid="PPD-PROVEEDOR", fecha=date(2026, 1, 3), tipo=TipoFactura.INGRESO,
+            rfc_emisor="PROVEEDOR_PPD", rfc_receptor="SINT010101PF1",
             subtotal=4_542.99, total=5_269.87, iva_trasladado=726.88,
             metodo_pago="PPD",
         ))
-        # Complemento de pago por el 100% del total de BRIGHT
+        # Complemento de pago por el 100% del total del proveedor PPD
         facturas.append(CFDI(
-            uuid="REP-BRIGHT", fecha=date(2026, 1, 18), tipo=TipoFactura.PAGO,
-            rfc_emisor="CADG620317EE0", rfc_receptor="BRIGHT_MEXICO",
+            uuid="REP-PROVEEDOR", fecha=date(2026, 1, 18), tipo=TipoFactura.PAGO,
+            rfc_emisor="SINT010101PF1", rfc_receptor="PROVEEDOR_PPD",
             subtotal=0, total=0,
-            uuid_relacionado="PPD-BRIGHT",
+            uuid_relacionado="PPD-PROVEEDOR",
             monto_pago=5_269.87,
         ))
 
@@ -1489,7 +1489,7 @@ class TestCasoRealCADG:
         # Ingresos: solo la PUE emitida
         assert desglose.total_ingresos_gravados == 208_104.35
 
-        # Deducciones: PUE gastos + BRIGHT via complemento, NO MXGA
+        # Deducciones: PUE gastos + proveedor PPD via complemento, NO despacho PPD
         assert desglose.total_deducciones_autorizadas == 190_983.55
 
         # Base ISR

@@ -141,7 +141,7 @@ Herramientas registradas hoy:
 
 ### Por qué separar motor y LLM
 
-Los cálculos fiscales son **deterministas y auditables**: usan tablas ISR codificadas y validadas contra el caso real `CADG620317EE0` de enero 2026 (33 facturas PUE consolidadas, una PPD con complemento, una PPD sin complemento, ISR causado exacto a dos decimales). El LLM **solo explica** el resultado, nunca lo calcula. Esto evita alucinaciones en montos y mantiene el sistema defendible frente a un contador.
+Los cálculos fiscales son **deterministas y auditables**: usan tablas ISR codificadas y validadas contra el caso real anonimizado `SINT010101PF1` (RFC sintético) de enero 2026 (33 facturas PUE consolidadas, una PPD con complemento, una PPD sin complemento, ISR causado exacto a dos decimales). El LLM **solo explica** el resultado, nunca lo calcula. Esto evita alucinaciones en montos y mantiene el sistema defendible frente a un contador.
 
 ---
 
@@ -272,7 +272,7 @@ Abre `http://localhost:5173`.
 - [x] Loop de tool calling agéntico en el frontend (`agentLoop.ts`)
 - [x] Agente backend con tool use (Anthropic + OpenAI)
 - [x] Chat de voz integrado con VAD continuo
-- [x] Caso real CADG620317EE0 verificado contra contador
+- [x] Caso real (anonimizado como `SINT010101PF1`) verificado contra contador
 
 ### Próximo sprint — automatización
 

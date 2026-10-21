@@ -55,7 +55,7 @@ async function pedir(ruta: string, opciones: OpcionesApi = {}): Promise<Response
     return res;
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') {
-      throw new Error('El servidor tardó demasiado en responder. Intenta de nuevo.');
+      throw new Error('El servidor tardó demasiado en responder. Intenta de nuevo.', { cause: e });
     }
     throw e;
   } finally {

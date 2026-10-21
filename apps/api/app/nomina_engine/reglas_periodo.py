@@ -25,9 +25,14 @@ from dataclasses import replace
 from datetime import date
 
 from app.exceptions import FiscalValidationError
-from app.nomina_engine.jornada import clasificar_horas_por_dia
+from app.nomina_engine.jornada import (
+    clasificar_horas_por_dia,
+    tope_horas_extra_periodo,
+    tope_horas_extra_semanal,
+)
 from app.nomina_engine.periodo_completo_tipos import EmpleadoNomina
 from app.nomina_engine.variables_tipos import VariablesEmpleado
+from app.redondeo import redondear
 
 
 def avisos_consejero(e: EmpleadoNomina) -> list[str]:
@@ -36,6 +41,11 @@ def avisos_consejero(e: EmpleadoNomina) -> list[str]:
         return [
             f"{e.empleado_no}: consejero que además es trabajador del retenedor: se retiene con "
             "la tarifa (Art. 96 LISR, quinto párrafo, remite al segundo), sin la tasa mínima."
+        ]
+    if e.tipo_regimen == "07" and not e.es_consejero and e.consejero_es_trabajador:
+        return [
+            f"{e.empleado_no}: régimen 07 marcado con relación de trabajo con el retenedor: se "
+            "retiene con la tarifa (Art. 96 LISR, quinto párrafo, remite al segundo)."
         ]
     if e.tipo_regimen == "07" and not e.es_consejero:
         return [
@@ -67,3 +77,27 @@ def aplicar_tope_diario(
         v, horas_dobles=c.dobles, horas_triples=v.horas_triples + c.triples, horas_extra_por_dia=()
     )
     return v, c.avisos(no)
+
+
+def clasificar_horas_extra(
+    v: VariablesEmpleado, dias_periodo: int, fin: date, no: str
+) -> tuple[VariablesEmpleado, list[str]]:
+    """
+    Dobles y triples del periodo: tope diario (con desglose por día) y luego el tope semanal
+    proporcional del Art. 66 LFT y Transitorio Cuarto (DOF 01-05-2026); lo que excede se paga
+    triple (Art. 68 LFT, segundo párrafo) y va 100 % gravado.
+
+    Es la ÚNICA clasificación: la usan el cálculo del recibo y el armado del CFDI de nómina,
+    para que las horas por tipo cuadren siempre con el importe (revisor P6-07, B1).
+    """
+    v, avisos = aplicar_tope_diario(v, dias_periodo, fin, no)
+    tope_dobles = redondear(tope_horas_extra_periodo(fin, dias_periodo))
+    if v.horas_dobles > tope_dobles:
+        exceso = v.horas_dobles - tope_dobles
+        avisos.append(
+            f"{no}: {v.horas_dobles} horas dobles exceden el tope de {tope_dobles} "
+            f"del periodo ({tope_horas_extra_semanal(fin)} por semana, Art. 66 LFT); las "
+            f"{exceso} de más se pagan triples (Art. 68) y van 100 % gravadas."
+        )
+        v = replace(v, horas_dobles=tope_dobles, horas_triples=v.horas_triples + exceso)
+    return v, avisos

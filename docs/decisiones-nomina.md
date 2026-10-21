@@ -1210,3 +1210,23 @@ Cada punto con su test en `apps/api/tests/nomina/test_p6_07_revisor.py`.
 - **Finiquito y exentos del año (Art. 93 fr. XIV):** aguinaldo (30 UMA) y prima vacacional
   (15 UMA) son por año de calendario; el finiquito resta lo ya exentado en el año según el
   historial (claves 002 y 021) más lo capturado fuera del sistema.
+
+### §D38.1 · Revisor de motor de P6-07 (2026-10-21)
+
+Corregido: el recibo y el CFDI usan **una sola** clasificación de horas extra
+(`reglas_periodo.clasificar_horas_extra`: tope diario + semanal proporcional); antes el CFDI
+no aplicaba el proporcional y un periodo con bloque partido no timbraba (test de ruta con la
+quincena del 1 al 15 de agosto de 2026). El aviso del 07 marcado como trabajador ya no dice que
+se aplica la mínima. Texto de `jornada.py` corregido (cita del Art. 68 y "conservador").
+
+Abiertas para Ricardo y la contadora:
+1. Semanas de horas extra: bloques de 7 días desde el inicio del periodo (hoy) o semanas reales
+   con días de periodos anteriores; y el bloque partido al final, con tope proporcional (hoy) o
+   3 h completas.
+2. Lo que excede las 3 h diarias o las veces por semana sin pasar de 9 a la semana: ¿se paga
+   triple (hoy) o doble y sólo pierde la exención? Cambia el importe del recibo.
+3. Texto reformado del Art. 66 LFT (DOF 01-05-2026): límite diario y veces por semana.
+4. Finiquito: el año de los exentos previos se toma de la fecha de baja porque la petición no
+   trae fecha de pago; si se paga en otro año (baja en diciembre, pago en enero), capturar a
+   mano los exentos del año correcto.
+5. ObjetoImp 06/07/08 ("no traslado del IVA") no entra en ninguna base del IVA ni en la DIOT.
