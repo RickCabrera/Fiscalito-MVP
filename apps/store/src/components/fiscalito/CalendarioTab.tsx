@@ -80,15 +80,11 @@ export default function CalendarioTab() {
   const { user } = useAuth();
   const [obligaciones, setObligaciones] = useState<ObligacionFiscal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [errorDeCarga, setError] = useState('');
 
   useEffect(() => {
-    if (perfil.falta) {
-      // Al cliente se le pide el dato con `FaltaDatoFiscal`, abajo; el contribuyente conserva su mensaje.
-      if (perfil.sujeto === 'contribuyente') setError('Completa tu RFC y régimen en tu perfil para ver tu calendario.');
-      setLoading(false);
-      return;
-    }
+    // Sin datos fiscales no se pide nada: el mensaje se deriva abajo, en el render.
+    if (perfil.falta) return;
 
     const load = async () => {
       try {
@@ -121,7 +117,12 @@ export default function CalendarioTab() {
 
   if (perfil.sujeto === 'cliente' && perfil.falta) return <FaltaDatoFiscal perfil={perfil} />;
 
-  if (loading) {
+  // Al cliente se le pide el dato con `FaltaDatoFiscal`, arriba; el contribuyente conserva su mensaje.
+  const error = perfil.falta
+    ? 'Completa tu RFC y régimen en tu perfil para ver tu calendario.'
+    : errorDeCarga;
+
+  if (loading && !perfil.falta) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--text-muted)' }}>
         <Loader size={20} className="spin" /> Cargando calendario fiscal...

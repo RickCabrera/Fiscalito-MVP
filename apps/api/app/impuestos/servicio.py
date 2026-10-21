@@ -9,23 +9,27 @@ entrada de cada motor y junta las salidas.
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.boveda_cfdi.parser import NS_NOMINA12, leer_xml
-from app.boveda_cfdi.servicio import leer_xml_original
-from app.exceptions import FiscalAgentError
-from app.fiscal_engine import isn as motor_isn
 from app.fiscal_engine import iva as motor_iva
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.multi_periodo import calcular_multi_periodo
 from app.fiscal_engine.resumen_impuestos import ImporteSistema
+from app.impuestos.config_cliente import (  # noqa: F401 — se reexportan
+    _dec,
+    config_de,
+    entidad_de,
+    guardar_config,
+    regimen_de,
+)
 from app.impuestos.flujo import Efectivo, flujo_del_mes, nominas_del_mes
-from app.modelos.cfdi import Comprobante
-from app.modelos.impuestos import ConfigImpuestosCliente
+from app.impuestos.isn_cliente import (  # noqa: F401 — ISN, se reexporta (P6-05)
+    isn_del_cliente,
+    percepciones_de_nomina,
+)
 from app.modelos.nucleo import Cliente
 from app.redondeo import redondear
 from app.schemas.fiscal import CFDI, PerfilContribuyente, TipoFactura
@@ -40,42 +44,10 @@ REGIMEN_ASIMILADOS = {"05", "06", "07", "08", "09", "10", "11"}
 USOS_NO_ACREDITABLES = {f"D{n:02d}" for n in range(1, 11)} | {"S01", "CN01"}
 
 
-# ── configuración del cliente (DP-3) ──
-
-
-def config_de(db: Session, cliente: Cliente) -> ConfigImpuestosSchema:
-    """Criterio guardado del cliente o los defaults documentados."""
-    fila = db.get(ConfigImpuestosCliente, cliente.id)
-    return ConfigImpuestosSchema.model_validate(fila.datos if fila else {})
-
-
-def guardar_config(db: Session, cliente: Cliente, cfg: ConfigImpuestosSchema) -> None:
-    """Guarda el criterio del cliente (reemplaza el anterior)."""
-    fila = db.get(ConfigImpuestosCliente, cliente.id)
-    datos = cfg.model_dump(mode="json")
-    if fila is None:
-        db.add(ConfigImpuestosCliente(cliente_id=cliente.id, datos=datos))
-    else:
-        fila.datos = datos
-    db.flush()
-
-
-def regimen_de(cliente: Cliente) -> str:
-    return str((cliente.datos or {}).get("regimen") or "")
-
-
-def entidad_de(cliente: Cliente) -> str:
-    return str((cliente.datos or {}).get("clave_entidad") or "")
+# ── configuración del cliente (DP-3) ── y `_dec`: viven en `config_cliente.py` (P6-05).
 
 
 # ── IVA ──
-
-
-def _dec(v: object) -> Decimal:
-    try:
-        return Decimal(str(v)) if v not in (None, "") else Decimal("0")
-    except Exception:  # noqa: BLE001 - importe ilegible en un XML ajeno: cuenta como cero
-        return Decimal("0")
 
 
 def movimiento_iva(e: Efectivo) -> motor_iva.MovimientoIVA:
@@ -246,56 +218,6 @@ def importes_del_periodo(
                                    "Art. 1o.-A LIVA: IVA retenido a terceros por enterar."))
     notas += iva.notas
     return importes, notas
-
-
-# ── ISN ──
-
-
-def percepciones_de_nomina(comp: Comprobante) -> list[motor_isn.PercepcionISN]:
-    """Percepciones por clave de un CFDI de nómina (del XML original; si falla, totales)."""
-    try:
-        raiz = leer_xml(leer_xml_original(comp))
-        salida = [
-            motor_isn.PercepcionISN(
-                p.get("TipoPercepcion", "038"),
-                _dec(p.get("ImporteGravado")) + _dec(p.get("ImporteExento")),
-                p.get("Concepto", ""),
-            )
-            for p in raiz.iter(f"{{{NS_NOMINA12}}}Percepcion")
-        ]
-        otros = sum((_dec(o.get("Importe")) for o in raiz.iter(f"{{{NS_NOMINA12}}}OtroPago")),
-                    Decimal("0"))
-        if otros:
-            salida.append(motor_isn.PercepcionISN("OTP", otros, "Otros pagos (no percepción)"))
-        return salida
-    except (FiscalAgentError, ValueError):
-        tot = (comp.datos or {}).get("nomina", {}).get("percepciones", {})
-        total = _dec(tot.get("TotalGravado")) + _dec(tot.get("TotalExento"))
-        return [motor_isn.PercepcionISN("038", total, "Total de percepciones (sin desglose)")]
-
-
-def isn_del_cliente(
-    db: Session, cliente: Cliente, anio: int, mes: int, aplicar_adicional: bool | None = None,
-    claves_excluidas: list[str] | None = None,
-) -> tuple[motor_isn.ResultadoISN, int]:
-    """ISN del mes con los CFDI de nómina del cliente y su entidad (`clave_entidad`)."""
-    entidad = entidad_de(cliente)
-    if not entidad:
-        raise FiscalAgentError(
-            "El cliente no tiene entidad federativa (clave_entidad) en su ficha; captúrala "
-            "para calcular su ISN.", 422)
-    cfg = config_de(db, cliente)
-    nominas = nominas_del_mes(db, cliente, anio, mes)
-    percepciones = [
-        p for n in nominas for p in percepciones_de_nomina(n) if p.clave != "OTP"
-    ]
-    conf = motor_isn.ConfigISN(
-        aplicar_adicional=cfg.isn_aplicar_adicional if aplicar_adicional is None
-        else aplicar_adicional,
-        claves_excluidas_extra=frozenset(cfg.isn_claves_excluidas + (claves_excluidas or [])),
-        claves_incluidas_forzadas=frozenset(cfg.isn_claves_incluidas),
-    )
-    return motor_isn.calcular_isn(entidad, date(anio, mes, 1), percepciones, conf), len(nominas)
 
 
 def resumen_iva_json(r: motor_iva.ResultadoIVAMes) -> dict[str, Any]:

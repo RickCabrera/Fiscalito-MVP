@@ -3,6 +3,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
 import type { CFDI } from '../services/fiscalAgentApi';
 import ingreso001 from '../../public/demo-xmls/2026/01/ingreso-001.xml?raw';
+import egreso001 from '../../public/demo-xmls/2026/01/egreso-001.xml?raw';
 import { resolverPerfilFiscal } from '../context/perfilFiscal';
 import type { ClienteResumen } from '../services/despachoApi';
 
@@ -14,7 +15,11 @@ vi.mock('../services/firebase', () => ({
   default: {},
 }));
 const { guardarDeclaracion, calcularPreDeclaracion } = vi.hoisted(() => ({
-  guardarDeclaracion: vi.fn(async (..._args: unknown[]) => 'id'),
+  // Los argumentos se tipan para que `toHaveBeenCalledWith` los acepte.
+  guardarDeclaracion: vi.fn(async (...args: unknown[]) => {
+    void args;
+    return 'id';
+  }),
   calcularPreDeclaracion: vi.fn(),
 }));
 vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion }));
@@ -185,6 +190,28 @@ describe('tool cargar_xmls_demo', () => {
     expect(res.data?.cargadas).toBe(0);
     expect(res.data?.total_acumulado).toBe(1);
     expect(setFacturas).toHaveBeenCalledWith([yaCargada]);
+  });
+
+  it('B-01: distingue emitidas de recibidas por el RFC del cliente, no por el tipo', async () => {
+    // egreso-001 es una factura de compra: TipoDeComprobante="I" emitida por el
+    // proveedor. Contar por tipo daba siempre "0 egreso(s)".
+    const rfcDemo = /<cfdi:Emisor Rfc="([^"]+)"/.exec(ingreso001)![1];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('index.json')
+          ? { ok: true, json: async () => ['ingreso-001.xml', 'egreso-001.xml'] }
+          : { ok: true, text: async () => (url.endsWith('egreso-001.xml') ? egreso001 : ingreso001) },
+      ),
+    );
+
+    const res = await TOOL_EXECUTORS.cargar_xmls_demo({ año: 2026, mes: 1 }, hacerDeps({ rfc: rfcDemo }));
+
+    expect(res.ok).toBe(true);
+    expect(res.data?.cargadas).toBe(2);
+    expect(res.data?.ingresos).toBe(1);
+    expect(res.data?.egresos).toBe(1);
+    expect(res.summary).toContain('1 emitida(s), 1 recibida(s)');
   });
 
   it('acepta index.json en forma de arreglo plano', async () => {

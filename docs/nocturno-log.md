@@ -119,8 +119,8 @@ existe en el motor pero **no** se agregó al request: eso espera a `docs/api-con
 
 El revisor encontró, auditando archivos vecinos, que hay **un RFC de persona física real
 versionado en main**, en archivos trackeados y etiquetado como "caso real verificado con
-contador": `CADG620317EE0` (4 letras + fecha de nacimiento + homoclave), junto a RFC de
-contrapartes reales (`RIX150930NF1`, `MCP2404207Q2`, `BMS170308GT7`) ligados a montos de
+contador": `[RFC real, redactado en P6-05]` (4 letras + fecha de nacimiento + homoclave), junto a RFC de
+contrapartes reales (tres RFC de personas morales, redactados en P6-05) ligados a montos de
 facturas reales.
 
 Aparece en `README.md` (líneas 144 y 275), `apps/api/CLAUDE.md` (110),
@@ -135,7 +135,7 @@ sobre datos personales, y el `README.md` es el archivo más visible del repo.
 modo autónomo prohíbe `filter-repo` y force push. **Tarea propuesta para el backlog** (la
 decide Ricardo, no la agrego yo):
 
-> **S-09 · Anonimizar el caso real CADG620317EE0** — mismo tratamiento que S-04: RFC, nombres
+> **S-09 · Anonimizar el caso real del backend** — mismo tratamiento que S-04: RFC, nombres
 > y homoclaves sintéticos, montos reales, en `README.md`, `apps/api/CLAUDE.md` y los dos
 > archivos de tests. Decisión de Ricardo si basta con limpiar HEAD o hay que reescribir
 > historia (ver S-06, que ya plantea lo mismo para `apps/api/pfebrero/`). Nota: S-07 ya cubre
@@ -2347,7 +2347,7 @@ para la contadora.
   pero el enunciado decía "todo texto visible". **ABIERTO.**
 - **El PDF no imprime renglón de totales**, así que el contador que lee el papel
   nunca ve el total del motor (observación del revisor del cuadre). **ABIERTO.**
-- **El RFC real `CADG620317EE0` sigue vivo** en `apps/api/CLAUDE.md`, en tres
+- **El RFC real del caso real (redactado en P6-05) sigue vivo** en `apps/api/CLAUDE.md`, en tres
   archivos de tests y en `.claude/prompts/` desde el commit inicial. No es de
   esta corrida y ya tiene tarea (S-07), pero es una violación viva de la regla
   de la casa y merece subir de prioridad.

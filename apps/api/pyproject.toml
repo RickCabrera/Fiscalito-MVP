@@ -73,13 +73,16 @@ addopts = "-v --tb=short"
 line-length = 100
 # Migraciones autogeneradas por Alembic: no se editan a mano.
 extend-exclude = ["migrations/versions"]
-target-version = "py311"
+# Alineado con el Python que corre el CI (`.github/workflows/ci.yml`, 3.12). Sólo se
+# seleccionan E/F/W/I, que no dependen de la versión, así que `requires-python >= 3.11`
+# sigue siendo válido para entornos locales (S-01b).
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

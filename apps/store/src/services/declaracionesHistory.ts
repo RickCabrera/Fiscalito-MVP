@@ -442,8 +442,8 @@ export async function obtenerISRPagadoAnterior(
     const periodo: string = data.periodo ?? '';
     // Parsear "Enero 2026", "Bimestre 1 2026", etc.
     const parts = periodo.toLowerCase().split(' ');
-    let mes = 0;
-    let anio = 0;
+    let mes: number;
+    let anio: number;
 
     if (parts[0] === 'bimestre') {
       // "Bimestre 1 2026" → último mes del bimestre

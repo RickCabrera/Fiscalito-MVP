@@ -119,26 +119,26 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load profile from Firestore when user changes
-  useEffect(() => {
+  // Al cambiar el usuario (o al resolver auth) se reinicia el perfil DURANTE el
+  // render, no en el efecto: así el primer render con el usuario nuevo ya trae
+  // DEFAULT_PROFILE y `loading` correcto, sin un render intermedio con el perfil
+  // del usuario anterior (patrón "ajustar estado cuando cambia una prop").
+  const [sesionVista, setSesionVista] = useState<{ user: typeof user; authLoading: boolean } | null>(null);
+  if (!sesionVista || sesionVista.user !== user || sesionVista.authLoading !== authLoading) {
+    setSesionVista({ user, authLoading });
     setProfileState({ ...DEFAULT_PROFILE });
     setError(null);
-
     // Si AuthContext aún no resuelve onAuthStateChanged, seguimos en loading.
     // Evita devolver DEFAULT_PROFILE con loading=false y disparar navegación
     // errónea al onboarding para un usuario realmente autenticado.
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
+    setLoading(authLoading || !!user);
+  }
 
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  // Load profile from Firestore when user changes
+  useEffect(() => {
+    if (authLoading || !user) return;
 
     let cancelled = false;
-    setLoading(true);
 
     (async () => {
       try {

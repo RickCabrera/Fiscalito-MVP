@@ -105,7 +105,7 @@ async function ejecutarNavegar(
 
 async function ejecutarCargarXmlsDemo(
   args: { año: number; mes: number },
-  _deps: ToolDeps,
+  deps: ToolDeps,
 ): Promise<ToolResult> {
   const { año, mes } = args;
   const mesPadded = String(mes).padStart(2, '0');
@@ -182,14 +182,18 @@ async function ejecutarCargarXmlsDemo(
   setFacturas([...previas, ...nuevas]);
   setPeriodo(año, mes);
 
-  const ingresos = nuevas.filter((f) => f.tipo === 'I').length;
-  const egresos = nuevas.filter((f) => f.tipo === 'E').length;
+  // B-01: una factura de compra también es TipoDeComprobante="I" (lo emite el
+  // proveedor), así que contar por tipo daba siempre "0 egreso(s)". Lo que
+  // distingue emitidas de recibidas es el RFC del cliente activo: emitida si él
+  // es el emisor, recibida si él es el receptor. Sin RFC capturado, el tipo del
+  // comprobante es lo único que hay.
+  const { ingresos, egresos } = contarEmitidasYRecibidas(nuevas, deps.perfilFiscal.rfc);
 
   return {
     ok: true,
     summary:
       `Cargué ${nuevas.length} factura(s) demo de ${mesPadded}/${año} ` +
-      `(${ingresos} ingreso(s), ${egresos} egreso(s)). ` +
+      `(${ingresos} emitida(s), ${egresos} recibida(s)). ` +
       `Total acumulado: ${previas.length + nuevas.length} factura(s).`,
     data: {
       cargadas: nuevas.length,
@@ -199,6 +203,28 @@ async function ejecutarCargarXmlsDemo(
       periodo: `${mesPadded}/${año}`,
     },
   };
+}
+
+/**
+ * Cuenta facturas emitidas (ingresos) y recibidas (egresos) por RFC del
+ * contribuyente. Si no hay RFC, cae al tipo de comprobante (I/E).
+ */
+export function contarEmitidasYRecibidas(
+  facturas: CFDI[],
+  rfcContribuyente: string | undefined,
+): { ingresos: number; egresos: number } {
+  const rfc = (rfcContribuyente ?? '').trim().toUpperCase();
+  if (!rfc) {
+    return {
+      ingresos: facturas.filter((f) => f.tipo === 'I').length,
+      egresos: facturas.filter((f) => f.tipo === 'E').length,
+    };
+  }
+  const ingresos = facturas.filter((f) => f.rfc_emisor.toUpperCase() === rfc).length;
+  const egresos = facturas.filter(
+    (f) => f.rfc_emisor.toUpperCase() !== rfc && f.rfc_receptor.toUpperCase() === rfc,
+  ).length;
+  return { ingresos, egresos };
 }
 
 async function ejecutarCalcularPredeclaracion(
@@ -330,7 +356,12 @@ async function ejecutarCalcularPredeclaracion(
 // Registry: nombre → ejecutor
 // ────────────────────────────────────────────────────────────
 
-type ToolExecutor = (args: any, deps: ToolDeps) => Promise<ToolResult>;
+// Firma en forma de método para que cada ejecutor declare sus argumentos
+// concretos (`{ año, mes }`) y aun así quepa en el registro: los parámetros de
+// un método son bivariantes, los de un tipo función no.
+type ToolExecutor = {
+  ejecutar(args: Record<string, unknown>, deps: ToolDeps): Promise<ToolResult>;
+}['ejecutar'];
 
 export const TOOL_EXECUTORS: Record<ToolName, ToolExecutor> = {
   navegar: ejecutarNavegar,
