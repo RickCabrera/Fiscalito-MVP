@@ -174,6 +174,14 @@ describe('escrituras: verbo, ruta, cuerpo y token', () => {
     expect(p.auth).toBe('Bearer token-1');
   });
 
+  it('el primer cliente sin periodo lo manda como null, no con fechas vacías (P6-04)', async () => {
+    const sinPeriodo = { ...CLIENTE, periodo_sugerido: { inicio: '', fin: '', fecha_pago: null } };
+    await guardarCliente(sinPeriodo as never);
+    expect(JSON.parse(ultima().body!).periodo_sugerido).toBeNull();
+    await guardarCliente(CLIENTE as never);
+    expect(JSON.parse(ultima().body!).periodo_sugerido).toEqual(PERIODO_GUARDADO);
+  });
+
   it('borrarCliente hace DELETE', async () => {
     await borrarCliente('mio');
     expect(ultima()).toMatchObject({

@@ -81,3 +81,46 @@ sus pruebas usan mocks de `services/firebase`.
 **Cuándo revisar esta decisión:** si vuelve a aparecer código del backend que lea o escriba
 Firestore, o un test marcado `emulador`. En ese caso el job es `npx firebase-tools emulators:exec
 --only firestore "pytest -m emulador"` y entra al gate.
+
+## Decisión P6-04 · Pruebas de punta a punta con Playwright, sin Firebase
+
+`apps/store/e2e/recorrido.spec.ts` recorre, por la UI real, lo que hace un despacho: registro y
+onboarding → alta de cliente → e.firma y CSD (`.cer`/`.key` sintéticos subidos por el
+formulario) → descarga del SAT (falso) del mes anterior → pólizas → balanza → resumen de
+impuestos → empleado, checadas y nómina → cierre y timbrado (PAC falso) → envío de recibos
+(correo falso). Sólo las **checadas** se siembran por la API: vienen de un aparato, no de una
+pantalla. Corre con `npm run e2e` (desde `apps/store`) y en CI en el job `e2e`.
+
+**Autenticación: dobles de Firebase en el front + el atajo que el backend ya tenía.** Se
+evaluó el emulador de Firebase Auth (`firebase-tools`) y se descartó: el front también lee el
+perfil de Firestore (y ese emulador pide Java y descarga su jar), `firebase-tools` es una
+dependencia enorme para CI, y del lado del backend igual había que encender un atajo para
+aceptar sus tokens. Lo elegido:
+
+- **Front:** con `VITE_E2E=1`, Vite sustituye `firebase/app`, `firebase/auth` y
+  `firebase/firestore` por `src/e2e/*Falso.ts` (sesión por correo y Firestore en
+  `localStorage`). Sin la variable la lista de alias va vacía (`src/e2e/aliasesE2E.ts`); ningún
+  módulo de la app importa esa carpeta (`aliasesE2E.test.ts`), y el job `frontend` corre
+  `e2e/verificar-build.mjs` sobre el `dist/` normal para confirmar que no trae los dobles.
+- **Backend:** el doble entrega el uid como token y la API lo acepta sólo con su atajo de
+  pruebas, que exige `PERMITIR_TOKEN_SIN_VERIFICAR=1` **y** `FIRESTORE_EMULATOR_HOST`, y está
+  vetado con `FISCALITO_ENTORNO=produccion` (`app/auth_firebase.sin_verificar_activo`). Nada
+  nuevo se abrió en producción: un front compilado por error con el flag recibiría 401.
+
+**Entorno del recorrido** (`e2e/levantar.sh`, lo arranca `playwright.config.ts`): SQLite
+temporal nueva en cada corrida, worker de la cola corriendo (`--pausa 0.5`), todos los
+adaptadores en `falso`, llave maestra fija de la corrida (API y worker son dos procesos), y el
+SAT falso con datos: `FISCALITO_SAT_FALSO_DIR` apunta a los CFDI de `e2e/cfdis.py` y
+`FISCALITO_SAT_SEGUNDOS_PRIMERA_VERIFICACION=1` (ver `servicios-externos.md`). Los logs de la
+API van a `apps/store/e2e-logs/api.log`, que CI sube como artefacto si el recorrido falla.
+
+**SQLite abre con `BEGIN IMMEDIATE`** (`app/db/session.preparar_sqlite`). El e2e destapó que
+las primeras peticiones simultáneas de una cuenta nueva chocaban al crear su despacho
+(`database is locked`, sin esperar el `timeout`): con `BEGIN` diferido, dos transacciones que
+leen y luego escriben se interbloquean. Sólo afecta a SQLite (desarrollo y pruebas).
+
+**Reglas del recorrido:** un solo test con `test.step` por etapa (es una historia con
+estado), sin reintentos (el segundo intento correría contra la base del primero), y
+aserciones sobre lo que ve el usuario (totales de la balanza, IVA a cargo, "Timbrado",
+"enviado"). Un paso que no se pueda correr por una limitación real del entorno va con
+`test.fixme` y la razón, nunca con `skip` en silencio.

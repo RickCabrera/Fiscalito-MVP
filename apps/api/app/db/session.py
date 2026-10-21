@@ -23,6 +23,15 @@ def preparar_sqlite(motor: Engine) -> None:
     principio de una transacción se confirmaba solo al liberarse y el `rollback()` de
     afuera ya no lo deshacía (P0-04: la cola y el programador usan savepoints). La receta
     de SQLAlchemy: apagar el manejo propio del driver y emitir `BEGIN` nosotros.
+
+    **`BEGIN IMMEDIATE`, no `BEGIN` a secas (P6-04).** Con `BEGIN` diferido, dos requests
+    que leen y luego escriben —los primeros de una cuenta nueva crean su despacho en
+    paralelo, y el worker escribe su latido cada vuelta— se bloquean entre sí al subir de
+    lectura a escritura, y SQLite responde `database is locked` AL INSTANTE, sin esperar
+    el `timeout`: es su forma de romper el interbloqueo. Las pruebas de punta a punta lo
+    pegaban en el primer clic. Tomar el candado de escritura al empezar serializa las
+    transacciones (y entonces sí espera hasta `timeout`); en SQLite —desarrollo y
+    pruebas— es el precio correcto. Postgres no pasa por aquí.
     """
 
     @event.listens_for(motor, "connect")
@@ -34,13 +43,14 @@ def preparar_sqlite(motor: Engine) -> None:
 
     @event.listens_for(motor, "begin")
     def _begin(conexion):  # type: ignore[no-untyped-def]
-        conexion.exec_driver_sql("BEGIN")
+        conexion.exec_driver_sql("BEGIN IMMEDIATE")
 
 
 def crear_motor(url: str) -> Engine:
     """Crea el engine. En SQLite activa llaves foráneas y permite uso entre hilos."""
     if url.startswith("sqlite"):
-        motor = create_engine(url, connect_args={"check_same_thread": False})
+        # `timeout`: cuánto espera una transacción el candado de otra (ver `preparar_sqlite`).
+        motor = create_engine(url, connect_args={"check_same_thread": False, "timeout": 30})
 
         preparar_sqlite(motor)
         return motor
