@@ -41,6 +41,54 @@ jobs:
       - run: npm ci
       # tsc + vite build: el gate mínimo de tipos del frontend
       - run: npm run build
-      # Se activa al cerrar S-02 (lint frontend a cero; hoy 20 errores).
-      # - run: npm run lint
+      # P6-04: el build normal no trae los dobles de Firebase del modo e2e.
+      - run: node e2e/verificar-build.mjs
+      # S-02 cerrada en P6-05: lint a cero errores.
+      - run: npm run lint
       - run: npm test
+
+  # P6-04: el recorrido completo de un despacho en Chromium, contra la API de verdad
+  # (SQLite temporal, worker corriendo, adaptadores `falso`). Ver `apps/store/e2e/`.
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+      - name: Dependencias de la API
+        working-directory: apps/api
+        run: pip install -e ".[dev]"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Dependencias del front
+        working-directory: apps/store
+        run: npm ci
+      - name: Chromium de Playwright
+        working-directory: apps/store
+        run: npx playwright install --with-deps chromium
+      - name: Tipos de los specs
+        working-directory: apps/store
+        run: npx tsc -p tsconfig.e2e.json
+      - name: Recorrido completo
+        working-directory: apps/store
+        run: npm run e2e
+        env:
+          PYTHON: python
+      - name: Reporte, trazas y logs de la API
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reporte
+          path: |
+            apps/store/playwright-report/
+            apps/store/test-results/
+            apps/store/e2e-logs/
+          retention-days: 7

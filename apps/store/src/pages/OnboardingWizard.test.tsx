@@ -97,14 +97,14 @@ describe('OnboardingWizard (solo despacho)', () => {
     expect(botonSiguiente().disabled).toBe(false);
   });
 
-  it('al terminar guarda la cuenta como contador y entra a la cartera', async () => {
+  it('al terminar guarda la cuenta como contador y entra al dashboard (P5-02)', async () => {
     montar();
     llenarDespacho();
     fireEvent.click(botonSiguiente());
 
     expect(screen.getByText('Despacho Demo')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Comenzar a usar/ }));
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/clientes'));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/inicio'));
 
     const guardado = setProfile.mock.calls[0][0];
     expect(guardado).toMatchObject({

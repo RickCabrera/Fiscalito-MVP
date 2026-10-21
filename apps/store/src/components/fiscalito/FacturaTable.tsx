@@ -6,7 +6,8 @@ import { FileText, Trash2 } from 'lucide-react';
 
 interface Props {
   facturas: CFDI[];
-  onRemove: (uuid: string) => void;
+  /** Sin `onRemove` la tabla es de sólo lectura (facturas que vienen de la bóveda, P1-06). */
+  onRemove?: (uuid: string) => void;
 }
 
 export default function FacturaTable({ facturas, onRemove }: Props) {
@@ -49,9 +50,9 @@ export default function FacturaTable({ facturas, onRemove }: Props) {
                   </span>
                 </td>
                 <td style={tdStyle}>
-                  <button onClick={() => onRemove(f.uuid)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+                  {onRemove && <button onClick={() => onRemove(f.uuid)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
                     <Trash2 size={14} />
-                  </button>
+                  </button>}
                 </td>
               </tr>
             ))}

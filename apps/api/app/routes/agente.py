@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.config import settings
 from app.constants import NOMBRES_REGIMEN
 from app.schemas.agente import AgentePreDeclaracionRequest, AgentePreDeclaracionResponse
@@ -107,19 +109,24 @@ Responde de forma clara y concisa.
         "pre-declaraciones según el mensaje del usuario."
     ),
 )
-async def agente_predeclaracion(req: AgentePreDeclaracionRequest) -> AgentePreDeclaracionResponse:
+async def agente_predeclaracion(
+    req: AgentePreDeclaracionRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+) -> AgentePreDeclaracionResponse:
     ctx = RequestContext(
         contribuyente=req.contribuyente,
         facturas=req.facturas,
         historial=req.historial,
         periodo_year=req.periodo_year,
         periodo_month=req.periodo_month,
+        # P0-02: la tool de nómina lee las checadas del despacho autenticado.
+        despacho_id=cobrador.despacho_id,
     )
 
+    # P0-02: cada vuelta del loop es una llamada al proveedor y se cobra antes de hacerla.
     if settings.LLM_PROVIDER == "anthropic":
-        return await _run_anthropic_agent(req.mensaje, ctx)
+        return await _run_anthropic_agent(req.mensaje, ctx, cobrador.cobrar)
     else:
-        return await _run_openai_agent(req.mensaje, ctx)
+        return await _run_openai_agent(req.mensaje, ctx, cobrador.cobrar)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -129,6 +136,7 @@ async def agente_predeclaracion(req: AgentePreDeclaracionRequest) -> AgentePreDe
 async def _run_anthropic_agent(
     mensaje: str,
     ctx: RequestContext,
+    cobrar: Callable[[], None] = lambda: None,
 ) -> AgentePreDeclaracionResponse:
     from anthropic import AsyncAnthropic
 
@@ -138,6 +146,7 @@ async def _run_anthropic_agent(
     predeclaracion_result: dict | None = None
 
     for _ in range(10):  # max 10 iteraciones para prevenir loops infinitos
+        cobrar()
         response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL,
             system=SYSTEM_PROMPT_ANTHROPIC,
@@ -196,6 +205,7 @@ async def _run_anthropic_agent(
 async def _run_openai_agent(
     mensaje: str,
     ctx: RequestContext,
+    cobrar: Callable[[], None] = lambda: None,
 ) -> AgentePreDeclaracionResponse:
     from openai import AsyncOpenAI
 
@@ -208,6 +218,7 @@ async def _run_openai_agent(
     predeclaracion_result: dict | None = None
 
     for _ in range(10):
+        cobrar()
         response = await client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             tools=TOOLS_OPENAI,

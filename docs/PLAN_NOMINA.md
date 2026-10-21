@@ -38,7 +38,7 @@ app/
 │   ├── agent_tools.py      # TOOLS_ANTHROPIC/OPENAI + RequestContext + ejecutar_tool ← extender con tools nómina
 │   └── llm_service.py      # explicaciones OpenAI/Anthropic con fallback estático
 knowledge_base/             # 00–14 *.md de referencia fiscal ← agregar nomina/
-tests/                      # un archivo por módulo del engine + caso real CADG620317EE0
+tests/                      # un archivo por módulo del engine + caso real anonimizado SINT010101PF1
 ```
 
 **Frontend `apps/store`** — servicio `imss-manager` ya declarado en `src/services/storeServices.ts` como `coming_soon`, categoría `laboral`, `appliesTo: ['pyme']`. Lo que se construye aquí **es** ese servicio, reenfocado a contadores.
@@ -407,7 +407,7 @@ users/{uid}                          # antes decía `contadores/{uid}`
 ### Fase 0 — Fundamentos (sin código de producto)
 - [ ] `knowledge_base/nomina/20–26` con los valores de la sección 2 y fuentes.
 - [ ] Refactor `constants.py`: `uma_vigente(fecha)`, `salario_minimo_vigente(fecha, zona)`; migrar usos existentes; tests.
-- [ ] **Conseguir caso real con la contadora**: 1 cliente, 1 bimestre completo → lista de empleados con SBC, EMA + EBA, archivo SUA pagado, recibos timbrados. Anonimizar. Es el `test_caso_real_*` que hace defendible el motor (equivalente al CADG620317EE0).
+- [ ] **Conseguir caso real con la contadora**: 1 cliente, 1 bimestre completo → lista de empleados con SBC, EMA + EBA, archivo SUA pagado, recibos timbrados. Anonimizar. Es el `test_caso_real_*` que hace defendible el motor (equivalente al caso real anonimizado SINT010101PF1).
 - [ ] Decidir con la contadora: tablas ISR periódicas vs prorrateo; tratamiento de ausentismos/incapacidades por ramo; resolución del quirk CEAV vs SM.
 
 ### Fase 1 — Motor (`nomina_engine`)

@@ -26,8 +26,8 @@ export function carteraDePrueba(
     loading: false,
     // R-06: el default del doble sigue siendo el catálogo de sólo lectura para
     // no cambiar de significado los tests de pantalla que ya existían. Un test
-    // que quiera la cartera del usuario pasa `origen: 'firestore'`.
-    origen: 'backend',
+    // que quiera la cartera del usuario pasa `origen: 'propia'`.
+    origen: 'catalogo',
     soloLectura: true,
     error: null,
     clientePorId: () => null,

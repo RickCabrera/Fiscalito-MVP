@@ -1,0 +1,31 @@
+"""
+Modelos ORM del plan P. Importar este paquete registra todas las tablas en `Base.metadata`.
+
+Cada dominio vive en su archivo y se importa aquí. Al agregar uno nuevo, impórtalo abajo.
+"""
+
+from app.modelos import acceso  # noqa: F401, I001
+from app.modelos import auditoria  # noqa: F401, I001
+from app.modelos import cfdi  # noqa: F401, I001
+from app.modelos import credenciales  # noqa: F401, I001
+from app.modelos import impuestos  # noqa: F401, I001
+from app.modelos import nomina  # noqa: F401, I001
+from app.modelos import nucleo  # noqa: F401, I001
+from app.modelos import sat_descarga  # noqa: F401, I001
+from app.modelos import sat_verificacion  # noqa: F401, I001
+from app.modelos import trabajos  # noqa: F401, I001
+from app.modelos import contabilidad  # noqa: F401, I001
+from app.modelos import conciliacion  # noqa: F401, I001
+from app.modelos import retenciones_cfdi  # noqa: F401, I001 — P3-04
+from app.modelos import diot  # noqa: F401, I001 — P3-05
+from app.modelos import alertas  # noqa: F401, I001 — P3-09
+from app.modelos import agenda  # noqa: F401, I001 — P3-10
+from app.modelos import equipo  # noqa: F401, I001 — P5-01
+from app.modelos import cobranza  # noqa: F401, I001 — P5-03
+from app.modelos import imss  # noqa: F401, I001 — P4-09/10/11
+from app.modelos import nomina_envio  # noqa: F401, I001 — P4-13
+from app.modelos import suscripciones  # noqa: F401, I001 — P5-08
+from app.modelos import facturacion  # noqa: F401, I001 — P5-04
+from app.modelos import envio_documentos  # noqa: F401, I001 — P5-05
+from app.modelos import whatsapp  # noqa: F401, I001 — P5-06
+from app.modelos import cuenta  # noqa: F401, I001 — P6-01

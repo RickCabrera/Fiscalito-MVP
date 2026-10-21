@@ -18,7 +18,8 @@ El Fiscal Agent API es el "cerebro contable" del ecosistema Fiscalito. Es un mic
 - **Stateless, con UNA excepción declarada (R-07)**: el motor fiscal no guarda nada — todo
   viene en el request, se procesa, se responde. La excepción es `/api/v1/cartera/*`, donde
   Ricardo decidió que el backend fuera **dueño del dato** de la cartera del despacho
-  (`firebase-admin` sobre `users/{uid}/clientes/...`). La razón: había dos dueños del mismo
+  (desde P0-01 en SQL — `app/almacen_cartera.py` sobre `app/modelos/nucleo.py`, filtrado por
+  despacho con `app/tenancy.py`; Firestore sólo lo lee `scripts/migrar_firestore.py`). La razón: había dos dueños del mismo
   dato —el front escribía Firestore directo y el backend calculaba sobre la plantilla que el
   front le mandaba en el body—, y con la plantilla viajando por el cliente, *afirmar un
   cliente y calcular otro* cabe en un JSON. **Ningún cálculo fiscal guarda nada**: la
@@ -117,7 +118,7 @@ fiscal-agent-api/
     ├── conftest.py                  # Fixtures compartidas
     ├── test_calculadora.py          # Motor principal (clasificación, ISR/IVA, flujo efectivo, regímenes)
     ├── test_constants_vigencias.py  # UMA y salario mínimo por fecha de vigencia
-    ├── test_caso_real_enero2026.py  # Caso real CADG620317EE0 enero 2026
+    ├── test_caso_real_enero2026.py  # Caso real anonimizado (SINT010101PF1) enero 2026
     └── test_clasificador_gastos.py  # Clasificador de gastos deducibles
 ```
 
@@ -182,6 +183,14 @@ Agente conversacional con tool use. Provider (Anthropic `claude-haiku-4-5-202510
 - Loop agéntico máx 10 iteraciones. Tools definidas en `services/agent_tools.py`.
 - Retorna: texto + `predeclaracion` calculada (si se invocó la herramienta) + `herramientas_usadas`
 
+> **Auth (P0-02):** todo `/api/v1` exige `Authorization: Bearer <ID token>`; se monta en
+> `app/main.py` (`ROUTERS_PROTEGIDOS` + `dependencies=PROTEGIDO`). Un router nuevo va en esa
+> lista; una ruta pública (webhook) se declara en `app/acceso/dependencias.RUTAS_PUBLICAS`.
+> `tests/plan_p/test_acceso.py` recorre todas las rutas y exige 401 sin token. Lo que gaste LLM
+> pide `Depends(cobrador_llm)` y llama `cobrador.cobrar()` antes de cada llamada al proveedor.
+> El OpenAPI versionado (`docs/openapi.json`) y los tipos TS se regeneran con
+> `PYTHONPATH=. python scripts/exportar_openapi.py` (P0-08).
+>
 > **El contrato vive en `docs/api-contract.md`**, que es la fuente unica. Lo de abajo es un
 > resumen; los endpoints de las epicas D (asistencia, nomina) y E (despacho) estan documentados
 > ahi con su forma de request y response.

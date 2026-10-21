@@ -30,7 +30,8 @@ import { MARCA_CORTA } from './marca';
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
-  | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
+  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'sat' | 'calendario'
+  | 'calculadoras' | 'inicio' | 'cobranza';
 
 export interface SidebarLink {
   id: NavId;
@@ -48,11 +49,19 @@ export interface SidebarLink {
  * aplican; ahora lleva al calendario **patronal** de sus clientes.
  */
 const LINKS_CONTADOR: SidebarLink[] = [
+  // P5-02: el dashboard del despacho es la pantalla de entrada; va primero.
+  { id: 'inicio', to: '/app/inicio', label: 'Inicio' },
   { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
   // R-05: Empleados y Dispositivos son entradas propias, no pestañas escondidas
   // dentro de la ficha. Operan sobre el cliente activo, igual que Nómina.
   { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
   { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
+  // P0-03: la bóveda de CFDI del cliente activo. Va antes de Nómina porque es
+  // de donde todo lo demás leerá sus comprobantes (P1-06).
+  { id: 'boveda', to: '/app/boveda', label: 'Bóveda' },
+  // P1-02: la descarga masiva del SAT llena la bóveda del cliente activo; va
+  // justo después de ella porque es de donde salen sus comprobantes.
+  { id: 'sat', to: '/app/sat', label: 'Descarga SAT' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   // T1: el despacho recupera el servicio fiscal, pero **el del CLIENTE ACTIVO**,
@@ -69,6 +78,13 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // que opera sobre el CLIENTE ACTIVO, y la ruta es la misma que ya usaba el
   // botón del detalle: no hay una segunda forma de entrar que mantener.
   { id: 'contabilito', to: '/app/store/contabilito/use', label: 'Contabilito' },
+  // P3-08: herramientas sueltas del despacho. SIN alcance de cliente (no lee el
+  // cliente activo), por eso no está en `RUTAS_CON_CLIENTE`. Va antes de Perfil:
+  // es herramienta, no ajuste.
+  { id: 'calculadoras', to: '/app/calculadoras', label: 'Calculadoras' },
+  // P5-03: cuentas por cobrar del despacho a TODA su cartera (sin cliente activo).
+  // Sólo dueño y contador la usan; al auxiliar la pantalla le dice que no es suya.
+  { id: 'cobranza', to: '/app/cobranza', label: 'Cobranza' },
   { id: 'perfil', to: '/app/profile', label: 'Perfil' },
 ];
 
@@ -162,7 +178,8 @@ export function getSidebarLinks(): SidebarLink[] {
 
 /** Ruta a la que entra la cuenta al terminar el onboarding o al pedir `/app`. */
 export function rutaInicial(): string {
-  return '/app/clientes';
+  // P5-02: el dashboard del despacho es la pantalla de entrada.
+  return '/app/inicio';
 }
 
 // ────────────────────────────────────────────────────────────
@@ -179,6 +196,12 @@ export function rutaInicial(): string {
  */
 const RUTAS_CON_CLIENTE = [
   '/app/clientes', '/app/empleados', '/app/dispositivos',
+  // P0-03: CUMPLE la regla — `BovedaPage` lee `useClienteActivo` y pide la
+  // bóveda de ESE cliente (`/boveda/clientes/{clave}/cfdi`).
+  '/app/boveda',
+  // P1-02: CUMPLE la regla — `DescargaSatPage` lee `useClienteActivo` y pide
+  // config, bitácora y solicitudes de ESE cliente (`/sat/clientes/{clave}/...`).
+  '/app/sat',
   // K: `/app/nomina` sin cliente activo pinta "Elige un cliente primero"; con el
   // selector encima se elige ahí mismo y `NominaDelClienteActivo` redirige a la
   // nómina de ese cliente. Con cliente, la nómina vive en
@@ -223,89 +246,6 @@ export function rutaTieneAlcanceDeCliente(pathname: string): boolean {
 // Tabs del servicio Fiscalito
 // ────────────────────────────────────────────────────────────
 
-export type TabFiscalito =
-  | 'declaracion' | 'anual' | 'deducciones' | 'calendario' | 'comparar'
-  | 'diot' | 'retenciones' | 'multiperiodo' | 'estado' | 'pagospm';
-
-/**
- * Los tabs de una PERSONA MORAL (601) — T6, cascarón.
- *
- * `pagospm` primero **porque es el tab por defecto**: `allowedTabIds[0]` es lo
- * que la pantalla abre, y abrir en `declaracion` sería recibir a la PM con la
- * única pantalla que no le sirve.
- *
- * `declaracion` entra a propósito aunque el motor no la soporte: la tarea pide
- * que quede **deshabilitada con mensaje**, no escondida. Escondida, el contador
- * no tiene cómo saber si es que la PM no declara o es que el producto todavía
- * no puede; `FiscalitoServicePage` la reemplaza por el aviso. El resto —anual,
- * comparar, DIOT, retenciones, multi-periodo, estado de cuenta— sí se queda
- * fuera: todas salen del mismo motor de persona física y no hay nada honesto
- * que pintar en ellas para una moral.
- */
-const TABS_601: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
-  'pagospm', 'calendario', 'declaracion',
-]);
-
-/**
- * El set completo: el de `pyme` y el de un 612.
- *
- * Congelado, y **se devuelve copiado** (`tabsCompletos()`), no por referencia.
- * Antes cada rama de `getTabsForProfile` construía su propio literal, así que
- * extraer la constante introdujo un arreglo compartido entre cuatro ramas: un
- * `.sort()` o un `.push()` de un consumidor futuro le habría cambiado los tabs a
- * todos los perfiles a la vez, y eso se ve bien hasta que no. Hoy nadie lo muta
- * —los dos consumidores sólo hacen `.includes()` y `[0]`— pero la trampa era
- * nueva y la cerró el revisor de T1.
- */
-const TABS_COMPLETOS: readonly TabFiscalito[] = Object.freeze<TabFiscalito[]>([
-  'declaracion', 'anual', 'calendario', 'comparar', 'diot', 'retenciones', 'multiperiodo', 'estado',
-]);
-
-/** Copia fresca del set completo, para no repartir la misma referencia. */
-function tabsCompletos(): TabFiscalito[] {
-  return [...TABS_COMPLETOS];
-}
-
-/**
- * Tabs de Fiscalito para el CLIENTE ACTIVO del despacho, por su régimen.
- *
- * Desde K no hay contribuyentes: el sujeto del cálculo siempre es un cliente.
- * Sin cliente elegido (`regimen` vacío) no hay tabs: la pantalla pinta el estado
- * vacío con el selector en vez de tabs sobre un cliente inexistente.
- */
-export function getTabsForProfile(regimen: string | null): TabFiscalito[] {
-  if (!regimen) return [];
-  return tabsPorRegimenDeCliente(regimen);
-}
-
-/**
- * Tabs que se le pueden trabajar a un cliente del despacho, por su régimen.
- *
- * Los dos regímenes que `contributorProfiles.ts` declara para el perfil
- * `contador` —y los dos únicos que el alta de cliente ofrece— son 612 y 626, y
- * son los que deciden el caso que importa: a un 626 no se le ofrecen DIOT ni
- * Retenciones.
- *
- * **ESE CORTE ES HEREDADO, NO VERIFICADO.** La rama `regimen === '626'` de abajo
- * existe desde E-01 y T1 no la inventó: lo que T1 cambió es a quién se le aplica
- * (el cliente del despacho, no el contribuyente). **Pendiente de confirmar con
- * la contadora: `docs/decisiones-nomina.md` §D30**, donde queda escrito por qué
- * DIOT y Retenciones son dos preguntas separadas y por qué la de Retenciones
- * probablemente no se contesta con el régimen.
- *
- * El resto de los regímenes no se inventa: si algún día el alta de cliente
- * abriera 605, 606 o 625, esto ya responde lo mismo que responde para un
- * contribuyente de ese régimen, en vez de degradar al set completo en silencio.
- */
-function tabsPorRegimenDeCliente(regimen: string): TabFiscalito[] {
-  // T6: un cliente persona moral ve lo mismo que una PM que entra por su
-  // cuenta. El alta de cliente ya ofrece 601 (`REGIMENES_DE_CLIENTE`), así que
-  // esta rama no es hipotética como las de 605/606/625.
-  if (regimen === '601') return [...TABS_601];
-  if (regimen === '605') return ['deducciones', 'calendario'];
-  if (regimen === '626') return ['declaracion', 'anual', 'calendario', 'comparar', 'estado'];
-  if (regimen === '606') return ['declaracion', 'anual', 'calendario', 'comparar', 'multiperiodo', 'estado'];
-  if (regimen === '625') return ['declaracion', 'anual', 'calendario', 'estado'];
-  // 612 y cualquier otro: el set completo, que es el de `pyme`.
-  return tabsCompletos();
-}
+// Viven en `tabsFiscalito.ts` (P6-05: tope de 300 líneas). Se reexportan para que
+// quien importa de `navigation` no cambie.
+export { getTabsForProfile, type TabFiscalito } from './tabsFiscalito';

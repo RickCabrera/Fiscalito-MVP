@@ -9,6 +9,7 @@ errores, forma de la respuesta— y **no** la aritmética, que ya mide
 import json
 from datetime import date, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,13 +17,13 @@ from fastapi.testclient import TestClient
 from app.asistencia.almacen import almacen
 from app.constants import CLIENTE_DEMO
 from app.demo_nomina import PLANTILLA_DEMO
-from app.main import app
 from app.routes.agente import (
     SYSTEM_PROMPT_ANTHROPIC,
     SYSTEM_PROMPT_OPENAI,
 )
 from app.services.agent_tools import TOOLS_ANTHROPIC, TOOLS_OPENAI, ejecutar_tool
 from app.services.agent_tools_nomina import calcular_nomina_periodo
+from tests.conftest import UID_PRUEBA
 
 CALCULAR = "/api/v1/nomina/calcular-periodo"
 EVENTOS = "/api/v1/asistencia/eventos"
@@ -39,8 +40,9 @@ def _almacen_limpio():
 
 
 @pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+def cliente_http(http_nomina) -> TestClient:
+    """P4-01: autenticado y con la cartera sembrada; la nómina lee de ahí."""
+    return http_nomina
 
 
 def _incidencias(faltas_de=(), dias=16):
@@ -75,51 +77,40 @@ class TestContrato:
         }
         assert cuerpo["porcion_mensual"]["empleados"] == 9
 
-    def test_omitir_empleados_usa_la_plantilla_de_la_demo(self, cliente_http):
+    def test_la_plantilla_sale_de_la_cartera_del_cliente(self, cliente_http):
+        """P4-01: sin `empleados` en el cuerpo, la plantilla es la de la cartera."""
         cuerpo = cliente_http.post(CALCULAR, json=_cuerpo()).json()
-        assert cuerpo["origen_plantilla"] == "demo"
+        assert cuerpo["origen_plantilla"] == "cartera"
         nombres = {r["nombre"] for r in cuerpo["recibos"]}
         assert nombres == {e.nombre for e in PLANTILLA_DEMO}
 
-    def test_un_cliente_que_no_es_el_de_la_demo_no_hereda_la_plantilla(
-        self, cliente_http
-    ):
+    def test_un_cliente_que_no_esta_en_la_cartera_es_404(self, cliente_http):
         """
-        Calcularle a un cliente real la nómina de otras nueve personas —y
-        dejar que la exporte en PDF— es peor que responder un error.
+        P4-01: no hay plantilla por omisión. Un cliente que no es del despacho es
+        404 (nunca 403, que confirmaría que existe).
         """
         respuesta = cliente_http.post(CALCULAR, json=_cuerpo(cliente="acme"))
-        assert respuesta.status_code == 422
-        assert "su propia plantilla" in respuesta.json()["error"]
+        assert respuesta.status_code == 404
 
-    def test_con_empleados_en_el_cuerpo_el_origen_lo_dice(self, cliente_http):
-        empleados = [
-            {
-                "empleado_no": "X-01",
-                "nombre": "PERSONA DE PRUEBA",
-                "salario_diario": "400.00",
-                "salario_diario_integrado": "420.00",
-            }
-        ]
-        cuerpo = cliente_http.post(
-            CALCULAR,
-            json={
-                "cliente": "acme",
-                "periodo": PERIODO,
-                "incidencias": [
-                    {
-                        "empleado_no": "X-01",
-                        "dias_periodo": 16,
-                        "faltas": 0,
-                        "dias_ausentismo": 0,
-                    }
-                ],
-                "parametros": PARAMETROS,
-                "empleados": empleados,
-            },
+    def test_una_plantilla_ajena_en_el_cuerpo_NO_cambia_el_resultado(self, cliente_http):
+        """
+        El "Listo cuando" de P4-01: mandar una plantilla ajena no cambia nada. Se
+        mandan los mismos números de empleado con salarios inventados y una persona
+        de más; los recibos salen idénticos a los de la cartera y se advierte.
+        """
+        ajena = [
+            {"empleado_no": e.empleado_no, "nombre": "OTRA PERSONA",
+             "salario_diario": "9999.00", "salario_diario_integrado": "9999.00"}
+            for e in PLANTILLA_DEMO
+        ] + [{"empleado_no": "X-01", "nombre": "INTRUSO", "salario_diario": "500",
+              "salario_diario_integrado": "520"}]
+        limpia = cliente_http.post(CALCULAR, json=_cuerpo(guardar=False)).json()
+        con_ajena = cliente_http.post(
+            CALCULAR, json=_cuerpo(guardar=False, empleados=ajena)
         ).json()
-        assert cuerpo["origen_plantilla"] == "request"
-        assert len(cuerpo["recibos"]) == 1
+        assert con_ajena["recibos"] == limpia["recibos"]
+        assert con_ajena["total_neto"] == limpia["total_neto"]
+        assert any("Se ignoró la plantilla" in a for a in con_ajena["advertencias"])
 
     def test_la_respuesta_advierte_que_las_cuotas_son_del_periodo(self, cliente_http):
         """
@@ -138,16 +129,17 @@ class TestContrato:
 
 
 class TestErrores:
-    def test_la_periodicidad_catorcenal_responde_422_con_el_motivo_de_d10(
+    def test_catorcenal_con_un_periodo_de_16_dias_responde_422_por_duracion(
         self, cliente_http
     ):
+        """P4-03: la catorcenal ya tiene tarifa (derivada); la guarda de duración sigue."""
         respuesta = cliente_http.post(
             CALCULAR,
             json=_cuerpo(parametros={**PARAMETROS, "clave_periodicidad": "03"}),
         )
         assert respuesta.status_code == 422
         mensaje = respuesta.json()["error"]
-        assert "catorcenal" in mensaje and "D10" in mensaje
+        assert "catorcenal" in mensaje and "14 días" in mensaje
 
     def test_una_prima_de_riesgo_fuera_de_ley_se_rechaza_en_el_schema(
         self, cliente_http
@@ -277,10 +269,13 @@ class TestExplicacion:
 
 
 class TestOpenAPI:
-    def test_el_endpoint_se_anuncia_como_demo(self, cliente_http):
-        esquema = cliente_http.get("/openapi.json").json()
-        operacion = esquema["paths"]["/api/v1/nomina/calcular-periodo"]["post"]
-        assert operacion["summary"].startswith("DEMO")
+    def test_el_endpoint_exige_autenticacion(self):
+        """P4-01: ya no es demo. Sin token, 401."""
+        from app.main import app as aplicacion
+
+        anonimo = TestClient(aplicacion)
+        assert anonimo.post(CALCULAR, json=_cuerpo()).status_code == 401
+
 
 
 class TestToolDelAgente:
@@ -357,10 +352,11 @@ class TestToolDelAgente:
     def test_el_despachador_la_encuentra(self, cliente_http):
         dias = [date(2026, 8, 17) + timedelta(days=n) for n in range(5)]
         self._sembrar(cliente_http, dias)
+        # P0-02: la tool lee las checadas del despacho del request (el de la sesión).
         salida, desglose = ejecutar_tool(
             "calcular_nomina_periodo",
             {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"},
-            ctx=None,
+            ctx=SimpleNamespace(despacho_id=UID_PRUEBA),
         )
         datos = json.loads(salida)
         assert desglose is None
@@ -392,10 +388,21 @@ class TestToolDelAgente:
         self._sembrar(cliente_http, [date(2026, 8, 24)], empleados=["E-99"])
         datos = json.loads(
             calcular_nomina_periodo(
-                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}
+                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}, UID_PRUEBA
             )
         )
         assert any("E-99" in a for a in datos["advertencias"])
+
+    def test_no_ve_las_checadas_de_otro_despacho(self, cliente_http):
+        """P0-02: las checadas sembradas por un despacho no alimentan la nómina de otro."""
+        dias = [date(2026, 8, 17) + timedelta(days=n) for n in range(5)]
+        self._sembrar(cliente_http, dias)
+        datos = json.loads(
+            calcular_nomina_periodo(
+                {"periodo_inicio": "2026-08-16", "periodo_fin": "2026-08-31"}, "otro-despacho"
+            )
+        )
+        assert "error" in datos
 
     def test_una_fecha_invalida_devuelve_error_y_no_revienta_el_turno(self):
         salida = json.loads(

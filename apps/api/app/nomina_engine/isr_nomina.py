@@ -39,7 +39,7 @@ from decimal import Decimal
 from app.constants import uma_vigente
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.subsidio import subsidio_empleo
-from app.nomina_engine.tablas_isr_periodicas import isr_periodo
+from app.nomina_engine.tablas_isr_periodicas import RenglonTarifa, isr_con_tarifa, isr_periodo
 from app.redondeo import redondear
 
 # Topes de exencion en veces la UMA diaria vigente a la fecha de pago.
@@ -138,12 +138,12 @@ def _horas_extra(p: Percepcion, ctx: ContextoExencion) -> PercepcionGravada:
     Al de salario minimo se le exenta el 100 % dentro de los limites de la LFT;
     a los demas, el 50 % sin exceder **5 UMA por semana** de servicios.
 
-    LIMITE CONOCIDO, no implementado: el Art. 66 LFT acota el tiempo extra a
-    3 horas diarias y 3 veces por semana, y lo que excede se paga al triple y
-    es 100 % gravado. Este modulo no recibe las horas, asi que no lo verifica.
-    Ojo con la direccion del error: aqui va **a favor del trabajador y en
-    contra del fisco**, la contraria a la que el resto del modulo cuida. Por
-    eso el fundamento devuelto no afirma que el limite se haya cumplido.
+    El Art. 66 LFT acota el tiempo extra (3 horas diarias, veces y tope semanal)
+    y lo que excede se paga al triple (Art. 68 segundo parrafo) y es 100 %
+    gravado. Este modulo no recibe las horas: el tope lo aplica antes
+    `jornada.py` (P6-07, diario con las horas capturadas por dia; semanal
+    siempre), y aqui solo llegan las dobles. Por eso el fundamento devuelto no
+    afirma que el limite se haya cumplido.
     """
     if ctx.es_trabajador_de_salario_minimo:
         return _exenta_todo(
@@ -257,6 +257,7 @@ def isr_retenido(
     ingreso_gravado_mensual: Decimal,
     dias_periodo: int,
     es_trabajador_de_salario_minimo: bool = False,
+    tarifa: tuple[RenglonTarifa, ...] | None = None,
 ) -> ResultadoISR:
     """
     ISR a retener del periodo.
@@ -274,7 +275,8 @@ def isr_retenido(
     entrega en efectivo, y se reporta en `subsidio_no_entregado` porque el CFDI
     lo declara aparte (`SubsidioCausado`) del importe entregado.
     """
-    causado = isr_periodo(base, clave_periodicidad, fecha)
+    # P4-03: `tarifa` explicita = la de un periodo PARCIAL (§D26).
+    causado = isr_con_tarifa(base, tarifa) if tarifa else isr_periodo(base, clave_periodicidad, fecha)  # noqa: E501
     subsidio = subsidio_empleo(fecha, ingreso_gravado_mensual, dias_periodo)
     # DECISIÓN PROVISIONAL (nocturno): al trabajador de salario minimo el
     # subsidio no se acredita —no hay ISR retenido contra el cual hacerlo— y

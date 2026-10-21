@@ -1,12 +1,13 @@
-/** Tab de pre-declaración: subir XMLs, ver tabla de facturas, calcular */
+/**
+ * Tab de pre-declaración: facturas del mes (de la bóveda del cliente o de archivos
+ * sueltos, P1-06), tabla y cálculo.
+ */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { parseMultipleCFDI } from '../../services/cfdiParser';
-import { ACCEPT_XML, separarXml } from '../../services/archivosXml';
-import { calcularPreDeclaracion, facturasFiscales } from '../../services/fiscalAgentApi';
+import { calcularPreDeclaracion } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, obtenerAcumuladoAnterior, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { useAgent } from '../../agent/AgentContext';
 import { labelStyle } from '../../utils/styles';
@@ -15,8 +16,10 @@ import SuccessNotice from '../common/SuccessNotice';
 import FacturaTable from './FacturaTable';
 import ResultadoDeclaracion from './ResultadoDeclaracion';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
-import ErroresDeCarga from './ErroresDeCarga';
-import { Upload, AlertCircle, Loader, CheckCircle } from 'lucide-react';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import AvisoAcumulado106, { type Acumulado106 } from './AvisoAcumulado106';
+import { useFuenteFacturas } from './useFuenteFacturas';
+import { Loader, CheckCircle } from 'lucide-react';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -28,45 +31,49 @@ export default function PreDeclaracionTab() {
   const perfil = usePerfilFiscal();
   const { user } = useAuth();
   const agent = useAgent();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const facturas = agent.facturas;
   const resultado = agent.resultado;
   const year = agent.periodoYear;
   const month = agent.periodoMonth;
 
-  const [parseErrors, setParseErrors] = useState<{ fileName: string; error: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [dragging, setDragging] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [pagosAnteriores, setPagosAnteriores] = useState(0);
-  const [pagosAnterioresAuto, setPagosAnterioresAuto] = useState<number | null>(null);
-  const [loadingPagos, setLoadingPagos] = useState(false);
+  const [pagosAutoCargados, setPagosAnterioresAuto] = useState<number | null>(null);
   const [modoManual, setModoManual] = useState(false);
   const [predialPagado, setPredialPagado] = useState(0);
   const [incluyePredial, setIncluyePredial] = useState(false);
-  const [acumuladoAnterior, setAcumuladoAnterior] = useState<{
-    ingresos_acumulados: number;
-    deducciones_acumuladas: number;
-    isr_pagado_anterior: number;
-    meses_encontrados: number[];
-    meses_faltantes: number[];
-  } | null>(null);
-  const [loadingAcumulado, setLoadingAcumulado] = useState(false);
+  const [acumuladoCargado, setAcumuladoAnterior] = useState<Acumulado106 | null>(null);
+  // Consulta del acumulado que ya respondió; "cargando" = la vigente aún no.
+  const [consultaResuelta, setConsultaResuelta] = useState<string | null>(null);
+
+  // P1-06: por defecto, los CFDI del mes salen de la bóveda del cliente activo. Si el
+  // asistente ya cargó XML (demo), se arranca en archivos sueltos para no esconderlos.
+  const fuente = useFuenteFacturas({
+    clave: perfil.clienteId, anio: year, mes: month, manual: facturas,
+    conRelacionados: true, preferirArchivos: facturas.length > 0,
+  });
 
   const esArrendamiento = perfil.regimen === '606';
   const esEmpresarialOArr = ['612', '606'].includes(perfil.regimen);
 
+  // El acumulado del Art. 106 sólo aplica a 612/606 desde febrero y con sesión;
+  // fuera de eso se deriva `null` en el render en vez de borrarlo en el efecto.
+  const aplicaAcumulado = esEmpresarialOArr && month > 1 && !!user?.uid;
+  const acumuladoAnterior = aplicaAcumulado ? acumuladoCargado : null;
+  const pagosAnterioresAuto = aplicaAcumulado ? pagosAutoCargados : null;
+  const consultaVigente = aplicaAcumulado
+    ? `${year}|${month}|${user?.uid}|${perfil.clienteId ?? ''}|${modoManual}`
+    : null;
+  const loadingAcumulado = consultaVigente !== null && consultaResuelta !== consultaVigente;
+  const loadingPagos = loadingAcumulado;
+
   useEffect(() => {
-    if (!esEmpresarialOArr || month <= 1 || !user?.uid) {
-      setAcumuladoAnterior(null);
-      setPagosAnterioresAuto(null);
-      return;
-    }
+    if (!esEmpresarialOArr || month <= 1 || !user?.uid) return;
     let cancelled = false;
-    setLoadingAcumulado(true);
-    setLoadingPagos(true);
+    const consulta = `${year}|${month}|${user.uid}|${perfil.clienteId ?? ''}|${modoManual}`;
     obtenerAcumuladoAnterior(user.uid, year, month, perfil.clienteId)
       .then((result) => {
         if (cancelled) return;
@@ -81,39 +88,17 @@ export default function PreDeclaracionTab() {
         }
       })
       .finally(() => {
-        if (!cancelled) {
-          setLoadingAcumulado(false);
-          setLoadingPagos(false);
-        }
+        if (!cancelled) setConsultaResuelta(consulta);
       });
     return () => { cancelled = true; };
   }, [year, month, user?.uid, esEmpresarialOArr, modoManual, perfil.clienteId]);
-
-  const handleFiles = useCallback(async (files: FileList | File[]) => {
-    const { xml: xmlFiles, rechazados } = separarXml(files);
-    if (rechazados.length > 0) setParseErrors((prev) => [...prev, ...rechazados]);
-    if (xmlFiles.length === 0) return;
-    const result = await parseMultipleCFDI(xmlFiles);
-    const existingUuids = new Set(agent.facturas.map((f) => f.uuid));
-    const nuevas = result.success.filter((f) => !existingUuids.has(f.uuid));
-    if (nuevas.length > 0) agent.setFacturas([...agent.facturas, ...nuevas]);
-    if (result.errors.length > 0) {
-      setParseErrors((prev) => [...prev, ...result.errors]);
-    }
-  }, [agent]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    handleFiles(e.dataTransfer.files);
-  }, [handleFiles]);
 
   const removeCFDI = (uuid: string) => {
     agent.setFacturas(agent.facturas.filter((f) => f.uuid !== uuid));
   };
 
   const handleCalcular = async () => {
-    if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
+    if (fuente.paraCalcular.length === 0) { setError(fuente.motivoVacio); return; }
     if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
     setError('');
@@ -121,7 +106,7 @@ export default function PreDeclaracionTab() {
     try {
       const res = await calcularPreDeclaracion({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(facturas),
+        facturas: fuente.paraCalcular,
         periodo_year: year,
         periodo_month: month,
         incluir_explicacion: true,
@@ -142,7 +127,7 @@ export default function PreDeclaracionTab() {
           desglose: desgloseRecordDesde(res.desglose),
           explicacion: res.explicacion ?? null,
           advertencias: res.advertencias ?? [], recomendaciones: res.recomendaciones ?? [],
-          facturas_count: facturas.length,
+          facturas_count: fuente.delPeriodo.length,
         }, 'predeclaracion', perfil.clienteId).then(() => setGuardado(true)).catch(() => { /* silent */ });
       }
     } catch (e) {
@@ -155,7 +140,6 @@ export default function PreDeclaracionTab() {
   const resetAll = () => {
     agent.setFacturas([]);
     agent.setResultado(null);
-    setParseErrors([]);
     setError('');
   };
 
@@ -172,88 +156,15 @@ export default function PreDeclaracionTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        style={{
-          border: `2px dashed ${dragging ? 'var(--teal-light)' : 'var(--border-hover)'}`,
-          borderRadius: 'var(--radius)', padding: '40px 24px', textAlign: 'center',
-          cursor: 'pointer', transition: 'all 0.2s',
-          background: dragging ? 'var(--teal-bg-subtle)' : 'transparent',
-        }}
-      >
-        <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: 12 }} />
-        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Arrastra tus archivos XML aquí</div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>o haz clic para seleccionar archivos CFDI</div>
-        <input ref={fileInputRef} type="file" accept={ACCEPT_XML} multiple hidden
-          onChange={(e) => e.target.files && handleFiles(e.target.files)} />
+      <div className="card">
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={agent.setFacturas} />
       </div>
 
-      <ErroresDeCarga errores={parseErrors} amplio />
-
-      <FacturaTable facturas={facturas} onRemove={removeCFDI} />
+      <FacturaTable facturas={fuente.delPeriodo} onRemove={fuente.modo === 'archivos' ? removeCFDI : undefined} />
 
       {/* Estado del acumulado Art. 106 LISR (612/606 con mes > 1) */}
       {esEmpresarialOArr && month > 1 && (
-        <>
-          {loadingAcumulado && (
-            <div style={{
-              padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'var(--teal-bg-subtle)', border: '1px solid var(--border-hover)',
-              display: 'flex', alignItems: 'center', gap: 10,
-              fontSize: '0.82rem', color: 'var(--text-secondary)',
-            }}>
-              <Loader size={14} className="spin" />
-              Cargando datos de meses anteriores…
-            </div>
-          )}
-          {!loadingAcumulado && acumuladoAnterior && acumuladoAnterior.meses_faltantes.length === 0 && acumuladoAnterior.meses_encontrados.length > 0 && (
-            <div style={{
-              padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'var(--success-bg)', border: '1px solid var(--success-border)',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <CheckCircle size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                <strong style={{ color: 'var(--text-primary)' }}>Art. 106</strong> — Datos de{' '}
-                {acumuladoAnterior.meses_encontrados.map((m) => MESES[m - 1].toLowerCase()).join(', ')}
-                {' '}cargados automáticamente desde tu historial.
-              </div>
-            </div>
-          )}
-          {!loadingAcumulado && acumuladoAnterior && acumuladoAnterior.meses_faltantes.length > 0 && acumuladoAnterior.meses_encontrados.length > 0 && (
-            <div style={{
-              padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <AlertCircle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Faltan pre-declaraciones de{' '}
-                <strong style={{ color: 'var(--text-primary)' }}>
-                  {acumuladoAnterior.meses_faltantes.map((m) => MESES[m - 1].toLowerCase()).join(', ')}
-                </strong>.
-                El cálculo será parcial. Calcula esos meses primero para mayor precisión.
-              </div>
-            </div>
-          )}
-          {!loadingAcumulado && (!acumuladoAnterior || acumuladoAnterior.meses_encontrados.length === 0) && (
-            <div style={{
-              padding: '12px 16px', borderRadius: 'var(--radius-md)',
-              background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <AlertCircle size={16} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                No se encontraron declaraciones anteriores de este ejercicio.
-                Se calculará solo con datos de este mes (tabla simple).
-              </div>
-            </div>
-          )}
-        </>
+        <AvisoAcumulado106 cargando={loadingAcumulado} acumulado={acumuladoAnterior} />
       )}
 
       {/* Periodo selector + calcular */}

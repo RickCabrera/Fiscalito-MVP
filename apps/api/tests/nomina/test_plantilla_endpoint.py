@@ -27,14 +27,14 @@ from app.demo_nomina import (
     PRIMA_RIESGO_DEMO,
     quincena,
 )
-from app.main import app
 
 PLANTILLA = "/api/v1/nomina/demo/plantilla"
 
 
 @pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+def cliente_http(http_nomina) -> TestClient:
+    """P4-01: autenticado y con la cartera sembrada; la nómina lee de ahí."""
+    return http_nomina
 
 
 class TestPlantilla:

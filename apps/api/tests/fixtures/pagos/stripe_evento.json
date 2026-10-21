@@ -1,0 +1,12 @@
+{
+  "id": "evt_PRUEBA",
+  "object": "event",
+  "type": "customer.subscription.updated",
+  "data": {
+    "object": {
+      "id": "sub_PRUEBA456",
+      "object": "subscription",
+      "status": "active"
+    }
+  }
+}

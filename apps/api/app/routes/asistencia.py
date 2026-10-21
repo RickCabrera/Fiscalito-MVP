@@ -1,31 +1,49 @@
 """
 Endpoints de asistencia (checador).
 
-**DEMO** — ver `docs/D-DEMO-CHECADOR.md`:
+**DEMO** — ver `docs/D-DEMO-CHECADOR.md`: almacenamiento **en memoria del proceso**, que se
+pierde al reiniciar; no desplegar. Producción está apagada por decisión de Ricardo (S-08).
 
-- sin autenticacion: el push del Hikvision no sabe mandar un ID token de
-  Firebase, y la auth del dispositivo esta mandada a F3;
-- almacenamiento **en memoria del proceso**, que se pierde al reiniciar;
-- no desplegar. Produccion esta apagada por decision de Ricardo (S-08).
+AUTENTICACIÓN (P0-02)
+---------------------
+- `POST /asistencia/eventos` es la única ruta de `/api/v1` que acepta algo distinto del ID
+  token de Firebase: el **token del dispositivo** (`?token=` o `X-Token-Dispositivo`), porque
+  el Hikvision no sabe pedir un ID token. El token decide despacho y cliente; un `?cliente=`
+  distinto del suyo es 403. Sin token de dispositivo, se acepta la sesión de Firebase (el
+  simulador y las pantallas la usan).
+- El resto (consultar, cerrar periodo, administrar tokens) exige la sesión de Firebase, que
+  se monta en `app/main.py` para todo el router salvo `router_publico`.
 
-El `cliente` viaja como **query param con default**, no en el cuerpo: la URL
-que se configura en el dispositivo es fija y el cuerpo lo arma el aparato, asi
-que no hay forma de meterle un campo. `POST /asistencia/eventos` sin
-parametros funciona y cae en el cliente de la demo.
+AISLAMIENTO ENTRE DESPACHOS
+---------------------------
+Los clientes de la demo (`demo`, `cafeteria`, `taller`) son un catálogo compartido, así que
+el almacén se indexa por `despacho::cliente` (`llave_almacen`). El despacho sale SIEMPRE del
+token —de Firebase o del dispositivo—, nunca del request: un despacho no puede leer ni
+cerrar las checadas de otro aunque use la misma clave de cliente.
+
+El `cliente` viaja como **query param con default**, no en el cuerpo: la URL que se
+configura en el dispositivo es fija y el cuerpo lo arma el aparato.
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
+from sqlalchemy.orm import Session
 
-from app.asistencia.almacen import almacen
+from app.acceso import dispositivos
+from app.acceso.dependencias import aplicar_limite
+from app.acceso.limitador import limite_por_minuto
+from app.asistencia.almacen import almacen, llave_almacen
 from app.asistencia.hikvision import parse_acs_event
 from app.asistencia.incidencias import cerrar_periodo
+from app.auth_firebase import usuario_actual
 from app.constants import CLIENTE_DEMO
-from app.exceptions import FiscalValidationError
+from app.db.session import obtener_db
+from app.exceptions import FiscalAgentError, FiscalValidationError
 from app.schemas.asistencia import (
     CerrarPeriodoRequest,
     CerrarPeriodoResponse,
@@ -33,10 +51,62 @@ from app.schemas.asistencia import (
     EventosResponse,
     FuenteChecada,
 )
+from app.tenancy import Contexto, asegurar_usuario, cliente_o_404, contexto_actual
 
+# Montado con la sesión de Firebase obligatoria (ver `app/main.py`).
 router = APIRouter(tags=["Asistencia (demo)"])
+# Montado SIN la dependencia global: se autentica por dentro (dispositivo o Firebase).
+router_publico = APIRouter(tags=["Asistencia (demo)"])
 
-_AVISO = "DEMO — sin autenticación, almacenamiento en memoria, no desplegar. "
+_AVISO = "DEMO — almacenamiento en memoria, no desplegar. "
+ROLES_TOKENS = ("dueno", "contador")
+
+
+@dataclass(frozen=True)
+class Emisor:
+    """Quién empuja checadas: su despacho y, si es un dispositivo, el cliente de su token."""
+
+    despacho_id: str
+    cliente_fijo: str | None
+
+
+def _uid_de_firebase(request: Request, authorization: str) -> str:
+    """
+    El uid del encabezado `Authorization`, por la MISMA dependencia que el resto de la API.
+
+    Se resuelve a mano porque aquí la sesión es opcional (puede venir un token de
+    dispositivo en su lugar) y una dependencia de FastAPI no puede ser "opcional si falla".
+    Se respeta `dependency_overrides` para que los tests autentiquen igual que en todas las
+    demás rutas.
+    """
+    verificar = request.app.dependency_overrides.get(usuario_actual, usuario_actual)
+    return verificar(authorization=authorization)
+
+
+def emisor_de_eventos(
+    request: Request,
+    token: str | None = Query(
+        default=None, description="Token del dispositivo (la URL que se configura en el aparato)"
+    ),
+    x_token_dispositivo: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(obtener_db),
+) -> Emisor:
+    """Dispositivo (por su token) o usuario (por su sesión de Firebase); si no, 401."""
+    secreto = x_token_dispositivo or token
+    if secreto:
+        checador = dispositivos.resolver(db, secreto)
+        aplicar_limite(f"dispositivo:{checador.token_id}", limite_por_minuto(), "peticiones")
+        return Emisor(despacho_id=checador.despacho_id, cliente_fijo=checador.cliente_clave)
+    if authorization:
+        uid = _uid_de_firebase(request, authorization)
+        aplicar_limite(f"usuario:{uid}", limite_por_minuto(), "peticiones")
+        return Emisor(despacho_id=asegurar_usuario(db, uid).despacho_id, cliente_fijo=None)
+    raise FiscalAgentError(
+        "Falta autenticación: el checador manda su token de dispositivo (`?token=` o "
+        "`X-Token-Dispositivo`) y las pantallas la sesión de Firebase (`Authorization`).",
+        status_code=401,
+    )
 
 
 async def _cuerpo_json(request: Request) -> dict:
@@ -80,28 +150,47 @@ async def _cuerpo_json(request: Request) -> dict:
     return contenido
 
 
-@router.post(
+@router_publico.post(
     "/asistencia/eventos",
     response_model=EventosRecibidosResponse,
     summary=_AVISO + "Recibir checadas del checador",
     description=_AVISO
     + "Acepta el cuerpo `AcsEvent` tal como lo manda el Hikvision (JSON o "
-    "multipart con la foto) o el simulador. Deduplica por (empleado, serialNo).",
+    "multipart con la foto) o el simulador. Deduplica por (empleado, serialNo). "
+    "Autenticación: token del dispositivo (`?token=` o `X-Token-Dispositivo`), que fija "
+    "despacho y cliente, o la sesión de Firebase.",
 )
 async def recibir_eventos(
     request: Request,
-    cliente: str = Query(default=CLIENTE_DEMO, description="Id del cliente"),
+    cliente: str | None = Query(default=None, description="Id del cliente"),
     fuente: FuenteChecada = Query(default=FuenteChecada.HIKVISION),
+    emisor: Emisor = Depends(emisor_de_eventos),
 ) -> EventosRecibidosResponse:
+    if emisor.cliente_fijo is not None:
+        if cliente is not None and cliente != emisor.cliente_fijo:
+            raise FiscalAgentError(
+                "El token de este dispositivo es de otro cliente: no puede registrar "
+                f"checadas de {cliente!r}.",
+                status_code=403,
+            )
+        cliente = emisor.cliente_fijo
+    cliente = cliente or CLIENTE_DEMO
     payload = await _cuerpo_json(request)
     eventos = parse_acs_event(payload, fuente=fuente)
-    aceptados, duplicados = almacen.agregar(cliente, eventos)
+    llave = llave_almacen(emisor.despacho_id, cliente)
+    aceptados, duplicados = almacen.agregar(llave, eventos)
     return EventosRecibidosResponse(
         cliente=cliente,
         recibidos=aceptados,
         duplicados=duplicados,
-        total_en_memoria=almacen.total(cliente),
+        total_en_memoria=almacen.total(llave),
     )
+
+
+def _exigir_asignado(ctx: Contexto, clave: str) -> None:
+    """Un auxiliar sólo ve checadas de clientes que tiene asignados (revisor P0)."""
+    if ctx.es_auxiliar:
+        cliente_o_404(ctx, clave)
 
 
 @router.get(
@@ -109,14 +198,18 @@ async def recibir_eventos(
     response_model=EventosResponse,
     summary=_AVISO + "Consultar checadas para el panel en vivo",
     description=_AVISO
-    + "Devuelve los eventos en memoria, ordenados cronológicamente. `desde` es "
-    "inclusivo. Un cliente sin eventos devuelve una lista vacía, no 404.",
+    + "Devuelve los eventos en memoria del cliente EN TU DESPACHO, ordenados "
+    "cronológicamente. `desde` es inclusivo. Un cliente sin eventos devuelve una lista "
+    "vacía, no 404.",
 )
 async def consultar_eventos(
     cliente: str = Query(default=CLIENTE_DEMO),
     desde: datetime | None = Query(default=None, description="Inclusivo"),
+    ctx: Contexto = Depends(contexto_actual),
 ) -> EventosResponse:
-    return EventosResponse(cliente=cliente, eventos=almacen.eventos(cliente, desde))
+    _exigir_asignado(ctx, cliente)
+    llave = llave_almacen(ctx.despacho_id, cliente)
+    return EventosResponse(cliente=cliente, eventos=almacen.eventos(llave, desde))
 
 
 @router.post(
@@ -128,9 +221,12 @@ async def consultar_eventos(
     "`dias_cotizados` es informativo: la base de cuotas del IMSS la determina "
     "`DiasDelPeriodo` según el ramo (§D3).",
 )
-async def cerrar(req: CerrarPeriodoRequest) -> CerrarPeriodoResponse:
+async def cerrar(
+    req: CerrarPeriodoRequest, ctx: Contexto = Depends(contexto_actual)
+) -> CerrarPeriodoResponse:
+    _exigir_asignado(ctx, req.cliente)
     incidencias, desconocidos = cerrar_periodo(
-        almacen.eventos(req.cliente),
+        almacen.eventos(llave_almacen(ctx.despacho_id, req.cliente)),
         req.empleados,
         req.periodo,
         req.horario,
@@ -141,3 +237,10 @@ async def cerrar(req: CerrarPeriodoRequest) -> CerrarPeriodoResponse:
         incidencias=incidencias,
         empleados_desconocidos=desconocidos,
     )
+
+
+# ── Tokens de dispositivo (P0-02) ────────────────────────────────────────────
+
+# Viven en `asistencia_tokens.py` (P6-05, tope de 300 líneas) y se registran en este mismo
+# `router` al importarse, en el mismo orden de antes.
+from app.routes import asistencia_tokens  # noqa: E402, F401

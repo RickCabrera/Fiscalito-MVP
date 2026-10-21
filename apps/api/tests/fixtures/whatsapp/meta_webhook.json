@@ -1,0 +1,39 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102290129340398",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550783881",
+              "phone_number_id": "106540352242922"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Cliente Prueba"
+                },
+                "wa_id": "5215512345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5215512345678",
+                "id": "wamid.ENTRANTE1",
+                "timestamp": "1760880000",
+                "type": "text",
+                "text": {
+                  "body": "Hola, ¿ya está mi declaración?"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

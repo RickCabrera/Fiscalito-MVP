@@ -25,7 +25,8 @@ import {
 import { nssPorVerificar } from '../../services/nss';
 import { envoltura, fila, tabla, td, th, thNum, tituloSeccion } from '../nomina/estilosTabla';
 import ModalEmpleado from './ModalEmpleado';
-import type { ParametrosSalariales } from '../../services/carteraApi';
+import EmpleadosIlegibles from './EmpleadosIlegibles';
+import type { EmpleadoIlegible, ParametrosSalariales } from '../../services/carteraApi';
 
 const num: React.CSSProperties = {
   ...td,
@@ -52,8 +53,11 @@ export default function EmpleadosTab({
   onGuardar,
   onBorrar,
   parametros,
+  ilegibles = [],
 }: {
   empleados: EmpleadoCartera[];
+  /** Guardados que el backend no pudo leer (R-10): se pintan con su razón. */
+  ilegibles?: EmpleadoIlegible[];
   /** `true` cuando la cartera viene del backend y no se puede escribir. */
   soloLectura: boolean;
   onGuardar: (e: EmpleadoCartera) => Promise<void>;
@@ -119,6 +123,8 @@ export default function EmpleadosTab({
           Dale de alta el número que tenga en el aparato.
         </p>
       )}
+
+      <EmpleadosIlegibles ilegibles={ilegibles} />
 
       <div style={envoltura}>
         <table style={tabla(1000)}>

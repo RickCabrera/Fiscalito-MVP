@@ -26,7 +26,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.constants import CLIENTE_DEMO
-from app.main import app
 from app.nomina_engine.cfdi_nomina_xml import (
     ATRIBUTO_ANTIGUEDAD,
     NO_CERTIFICADO_SIN_TIMBRAR,
@@ -586,9 +585,13 @@ class TestEndpointCFDI:
     endpoints se separa, aquí truena.
     """
 
-    @staticmethod
-    def _cliente() -> TestClient:
-        return TestClient(app)
+    @pytest.fixture(autouse=True)
+    def _con_cartera(self, http_nomina) -> None:
+        """P4-01: la nómina se calcula con la plantilla de la cartera, autenticado."""
+        self._http = http_nomina
+
+    def _cliente(self) -> TestClient:
+        return self._http
 
     @staticmethod
     def _recibo_del_motor(cliente: TestClient) -> dict:

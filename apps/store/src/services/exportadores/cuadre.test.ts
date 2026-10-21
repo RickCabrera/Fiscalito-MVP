@@ -30,11 +30,10 @@
  *
  * LO QUE ESTE ARCHIVO **NO** PRUEBA
  * ---------------------------------
- * Que los layouts de los tres bancos sean correctos. No hay fuente publicada
- * contra la cual medirlos y están marcados `por-validar`. Lo que sí queda
- * medido de ellos son **los importes**: el neto que dispersan es, al centavo, el
- * mismo que el motor calculó. Si el layout está mal, el banco rechaza el
- * archivo; si el importe estuviera mal, pagaría de más o de menos.
+ * La dispersión bancaria. Se mudó al backend en P4-12 (`apps/api/app/dispersion/`),
+ * que la genera desde la nómina CERRADA con la CLABE de la ficha y relee el archivo
+ * para cuadrarlo al centavo; sus pruebas viven en
+ * `apps/api/tests/plan_p/test_dispersion.py`.
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -219,24 +218,6 @@ const DATOS: DatosExportacion = {
   guia: '00001',
 };
 
-/**
- * La misma plantilla, con cuenta bancaria inventada.
- *
- * `cuenta_bancaria` **no existe en `EmpleadoCartera`** —ni en el backend, ni en
- * ninguna pantalla— y por eso hace falta el cast. **Eso es el hallazgo, no un
- * detalle del test:** en un periodo real ningún empleado la tiene, así que la
- * dispersión no exporta a nadie. Lo que se mide aquí es que **los importes**
- * cuadren el día que el dato exista; que hoy no exista se prueba aparte, y el
- * generador levanta en vez de emitir un archivo vacío.
- */
-const CON_CUENTA: DatosExportacion = {
-  ...DATOS,
-  empleados: DATOS.empleados.map((e) => ({
-    ...e,
-    cuenta_bancaria: `0123456789${e.empleado_no.slice(-1)}`,
-  })) as EmpleadoCartera[],
-};
-
 function texto(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => String.fromCharCode(b)).join('');
 }
@@ -308,32 +289,6 @@ describe('el formato genérico cuadra al centavo con el motor', () => {
     expect(total[7]).toBe(TOTAL_ISR);
     expect(total[10]).toBe(TOTAL_NETO);
   });
-});
-
-describe('la dispersión bancaria cuadra al centavo con el motor', () => {
-  /**
-   * El LAYOUT está por validar; **los importes no**. Si el layout está mal, el
-   * banco rechaza el archivo. Si el importe estuviera mal, pagaría de más o de
-   * menos — y de eso sí hay garantía.
-   */
-  it.each(['dispersion-bbva', 'dispersion-banamex', 'dispersion-banorte'])(
-    '%s: la suma de los netos dispersados es la del motor',
-    (id) => {
-      const formato = FORMATOS.find((f) => f.id === id)!;
-      const archivo = formato.generar(CON_CUENTA);
-      const lineas = texto(archivo.bytes).trim().split('\r\n');
-      expect(lineas).toHaveLength(3);
-
-      // El importe va en centavos, sin punto: se lee del propio archivo.
-      const anchos = { 'dispersion-bbva': [20, 15], 'dispersion-banamex': [18, 13], 'dispersion-banorte': [20, 12] };
-      const [cuenta, importe] = anchos[id as keyof typeof anchos];
-      const suma = lineas.reduce(
-        (a, l) => a + Number(l.slice(cuenta, cuenta + importe)),
-        0,
-      );
-      expect(suma).toBe(aCentavos(TOTAL_NETO));
-    },
-  );
 });
 
 describe('el archivo del IMSS cuadra su SBC con el del recibo', () => {
@@ -446,21 +401,8 @@ describe('todo formato declara su fuente o su estado "por validar"', () => {
     expect(formato.fuente.cita.length).toBeGreaterThan(40);
   });
 
-  it('los tres bancos están marcados POR VALIDAR, y el del IMSS no', () => {
-    const porValidar = FORMATOS.filter((f) => f.fuente.estado === 'por-validar');
-    expect(porValidar.map((f) => f.id).sort()).toEqual([
-      'dispersion-banamex',
-      'dispersion-banorte',
-      'dispersion-bbva',
-    ]);
-    expect(FORMATOS.find((f) => f.id === 'imss')!.fuente.estado).toBe('oficial');
-  });
-
-  it('el archivo de un formato por validar lo dice en su NOMBRE', () => {
-    // Quien lo encuentre en Descargas dentro de tres meses tiene que saberlo
-    // sin abrir la app.
-    const bbva = FORMATOS.find((f) => f.id === 'dispersion-bbva')!;
-    expect(bbva.generar(CON_CUENTA).nombre).toMatch(/PORVALIDAR/);
+  it('la dispersión bancaria ya no vive aquí: la genera el backend (P4-12)', () => {
+    expect(FORMATOS.some((f) => f.id.startsWith('dispersion-'))).toBe(false);
   });
 });
 
@@ -605,30 +547,6 @@ describe('el TOTAL sale del motor aunque difiera de la suma de los recibos', () 
     expect(total[5]).toBe('13106.12');
     expect(total[7]).toBe('162.76');
     expect(total[10]).toBe('12578.34');
-  });
-});
-
-describe('la dispersión no emite un archivo vacío cuando no hay a quién pagar', () => {
-  /**
-   * Y hoy ese es el caso NORMAL: `cuenta_bancaria` no existe en el modelo, así
-   * que en un periodo real todos los empleados caen en `noExportables` y esto
-   * producía un `.txt` de **0 bytes** que el navegador descargaba sin decir
-   * nada. Un archivo vacío parece un archivo: se manda al banco y el rechazo
-   * llega días después.
-   */
-  it.each(['dispersion-bbva', 'dispersion-banamex', 'dispersion-banorte'])(
-    '%s: sin cuentas capturadas LEVANTA en vez de emitir 0 bytes',
-    (id) => {
-      const formato = FORMATOS.find((f) => f.id === id)!;
-      // DATOS es la plantilla REAL: ningún empleado tiene cuenta, porque el
-      // campo no existe todavía en la ficha.
-      expect(() => formato.generar(DATOS)).toThrow(/no se puede emitir todavía/);
-    },
-  );
-
-  it('el mensaje dice cuántos y por qué, no "error al exportar"', () => {
-    const bbva = FORMATOS.find((f) => f.id === 'dispersion-bbva')!;
-    expect(() => bbva.generar(DATOS)).toThrow(/3 empleados sin cuenta bancaria/);
   });
 });
 

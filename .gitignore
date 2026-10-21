@@ -46,3 +46,10 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebase/
+fiscalito.db
+almacen/
+
+# P6-04: salida de Playwright y logs de la API del recorrido e2e.
+apps/store/test-results/
+apps/store/playwright-report/
+apps/store/e2e-logs/

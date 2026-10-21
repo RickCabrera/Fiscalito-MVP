@@ -1,5 +1,15 @@
 /**
- * Planes de la cuenta — límites de uso, SIN cobro. (T8)
+ * Planes de la cuenta — copia LOCAL de los límites, para los chips de uso. (T8)
+ *
+ * > **P5-08 manda sobre lo de abajo.** El dueño del plan es el BACKEND
+ * > (`apps/api/app/planes.py` + tabla `suscripciones`): ahí viven el catálogo, el precio
+ * > (por variable, sin cifras en el código), los módulos por plan, el estado de la
+ * > suscripción y el cobro (`services/suscripcionApi.ts`, pantalla `PlanesPage`). El backend
+ * > hace cumplir clientes, usuarios, módulos y el modo solo lectura. Este archivo queda como
+ * > copia de los límites para pintar "3 / 25 clientes" sin otra llamada;
+ * > `tests/plan_p/test_equipo.py` exige que diga los mismos números que el backend, y
+ * > `users/{uid}.plan` es un espejo que `PlanesPage` sincroniza con el backend. Lo de "sin
+ * > billing" y "maxUsuarios no se hace cumplir" es historia.
  *
  * QUÉ ES Y QUÉ NO ES
  * ------------------

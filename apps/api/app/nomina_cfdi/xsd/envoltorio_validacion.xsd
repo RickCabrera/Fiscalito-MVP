@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ESTE ARCHIVO NO ES DEL SAT: lo escribimos nosotros.
+
+  El nodo Complemento del CFDI 4.0 es un wildcard <xs:any processContents="strict">,
+  asi que el validador solo reconoce los elementos del complemento si sus esquemas
+  estan en la MISMA coleccion. Este envoltorio no hace nada mas que importar los
+  tres esquemas raiz para que se compilen juntos.
+
+  Los schemaLocation son las URLs del SAT a proposito: el resolver de
+  tests/nomina/validacion_xsd.py las mapea a los archivos locales. Asi los XSD
+  del SAT se quedan byte-identicos y su SHA-256 sigue verificando contra la
+  fuente oficial.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://www.sat.gob.mx/cfd/4"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd"/>
+  <xs:import namespace="http://www.sat.gob.mx/nomina12"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/nomina/nomina12.xsd"/>
+  <xs:import namespace="http://www.sat.gob.mx/TimbreFiscalDigital"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd"/>
+</xs:schema>

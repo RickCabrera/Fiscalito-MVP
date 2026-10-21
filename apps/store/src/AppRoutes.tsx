@@ -23,6 +23,8 @@ import ServiceDetailPage from './pages/ServiceDetailPage';
 import ProfilePage from './pages/ProfilePage';
 // T8: planes de la cuenta. Se entra desde Perfil, no desde el sidebar.
 import PlanesPage from './pages/PlanesPage';
+// P0-07: bitácora de auditoría. Se entra desde Perfil, no desde el sidebar.
+import AuditoriaPage from './pages/AuditoriaPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
@@ -37,8 +39,22 @@ import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
 // R-05: empleados y dispositivos del cliente activo, entradas propias del sidebar.
 import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
-// DEMO E-07: calendario patronal de la cartera. Se borra en F2.
+// P0-03: bóveda de CFDI del cliente activo.
+import BovedaPage from './pages/BovedaPage';
+import CalculadorasPage from './pages/CalculadorasPage';
+import DescargaSatPage from './pages/DescargaSatPage';
+// P3-10: calendario unificado (fiscal + patronal + credenciales) y agenda del despacho.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
+// P3-09: alertas fiscales de la cartera (se entra por la campana del layout).
+import AlertasPage from './pages/AlertasPage';
+// P5-01/02/03: equipo del despacho, dashboard de entrada y cuentas por cobrar.
+import InicioPage from './pages/InicioPage';
+import EquipoPage from './pages/EquipoPage';
+import CobranzaPage from './pages/CobranzaPage';
+import AceptarInvitacionPage from './pages/AceptarInvitacionPage';
+// P6-01: aviso de privacidad (LFPDPPP) y términos, públicos.
+import AvisoPrivacidadPage from './pages/AvisoPrivacidadPage';
+import TerminosPage from './pages/TerminosPage';
 
 export default function AppRoutes() {
   return (
@@ -46,6 +62,10 @@ export default function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      {/* P5-01: el enlace del correo de invitación. Pública: pide sesión por dentro. */}
+      <Route path="/aceptar-invitacion" element={<AceptarInvitacionPage />} />
+      <Route path="/privacidad" element={<AvisoPrivacidadPage />} />
+      <Route path="/terminos" element={<TerminosPage />} />
 
       {/* Onboarding — protected but no sidebar */}
       <Route path="/app/onboarding" element={
@@ -60,10 +80,12 @@ export default function AppRoutes() {
           <AppLayout />
         </ProtectedRoute>
       }>
-        {/* K: el sistema es solo para despachos. `/app` entra a la cartera; el
-            dashboard y el historial del contribuyente ya no existen, y la ruta
-            vieja del historial se redirige para no dejar enlaces muertos. */}
-        <Route index element={<Navigate to="/app/clientes" replace />} />
+        {/* P5-02: `/app` entra al dashboard DEL DESPACHO (no el del contribuyente,
+            que K retiró). La ruta vieja del historial se sigue redirigiendo. */}
+        <Route index element={<Navigate to="/app/inicio" replace />} />
+        <Route path="inicio" element={<InicioPage />} />
+        <Route path="equipo" element={<EquipoPage />} />
+        <Route path="cobranza" element={<CobranzaPage />} />
         <Route path="historial" element={<Navigate to="/app/clientes" replace />} />
         {/* DEMO E-02 */}
         <Route path="clientes" element={<ClientesPage />} />
@@ -75,8 +97,14 @@ export default function AppRoutes() {
             piden en vez de caer en un default silencioso. */}
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="dispositivos" element={<DispositivosPage />} />
-        {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
+        <Route path="boveda" element={<BovedaPage />} />
+        {/* P1-02: descarga masiva del SAT del cliente activo. */}
+        <Route path="sat" element={<DescargaSatPage />} />
+        {/* P3-10: vencimientos fiscales y patronales de la cartera + agenda semanal. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
+        <Route path="alertas" element={<AlertasPage />} />
+        {/* P3-08: calculadoras fiscales sueltas del despacho (sin cliente). */}
+        <Route path="calculadoras" element={<CalculadorasPage />} />
         <Route path="store" element={<MarketplacePage />} />
         <Route path="store/fiscalito/use" element={<FiscalitoServicePage />} />
         {/* T7. Va ANTES de `store/:serviceId` por legibilidad, no por necesidad:
@@ -91,6 +119,7 @@ export default function AppRoutes() {
             diaria por una pantalla que se visita una vez. Se llega desde la
             tarjeta de plan del Perfil. */}
         <Route path="planes" element={<PlanesPage />} />
+        <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
             y los enlaces viejos apuntan ahí. */}

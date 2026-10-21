@@ -37,152 +37,35 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from decimal import Decimal
 
+from app.nomina_engine.cfdi_nomina_nodos import (  # noqa: F401 — movido en P6-05, se reexporta
+    ATRIBUTO_ANTIGUEDAD,
+    CERTIFICADO_SIN_TIMBRAR,
+    CLAVE_PROD_SERV_NOMINA,
+    CLAVE_UNIDAD_NOMINA,
+    COMENTARIO_CABECERA,
+    NO_CERTIFICADO_SIN_TIMBRAR,
+    NS_CFDI,
+    NS_NOMINA,
+    NS_XSI,
+    SELLO_SIN_TIMBRAR,
+    ExtrasNomina,
+    HorasExtraCfdi,
+    IncapacidadCfdi,
+    JubilacionCfdi,
+    SeparacionCfdi,
+    _comprobante,
+    _importe,
+    _nodo_deducciones,
+    _nodo_incapacidades,
+    _nodo_otros_pagos,
+    _nodo_percepciones,
+    _sub,
+)
 from app.nomina_engine.recibo import (
-    CLAVE_OTRO_PAGO_SUBSIDIO,
     DatosPatron,
     DatosTrabajador,
     Recibo,
 )
-
-NS_CFDI = "http://www.sat.gob.mx/cfd/4"
-NS_NOMINA = "http://www.sat.gob.mx/nomina12"
-NS_XSI = "http://www.w3.org/2001/XMLSchema-instance"
-
-# `Antigüedad` lleva dieresis. Se nombra por constante para que ningun editor
-# la rompa en silencio, igual que hace `tests/nomina_inventario.py`.
-ATRIBUTO_ANTIGUEDAD = "Antigüedad"
-
-# Centinelas de los atributos que el XSD exige y un pre-recibo no tiene.
-# `Sello` y `Certificado` son xs:string sin patron, asi que admiten texto.
-# `NoCertificado` tiene pattern [0-9]{20}, asi que solo admite veinte digitos.
-SELLO_SIN_TIMBRAR = "PRE-RECIBO-SIN-TIMBRAR"
-CERTIFICADO_SIN_TIMBRAR = "PRE-RECIBO-SIN-TIMBRAR"
-NO_CERTIFICADO_SIN_TIMBRAR = "0" * 20
-
-COMENTARIO_CABECERA = (
-    " PRE-RECIBO SIN TIMBRAR. No es un CFDI fiscalmente valido: no lleva "
-    "TimbreFiscalDigital y sus atributos de sello son centinelas. "
-)
-
-# El CFDI de nomina siempre usa esta clave de producto y esta unidad.
-CLAVE_PROD_SERV_NOMINA = "84111505"
-CLAVE_UNIDAD_NOMINA = "ACT"
-
-
-def _importe(valor: Decimal) -> str:
-    """Los importes del CFDI van con 2 decimales."""
-    return f"{valor:.2f}"
-
-
-def _sub(padre: ET.Element, etiqueta: str, atributos: dict[str, str]) -> ET.Element:
-    """Subelemento con solo los atributos que traen valor."""
-    return ET.SubElement(padre, etiqueta, {k: v for k, v in atributos.items() if v})
-
-
-def _comprobante(recibo: Recibo, patron: DatosPatron, fecha: datetime, serie, folio):
-    raiz = ET.Element(
-        f"{{{NS_CFDI}}}Comprobante",
-        {
-            f"{{{NS_XSI}}}schemaLocation": (
-                "http://www.sat.gob.mx/cfd/4 "
-                "http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd "
-                "http://www.sat.gob.mx/nomina12 "
-                "http://www.sat.gob.mx/sitio_internet/cfd/nomina/nomina12.xsd"
-            ),
-            "Version": "4.0",
-            "Fecha": fecha.strftime("%Y-%m-%dT%H:%M:%S"),
-            "Sello": SELLO_SIN_TIMBRAR,
-            "NoCertificado": NO_CERTIFICADO_SIN_TIMBRAR,
-            "Certificado": CERTIFICADO_SIN_TIMBRAR,
-            "SubTotal": _importe(recibo.subtotal),
-            "Descuento": _importe(recibo.descuento),
-            "Moneda": "MXN",
-            "Total": _importe(recibo.total),
-            "TipoDeComprobante": "N",
-            "Exportacion": "01",
-            "MetodoPago": "PUE",
-            "LugarExpedicion": patron.codigo_postal,
-        },
-    )
-    if serie:
-        raiz.set("Serie", serie)
-    if folio:
-        raiz.set("Folio", folio)
-    return raiz
-
-
-def _nodo_percepciones(nomina: ET.Element, recibo: Recibo) -> None:
-    atributos = {
-        "TotalSueldos": _importe(recibo.total_sueldos),
-        "TotalGravado": _importe(recibo.total_gravado),
-        "TotalExento": _importe(recibo.total_exento),
-    }
-    if recibo.total_separacion_indemnizacion:
-        atributos["TotalSeparacionIndemnizacion"] = _importe(
-            recibo.total_separacion_indemnizacion
-        )
-    if recibo.total_jubilacion_pension_retiro:
-        atributos["TotalJubilacionPensionRetiro"] = _importe(
-            recibo.total_jubilacion_pension_retiro
-        )
-    nodo = _sub(nomina, f"{{{NS_NOMINA}}}Percepciones", atributos)
-    for p in recibo.percepciones:
-        _sub(
-            nodo,
-            f"{{{NS_NOMINA}}}Percepcion",
-            {
-                "TipoPercepcion": p.tipo,
-                "Clave": p.clave,
-                "Concepto": p.concepto,
-                "ImporteGravado": _importe(p.gravado),
-                "ImporteExento": _importe(p.exento),
-            },
-        )
-
-
-def _nodo_deducciones(nomina: ET.Element, recibo: Recibo) -> None:
-    if not recibo.deducciones:
-        return
-    atributos = {}
-    if recibo.total_impuestos_retenidos:
-        atributos["TotalImpuestosRetenidos"] = _importe(recibo.total_impuestos_retenidos)
-    if recibo.total_otras_deducciones:
-        atributos["TotalOtrasDeducciones"] = _importe(recibo.total_otras_deducciones)
-    nodo = _sub(nomina, f"{{{NS_NOMINA}}}Deducciones", atributos)
-    for d in recibo.deducciones:
-        _sub(
-            nodo,
-            f"{{{NS_NOMINA}}}Deduccion",
-            {
-                "TipoDeduccion": d.tipo,
-                "Clave": d.clave,
-                "Concepto": d.concepto,
-                "Importe": _importe(d.importe),
-            },
-        )
-
-
-def _nodo_otros_pagos(nomina: ET.Element, recibo: Recibo) -> None:
-    if not recibo.otros_pagos:
-        return
-    nodo = ET.SubElement(nomina, f"{{{NS_NOMINA}}}OtrosPagos")
-    for o in recibo.otros_pagos:
-        otro = _sub(
-            nodo,
-            f"{{{NS_NOMINA}}}OtroPago",
-            {
-                "TipoOtroPago": o.tipo,
-                "Clave": o.clave,
-                "Concepto": o.concepto,
-                "Importe": _importe(o.importe),
-            },
-        )
-        if o.tipo == CLAVE_OTRO_PAGO_SUBSIDIO and o.subsidio_causado is not None:
-            _sub(
-                otro,
-                f"{{{NS_NOMINA}}}SubsidioAlEmpleo",
-                {"SubsidioCausado": _importe(o.subsidio_causado)},
-            )
 
 
 def generar_cfdi_nomina(
@@ -197,6 +80,7 @@ def generar_cfdi_nomina(
     tipo_nomina: str = "O",
     serie: str = "",
     folio: str = "",
+    extras: ExtrasNomina | None = None,
 ) -> str:
     """
     Serializa un pre-recibo de nomina a XML.
@@ -254,23 +138,28 @@ def generar_cfdi_nomina(
             "FechaFinalPago": fecha_final_pago.isoformat(),
             "NumDiasPagados": f"{dias_pagados:.3f}",
             "TotalPercepciones": _importe(recibo.total_percepciones),
-            "TotalDeducciones": _importe(recibo.total_deducciones),
-            "TotalOtrosPagos": _importe(recibo.total_otros_pagos),
+            # Guía de llenado: TotalDeducciones/TotalOtrosPagos sólo si existe su nodo.
+            "TotalDeducciones": _importe(recibo.total_deducciones) if recibo.deducciones else "",
+            "TotalOtrosPagos": _importe(recibo.total_otros_pagos) if recibo.otros_pagos else "",
         },
     )
-    _sub(
-        nomina,
-        f"{{{NS_NOMINA}}}Emisor",
-        {"RegistroPatronal": patron.registro_patronal},
-    )
+    # Guía de llenado: si NO hay RegistroPatronal (asimilados, régimen 13) no debe existir
+    # ninguno de NumSeguridadSocial, FechaInicioRelLaboral, Antigüedad, RiesgoPuesto,
+    # SalarioBaseCotApor ni SalarioDiarioIntegrado.
+    con_imss = bool(patron.registro_patronal)
+    emisor = {"Curp": patron.curp, "RegistroPatronal": patron.registro_patronal}
+    if any(emisor.values()):
+        _sub(nomina, f"{{{NS_NOMINA}}}Emisor", emisor)
+    inicio = trabajador.fecha_inicio_relacion_laboral
+    sbc, sdi = trabajador.salario_base_cotizacion, trabajador.salario_diario_integrado
     _sub(
         nomina,
         f"{{{NS_NOMINA}}}Receptor",
         {
             "Curp": trabajador.curp,
-            "NumSeguridadSocial": trabajador.numero_seguridad_social,
-            "FechaInicioRelLaboral": trabajador.fecha_inicio_relacion_laboral.isoformat(),
-            ATRIBUTO_ANTIGUEDAD: trabajador.antiguedad,
+            "NumSeguridadSocial": trabajador.numero_seguridad_social if con_imss else "",
+            "FechaInicioRelLaboral": inicio.isoformat() if con_imss and inicio else "",
+            ATRIBUTO_ANTIGUEDAD: trabajador.antiguedad if con_imss else "",
             "TipoContrato": trabajador.tipo_contrato,
             "Sindicalizado": trabajador.sindicalizado,
             "TipoJornada": trabajador.tipo_jornada,
@@ -278,16 +167,17 @@ def generar_cfdi_nomina(
             "NumEmpleado": trabajador.numero_empleado,
             "Departamento": trabajador.departamento,
             "Puesto": trabajador.puesto,
-            "RiesgoPuesto": trabajador.riesgo_puesto,
+            "RiesgoPuesto": trabajador.riesgo_puesto if con_imss else "",
             "PeriodicidadPago": trabajador.periodicidad_pago,
-            "SalarioBaseCotApor": _importe(trabajador.salario_base_cotizacion),
-            "SalarioDiarioIntegrado": _importe(trabajador.salario_diario_integrado),
+            "SalarioBaseCotApor": _importe(sbc) if con_imss and sbc is not None else "",
+            "SalarioDiarioIntegrado": _importe(sdi) if con_imss and sdi is not None else "",
             "ClaveEntFed": patron.clave_entidad,
         },
     )
-    _nodo_percepciones(nomina, recibo)
+    _nodo_percepciones(nomina, recibo, extras)
     _nodo_deducciones(nomina, recibo)
     _nodo_otros_pagos(nomina, recibo)
+    _nodo_incapacidades(nomina, extras)
 
     cuerpo = ET.tostring(raiz, encoding="unicode")
     return (

@@ -284,9 +284,20 @@ F1-07, F1-08 → P0-08 / P5-07 · F2, F3, F4 → todo P · D-08 → EXT-15.
 - [ ] **P6-04 · Pruebas de punta a punta** — Playwright: alta de despacho → cliente → e.firma →
   descarga (falsa) → pólizas → balanza → declaración → nómina → timbrado (falso) → envío.
   *Listo cuando:* el recorrido completo corre en CI.
+- [ ] **P6-07 · Observaciones de la 2.ª pasada del revisor de motor** — consejero que además es
+  trabajador (Art. 96 quinto párrafo, flag por empleado); citas de párrafo (Art. 9 quinto, Art. 97
+  tercero, Art. 96 quinto); no objeto de IVA por `ObjetoImp == "01"` en vez de residuo; topes
+  diarios de horas extra (Art. 66) y aviso del Art. 68; el finiquito resta exentos ya aplicados
+  en el año (prima vacacional y aguinaldo); partir `app/impuestos/personas_morales.py`,
+  `app/impuestos/servicio.py` y `app/schemas/cartera.py`.
+  *Listo cuando:* cada punto tiene su test y el revisor de motor lo aprueba.
 - [ ] **P6-05 · Limpieza final** — lint a cero (S-02), ruff alineado (S-01b), emulador en CI o
-  decisión escrita (R-11), demo-xmls anonimizadas (S-07), bug de egresos demo (B-01), fuera las
-  rutas y catálogos de demostración.
+  decisión escrita (R-11), demo-xmls anonimizadas (S-07: `public/demo-xmls` trae RFC y nombre
+  reales y se sirve en público — prioridad alta), bug de egresos demo (B-01), fuera las rutas y
+  catálogos de demostración, y partir los archivos que rebasan 300 líneas (revisor P0:
+  `boveda_cfdi/parser.py`, `boveda_cfdi/servicio.py`, `trabajos/cola.py`, `routes/asistencia.py`,
+  `routes/cartera.py`, `schemas/cartera.py`, `carteraApi.ts`, `ClienteDetallePage.tsx`,
+  `navigation.ts`, `fiscalAgentApi.ts`).
   *Listo cuando:* lint, tests y build en verde y ningún dato demo real en `public/` ni `dist/`.
 - [ ] **P6-06 · Runbook de conexión** — `docs/conexion-servicios.md`: por cada servicio de EXT,
   qué cuenta crear, qué variable llenar, cómo probar que quedó. Es la guía que seguirá Claude
@@ -1124,7 +1135,7 @@ corrida, suite completa una vez al final. **Prohibido borrar o desactivar tests.
   dominical y subsidio), generar fixtures XML con RFC/nombres/CURP sintéticos y montos
   reales, en `apps/api/tests/fixtures/nomina/`. *Listo cuando:* fixtures versionadas
   sin ningún dato identificable real (verificación explícita del revisor) y un
-  `conftest` que las cargue. Es el equivalente nómina del CADG620317EE0.
+  `conftest` que las cargue. Es el equivalente nómina del caso real fiscal (anonimizado como SINT010101PF1 en P6-05).
 ## D — Demo 2026-09-02: nómina + checador Hikvision
 
 Rama **vertical de demo**, no sustituye a F0/F1: cuando la demo pase, lo demo-only se borra y
@@ -1322,7 +1333,7 @@ Nada de esto entra a la cola nocturna. Se retoma cuando nomina este cerrada.
   el dashboard de OpenAI (confirmado por Ricardo).
 - [ ] **S-06 · (Opcional, prioridad baja) Reescribir historial para purgar
   `apps/api/pfebrero/`** — 12 XML de CFDI con RFC de terceros identificables
-  (CADG620317EE0, NIGE780321TK2, MCP2404207Q2, BMS170308GT7...) siguen alcanzables en los
+  (RFC del contribuyente y de contrapartes reales; en HEAD ya están anonimizados desde P6-05) siguen alcanzables en los
   commits `29245f6` y `29313de` aunque ya no existan en el arbol. **Prioridad baja a
   proposito:** el repo es privado y el historial no tiene ninguna API key (verificado el
   2026-08-31 blob por blob). Reescribir historial rompe clones y forks, asi que solo vale
@@ -1338,7 +1349,7 @@ Nada de esto entra a la cola nocturna. Se retoma cuando nomina este cerrada.
   Railway. *Listo cuando:* haya una razon de producto para tener produccion; entonces se
   desglosa (Cloud Run, CORS_ORIGINS explicito, build del front con la URL real, redeploy de
   Hosting). Bloqueada por S-00b.
-- [ ] **S-07 · Anonimizar las demo-xmls y el caso real CADG620317EE0** — las tres
+- [ ] **S-07 · Anonimizar las demo-xmls y el caso real del backend** — las tres
   fixtures de `apps/store/public/demo-xmls/2026/01/` llevan RFC y nombre reales, y
   `vite build` las copia tal cual a `dist/`, asi que viajan al bundle desplegado. Mismo
   tratamiento para el caso real del backend. RFC/nombre sinteticos, montos reales.

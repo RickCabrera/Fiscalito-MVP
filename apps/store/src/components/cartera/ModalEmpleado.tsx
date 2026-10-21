@@ -29,63 +29,29 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader, X } from 'lucide-react';
 import {
   integrarSBC,
   PARAMETROS_DE_LEY,
   type EmpleadoCartera,
   type ParametrosSalariales,
   type SBCResponse,
-  type TipoContrato,
 } from '../../services/carteraApi';
 import { normalizarNSS, validarNSS } from '../../services/nss';
-import Campo from './Campo';
 import IdentidadEmpleado from './IdentidadEmpleado';
-import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
-
-const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
-  { valor: 'indeterminado', etiqueta: 'Indeterminado' },
-  { valor: 'determinado', etiqueta: 'Por tiempo determinado' },
-  { valor: 'obra_determinada', etiqueta: 'Por obra determinada' },
-  { valor: 'prueba', etiqueta: 'A prueba' },
-];
-
-/** Años cumplidos entre el alta y hoy. Sólo decide vacaciones de ley. */
-function antiguedad(fechaAlta: string): number {
-  if (!fechaAlta) return 0;
-  const alta = new Date(fechaAlta);
-  const hoy = new Date();
-  let anios = hoy.getFullYear() - alta.getFullYear();
-  const cumpleEsteAnio =
-    hoy.getMonth() > alta.getMonth() ||
-    (hoy.getMonth() === alta.getMonth() && hoy.getDate() >= alta.getDate());
-  if (!cumpleEsteAnio) anios -= 1;
-  return Math.max(0, anios);
-}
-
-function vacio(parametros?: ParametrosSalariales): EmpleadoCartera {
-  return {
-    empleado_no: '',
-    nombre: '',
-    puesto: '',
-    salario_diario: '',
-    salario_diario_integrado: '',
-    zona: 'general',
-    fecha_alta: null,
-    tipo_contrato: 'indeterminado',
-    // O-03: el alta arranca con las prestaciones del PATRÓN, no con el mínimo
-    // de ley. Se pueden pisar para un caso particular; el default es la
-    // política del patrón, que es lo que aplica a casi todos.
-    prestaciones: {
-      dias_aguinaldo: parametros?.dias_aguinaldo ?? 15,
-      dias_vacaciones: 0,
-      prima_vacacional: parametros?.prima_vacacional ?? '0.25',
-    },
-    nss: '',
-    employee_no: null,
-    enrolamiento: 'pendiente',
-  };
-}
+import PagoContactoEmpleado from './PagoContactoEmpleado';
+import { errorPagoContacto, normalizarCelular } from '../../services/clabe';
+import CamposNominaEmpleado from './CamposNominaEmpleado';
+import CamposImssCfdiEmpleado from './CamposImssCfdiEmpleado';
+import ResultadoSbc from './ResultadoSbc';
+import { antiguedad, vacio } from './empleadoNuevo';
+import {
+  AvisosDuplicados,
+  CabeceraModal,
+  ChecadorEmpleado,
+  NssEmpleado,
+  PrestacionesEmpleado,
+  SalarioContratoEmpleado,
+} from './SeccionesEmpleado';
 
 export default function ModalEmpleado({
   empleado,
@@ -237,6 +203,8 @@ export default function ModalEmpleado({
     !numeroDeAparatoRepetido &&
     // `advertencia` NO bloquea: ver `services/nss.ts`.
     nss.puedeGuardar &&
+    // P4-12/13: CLABE con verificador, cuenta, correo y celular E.164.
+    errorPagoContacto(datos) === null &&
     !guardando;
 
   async function guardar() {
@@ -254,6 +222,8 @@ export default function ModalEmpleado({
         employee_no: datos.employee_no?.trim() || null,
         // Normalizado: se captura con espacios y guiones, se guarda en dígitos.
         nss: normalizarNSS(datos.nss),
+        clabe: (datos.clabe ?? '').replace(/\s/g, ''),
+        celular: normalizarCelular(datos.celular ?? '') ?? '',
       });
       onCerrar();
     } catch (e) {
@@ -279,214 +249,32 @@ export default function ModalEmpleado({
           display: 'flex', flexDirection: 'column', gap: 'var(--space-md)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-            {esAlta ? 'Nuevo empleado' : datos.nombre}
-          </h2>
-          <button
-            onClick={onCerrar}
-            aria-label="Cerrar"
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+        <CabeceraModal titulo={esAlta ? 'Nuevo empleado' : datos.nombre} onCerrar={onCerrar} />
 
         <IdentidadEmpleado datos={datos} esAlta={esAlta} set={set} />
 
-        {numeroDeAparatoRepetido && (
-          <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
-            Otro empleado ya tiene el número de checador{' '}
-            <strong>{datos.employee_no}</strong>. El aparato manda una sola serie de
-            checadas por número, así que uno de los dos se quedaría sin incidencias.
-          </p>
-        )}
+        <PagoContactoEmpleado datos={datos} set={set} />
 
-        {llaveRepetida && (
-          <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
-            Ya hay un empleado con el número <strong>{datos.empleado_no}</strong> en
-            este cliente. El número es la llave del
-            cálculo: repetirlo haría que uno se comiera las incidencias del otro.
-          </p>
-        )}
+        <AvisosDuplicados
+          datos={datos}
+          numeroDeAparatoRepetido={numeroDeAparatoRepetido}
+          llaveRepetida={llaveRepetida}
+        />
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <Campo label="Salario diario *">
-            <input
-              style={campo}
-              inputMode="decimal"
-              value={datos.salario_diario}
-              onChange={(e) => set('salario_diario', e.target.value)}
-              placeholder="450.00"
-            />
-          </Campo>
-          <Campo label="Fecha de alta">
-            <input
-              type="date"
-              style={campo}
-              value={fechaAlta}
-              onChange={(e) => set('fecha_alta', e.target.value || null)}
-            />
-          </Campo>
-          <Campo label="Tipo de contrato">
-            <select
-              style={campo}
-              value={datos.tipo_contrato}
-              onChange={(e) => set('tipo_contrato', e.target.value as TipoContrato)}
-            >
-              {TIPOS.map((t) => (
-                <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
-              ))}
-            </select>
-          </Campo>
-        </div>
+        <SalarioContratoEmpleado datos={datos} set={set} />
+        {/* P4-03/P4-04: régimen (sueldos o asimilado) y fecha de baja. */}
+        <CamposNominaEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
+        {/* P4-09/P4-11: causa de baja, tipo de salario y datos del receptor del CFDI. */}
+        <CamposImssCfdiEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
 
-        {/* R-03. Opcional a propósito, y el placeholder lo dice: es la salida
-            para quien no tiene el número, y es lo que hace seguro rechazar por
-            longitud sin acorralar a nadie. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-          <Campo label="NSS (opcional)">
-            <input
-              style={{
-                ...campo,
-                // `border` completo y no `borderColor`: `campoInput` usa el
-                // atajo, y mezclar atajo con propiedad larga hace que React
-                // avise y que el borde dependa del orden de las claves.
-                border:
-                  nss.gravedad === 'ok'
-                    ? campo.border
-                    : `1px solid var(--${nss.gravedad === 'error' ? 'danger' : 'warning'})`,
-              }}
-              inputMode="numeric"
-              // Sin `maxLength`: truncar en silencio un pegado largo puede
-              // dejar 11 dígitos con aspecto de buenos. La longitud la juzga
-              // `validarNSS`, que sí lo dice.
-              value={datos.nss}
-              onChange={(e) => set('nss', e.target.value)}
-              placeholder="Si no lo tienes, déjalo vacío"
-              aria-invalid={nss.gravedad === 'error'}
-              aria-describedby={nss.motivo ? 'nss-motivo' : undefined}
-            />
-          </Campo>
-        </div>
+        <NssEmpleado datos={datos} set={set} nss={nss} />
 
-        {nss.motivo && (
-          <p
-            id="nss-motivo"
-            // `alert` sólo cuando impide guardar. Una advertencia que se anuncia
-            // como error entrena a ignorarlas.
-            role={nss.gravedad === 'error' ? 'alert' : 'status'}
-            style={{
-              margin: 0, fontSize: '0.82rem',
-              color: nss.gravedad === 'error' ? 'var(--danger)' : 'var(--warning)',
-            }}
-          >
-            {nss.motivo}
-          </p>
-        )}
-
-        <fieldset style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm)' }}>
-          <legend style={{ ...etiqueta, marginBottom: 0, padding: '0 6px' }}>
-            Prestaciones (integran el SBC — Art. 27 LSS)
-          </legend>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-            <Campo label="Días de aguinaldo">
-              <input
-                type="number" min={15} style={campo}
-                value={dias_aguinaldo}
-                onChange={(e) => set('prestaciones', { ...datos.prestaciones, dias_aguinaldo: Number(e.target.value) })}
-              />
-            </Campo>
-            <Campo label="Días de vacaciones (0 = los de ley)">
-              <input
-                type="number" min={0} style={campo}
-                value={dias_vacaciones}
-                onChange={(e) => set('prestaciones', { ...datos.prestaciones, dias_vacaciones: Number(e.target.value) })}
-              />
-            </Campo>
-            <Campo label="Prima vacacional (0.25 = 25%)">
-              <input
-                style={campo} inputMode="decimal"
-                value={prima_vacacional}
-                onChange={(e) => set('prestaciones', { ...datos.prestaciones, prima_vacacional: e.target.value })}
-              />
-            </Campo>
-          </div>
-        </fieldset>
+        <PrestacionesEmpleado datos={datos} set={set} />
 
         {/* El resultado del MOTOR. Todo lo de esta caja viene del backend. */}
-        <div
-          style={{
-            background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)',
-            padding: 'var(--space-sm) var(--space-md)', fontSize: '0.86rem',
-          }}
-        >
-          {calculando && (
-            <span style={{ color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center' }}>
-              <Loader size={14} /> Integrando…
-            </span>
-          )}
-          {!calculando && errorSbc && (
-            <span role="alert" style={{ color: 'var(--danger)' }}>{errorSbc}</span>
-          )}
-          {!calculando && !errorSbc && !sbc && (
-            <span style={{ color: 'var(--text-muted)' }}>
-              Captura el salario diario para ver el SBC.
-            </span>
-          )}
-          {!calculando && sbc && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
-              <span>
-                Factor <strong style={{ fontFamily: "'JetBrains Mono', monospace" }}>{sbc.factor}</strong>
-                <span style={{ color: 'var(--text-muted)' }}> ({sbc.dias_vacaciones_aplicados} días de vacaciones)</span>
-              </span>
-              <span>
-                SBC <strong style={{ fontFamily: "'JetBrains Mono', monospace" }}>${sbc.sbc}</strong>
-              </span>
-              {sbc.piso_aplicado && (
-                <span style={{ color: 'var(--warning)', display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <AlertTriangle size={14} />
-                  Se aplicó el piso de 1 salario mínimo (${sbc.piso}). El patrón absorbe la
-                  cuota obrera (Art. 36 LSS).
-                </span>
-              )}
-              {sbc.tope_aplicado && (
-                <span style={{ color: 'var(--warning)', display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <AlertTriangle size={14} /> Se aplicó el tope de 25 UMA (${sbc.tope}).
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        <ResultadoSbc calculando={calculando} errorSbc={errorSbc} sbc={sbc} />
 
-        <fieldset style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm)' }}>
-          <legend style={{ ...etiqueta, marginBottom: 0, padding: '0 6px' }}>Checador</legend>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-            <Campo label="employeeNo del aparato">
-              <input
-                style={campo}
-                value={datos.employee_no ?? ''}
-                onChange={(e) => set('employee_no', e.target.value || null)}
-                placeholder="Sin vincular"
-              />
-            </Campo>
-            <Campo label="Enrolamiento biométrico">
-              <select
-                style={campo}
-                value={datos.enrolamiento}
-                onChange={(e) => set('enrolamiento', e.target.value as 'pendiente' | 'enrolado')}
-              >
-                <option value="pendiente">Pendiente</option>
-                <option value="enrolado">Enrolado</option>
-              </select>
-            </Campo>
-          </div>
-          <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            El rostro se captura <strong>en el aparato</strong> (menú Usuario → Agregar), no aquí.
-            Sin este número, las checadas de esta persona no se pueden atribuir y{' '}
-            <strong>no entra al cálculo de nómina</strong>.
-          </p>
-        </fieldset>
+        <ChecadorEmpleado datos={datos} set={set} />
 
         {errorGuardar && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.85rem' }}>

@@ -51,7 +51,7 @@ class TestClasificadorGastos:
         assert es_gasto_deducible("72153600", {"80"}) is True
 
     def test_caso_real_comisionista(self):
-        """Simular el caso del cliente CADG620317EE0."""
+        """Simular el caso del cliente SINT010101PF1."""
         # Factura emitida (para inferir actividad)
         ingreso = CFDI(
             uuid="E1", fecha=date(2026, 1, 5), tipo=TipoFactura.INGRESO,

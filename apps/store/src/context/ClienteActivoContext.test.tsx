@@ -71,7 +71,7 @@ vi.mock('./carteraStore', async () => {
         clientes: estadoCartera.clientes,
         loading: estadoCartera.loading,
         error: estadoCartera.error,
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
       }),
   };
