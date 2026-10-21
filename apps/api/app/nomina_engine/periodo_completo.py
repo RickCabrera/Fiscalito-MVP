@@ -57,6 +57,7 @@ from app.nomina_engine.periodo_completo_tipos import (  # noqa: F401 — re-expo
     ReciboCompleto,
 )
 from app.nomina_engine.recibo import PartidaDeduccion, PartidaOtroPago, PartidaPercepcion, Recibo
+from app.nomina_engine.reglas_periodo import aplicar_tope_diario, avisos_consejero
 from app.nomina_engine.tablas_isr_periodicas import (
     TARIFAS_DERIVADAS,
     isr_con_tarifa,
@@ -143,6 +144,8 @@ def calcular_recibo(
             "Art. 82 LFT",
         )
     ]
+    v, avisos_he = aplicar_tope_diario(v, inc.dias_periodo, fin, e.empleado_no)
+    avisos.extend(avisos_he)
     # B2: Art. 66 LFT y Transitorio Cuarto (DOF 01-05-2026). Las dobles que pasan del
     # tope de la fecha se pagan triples (Art. 68) y van 100 % gravadas e integran.
     tope_dobles = redondear(tope_horas_extra_periodo(fin, inc.dias_periodo))
@@ -191,16 +194,19 @@ def calcular_recibo(
     if e.es_asimilado:
         causado = isr_con_tarifa(base_isr, tarifa)
         isr_ret, subsidio = causado, CERO
-        if e.tipo_regimen == "07":
-            # O2: Art. 96 LISR, penúltimo párrafo: la retención a consejeros, administradores,
-            # comisarios y gerentes no será menor a la tasa máxima del Art. 152 sobre el
-            # excedente del límite inferior (el primero es $0.01: todo el monto).
+        avisos.extend(avisos_consejero(e))
+        if e.aplica_retencion_minima_consejero:
+            # O2 / P6-07: Art. 96 LISR, quinto párrafo: la retención a consejeros,
+            # administradores, comisarios y gerentes generales no será menor a la tasa máxima
+            # del Art. 152 sobre el excedente del límite inferior (el primero es $0.01: todo
+            # el monto), salvo que además haya relación de trabajo con el retenedor.
             minima = redondear(base_isr * TASA_MAXIMA_ART_152)
             if minima > isr_ret:
                 isr_ret = causado = minima
                 avisos.append(
-                    f"{e.empleado_no}: consejero (Art. 94 fr. III): retención a la tasa máxima "
-                    f"del Art. 152 ({TASA_MAXIMA_ART_152 * 100:.0f} %) por el Art. 96 LISR."
+                    f"{e.empleado_no}: consejero sin relación de trabajo: retención a la tasa "
+                    f"máxima del Art. 152 ({TASA_MAXIMA_ART_152 * 100:.0f} %) por el Art. 96 "
+                    "LISR, quinto párrafo."
                 )
     else:
         r = isr_retenido(

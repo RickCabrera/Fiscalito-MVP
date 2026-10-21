@@ -24095,7 +24095,7 @@
         },
         "type": "object",
         "title": "DatosAnualesPMSchema",
-        "description": "Datos de un cliente persona moral para un ejercicio (P3-01).\n\n- `coeficiente_utilidad`: el que se aplica en los pagos de ESTE ejercicio (el de la anual\n  del anterior, Art. 14 fr. I). Vacío: se calcula con `utilidad_fiscal_base` /\n  `ingresos_nominales_base` si se capturan, o con la anual que el sistema pueda armar de\n  los cinco ejercicios anteriores.\n- `ptu_pagada` y `mes_pago_ptu` (default mayo): Art. 14 fr. II / Art. 211.\n- `perdidas`: pendientes al inicio del ejercicio (Art. 57).\n- `retenciones_bancarias`: ISR retenido por el sistema financiero por mes (Art. 54).\n- `pagos_efectuados`: lo realmente pagado por mes; vacío = el determinado por el sistema.\n- `saldos_creditos` / `saldos_deudas`: 12 saldos de fin de mes para el ajuste anual por\n  inflación cuando no hay contabilidad (Arts. 44-46).\n- `cuentas_creditos` / `cuentas_deudas`: códigos agrupadores (prefijos) que cuentan como\n  créditos y deudas cuando sí hay contabilidad; vacío = el default documentado en\n  `app/impuestos/personas_morales.py` (criterio del despacho).\n- `cuentas_no_deducibles`: prefijos de código agrupador o números de cuenta adicionales que\n  no son deducibles.\n- `deduccion_inversiones`: deducción fiscal de inversiones del ejercicio (Arts. 31-38 o\n  209); la depreciación contable no se deduce.\n- `deducciones_adicionales` / `no_deducibles_adicionales` / `ingresos_adicionales`:\n  ajustes de conciliación contable-fiscal (p. ej. Art. 28 fr. XXX).\n- `fuente`: de dónde salen ingresos y deducciones: `auto` (contabilidad si hay pólizas en\n  el ejercicio; si no, bóveda), `contabilidad` o `boveda`.\n- `factor_exentos_nomina` (default 0.47): parte deducible de los pagos exentos al\n  trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).\n- `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM.\n- `no_deducibles_art28_xxx`: parte no deducible de los pagos exentos al trabajador (Art. 28\n  fr. XXX) que el Art. 9 cuarto párrafo resta de los ingresos para la renta gravable de PTU\n  (sólo ahí). Vacío = se deriva: con contabilidad, de `cuentas_art28_xxx` (las cuentas\n  donde el despacho registra ese no deducible; también se tratan como no deducibles); con\n  bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina emitida. Con contabilidad y\n  sin esas cuentas queda en cero y se avisa (no se baja la PTU sin dato)."
+        "description": "Datos de un cliente persona moral para un ejercicio (P3-01).\n\n- `coeficiente_utilidad`: el que se aplica en los pagos de ESTE ejercicio (el de la anual\n  del anterior, Art. 14 fr. I). Vacío: se calcula con `utilidad_fiscal_base` /\n  `ingresos_nominales_base` si se capturan, o con la anual que el sistema pueda armar de\n  los cinco ejercicios anteriores.\n- `ptu_pagada` y `mes_pago_ptu` (default mayo): Art. 14 fr. II / Art. 211.\n- `perdidas`: pendientes al inicio del ejercicio (Art. 57).\n- `retenciones_bancarias`: ISR retenido por el sistema financiero por mes (Art. 54).\n- `pagos_efectuados`: lo realmente pagado por mes; vacío = el determinado por el sistema.\n- `saldos_creditos` / `saldos_deudas`: 12 saldos de fin de mes para el ajuste anual por\n  inflación cuando no hay contabilidad (Arts. 44-46).\n- `cuentas_creditos` / `cuentas_deudas`: códigos agrupadores (prefijos) que cuentan como\n  créditos y deudas cuando sí hay contabilidad; vacío = el default documentado en\n  `app/impuestos/personas_morales.py` (criterio del despacho).\n- `cuentas_no_deducibles`: prefijos de código agrupador o números de cuenta adicionales que\n  no son deducibles.\n- `deduccion_inversiones`: deducción fiscal de inversiones del ejercicio (Arts. 31-38 o\n  209); la depreciación contable no se deduce.\n- `deducciones_adicionales` / `no_deducibles_adicionales` / `ingresos_adicionales`:\n  ajustes de conciliación contable-fiscal (p. ej. Art. 28 fr. XXX).\n- `fuente`: de dónde salen ingresos y deducciones: `auto` (contabilidad si hay pólizas en\n  el ejercicio; si no, bóveda), `contabilidad` o `boveda`.\n- `factor_exentos_nomina` (default 0.47): parte deducible de los pagos exentos al\n  trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).\n- `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM.\n- `no_deducibles_art28_xxx`: parte no deducible de los pagos exentos al trabajador (Art. 28\n  fr. XXX) que el Art. 9 quinto párrafo resta de los ingresos para la renta gravable de PTU\n  (sólo ahí). Vacío = se deriva: con contabilidad, de `cuentas_art28_xxx` (las cuentas\n  donde el despacho registra ese no deducible; también se tratan como no deducibles); con\n  bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina emitida. Con contabilidad y\n  sin esas cuentas queda en cero y se avisa (no se baja la PTU sin dato)."
       },
       "DatosPatronCFDI": {
         "properties": {
@@ -25378,6 +25378,18 @@
             "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
             "default": "02"
           },
+          "es_consejero": {
+            "type": "boolean",
+            "title": "Es Consejero",
+            "description": "P6-07: cobra honorarios de consejo, administración, comisaría o gerencia general (Art. 96 LISR quinto párrafo): retención mínima a la tasa máxima del Art. 152.",
+            "default": false
+          },
+          "consejero_es_trabajador": {
+            "type": "boolean",
+            "title": "Consejero Es Trabajador",
+            "description": "P6-07: el consejero además tiene relación de trabajo con el retenedor: se retiene con la tarifa, sin la tasa mínima (Art. 96 quinto párrafo).",
+            "default": false
+          },
           "causa_baja": {
             "type": "string",
             "pattern": "^([1-9A]?)$",
@@ -25610,6 +25622,18 @@
             "title": "Tipo Regimen",
             "description": "P4-04: `c_TipoRegimen`. 02 sueldos y salarios; 05-11 asimilados a salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 acciones, 11 otros.",
             "default": "02"
+          },
+          "es_consejero": {
+            "type": "boolean",
+            "title": "Es Consejero",
+            "description": "P6-07: cobra honorarios de consejo, administración, comisaría o gerencia general (Art. 96 LISR quinto párrafo): retención mínima a la tasa máxima del Art. 152.",
+            "default": false
+          },
+          "consejero_es_trabajador": {
+            "type": "boolean",
+            "title": "Consejero Es Trabajador",
+            "description": "P6-07: el consejero además tiene relación de trabajo con el retenedor: se retiene con la tarifa, sin la tasa mínima (Art. 96 quinto párrafo).",
+            "default": false
           },
           "causa_baja": {
             "type": "string",
@@ -32057,6 +32081,23 @@
             "title": "Prima Vacacional Exenta Previa",
             "description": "Prima vacacional ya exenta en el año fuera del historial (15 UMA anuales).",
             "default": "0"
+          },
+          "horas_extra_por_dia": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Horas Extra Por Dia",
+            "description": "P6-07: horas extra de cada día natural del periodo, desde el inicio. Con ellas se aplica el tope diario del Art. 66 LFT (3 h); lo que excede va triple (Art. 68). Sustituye a `horas_dobles` (no se mandan los dos).",
+            "default": []
           }
         },
         "type": "object",
@@ -32779,6 +32820,34 @@
             "title": "Incluir 20 Dias",
             "description": "20 días por año (Art. 50 fr. II LFT): sólo si el patrón se niega a reinstalar (Art. 49) o el trabajador rescinde (Art. 52).",
             "default": false
+          },
+          "aguinaldo_exento_previo": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Aguinaldo Exento Previo",
+            "description": "P6-07: aguinaldo ya exento en el año FUERA del historial; se suma al del historial y se resta de las 30 UMA (Art. 93 fr. XIV, por año de calendario).",
+            "default": "0"
+          },
+          "prima_vacacional_exenta_previa": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Prima Vacacional Exenta Previa",
+            "description": "P6-07: prima vacacional ya exenta en el año FUERA del historial; se suma a la del historial y se resta de las 15 UMA (Art. 93 fr. XIV).",
+            "default": "0"
           },
           "guardar": {
             "type": "boolean",

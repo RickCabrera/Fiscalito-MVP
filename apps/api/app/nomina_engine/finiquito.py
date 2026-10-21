@@ -21,7 +21,10 @@ FUENTES
   o en relación por tiempo indeterminado, **20 días por año** (Art. 50 fr. II).
 - **LISR Art. 93 fr. XIII**: prima de antigüedad, retiro e indemnizaciones exentos
   hasta **90 UMA por año de servicio**; fracción de más de seis meses = año
-  completo. **Art. 93 fr. XIV**: aguinaldo (30 UMA) y prima vacacional (15 UMA).
+  completo. **Art. 93 fr. XIV**: aguinaldo (30 UMA) y prima vacacional (15 UMA),
+  **por año de calendario** ("durante un año de calendario"): el finiquito sólo exenta lo
+  que queda del tope después de lo ya exentado en el año (P6-07: `aguinaldo_exento_previo`
+  y `prima_vacacional_exenta_previa`, que la ruta toma del historial de nómina).
 - ISR de la parte gravada de separación: **Arts. 95 y 96** (`isr_separacion`).
   Lo ordinario (aguinaldo, vacaciones, prima, salarios) con el Art. 96.
 
@@ -83,6 +86,10 @@ class DatosSeparacion:
     # se niega a reinstalar (Art. 49) o el trabajador rescinde por causa imputable al
     # patrón (Art. 52); en un despido injustificado con reinstalación ofrecida no.
     incluir_20_dias: bool = False
+    # P6-07: exento ya aplicado en el año de la baja (Art. 93 fr. XIV, por año de calendario):
+    # aguinaldo (clave 002) y prima vacacional (021). Se restan del tope antes de exentar.
+    aguinaldo_exento_previo: Decimal = CERO
+    prima_vacacional_exenta_previa: Decimal = CERO
 
     def __post_init__(self) -> None:
         if self.causa not in CAUSAS:
@@ -119,6 +126,11 @@ class ResultadoFiniquito:
     neto: Decimal
     ultimo_sueldo_mensual: Decimal
     notas: tuple[str, ...] = field(default_factory=tuple)
+
+
+def _tope_restante(tope: Decimal, previo: Decimal) -> Decimal:
+    """Lo que queda del tope anual de exención del Art. 93 fr. XIV tras lo ya exentado."""
+    return max(redondear(tope) - previo, CERO)
 
 
 def anios_de_servicio(alta: date, baja: date) -> Decimal:
@@ -184,7 +196,7 @@ def calcular_finiquito(
         CERO,
     )
     if agui:
-        ex = min(agui, redondear(uma * UMAS_AGUINALDO))
+        ex = min(agui, _tope_restante(uma * UMAS_AGUINALDO, d.aguinaldo_exento_previo))
         c.append(
             Concepto(
                 "002",
@@ -209,7 +221,9 @@ def calcular_finiquito(
             )
         )
         prima = redondear(vac * d.prima_vacacional)
-        ex = min(prima, redondear(uma * UMAS_PRIMA_VACACIONAL))
+        ex = min(
+            prima, _tope_restante(uma * UMAS_PRIMA_VACACIONAL, d.prima_vacacional_exenta_previa)
+        )
         c.append(
             Concepto(
                 "021",
@@ -269,6 +283,12 @@ def calcular_finiquito(
     isr_sep = isr_separacion(gravado_sep, usmo, fecha, ingreso_ordinario_mensual + gravado_ord).isr
     total = sum((x.importe for x in c), start=CERO)
     notas = [f"Causa: {CAUSAS[d.causa]}."]
+    if d.aguinaldo_exento_previo or d.prima_vacacional_exenta_previa:
+        notas.append(
+            f"Exentos ya aplicados en {fecha.year} (Art. 93 fr. XIV, por año de calendario): "
+            f"aguinaldo {d.aguinaldo_exento_previo:.2f}, prima vacacional "
+            f"{d.prima_vacacional_exenta_previa:.2f}; se restaron del tope."
+        )
     if d.causa == "despido_injustificado" and not d.incluir_20_dias:
         notas.append(
             "No incluye los 20 días por año (Art. 50 fr. II LFT): proceden cuando el patrón se "

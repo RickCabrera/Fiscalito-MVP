@@ -128,8 +128,19 @@ class VariablesEmpleado:
     # O3: prima vacacional ya exenta en el año fuera de este sistema (Art. 93 fr. XIV:
     # 15 UMA por año calendario). Se suma a lo que ya consta en el historial.
     prima_vacacional_exenta_previa: Decimal = CERO
+    # P6-07: horas extra trabajadas cada día natural del periodo, desde el inicio. Con ellas
+    # se verifica el tope diario del Art. 66 LFT (ver `jornada.py`); sustituyen a
+    # `horas_dobles` (no se capturan las dos).
+    horas_extra_por_dia: tuple[Decimal, ...] = ()
 
     def __post_init__(self) -> None:
+        if any(h < 0 for h in self.horas_extra_por_dia):
+            raise FiscalValidationError(f"{self.empleado_no}: horas extra por día negativas.")
+        if self.horas_extra_por_dia and self.horas_dobles:
+            raise FiscalValidationError(
+                f"{self.empleado_no}: captura las horas extra por día o el total de dobles, "
+                "no los dos."
+            )
         negativos = [
             n
             for n in (

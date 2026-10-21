@@ -2,11 +2,12 @@
 Personas morales: ajuste anual por inflación (Arts. 44-46 LISR), anual (Art. 9 / Art. 212) y
 PTU a repartir. Parte de `personas_morales.py` (O11); fuentes y decisiones en su docstring.
 
-RENTA GRAVABLE PARA LA PTU (Art. 9 LISR, cuarto párrafo — corrección B3 del revisor de motor)
+RENTA GRAVABLE PARA LA PTU (Art. 9 LISR, párrafos cuarto y quinto — B3 del revisor de motor)
 --------------------------------------------------------------------------------------------
 Se parte de ingresos acumulables − deducciones autorizadas del ejercicio, sin disminuir la PTU
-pagada ni las pérdidas pendientes, y además "se deberán disminuir de los ingresos acumulables
-las cantidades no deducibles en términos de la fracción XXX del artículo 28" (la parte no
+pagada ni las pérdidas pendientes (cuarto párrafo), y además (quinto párrafo) "se deberán
+disminuir de los ingresos acumulables las cantidades no deducibles en términos de la
+fracción XXX del artículo 28" (la parte no
 deducible de los pagos que a la vez son ingresos exentos para el trabajador: 53 % o 47 %).
 Ese importe (`no_deducibles_art28_xxx`) SÓLO disminuye la renta gravable de PTU; no toca la
 utilidad fiscal ni el resultado fiscal.
@@ -122,7 +123,7 @@ class EntradaAnual:
     retenciones: Decimal = CERO
     anticipos_miembros: Decimal = CERO
     modo: ModoFactor = MODO_FACTOR_DEFAULT
-    # Art. 9 cuarto párrafo: no deducibles por el Art. 28 fr. XXX; sólo restan en la renta
+    # Art. 9 quinto párrafo: no deducibles por el Art. 28 fr. XXX; sólo restan en la renta
     # gravable de PTU (B3).
     no_deducibles_art28_xxx: Decimal = CERO
 
@@ -215,7 +216,7 @@ def anual_pm(e: EntradaAnual, *, resico: bool = False) -> ResultadoAnualPM:
         "ingresos": ingresos, "deducciones": deducciones, "antes_ptu": antes_ptu,
         "utilidad": utilidad, "perdida": perdida, "est": est, "perd": perd,
         "resultado": resultado, "isr": isr, "neto": neto})
-    # Art. 9 cuarto párrafo: sin PTU pagada ni pérdidas, menos los no deducibles del 28-XXX.
+    # Art. 9 cuarto párrafo: sin PTU pagada ni pérdidas; quinto: menos los no deducibles 28-XXX.
     xxx = redondear(e.no_deducibles_art28_xxx)
     renta_ptu = ceros(antes_ptu - xxx)
     ptu = redondear(renta_ptu * PORCENTAJE_PTU)

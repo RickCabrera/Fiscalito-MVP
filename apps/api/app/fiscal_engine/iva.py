@@ -24,6 +24,10 @@ FUENTES (Ley del IVA)
   esos conceptos (o no es un acto del Art. 4o.-A), el despacho lo excluye por UUID con
   `ConfigIVA.no_objeto_excluidos` (`iva_no_objeto_excluidos` en la configuración del cliente).
   Default: todo el no objeto cobrado entra (lo conservador: proporción menor, acredita menos).
+  **Qué es "no objeto" (P6-07):** los conceptos del CFDI 4.0 con `ObjetoImp == "01"` ("No
+  objeto de impuesto", catálogo c_ObjetoImp del Anexo 20 versión 4.0), por su Importe −
+  Descuento. Sólo un CFDI que no trae `ObjetoImp` en sus conceptos (3.3) se estima por
+  residuo (subtotal − descuento − bases con traslado), y el resultado lo avisa en notas.
 - Art. 5o.-B: opción de usar la proporción del año de calendario anterior (aquí: proporción
   fija capturada por cliente). (Antes se citaba como 5o.-C: el 5o.-C es la lista de
   exclusiones; texto consultado en diputados.gob.mx/LeyesBiblio/pdf/LIVA.pdf.)
@@ -93,6 +97,9 @@ class MovimientoIVA:
     signo: int = 1
     origen: str = "PUE"
     deducible: bool = True
+    # P6-07: True cuando `base_no_objeto` salió por RESIDUO (subtotal − bases con traslado) y
+    # no por los conceptos con `ObjetoImp == "01"` (CFDI 3.3 o sin el atributo). Se avisa.
+    no_objeto_por_residuo: bool = False
 
 
 @dataclass(frozen=True)
@@ -196,6 +203,12 @@ def calcular_iva_mes(
         [m for m in emit if m.uuid.upper() not in config.no_objeto_excluidos], "base_no_objeto"))
     r.iva_trasladado_cobrado = redondear(_suma(emit, "iva_16") + _suma(emit, "iva_8"))
     r.iva_retenido_por_clientes = redondear(_suma(emit, "iva_retenido"))
+    por_residuo = [m.uuid for m in emit if m.no_objeto_por_residuo and m.base_no_objeto]
+    if por_residuo:
+        r.notas.append(
+            f"{len(por_residuo)} CFDI emitido(s) sin ObjetoImp por concepto (CFDI 3.3): su valor "
+            "no objeto se estimó como subtotal menos las bases con traslado de IVA. Revísalos: "
+            + ", ".join(sorted(por_residuo)[:5]) + ("…" if len(por_residuo) > 5 else ""))
     if r.valor_actos_8 and not config.region_fronteriza:
         r.notas.append("Hay cobros al 8 % y el cliente no está configurado en región "
                        "fronteriza: revisa el estímulo (Decreto región fronteriza).")

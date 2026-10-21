@@ -207,6 +207,16 @@ class EmpleadoCarteraSchema(DatosPagoContactoSchema):
         "salarios (Art. 94 LISR): sin IMSS ni subsidio. 09 honorarios asimilados, 10 "
         "acciones, 11 otros.",
     )
+    es_consejero: bool = Field(
+        default=False,
+        description="P6-07: cobra honorarios de consejo, administración, comisaría o gerencia "
+        "general (Art. 96 LISR quinto párrafo): retención mínima a la tasa máxima del Art. 152.",
+    )
+    consejero_es_trabajador: bool = Field(
+        default=False,
+        description="P6-07: el consejero además tiene relación de trabajo con el retenedor: "
+        "se retiene con la tarifa, sin la tasa mínima (Art. 96 quinto párrafo).",
+    )
 
     # P4-09: movimientos afiliatorios. Vacíos por default para no romper la cartera previa.
     causa_baja: str = Field(

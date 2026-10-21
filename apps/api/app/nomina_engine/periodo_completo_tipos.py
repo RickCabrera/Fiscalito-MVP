@@ -40,10 +40,21 @@ class EmpleadoNomina:
     fecha_alta: date | None = None
     fecha_baja: date | None = None
     tipo_regimen: str = REGIMEN_SUELDOS
+    # P6-07: Art. 96 LISR, quinto párrafo. Honorarios a miembros de consejos, administradores,
+    # comisarios y gerentes generales: retención no menor a la tasa máxima del Art. 152,
+    # "salvo que exista, además, relación de trabajo con el retenedor", en cuyo caso se usa la
+    # tarifa del segundo párrafo. Se marca por empleado, NO se deduce del c_TipoRegimen.
+    es_consejero: bool = False
+    consejero_es_trabajador: bool = False
 
     @property
     def es_asimilado(self) -> bool:
         return self.tipo_regimen in REGIMENES_ASIMILADOS
+
+    @property
+    def aplica_retencion_minima_consejero(self) -> bool:
+        """Art. 96 quinto párrafo: consejero sin relación de trabajo con el retenedor."""
+        return self.es_asimilado and self.es_consejero and not self.consejero_es_trabajador
 
 
 @dataclass(frozen=True)

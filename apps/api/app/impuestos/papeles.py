@@ -148,7 +148,7 @@ def _pm(libro: Workbook, r: dict[str, Any], cab: str) -> None:
     p = r["ptu"]
     h = _hoja(libro, "PTU", ["Concepto", "Importe"], cab)
     h.append(["Utilidad antes de PTU (ingresos − deducciones)", _n(p["utilidad_antes_ptu"])])
-    h.append(["(−) No deducibles Art. 28 fr. XXX (Art. 9 cuarto párrafo)",
+    h.append(["(−) No deducibles Art. 28 fr. XXX (Art. 9 quinto párrafo)",
               _n(p["no_deducibles_art28_xxx"]), p["origen_art28_xxx"]])
     h.append(["Renta gravable (Art. 9, sin PTU ni pérdidas)", _n(p["renta_gravable"])])
     h.append(["Porcentaje", p["porcentaje"], p["fundamento"]])

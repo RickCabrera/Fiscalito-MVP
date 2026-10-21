@@ -24,7 +24,7 @@ from app.fiscal_engine.resumen_impuestos import (
     armar_resumen,
     resumen_dict,
 )
-from app.impuestos import servicio
+from app.impuestos import isn_cliente, servicio
 from app.schemas.impuestos import ConfigImpuestosSchema, IvaPeriodoRequest, ResumenRequest
 from app.tenancy import Contexto, cliente_o_404, contexto_actual
 
@@ -148,6 +148,6 @@ def isn(
 ) -> dict[str, Any]:
     """ISN del mes del cliente con sus CFDI de nómina y su entidad."""
     cliente = cliente_o_404(ctx, clave)
-    r, n = servicio.isn_del_cliente(ctx.db, cliente, anio, mes)
+    r, n = isn_cliente.isn_del_cliente(ctx.db, cliente, anio, mes)
     return {"exito": True, "anio": anio, "mes": mes, "nominas": n, **resultado_isn_dict(r),
             "fecha_limite": fecha_limite_mensual(anio, mes).isoformat()}

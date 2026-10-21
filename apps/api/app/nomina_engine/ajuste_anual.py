@@ -3,12 +3,14 @@ Cálculo anual del ISR de sueldos que hace el patrón. (P4-08, Art. 97 LISR)
 
 FUENTES
 -------
-- **Art. 97 LISR**: el retenedor calcula el impuesto anual de cada trabajador.
-  No lo hace cuando el trabajador (I) empezó después del 1 de enero o dejó de
-  prestar servicios antes del 1 de diciembre, (II) obtuvo ingresos anuales que
-  excedan $400,000.00, o (III) comunicó por escrito que presentará su declaración.
-  La diferencia a cargo se entera a más tardar en febrero; la diferencia a favor
-  se compensa contra la retención de diciembre y las siguientes.
+- **Art. 97 LISR**, primer párrafo: el retenedor calcula el impuesto anual de cada
+  trabajador. Segundo párrafo: se disminuye el impuesto local a los ingresos por
+  salarios (tasa ≤ 5 %) y se aplica la tarifa del Art. 152. Tercer párrafo: la
+  diferencia a cargo se entera a más tardar en febrero; la diferencia a favor se
+  compensa contra la retención de diciembre y las siguientes. Quinto párrafo: no se
+  calcula cuando el trabajador (fr. I) empezó después del 1 de enero o dejó de
+  prestar servicios antes del 1 de diciembre, (fr. II) obtuvo ingresos anuales que
+  excedan $400,000.00, o (fr. III) comunicó por escrito que presentará su declaración.
 - **Art. 152 LISR**: tarifa anual (Anexo 8 RMF 2026, rubro C fr. II), que ya
   vive transcrita en `fiscal_engine/tablas_isr.py:TABLA_ISR_ANUAL` y aquí se lee
   en Decimal desde esos mismos literales.
@@ -33,7 +35,7 @@ from app.fiscal_engine.tablas_isr import TABLA_ISR_ANUAL
 from app.redondeo import redondear
 
 CERO = Decimal("0.00")
-TOPE_INGRESOS_ART_97 = Decimal("400000.00")  # Art. 97 fr. II LISR
+TOPE_INGRESOS_ART_97 = Decimal("400000.00")  # Art. 97 quinto párrafo fr. II LISR
 TASA_MAXIMA_IMPUESTO_LOCAL = Decimal("0.05")  # Art. 97 LISR, segundo párrafo
 
 # Tarifa anual del Art. 152 por ejercicio, en Decimal. Mismos literales de
@@ -71,8 +73,8 @@ class DatosAnuales:
     isr_retenido: Decimal
     subsidio_correspondido: Decimal = CERO
     comunico_que_declara: bool = False
-    # O9: impuesto local a los ingresos por salarios retenido en el año. Art. 97 LISR: se
-    # disminuye de la base anual, siempre que la tasa del impuesto local no exceda del 5 %.
+    # O9: impuesto local a los ingresos por salarios retenido en el año. Art. 97 LISR segundo
+    # párrafo: se disminuye de la base anual, si la tasa del impuesto local no excede del 5 %.
     impuesto_local_retenido: Decimal = CERO
     tasa_impuesto_local: Decimal | None = None
 
@@ -95,13 +97,16 @@ class AjusteAnual:
 def motivo_no_procede(d: DatosAnuales) -> str | None:
     """La causal de exclusión del Art. 97, o `None` si procede."""
     if d.fecha_alta and d.fecha_alta > date(d.ejercicio, 1, 1):
-        return "Empezó a prestar servicios después del 1 de enero (Art. 97 fr. I)."
+        return "Empezó a prestar servicios después del 1 de enero (Art. 97 quinto párr. fr. I)."
     if d.fecha_baja and d.fecha_baja < date(d.ejercicio, 12, 1):
-        return "Dejó de prestar servicios antes del 1 de diciembre (Art. 97 fr. I)."
+        return "Dejó de prestar servicios antes del 1 de diciembre (Art. 97 quinto párr. fr. I)."
     if d.ingresos_gravados + d.ingresos_exentos > TOPE_INGRESOS_ART_97:
-        return "Sus ingresos anuales exceden $400,000.00 (Art. 97 fr. II)."
+        return "Sus ingresos anuales exceden $400,000.00 (Art. 97 quinto párr. fr. II)."
     if d.comunico_que_declara:
-        return "Comunicó por escrito que presentará su declaración anual (Art. 97 fr. III)."
+        return (
+            "Comunicó por escrito que presentará su declaración anual "
+            "(Art. 97 quinto párr. fr. III)."
+        )
     return None
 
 
@@ -145,7 +150,8 @@ def ajuste_anual(d: DatosAnuales) -> AjusteAnual:
             d.isr_retenido,
             diferencia,
             CERO,
-            "Saldo a cargo: se retiene y entera a más tardar en febrero (Art. 97 LISR).",
+            "Saldo a cargo: se retiene y entera a más tardar en febrero "
+            "(Art. 97 LISR, tercer párrafo).",
         )
     return AjusteAnual(
         True,
@@ -157,5 +163,6 @@ def ajuste_anual(d: DatosAnuales) -> AjusteAnual:
         CERO,
         -diferencia,
         "Saldo a favor: se compensa contra la retención de diciembre y las siguientes "
-        "(Art. 97 LISR). En el CFDI va como OtroPago 004 (compensación de saldo a favor).",
+        "(Art. 97 LISR, tercer párrafo). En el CFDI va como OtroPago 004 (compensación de "
+        "saldo a favor).",
     )

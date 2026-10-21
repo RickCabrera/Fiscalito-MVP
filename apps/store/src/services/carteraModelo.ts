@@ -55,6 +55,10 @@ export interface EmpleadoCartera {
   fecha_baja?: string | null;
   /** P4-04: c_TipoRegimen. '02' sueldos; '05'-'11' asimilados (Art. 94 LISR, sin IMSS). */
   tipo_regimen?: string;
+  /** P6-07: honorarios de consejo, administración, comisaría o gerencia general (Art. 96 LISR, 5o. párr.). */
+  es_consejero?: boolean;
+  /** P6-07: el consejero además es trabajador del retenedor: tarifa, sin la tasa mínima. */
+  consejero_es_trabajador?: boolean;
   enrolamiento: EstatusEnrolamiento;
   /** P4-09: catálogo IMSS de causas de baja (1-9, A). Vacío = no capturada. */
   causa_baja?: string;
