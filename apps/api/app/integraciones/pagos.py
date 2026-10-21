@@ -268,6 +268,14 @@ class PagosMercadoPago:
         return str(revisar(r, "Mercado Pago").json()["id"])
 
     def crear_suscripcion(self, cliente_id, plan):
+        # PENDIENTE: los avisos de Mercado Pago sólo traen el id y falta consultar
+        # `/preapproval` para saber el estado; sin eso un despacho que pagó caería en solo
+        # lectura al terminar la prueba. Hasta que esté, no se acepta el alta (revisor P5).
+        raise FiscalAgentError(
+            "Las suscripciones con Mercado Pago aún no están disponibles; usa Stripe.",
+            status_code=503)
+
+    def _crear_suscripcion_preapproval(self, cliente_id, plan):
         # `cliente_id` es el correo del pagador: así lo pide `preapproval`.
         r = self._http.post(f"{self.URL}/preapproval", headers=self._h, json={
             "preapproval_plan_id": plan, "payer_email": cliente_id,

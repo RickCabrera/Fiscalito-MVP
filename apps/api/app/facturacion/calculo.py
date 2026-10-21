@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.exceptions import FiscalAgentError
-from app.facturacion.catalogos import OBJETO_IMP, TASA_MAXIMA
+from app.facturacion.catalogos import OBJETO_IMP, TASA_MAXIMA, TASAS_IVA_TRASLADO
 from app.redondeo import redondear
 
 CERO = Decimal("0.00")
@@ -124,6 +124,9 @@ def _impuesto(i: ImpuestoEntrada, base: Decimal, n: int) -> ImpuestoCalculado:
     tope = TASA_MAXIMA[(i.tipo, i.impuesto)]
     if tasa < 0 or tasa > tope or tasa != tasa.quantize(SEIS):
         raise _error(f"Concepto {n}: tasa {tasa} fuera de rango (0 a {tope}, seis decimales).")
+    if (i.tipo, i.impuesto) == ("traslado", "002") and tasa not in TASAS_IVA_TRASLADO:
+        raise _error(f"Concepto {n}: tasa de IVA {tasa} fuera del catálogo c_TasaOCuota "
+                     "(0.000000, 0.080000 o 0.160000).")
     return ImpuestoCalculado(i.tipo, i.impuesto, "Tasa", tasa.quantize(SEIS), base,
                              redondear(base * tasa))
 

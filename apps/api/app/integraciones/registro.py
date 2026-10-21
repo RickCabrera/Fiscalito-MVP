@@ -26,6 +26,11 @@ def variable(servicio: str) -> str:
     return f"FISCALITO_{servicio.upper()}"
 
 
+# Servicios cuyo `falso` acepta webhooks firmados con un secreto conocido: en producción
+# alguien podría activar una suscripción o hablar con el bot sin pagar ni ser cliente.
+FALSO_VETADO_EN_PRODUCCION = frozenset({"pagos", "whatsapp"})
+
+
 def elegida(servicio: str) -> str:
     """La implementación que manda el entorno (o `falso` fuera de producción)."""
     valor = os.environ.get(variable(servicio), "").strip().lower()
@@ -45,6 +50,11 @@ def obtener(servicio: str) -> Any:
             f"uno de {sorted(opciones)}.",
             status_code=503,
         )
+    if nombre == "falso" and servicio in FALSO_VETADO_EN_PRODUCCION and \
+            settings.ENTORNO == "produccion":
+        raise FiscalAgentError(
+            f"El servicio '{servicio}' no puede usar la implementación falsa en producción: "
+            "su webhook se firma con un secreto que está en el repo.", status_code=503)
     llave = f"{servicio}:{nombre}"
     if llave not in _CACHE:
         _CACHE[llave] = opciones[nombre]()

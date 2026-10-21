@@ -356,3 +356,42 @@ def test_multi_tenant(entorno, api):
     assert b.get("/api/v1/facturacion/config").json()["cliente_propio"] is None
     assert b.put("/api/v1/facturacion/config",
                  json={"cliente_propio": "despacho"}).status_code == 404
+
+
+@pytest.mark.parametrize("regimen, isr", [("626", "0.012500"), ("612", "0.100000")])
+def test_borrador_pf_a_moral_retiene_iva_dos_tercios_tambien_en_resico(
+        entorno, sesionador, regimen, isr):
+    # Revisor P5 B1: RESICO cambia la retención de ISR (Art. 113-J LISR), no quita la de IVA
+    # de 2/3 (Art. 1o.-A fr. II inciso a LIVA; Art. 3o. fr. I RLIVA).
+    http = entorno
+    with sesionador() as db:
+        propio = db.query(Cliente).filter_by(despacho_id=A, clave="despacho").one()
+        # RFC sintético de persona física (13 caracteres); sólo se usa para el borrador.
+        propio.rfc = "XAXX010101AB1"
+        propio.datos = {**(propio.datos or {}), "rfc": "XAXX010101AB1", "regimen": regimen}
+        taller = db.query(Cliente).filter_by(despacho_id=A, clave="taller").one()
+        cargo = CargoCobranza(despacho_id=A, cliente_id=taller.id, tipo="servicio",
+                              concepto="Honorarios", fecha=date(2026, 10, 5),
+                              vencimiento=date(2026, 10, 15), importe=D("1000.00"))
+        db.add(cargo)
+        db.commit()
+        cargo_id = cargo.id
+    http.put("/api/v1/facturacion/config", json={"cliente_propio": "despacho"})
+    b = http.get(f"/api/v1/facturacion/cargos/{cargo_id}/borrador").json()["borrador"]
+    ret = {(i["impuesto"], i["tasa"]) for i in b["conceptos"][0]["impuestos"]
+           if i["tipo"] == "retencion"}
+    assert ret == {("002", "0.106667"), ("001", isr)}
+
+
+def test_iva_trasladado_fuera_de_catalogo_se_rechaza():
+    with pytest.raises(FiscalAgentError, match="c_TasaOCuota"):
+        calculo.comprobante([_c("100", impuestos=(calculo.ImpuestoEntrada(
+            "traslado", "002", "Tasa", D("0.050000")),))])
+
+
+def test_falso_de_pagos_y_whatsapp_vetado_en_produccion(monkeypatch):
+    monkeypatch.setattr(settings, "ENTORNO", "produccion")
+    for servicio in ("pagos", "whatsapp"):
+        monkeypatch.setenv(registro.variable(servicio), "falso")
+        with pytest.raises(FiscalAgentError, match="falsa en producción"):
+            registro.obtener(servicio)

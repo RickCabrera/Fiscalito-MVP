@@ -254,7 +254,11 @@ def test_pagos_mercadopago():
     })
     m = pagos.PagosMercadoPago("APP_USR-x", "secreto", http=g.cliente())
     assert m.crear_cliente("a@b.mx", "Despacho", "uid-a") == "123-abc"
-    s = m.crear_suscripcion("a@b.mx", "plan-1")
+    # Revisor P5: el alta se rechaza (503) hasta que el webhook consulte `/preapproval`.
+    with pytest.raises(FiscalAgentError, match="Mercado Pago") as exc:
+        m.crear_suscripcion("a@b.mx", "plan-1")
+    assert exc.value.status_code == 503
+    s = m._crear_suscripcion_preapproval("a@b.mx", "plan-1")
     assert s.url_pago.startswith("https://www.mercadopago.com.mx")
     m.cancelar(s.id)
     assert g.peticiones[2].method == "PUT"

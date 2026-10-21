@@ -26,6 +26,7 @@ import io
 import re
 import zipfile
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -293,7 +294,7 @@ def responder(db: Session, mensaje_id: int, hoy: date | None = None) -> dict[str
 
 
 def _pesos(valor: str) -> str:
-    return f"${float(valor):,.2f}"
+    return f"${Decimal(str(valor)).quantize(Decimal('0.01')):,}"
 
 
 def _resolver(db: Session, m: MensajeWhatsApp, cliente: Cliente, intencion: str,

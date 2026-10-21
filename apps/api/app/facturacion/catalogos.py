@@ -121,6 +121,8 @@ PRESETS = {
     ],
 }
 # Topes de tasa que acepta la captura (no son legales: evitan una errata de dedo).
+# c_TasaOCuota (Anexo 20): IVA trasladado con factor Tasa sólo admite 0, 8 % y 16 %.
+TASAS_IVA_TRASLADO = frozenset({Decimal("0"), Decimal("0.08"), Decimal("0.16")})
 TASA_MAXIMA = {("traslado", "002"): Decimal("0.16"), ("retencion", "002"): Decimal("0.16"),
                ("retencion", "001"): Decimal("0.35")}
 

@@ -28,7 +28,7 @@ DECISIONES PROVISIONALES
 - Borrador desde un cargo: la iguala capturada en cobranza es ANTES de IVA ("$5,000 + IVA"),
   método PPD con forma 99 (se factura antes de cobrar); retenciones de IVA 2/3 e ISR 10 % si el
   despacho es persona física y el cliente persona moral (Art. 1o.-A LIVA, Art. 106 LISR), o
-  ISR 1.25 % si el despacho tributa en RESICO (Art. 113-J LISR). Es un borrador: se edita.
+  IVA 2/3 e ISR 1.25 % si el despacho tributa en RESICO (Art. 113-J LISR). Es un borrador: se edita.
 - Egreso: exige PUE y al menos un CFDI relacionado (por defecto TipoRelacion 01).
 - Cancelación con motivo 01: el folio sustituto debe ser una factura vigente del mismo emisor
   que relacione a ésta con TipoRelacion 04.
@@ -371,7 +371,8 @@ def emitir_pago(ctx: Contexto, cliente: Cliente, e: EntradaPago,
     docs: list[calculo.DocumentoPagado] = []
     facturas: list[Factura] = []
     for d in e.documentos:
-        f = ctx.db.get(Factura, d.factura_id)
+        # Bloquea la factura: dos pagos simultáneos no deben pasarse del saldo (revisor P5).
+        f = ctx.db.get(Factura, d.factura_id, with_for_update=True)
         if f is None or f.cliente_id != cliente.id:
             raise _error(f"No existe la factura {d.factura_id} de este emisor.", 404)
         if f.tipo != "I" or f.metodo_pago != "PPD" or f.estado not in VIGENTES:
@@ -531,8 +532,13 @@ def borrador_de_cargo(ctx: Contexto, cargo_id: int) -> dict[str, Any]:
         {"tipo": "traslado", "impuesto": "002", "tipo_factor": "Tasa", "tasa": "0.160000"}]
     if len(rfc_e) == 13 and len(rfc_r) == 12:
         if regimen_e == "626":
-            impuestos.append({"tipo": "retencion", "impuesto": "001", "tipo_factor": "Tasa",
-                              "tasa": str(catalogos.TASA_RET_ISR_RESICO)})
+            # RESICO no quita la retención de IVA de 2/3 (Art. 1o.-A fr. II inciso a LIVA y
+            # Art. 3o. fr. I RLIVA); sólo cambia la de ISR a 1.25 % (Art. 113-J LISR).
+            impuestos += [
+                {"tipo": "retencion", "impuesto": "002", "tipo_factor": "Tasa",
+                 "tasa": str(catalogos.TASA_RET_IVA_DOS_TERCIOS)},
+                {"tipo": "retencion", "impuesto": "001", "tipo_factor": "Tasa",
+                 "tasa": str(catalogos.TASA_RET_ISR_RESICO)}]
         else:
             impuestos += [
                 {"tipo": "retencion", "impuesto": "002", "tipo_factor": "Tasa",

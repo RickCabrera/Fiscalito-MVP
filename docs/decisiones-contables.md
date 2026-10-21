@@ -80,3 +80,21 @@ resultados de P2-08 (`cierre:<año>:resultados`); saldo final = resultados en ce
 resultado del ejercicio en capital. La póliza `cierre:<año>:balance` no entra: es el artificio
 interno para reabrir el 1 de enero y dejaría toda la balanza en cero. Confirmar con la
 contadora que es lo que espera el SAT en el mes 13.
+
+## Facturación y suscripciones (P5) — abiertas tras el revisor (2026-10-21)
+
+Corregido: el borrador RESICO PF → PM retiene IVA 2/3 además del ISR 1.25 %; IVA trasladado sólo
+0/8/16 % (c_TasaOCuota); la factura se bloquea al registrar un pago (dos pagos simultáneos no
+rebasan el saldo); `falso` de pagos y WhatsApp vetado en producción; alta con Mercado Pago → 503
+hasta que su webhook consulte `/preapproval`.
+
+Para Ricardo y la contadora:
+1. Nota de crédito contra una PPD: ¿baja el `ImpSaldoAnt` de los pagos siguientes? Hoy no, y no
+   se valida que el egreso no exceda el saldo.
+2. Pago cancelado: ¿se reusa su número de parcialidad? Hoy el siguiente toma el mismo.
+3. Igualas de cobranza: ¿antes de IVA, PPD y forma 99? (provisional en `facturacion/servicio.py`).
+4. Política comercial: 14 días de prueba y 3 de gracia.
+5. Solo lectura por suscripción vencida: también bloquea POST de lectura (asistente, calculadoras).
+6. Pendientes menores: firmar también los argumentos de herramientas del asistente; ObjetoImp 03
+   en el pago para conceptos "sí objeto, no obligado al desglose"; citar el apartado de límites
+   de la Guía del Anexo 20; partir los servicios de P5 que rebasan 300 líneas.
