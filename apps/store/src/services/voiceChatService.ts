@@ -1,38 +1,15 @@
-/** Servicio de chat de voz para Fiscalito — STT, Chat, TTS, grabación y VAD */
-
-import type { UserProfile } from '../context/ProfileContext';
-import { ASISTENTE, MARCA } from './marca';
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-
-// ── Tipos ──
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
-}
-
 /**
- * Resultado de sendMessageWithTools — discriminado por `type`.
- * `text`: el LLM respondió con texto final, no quiere usar tools.
- * `tool_calls`: el LLM pide ejecutar una o más tools antes de responder.
+ * Servicio de chat de voz — grabación, VAD y reproducción en el navegador.
+ *
+ * P5-07 (absorbe S-00): la voz a texto, el chat y el texto a voz pasan por el BACKEND
+ * (`services/asistenteApi.ts`, con la sesión de Firebase). Aquí ya no hay ninguna llave de
+ * proveedor de IA ni una sola llamada directa a uno: lo vigila `sinLlavesLLM.test.ts`.
  */
-export type AgentTurnResponse =
-  | { type: 'text'; text: string }
-  | {
-      type: 'tool_calls';
-      toolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }>;
-      /** Mensaje crudo del assistant para empujarlo al historial antes de los tool_results. */
-      rawAssistantMessage: {
-        role: 'assistant';
-        content: string | null;
-        tool_calls: Array<{
-          id: string;
-          type: 'function';
-          function: { name: string; arguments: string };
-        }>;
-      };
-    };
+
+import { sintetizarVoz, transcribirAudio, type MensajeAsistente } from './asistenteApi';
+
+/** Mensaje del historial del agente (forma de Chat Completions, ver `asistenteApi`). */
+export type ChatMessage = MensajeAsistente;
 
 // ── Estado interno de grabación y reproducción ──
 
@@ -42,191 +19,19 @@ let recordedChunks: Blob[] = [];
 let currentAudioSource: AudioBufferSourceNode | null = null;
 let currentAudioCtx: AudioContext | null = null;
 
-// ── 1. SPEECH TO TEXT ──
+// ── 1. VOZ A TEXTO (backend) ──
 
-export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  try {
-    const form = new FormData();
-    form.append('file', audioBlob, 'audio.webm');
-    form.append('model', 'whisper-1');
-    form.append('language', 'es');
-
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-      body: form,
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Whisper error (${res.status}): ${body}`);
-    }
-
-    const data = await res.json();
-    return data.text ?? '';
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith('Whisper error')) throw e;
-    throw new Error('No se pudo transcribir el audio. Verifica tu conexión e intenta de nuevo.');
-  }
+/** El error de `apiFetch` ya es legible (sesión, límite, tamaño): se deja pasar tal cual. */
+export function transcribeAudio(audioBlob: Blob): Promise<string> {
+  return transcribirAudio(audioBlob);
 }
 
-// ── 2. CHAT ──
-
-function buildSystemPrompt(userProfile: UserProfile, historialResumen: string): string {
-  return `Eres ${ASISTENTE}, un asistente de nómina y fiscal mexicano amigable con voz propia. Hablas de forma conversacional, clara y concisa (respuestas cortas de máximo 3 oraciones para voz).
-Datos del usuario actual:
-- Nombre: ${userProfile.nombre || 'No proporcionado'}
-- RFC: ${userProfile.rfc || 'No proporcionado'}
-- Tipo: ${userProfile.contributorType || 'No definido'}
-- Régimen: ${userProfile.regimen || 'No definido'}
-- Actividad: ${userProfile.actividad || 'No proporcionada'}
-Historial reciente: ${historialResumen || 'Sin historial aún.'}
-Cuando expliques ${MARCA} preséntalo con entusiasmo.`;
-}
-
-export async function sendMessage(
-  messages: ChatMessage[],
-  userProfile: UserProfile,
-  historialResumen: string,
-): Promise<string> {
-  try {
-    const systemMsg: ChatMessage = {
-      role: 'system',
-      content: buildSystemPrompt(userProfile, historialResumen),
-    };
-
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [systemMsg, ...messages],
-        max_tokens: 300,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Chat error (${res.status}): ${body}`);
-    }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? '';
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith('Chat error')) throw e;
-    throw new Error('No se pudo obtener respuesta del asistente.');
-  }
-}
-
-/**
- * Llama al chat completion API con un schema de tools.
- *
- * El historial `messages` ya debe incluir el system prompt como primer
- * mensaje; este servicio NO lo agrega (el agentLoop ya lo construye).
- *
- * Devuelve un AgentTurnResponse discriminado:
- *  - { type: 'text', text } si el LLM respondió con texto final.
- *  - { type: 'tool_calls', toolCalls, rawAssistantMessage } si pide tools.
- */
-export async function sendMessageWithTools(
-  messages: ChatMessage[],
-  tools: ReadonlyArray<unknown>,
-): Promise<AgentTurnResponse> {
-  let res: Response;
-  try {
-    res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        tools,
-        tool_choice: 'auto',
-        max_tokens: 500,
-        temperature: 0.3, // más determinístico para tool calling
-        parallel_tool_calls: false, // simplifica el loop: una tool a la vez
-      }),
-    });
-  } catch (e) {
-    throw new Error(
-      'No se pudo contactar al asistente. ' +
-      (e instanceof Error ? e.message : String(e)),
-    );
-  }
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Chat error (${res.status}): ${body}`);
-  }
-
-  const data = await res.json();
-  const choice = data.choices?.[0];
-  const message = choice?.message;
-  if (!message) throw new Error('Respuesta del asistente vacía.');
-
-  const toolCallsRaw = message.tool_calls;
-  if (Array.isArray(toolCallsRaw) && toolCallsRaw.length > 0) {
-    const toolCalls = toolCallsRaw.map((tc: any) => {
-      let parsedArgs: Record<string, unknown> = {};
-      try {
-        parsedArgs = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {};
-      } catch {
-        parsedArgs = {};
-      }
-      return {
-        id: tc.id as string,
-        name: tc.function?.name as string,
-        args: parsedArgs,
-      };
-    });
-
-    return {
-      type: 'tool_calls',
-      toolCalls,
-      rawAssistantMessage: {
-        role: 'assistant',
-        content: message.content ?? null,
-        tool_calls: toolCallsRaw,
-      },
-    };
-  }
-
-  return { type: 'text', text: message.content ?? '' };
-}
-
-// ── 3. TEXT TO SPEECH ──
+// ── 2. TEXTO A VOZ (backend) ──
 
 export async function speakText(text: string): Promise<void> {
   try {
     stopSpeaking();
-
-    const res = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: text,
-        voice: 'nova',
-        response_format: 'mp3',
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`TTS error (${res.status}): ${body}`);
-    }
-
-    const arrayBuffer = await res.arrayBuffer();
+    const arrayBuffer = await sintetizarVoz(text);
     const audioCtx = new AudioContext();
     currentAudioCtx = audioCtx;
 
@@ -247,8 +52,7 @@ export async function speakText(text: string): Promise<void> {
   } catch (e) {
     currentAudioSource = null;
     currentAudioCtx = null;
-    if (e instanceof Error && e.message.startsWith('TTS error')) throw e;
-    throw new Error('No se pudo reproducir la respuesta de voz.');
+    throw e;
   }
 }
 
@@ -263,7 +67,7 @@ export function stopSpeaking(): void {
   }
 }
 
-// ── 4. GRABACIÓN DE AUDIO ──
+// ── 3. GRABACIÓN DE AUDIO ──
 
 function getSupportedMimeType(): string {
   if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
@@ -286,7 +90,7 @@ export async function startRecording(): Promise<void> {
     };
 
     mediaRecorder.start();
-  } catch (e) {
+  } catch {
     throw new Error('No se pudo acceder al micrófono. Verifica los permisos del navegador.');
   }
 }
@@ -314,7 +118,7 @@ export async function stopRecording(): Promise<Blob> {
   });
 }
 
-// ── 5. VAD SIMPLE (detección de silencio) ──
+// ── 4. VAD SIMPLE (detección de silencio) ──
 
 let vadAudioCtx: AudioContext | null = null;
 let vadStream: MediaStream | null = null;

@@ -14,6 +14,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// P4-01: el cálculo va por `apiFetch` (adjunta el ID token). Sin este doble,
+// `services/firebase` lanza al importarse sin llaves (ver sinLlavesDeFirebase.test.ts).
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
@@ -49,7 +57,7 @@ vi.mock('../context/carteraStore', async () => {
   return {
     useCartera: () =>
       carteraDePrueba({
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         // 'fantasma' NO está en la cartera a propósito: es el único id con el que
     // se puede ejercitar el camino del 404 que la cartera no rescata, y desde
@@ -237,17 +245,9 @@ describe('el cliente de la ruta es el que se calcula', () => {
       llamadas.find((l) => l.url.includes('calcular-periodo'))!.init!.body as string,
     );
     expect(cuerpo.cliente).toBe('cafeteria');
-    expect(cuerpo.empleados.map((e: { empleado_no: string }) => e.empleado_no)).toEqual([
-      'cafeteria-1', 'cafeteria-2',
-    ]);
-    // Los cinco campos van tal cual de la ficha, sin remapear.
-    expect(cuerpo.empleados[0]).toEqual({
-      empleado_no: 'cafeteria-1',
-      nombre: 'PERSONA UNA',
-      salario_diario: '520.00',
-      salario_diario_integrado: '548.50',
-      zona: 'general',
-    });
+    // P4-01: la plantilla ya NO viaja en el cuerpo. El cliente de la ruta es lo único
+    // que decide de quién es la nómina, y el backend lee SUS empleados de la cartera.
+    expect(cuerpo.empleados).toBeUndefined();
   });
 });
 

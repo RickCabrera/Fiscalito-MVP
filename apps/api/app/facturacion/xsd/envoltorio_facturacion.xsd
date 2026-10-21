@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ESTE ARCHIVO NO ES DEL SAT: lo escribimos nosotros (P5-04).
+
+  Igual que app/nomina_cfdi/xsd/envoltorio_validacion.xsd: el Complemento del CFDI 4.0 es un
+  xs:any estricto, asi que los esquemas de los complementos tienen que compilarse en la MISMA
+  coleccion. Importa el CFDI 4.0, el complemento de recepcion de pagos 2.0 y el TFD 1.1.
+  Los schemaLocation son las URLs del SAT; app/facturacion/esquemas.py las resuelve a los
+  archivos locales sin red.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://www.sat.gob.mx/cfd/4"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd"/>
+  <xs:import namespace="http://www.sat.gob.mx/Pagos20"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/Pagos/Pagos20.xsd"/>
+  <xs:import namespace="http://www.sat.gob.mx/TimbreFiscalDigital"
+             schemaLocation="http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd"/>
+</xs:schema>

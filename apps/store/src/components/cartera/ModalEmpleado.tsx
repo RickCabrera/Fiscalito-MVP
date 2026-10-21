@@ -41,6 +41,10 @@ import {
 import { normalizarNSS, validarNSS } from '../../services/nss';
 import Campo from './Campo';
 import IdentidadEmpleado from './IdentidadEmpleado';
+import PagoContactoEmpleado from './PagoContactoEmpleado';
+import { errorPagoContacto, normalizarCelular } from '../../services/clabe';
+import CamposNominaEmpleado from './CamposNominaEmpleado';
+import CamposImssCfdiEmpleado from './CamposImssCfdiEmpleado';
 import { campoInput as campo, etiquetaCampo as etiqueta } from './estilosCampo';
 
 const TIPOS: { valor: TipoContrato; etiqueta: string }[] = [
@@ -237,6 +241,8 @@ export default function ModalEmpleado({
     !numeroDeAparatoRepetido &&
     // `advertencia` NO bloquea: ver `services/nss.ts`.
     nss.puedeGuardar &&
+    // P4-12/13: CLABE con verificador, cuenta, correo y celular E.164.
+    errorPagoContacto(datos) === null &&
     !guardando;
 
   async function guardar() {
@@ -254,6 +260,8 @@ export default function ModalEmpleado({
         employee_no: datos.employee_no?.trim() || null,
         // Normalizado: se captura con espacios y guiones, se guarda en dígitos.
         nss: normalizarNSS(datos.nss),
+        clabe: (datos.clabe ?? '').replace(/\s/g, ''),
+        celular: normalizarCelular(datos.celular ?? '') ?? '',
       });
       onCerrar();
     } catch (e) {
@@ -293,6 +301,8 @@ export default function ModalEmpleado({
         </div>
 
         <IdentidadEmpleado datos={datos} esAlta={esAlta} set={set} />
+
+        <PagoContactoEmpleado datos={datos} set={set} />
 
         {numeroDeAparatoRepetido && (
           <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontSize: '0.82rem' }}>
@@ -340,6 +350,10 @@ export default function ModalEmpleado({
             </select>
           </Campo>
         </div>
+        {/* P4-03/P4-04: régimen (sueldos o asimilado) y fecha de baja. */}
+        <CamposNominaEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
+        {/* P4-09/P4-11: causa de baja, tipo de salario y datos del receptor del CFDI. */}
+        <CamposImssCfdiEmpleado datos={datos} onCambiar={(c) => setDatos((d) => ({ ...d, ...c }))} />
 
         {/* R-03. Opcional a propósito, y el placeholder lo dice: es la salida
             para quien no tiene el número, y es lo que hace seguro rechazar por

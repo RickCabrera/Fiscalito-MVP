@@ -1,6 +1,9 @@
 /**
  * El catálogo de formatos, y el punto de extensión. (O-04)
  *
+ * La dispersión bancaria se mudó al backend (P4-12, `apps/api/app/dispersion/`): la
+ * genera desde la nómina CERRADA en el historial, con la CLABE de la ficha.
+ *
  * CÓMO SE AGREGA UNO NUEVO
  * ------------------------
  * Un archivo con la función `generar`, y un renglón aquí. Nada más: el selector
@@ -12,7 +15,6 @@
  * un estado intermedio.
  */
 
-import { generarDispersion, LAYOUTS_BANCO } from './bancos';
 import { generarGenerico } from './generico';
 import { generarMovimientosImss } from './imss';
 import type { FormatoExportacion } from './tipos';
@@ -24,21 +26,6 @@ const FUENTE_IMSS =
   'y "Guía de operación DISP-MAG" ' +
   '(imss.gob.mx/sites/all/statics/pdf/formatos/GuiaOperacionDISP-MAG_2009.pdf). ' +
   'Registro fijo de 168 posiciones, ASCII, SBC con punto decimal implícito.';
-
-/**
- * Lo primero que dice es lo que hoy bloquea el formato, no su procedencia.
- *
- * Esta cita se pinta **encima del botón de exportar**, y ese botón hoy siempre
- * levanta: `cuenta_bancaria` no se captura en ningún lado todavía. Decir sólo
- * "por validar el layout, los importes sí cuadran" es cierto y a la vez inútil
- * para quien está a punto de hacer clic. Lo señaló el revisor del cuadre.
- */
-const POR_VALIDAR_BANCO =
-  'No se puede emitir todavía: la cuenta bancaria (CLABE) no se captura en la ficha del ' +
-  'empleado, así que no hay a quién dispersar. Y el layout está por validar — los manuales ' +
-  'viven detrás del portal de banca empresarial, así que hay que contrastarlo contra el ' +
-  'manual vigente del banco. **Los importes sí están verificados**: salen del mismo cálculo ' +
-  'que el PDF y cuadran al centavo contra el motor.';
 
 /**
  * Lo que falta para poder emitir bajas y modificaciones. (T8)
@@ -113,15 +100,6 @@ export const FORMATOS: FormatoExportacion[] = [
     },
     generar: generarGenerico,
   },
-  ...LAYOUTS_BANCO.map(
-    (layout): FormatoExportacion => ({
-      id: `dispersion-${layout.id}`,
-      nombre: `Dispersión bancaria · ${layout.nombre}`,
-      descripcion: `Pago de netos por transferencia, layout de ${layout.nombre}.`,
-      fuente: { estado: 'por-validar', cita: POR_VALIDAR_BANCO },
-      generar: (datos) => generarDispersion(layout, datos),
-    }),
-  ),
 ];
 
 export function formatoPorId(id: string): FormatoExportacion | undefined {

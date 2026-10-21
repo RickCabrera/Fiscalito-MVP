@@ -4,12 +4,13 @@ import { useState } from 'react';
 import { usePerfilFiscal } from '../../context/usePerfilFiscal';
 import { contribuyenteParaApi, mensajeFalta } from '../../context/perfilFiscal';
 import { useAuth } from '../../context/AuthContext';
-import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse, facturasFiscales } from '../../services/fiscalAgentApi';
+import { calcularMultiPeriodo, type CFDI, type MultiPeriodoResponse } from '../../services/fiscalAgentApi';
 import { guardarMultiPeriodo } from '../../services/declaracionesHistory';
 import { exportarMultiPeriodoPDF } from '../../services/pdfExportMulti';
 import { fmtMoney } from '../../utils/format';
 import { thStyle, tdStyle, tdMonoStyle, labelStyle } from '../../utils/styles';
-import XMLUploader from './XMLUploader';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import { useFuenteFacturas } from './useFuenteFacturas';
 import ErrorAlert from '../common/ErrorAlert';
 import SuccessNotice from '../common/SuccessNotice';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
@@ -29,6 +30,10 @@ export default function MultiPeriodoTab() {
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<MultiPeriodoResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
+  // P1-06: los CFDI del ejercicio salen de la bóveda del cliente; subir XML sigue disponible.
+  const fuente = useFuenteFacturas({
+    clave: perfil.clienteId, anio: year, manual: facturas, conRelacionados: true,
+  });
 
   const toggleMonth = (m: number) => {
     setSelected((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a, b) => a - b));
@@ -39,7 +44,7 @@ export default function MultiPeriodoTab() {
   };
 
   const handleCalcular = async () => {
-    if (facturas.length === 0) { setError('Sube al menos una factura XML.'); return; }
+    if (fuente.paraCalcular.length === 0) { setError(fuente.motivoVacio); return; }
     if (selected.length === 0) { setError('Selecciona al menos un periodo.'); return; }
     if (perfil.falta) { setError(mensajeFalta(perfil.falta)); return; }
     setLoading(true);
@@ -48,7 +53,7 @@ export default function MultiPeriodoTab() {
     try {
       const res = await calcularMultiPeriodo({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(facturas), periodo_year: year, periodos: selected, incluir_explicacion: true,
+        facturas: fuente.paraCalcular, periodo_year: year, periodos: selected, incluir_explicacion: true,
       });
       setResultado(res);
       if (user?.uid) {
@@ -173,7 +178,7 @@ export default function MultiPeriodoTab() {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
           Calcula varios meses a la vez y visualiza la tendencia fiscal del año.
         </p>
-        <XMLUploader facturas={facturas} onChange={setFacturas} />
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={setFacturas} />
       </div>
 
       <div className="card">

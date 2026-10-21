@@ -1,69 +1,114 @@
 /**
- * Quién es el dueño de la cartera: el interruptor de R-07.
+ * La cartera del despacho: SIEMPRE por la API. (R-07 → P0-01)
  *
- * POR QUÉ HAY UN INTERRUPTOR Y NO UN CAMBIO SECO
- * ----------------------------------------------
- * R-07 mueve la propiedad del dato de Firestore-desde-el-navegador al backend.
- * El backend ya está construido, probado contra un doble **y contra el emulador
- * de Firestore**, y con el contrato en `docs/api-contract.md`. Lo que le falta
- * para funcionar en producción no es código: son **credenciales**
- * (`GOOGLE_APPLICATION_CREDENTIALS` o Application Default Credentials), y en la
- * máquina donde se escribió esto no había ninguna — ni forma de crearlas sin
- * tocar producción, que la sesión nocturna tiene prohibido.
+ * EL BACKEND ES EL ÚNICO DUEÑO DEL DATO
+ * -------------------------------------
+ * Hasta P0-01 había dos implementaciones detrás de un interruptor
+ * (`VITE_CARTERA_BACKEND`): Firestore desde el navegador (el default) y el backend. El
+ * interruptor y la rama de Firestore se retiraron: clientes y empleados se leen y se
+ * escriben en `/api/v1/cartera/*`, que los guarda en SQL y filtra por despacho. Lo que
+ * había en Firestore se trae con `apps/api/scripts/migrar_firestore.py`.
  *
- * Encender esto sin credenciales daría **503 en todo el CRUD**: una app rota a
- * sabiendas. Así que el default es `firestore`, la tarea queda ABIERTA en el
- * backlog, y lo que falta es una línea de `.env` más una corrida de
- * verificación.
+ * EL uid NO VIAJA
+ * ---------------
+ * El despacho lo resuelve el backend del ID token que `apiFetch` adjunta en cada
+ * request. Ninguna función de aquí manda un uid en la URL ni en el cuerpo.
  *
- * CÓMO SE ENCIENDE
- * ----------------
- * 1. En `apps/api`: `GOOGLE_APPLICATION_CREDENTIALS=<ruta al service account>`
- *    (o `gcloud auth application-default login`).
- * 2. `curl -H "Authorization: Bearer <ID token>" .../api/v1/cartera/clientes`
- *    → 200. Si da **503**, el mensaje dice exactamente qué falta.
- * 3. En `apps/store/.env`: `VITE_CARTERA_BACKEND=1`.
- *
- * **Qué vale como "encendido"** lo decide `flagEncendido`, igual que
- * `VITE_MODO_EMPRESA_UNICA`: `1`, `true`, `on`, `yes`, `si` y `sí`. Hasta T2
- * esto comparaba `=== '1'` y nada más, así que un `.env` con
- * `VITE_CARTERA_BACKEND=true` dejaba el backend apagado **sin decirlo** — y eso
- * no se ve como un error de configuración, se ve como un backend que "no hace
- * nada" cuando en realidad nadie lo llamó.
- *
- * NO HAY MIGRACIÓN DE DATOS. Las rutas de Firestore son las mismas de los dos
- * lados (`users/{uid}/clientes/{id}/empleados/{id}`), así que encender el
- * interruptor no mueve un solo documento y apagarlo tampoco.
+ * LA LECTURA NUNCA LANZA
+ * ----------------------
+ * Misma semántica que fijó R-06: vacía es vacía (y escribible), un fallo es un fallo
+ * con su mensaje, y **nunca** se sustituye por datos de otra persona.
  */
 
-import * as firestore from './carteraFirestore';
-import * as backend from './carteraBackend';
-import { flagEncendido } from './flagEncendido';
+import { apiFetch } from './api';
+import { conPeriodoAlDia } from './periodoAlDia';
+import type { ClienteCartera, EmpleadoCartera, EmpleadoIlegible } from './carteraApi';
+
+export { sembrarDemo } from './semillaDemo';
 
 /**
- * `true` si el backend es el dueño del dato. Default: **no**.
- *
- * **Es una `const`, no una función, y eso NO es un descuido**: el dueño del dato
- * se decide una vez por proceso, porque dos pantallas leyendo dueños distintos
- * en la misma sesión sería peor que cualquiera de los dos. La consecuencia
- * práctica es que `vi.stubEnv` no puede voltear este flag dentro de un test —se congela al importar el módulo—,
- * así que `cartera.test.ts` sólo puede pinnear el default.
+ * De dónde salió lo que se está viendo. `propia` = la cartera del despacho, escribible.
+ * `catalogo` = todavía no se cargó nada (o es el catálogo de demostración): sólo lectura.
  */
-export const BACKEND_ES_DUENO = flagEncendido(import.meta.env.VITE_CARTERA_BACKEND);
+export type OrigenCartera = 'propia' | 'catalogo';
+
+export interface CarteraCargada {
+  clientes: ClienteCartera[];
+  origen: OrigenCartera;
+  /** `null` = se leyó bien, aunque esté vacía. Vacía NO es un error. */
+  error: string | null;
+}
+
+/** Ninguna lectura puede colgar el primer pintado más que esto. */
+const TIMEOUT_LECTURA_MS = 8000;
+/** Las escrituras no bloquean un pintado; un tope corto asustaría en redes lentas. */
+const TIMEOUT_ESCRITURA_MS = 10000;
+
+const ruta = (...partes: string[]) =>
+  `/cartera/clientes${partes.map((p) => `/${encodeURIComponent(p)}`).join('')}`;
+
+interface RespuestaEmpleados {
+  empleados: EmpleadoCartera[];
+  ilegibles_detalle?: EmpleadoIlegible[];
+}
 
 /**
- * La implementación activa.
+ * La cartera del despacho autenticado. **Nunca lanza.**
  *
- * Se elige una vez, al importar, y no por llamada: dos pantallas leyendo dueños
- * distintos en la misma sesión sería peor que cualquiera de los dos.
+ * Los empleados van en una llamada por cliente, y cada cliente trae también sus
+ * `ilegibles` con la razón (R-10) para que la ficha los pinte.
  */
-const activa = BACKEND_ES_DUENO ? backend : firestore;
+export async function cargarCartera(uid: string | null): Promise<CarteraCargada> {
+  if (!uid) return { clientes: [], origen: 'propia', error: null };
+  try {
+    const { clientes } = await apiFetch<{ clientes: Omit<ClienteCartera, 'empleados'>[] }>(
+      ruta(),
+      { timeoutMs: TIMEOUT_LECTURA_MS },
+    );
+    const conEmpleados = await Promise.all(
+      clientes.map(async (c) => {
+        const r = await apiFetch<RespuestaEmpleados>(ruta(c.id, 'empleados'), {
+          timeoutMs: TIMEOUT_LECTURA_MS,
+        });
+        return { ...c, empleados: r.empleados, ilegibles: r.ilegibles_detalle ?? [] };
+      }),
+    );
+    // Lo guardado es un SNAPSHOT del periodo; se refresca al leer (ver `periodoAlDia`).
+    return { clientes: await conPeriodoAlDia(conEmpleados), origen: 'propia', error: null };
+  } catch (e) {
+    const detalle = e instanceof Error ? e.message : 'error desconocido';
+    return { clientes: [], origen: 'propia', error: `No se pudo leer tu cartera: ${detalle}` };
+  }
+}
 
-export const cargarCartera = activa.cargarCartera;
-export const guardarCliente = activa.guardarCliente;
-export const borrarCliente = activa.borrarCliente;
-export const guardarEmpleado = activa.guardarEmpleado;
-export const borrarEmpleado = activa.borrarEmpleado;
-export const sembrarDemo = activa.sembrarDemo;
+/** Alta o edición. Lo que no es del cliente (plantilla, ilegibles) no viaja. */
+export async function guardarCliente(cliente: Omit<ClienteCartera, 'empleados'>): Promise<void> {
+  // La plantilla y los ilegibles son de LECTURA: no son campos del cliente.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { empleados, ilegibles, ...datos } = cliente as ClienteCartera;
+  await apiFetch(ruta(cliente.id), {
+    method: 'PUT',
+    json: datos,
+    timeoutMs: TIMEOUT_ESCRITURA_MS,
+  });
+}
 
-export type { CarteraCargada, OrigenCartera } from './carteraFirestore';
+/** Baja del cliente; el backend se lleva en cascada sus empleados y dispositivos. */
+export async function borrarCliente(clienteId: string): Promise<void> {
+  await apiFetch(ruta(clienteId), { method: 'DELETE', timeoutMs: TIMEOUT_ESCRITURA_MS });
+}
+
+export async function guardarEmpleado(clienteId: string, empleado: EmpleadoCartera): Promise<void> {
+  await apiFetch(ruta(clienteId, 'empleados', empleado.empleado_no), {
+    method: 'PUT',
+    json: empleado,
+    timeoutMs: TIMEOUT_ESCRITURA_MS,
+  });
+}
+
+export async function borrarEmpleado(clienteId: string, empleadoNo: string): Promise<void> {
+  await apiFetch(ruta(clienteId, 'empleados', empleadoNo), {
+    method: 'DELETE',
+    timeoutMs: TIMEOUT_ESCRITURA_MS,
+  });
+}

@@ -27,14 +27,14 @@ import {
   type CFDI,
   type PreDeclaracionResponse,
   type DeduccionesPersonalesResponse,
-  facturasFiscales,
 } from '../../services/fiscalAgentApi';
 import { guardarDeclaracion, desgloseRecordDesde } from '../../services/declaracionesHistory';
 import { clasificarFacturaDeduccion, montosCapturados } from '../../services/deduccionesPersonales';
 import { labelStyle } from '../../utils/styles';
 import ErrorAlert from '../common/ErrorAlert';
 import FacturaTable from './FacturaTable';
-import XMLUploader from './XMLUploader';
+import FuenteFacturasPanel from './FuenteFacturasPanel';
+import { useFuenteFacturas } from './useFuenteFacturas';
 import CapturaDeducciones from './CapturaDeducciones';
 import ResultadoAnual from './ResultadoAnual';
 import FaltaDatoFiscal from './FaltaDatoFiscal';
@@ -70,10 +70,45 @@ export default function DeclaracionAnualTab() {
   const [resultado, setResultado] = useState<PreDeclaracionResponse | null>(null);
   const [deducciones, setDeducciones] = useState<DeduccionesPersonalesResponse | null>(null);
   const [guardado, setGuardado] = useState(false);
+  /** Ejercicio cuyos recibidos de la bóveda ya se sumaron a la captura (no se suman dos veces). */
+  const [prellenadoDe, setPrellenadoDe] = useState<number | null>(null);
 
   const conDeducciones = capturaDeduccionesAplica(perfil.regimen);
-  const delEjercicio = facturas.filter((f) => f.fecha.startsWith(String(ejercicio)));
-  const fuera = facturas.length - delEjercicio.length;
+  // P1-06: por defecto el ejercicio sale de la bóveda del cliente (ya filtrada por año).
+  const fuente = useFuenteFacturas({
+    clave: perfil.clienteId, anio: ejercicio, manual: facturas, conRelacionados: true,
+  });
+  const desdeArchivos = fuente.modo === 'archivos';
+  const delEjercicio = desdeArchivos
+    ? facturas.filter((f) => f.fecha.startsWith(String(ejercicio)))
+    : fuente.delPeriodo;
+  const fuera = desdeArchivos ? facturas.length - delEjercicio.length : 0;
+  /** Lo que va al motor: de archivos, sólo los del año; de la bóveda, lo que mandó el backend. */
+  const paraCalcular = desdeArchivos
+    ? fuente.paraCalcular.filter((f) => f.fecha.startsWith(String(ejercicio)))
+    : fuente.paraCalcular;
+
+  /** Suma por concepto de deducción (ClaveProdServ) y la agrega a lo capturado. */
+  const prellenar = useCallback((cfdis: CFDI[]) => {
+    const porCampo: Record<string, number> = {};
+    for (const cfdi of cfdis) {
+      const campo = clasificarFacturaDeduccion(cfdi.clave_prod_serv || '', cfdi.descripcion);
+      if (campo) porCampo[campo] = (porCampo[campo] || 0) + (cfdi.subtotal - (cfdi.descuento || 0));
+    }
+    const cuantas = Object.keys(porCampo).length;
+    if (cuantas === 0) return;
+    setValues((vs) => {
+      const next = { ...vs };
+      for (const [campo, monto] of Object.entries(porCampo)) {
+        next[campo] = (parseFloat(next[campo] || '0') + monto).toFixed(2);
+      }
+      return next;
+    });
+    setAutoclasificadas((n) => n + cuantas);
+  }, []);
+  /** De la bóveda sólo cuentan los RECIBIDOS: lo que el cliente pagó, no lo que facturó. */
+  const recibidosDeBoveda = desdeArchivos ? [] : delEjercicio.filter(
+    (f) => f.rfc_receptor.toUpperCase() === perfil.rfc.toUpperCase() && f.tipo === 'I');
 
   /**
    * `XMLUploader` es el dueño de la lista: de-duplica por UUID y reporta sus
@@ -88,32 +123,16 @@ export default function DeclaracionAnualTab() {
   const onFacturas = useCallback((siguientes: CFDI[]) => {
     const yaEstaban = new Set(facturas.map((f) => f.uuid));
     setFacturas(siguientes);
-    if (!conDeducciones) return;
-
-    const porCampo: Record<string, number> = {};
-    for (const cfdi of siguientes) {
-      if (yaEstaban.has(cfdi.uuid)) continue;
-      const campo = clasificarFacturaDeduccion(cfdi.clave_prod_serv || '', cfdi.descripcion);
-      if (campo) porCampo[campo] = (porCampo[campo] || 0) + (cfdi.subtotal - (cfdi.descuento || 0));
-    }
-    const cuantas = Object.keys(porCampo).length;
-    if (cuantas === 0) return;
-
-    setValues((vs) => {
-      const next = { ...vs };
-      for (const [campo, monto] of Object.entries(porCampo)) {
-        next[campo] = (parseFloat(next[campo] || '0') + monto).toFixed(2);
-      }
-      return next;
-    });
-    setAutoclasificadas((n) => n + cuantas);
-  }, [facturas, conDeducciones]);
+    if (conDeducciones) prellenar(siguientes.filter((f) => !yaEstaban.has(f.uuid)));
+  }, [facturas, conDeducciones, prellenar]);
 
   const quitar = (uuid: string) => setFacturas((prev) => prev.filter((f) => f.uuid !== uuid));
 
   const handleCalcular = async () => {
-    if (delEjercicio.length === 0) {
-      setError(`No hay facturas del ejercicio ${ejercicio}. Sube los XMLs del año que vas a declarar.`);
+    if (paraCalcular.length === 0) {
+      setError(desdeArchivos
+        ? `No hay facturas del ejercicio ${ejercicio}. Sube los XMLs del año que vas a declarar.`
+        : fuente.motivoVacio);
       return;
     }
     if (perfil.falta) {
@@ -131,7 +150,7 @@ export default function DeclaracionAnualTab() {
     try {
       const res = await calcularPreDeclaracionAnual({
         contribuyente: contribuyenteParaApi(perfil),
-        facturas: facturasFiscales(delEjercicio),
+        facturas: paraCalcular,
         periodo_year: ejercicio,
         incluir_explicacion: true,
       });
@@ -180,6 +199,7 @@ export default function DeclaracionAnualTab() {
     setValues({});
     setNivelEducativo('');
     setAutoclasificadas(0);
+    setPrellenadoDe(null);
     setError('');
   };
 
@@ -203,7 +223,8 @@ export default function DeclaracionAnualTab() {
       <div className="card">
         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 6 }}>Declaración anual</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
-          Sube los CFDI de todo el ejercicio. Sólo se calculan los del año seleccionado.
+          Los CFDI del ejercicio salen de la bóveda del cliente; también puedes subir archivos sueltos.
+          Sólo se calculan los del año seleccionado.
         </p>
         <label style={labelStyle}>Ejercicio</label>
         <select className="input-field" value={ejercicio} onChange={(e) => setEjercicio(Number(e.target.value))}
@@ -212,7 +233,9 @@ export default function DeclaracionAnualTab() {
         </select>
       </div>
 
-      <XMLUploader facturas={facturas} onChange={onFacturas} />
+      <div className="card">
+        <FuenteFacturasPanel fuente={fuente} clave={perfil.clienteId} manual={facturas} onManual={onFacturas} />
+      </div>
 
       {fuera > 0 && (
         <div style={{
@@ -229,7 +252,7 @@ export default function DeclaracionAnualTab() {
         </div>
       )}
 
-      <FacturaTable facturas={delEjercicio} onRemove={quitar} />
+      <FacturaTable facturas={delEjercicio} onRemove={desdeArchivos ? quitar : undefined} />
 
       {conDeducciones ? (
         <div className="card">
@@ -239,6 +262,12 @@ export default function DeclaracionAnualTab() {
               ? `Se prellenaron ${autoclasificadas} concepto${autoclasificadas > 1 ? 's' : ''} desde los XMLs, por su ClaveProdServ. Revisa y corrige.`
               : 'Los XMLs de gastos médicos, colegiaturas y demás se clasifican solos al subirlos. También puedes capturarlos a mano.'}
           </p>
+          {recibidosDeBoveda.length > 0 && prellenadoDe !== ejercicio && (
+            <button type="button" className="btn-secondary" style={{ marginBottom: 16 }}
+              onClick={() => { prellenar(recibidosDeBoveda); setPrellenadoDe(ejercicio); }}>
+              Prellenar con los CFDI recibidos de la bóveda
+            </button>
+          )}
           <CapturaDeducciones
             values={values}
             onChange={setValues}

@@ -16,7 +16,7 @@ escribe en Firestore — para que encender R-07 no exija migrar un solo document
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -124,9 +124,7 @@ class ParametrosSalarialesSchema(BaseModel):
 
     @field_validator("tabla_vacaciones")
     @classmethod
-    def _tabla_sobre_la_ley(
-        cls, valor: tuple[tuple[int, int], ...]
-    ) -> tuple[tuple[int, int], ...]:
+    def _tabla_sobre_la_ley(cls, valor: tuple[tuple[int, int], ...]) -> tuple[tuple[int, int], ...]:
         """
         La escala se valida **al guardar**, no sólo al integrar el SBC.
 
@@ -143,6 +141,21 @@ class ParametrosSalarialesSchema(BaseModel):
         """
         validar_tabla_vacaciones(valor)
         return valor
+
+
+class CriteriosNominaSchema(BaseModel):
+    """
+    Criterios de nómina del cliente (P4, DP-3). Opciones y explicación en
+    `app/nomina_engine/criterios.py:OPCIONES`; los defaults son los documentados ahí.
+    """
+
+    parcial: Literal["tarifa_proporcional", "tarifa_periodo"] = "tarifa_proporcional"
+    febrero: Literal["quince_siempre", "dias_calendario"] = "quince_siempre"
+    prestaciones: Literal["mayor", "ficha"] = "mayor"
+    isr_extraordinario: Literal["art_96", "art_174"] = "art_96"
+    ptu_remanente: Literal["no_se_reparte", "redistribuir", "sumar_siguiente_ejercicio"] = (
+        "no_se_reparte"
+    )
 
 
 class ClienteCarteraSchema(BaseModel):
@@ -238,6 +251,12 @@ class ClienteCarteraSchema(BaseModel):
         "cartera escrita antes de O-03 no lo trae y tiene que seguir leyéndose — el "
         "default es el mínimo de ley, que es lo que la app aplicaba hasta ahora.",
     )
+    criterios_nomina: CriteriosNominaSchema = Field(
+        default_factory=CriteriosNominaSchema,
+        description="Criterios del despacho para este cliente (§D26, §D27, §D28, Art. 174 "
+        "RLISR, remanente de PTU). Con default completo: un cliente guardado antes de P4 "
+        "no lo trae y se lee con los defaults.",
+    )
     periodo_sugerido: PeriodoNomina | None = Field(
         default=None,
         description="Puede faltar: el primer cliente de una cuenta nueva nace sin él y la "
@@ -276,6 +295,7 @@ class ClienteCarteraSchema(BaseModel):
             )
         return self
 
+
 class ClientesCarteraResponse(BaseModel):
     exito: bool = True
     total: int
@@ -285,6 +305,14 @@ class ClientesCarteraResponse(BaseModel):
         "puede traer campos que este modelo todavía no conoce, y rechazarla dejaría al "
         "contador sin sus clientes por un campo de más."
     )
+
+
+class EmpleadoIlegible(BaseModel):
+    """Un empleado guardado que no pasa la validación actual, y por qué (R-10)."""
+
+    empleado_no: str
+    nombre: str = Field(default="", description="El nombre guardado, si lo tiene.")
+    razon: str = Field(description="Primera causa del rechazo, legible: `nss: ...`.")
 
 
 class EmpleadosCarteraResponse(BaseModel):
@@ -301,6 +329,11 @@ class EmpleadosCarteraResponse(BaseModel):
         "reportan en vez de tumbar la respuesta: un documento legado dejaba la cartera "
         "completa en cero. Y se reportan en vez de esconderse, porque un empleado que queda "
         "fuera del cálculo en silencio es el modo de falla que la épica G viene evitando.",
+    )
+    ilegibles_detalle: tuple[EmpleadoIlegible, ...] = Field(
+        default=(),
+        description="Los mismos `ilegibles`, con nombre y razón para pintarlos en la ficha "
+        "(R-10). `ilegibles` se conserva como lista de `empleado_no` por compatibilidad.",
     )
     empleados: tuple[EmpleadoCarteraSchema, ...]
 

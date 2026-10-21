@@ -24,7 +24,6 @@ from fastapi.testclient import TestClient
 
 from app.asistencia.almacen import almacen
 from app.despacho_demo import cliente_por_id
-from app.main import app
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -51,8 +50,9 @@ def _almacen_limpio():
 
 
 @pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+def cliente_http(http_nomina) -> TestClient:
+    """P4-01: autenticado y con la cartera sembrada; la nómina lee de ahí."""
+    return http_nomina
 
 
 class TestPlantillaDelSimulador:
@@ -210,8 +210,12 @@ class TestSinChecadas:
         self, cliente_http
     ):
         """
-        **5 días pagados, no 0.** Si alguien "arregla" esto, que sea a propósito
+        **4 días pagados, no 0.** Si alguien "arregla" esto, que sea a propósito
         y con §D17 cerrada, no de pasada.
+
+        P4-03: eran 5 (16 días naturales − 11 faltas). Con el default de §D27
+        (`quince_siempre`) la quincena vale 15 días: 15 − 11 = 4. El cambio es el
+        criterio configurable, no §D17.
         """
         cliente, empleados = self._empleados("taller", 2)
         r = cliente_http.post(
@@ -235,7 +239,7 @@ class TestSinChecadas:
 
         cuerpo = r.json()
         for recibo in cuerpo["recibos"]:
-            assert recibo["dias_pagados"] == 5
+            assert recibo["dias_pagados"] == 4
             assert Decimal(recibo["total_percepciones"]) > 0
             assert Decimal(recibo["neto"]) > 0
 
@@ -349,5 +353,5 @@ class TestFlujoCompletoPorCliente:
         cuerpo = nomina.json()
         assert len(cuerpo["recibos"]) == len(cliente.empleados)
         assert Decimal(cuerpo["porcion_mensual"]["total_patron"]) > 0
-        # La plantilla viajó en el request para los tres, no sólo para `demo`.
-        assert cuerpo["origen_plantilla"] == "request"
+        # P4-01: la plantilla sale de la cartera para los tres, no del request.
+        assert cuerpo["origen_plantilla"] == "cartera"

@@ -11,6 +11,14 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// P4-01: el cálculo va por `apiFetch` (adjunta el ID token). Sin este doble,
+// `services/firebase` lanza al importarse sin llaves (ver sinLlavesDeFirebase.test.ts).
+vi.mock('../services/firebase', () => ({
+  auth: { currentUser: { uid: 'uid-1', getIdToken: async () => 'token-de-prueba' } },
+  db: {},
+  default: {},
+}));
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { UserProfile } from '../context/ProfileContext';
@@ -72,7 +80,7 @@ const FICHA: Omit<ClienteCartera, 'empleados'> = {
 vi.mock('../services/cartera', () => ({
   cargarCartera: async () => ({
     clientes: [{ ...FICHA, empleados: [EMPLEADO] } as ClienteCartera],
-    origen: 'firestore' as const,
+    origen: 'propia' as const,
     error: null,
   }),
   guardarCliente: vi.fn(),
@@ -113,6 +121,10 @@ vi.mock('../services/nominaDemoApi', () => ({
     empleados_desconocidos: [],
   })),
   obtenerPlantillaDemo: vi.fn(),
+}));
+
+// P4-01: el cálculo se mudó a `nominaApi` (autenticado, sin plantilla).
+vi.mock('../services/nominaApi', () => ({
   calcularNomina: vi.fn(async () => ({
     cliente: CLIENTE_ID,
     periodo: PERIODO,

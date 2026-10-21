@@ -7,8 +7,9 @@ import type { ClienteResumen } from '../services/despachoApi';
 vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
 vi.mock('../services/declaracionesHistory', () => ({ guardarDeclaracion: vi.fn() }));
 
-const sendMessageWithTools = vi.fn();
-vi.mock('../services/voiceChatService', () => ({ sendMessageWithTools }));
+// P5-07: el LLM vive en el backend; el loop habla con `POST /asistente/turno`.
+const turnoAsistente = vi.fn();
+vi.mock('../services/asistenteApi', () => ({ turnoAsistente }));
 
 const pushToolCall = vi.fn();
 const updateToolCall = vi.fn();
@@ -28,7 +29,7 @@ vi.mock('./AgentContext', () => ({
   }),
 }));
 
-const { runAgentLoop } = await import('./agentLoop');
+const { runAgentLoop, argumentosParaEjecutor } = await import('./agentLoop');
 
 const PERFIL = {
   rfc: '', regimen: '', nombre: 'Contadora Demo',
@@ -39,36 +40,54 @@ const CLIENTE = {
   id: 'taller', nombre: 'Taller Nogal', rfc: 'TNO010101AB1', regimen: '612',
 } as ClienteResumen;
 
+const navigateFn = vi.fn();
+const navigate = navigateFn as unknown as NavigateFunction;
+
 function correr(userMessage = 'hola', cliente: ClienteResumen | null = CLIENTE) {
   return runAgentLoop({
     history: [],
     userMessage,
     profile: PERFIL,
     perfilFiscal: resolverPerfilFiscal(PERFIL, cliente),
-    historialResumen: '',
-    navigate: vi.fn() as unknown as NavigateFunction,
+    navigate,
     uid: null,
   });
 }
 
-/** Respuesta de tool call con la forma que devuelve sendMessageWithTools. */
-function toolCall(name: string, args: Record<string, unknown>) {
+/** Respuesta `tool_calls` con la forma de `POST /asistente/turno`. */
+function toolCall(name: string, args: Record<string, unknown>, extra: unknown[] = []) {
   return {
+    exito: true,
     type: 'tool_calls' as const,
-    rawAssistantMessage: { content: null, tool_calls: [{ id: 'call_1' }] },
+    text: '',
     toolCalls: [{ id: 'call_1', name, args }],
+    mensajes: [
+      {
+        role: 'assistant', content: '',
+        tool_calls: [{ id: 'call_1', type: 'function',
+          function: { name, arguments: JSON.stringify(args) } }],
+      },
+      ...extra,
+    ],
+    herramientas_servidor: [],
   };
 }
 
+function texto(t: string) {
+  return { exito: true, type: 'text' as const, text: t, toolCalls: [], mensajes: [],
+    herramientas_servidor: [] };
+}
+
 beforeEach(() => {
-  sendMessageWithTools.mockReset();
+  turnoAsistente.mockReset();
   pushToolCall.mockClear();
   updateToolCall.mockClear();
+  navigateFn.mockClear();
 });
 
 describe('runAgentLoop', () => {
-  it('devuelve el texto del LLM y arma el historial, con el cliente activo en el system prompt', async () => {
-    sendMessageWithTools.mockResolvedValue({ type: 'text', text: 'Claro que sí.' });
+  it('devuelve el texto y manda al servidor el cliente activo, sin prompt de sistema', async () => {
+    turnoAsistente.mockResolvedValue(texto('Claro que sí.'));
 
     const res = await correr('¿qué es el ISR?');
 
@@ -78,37 +97,47 @@ describe('runAgentLoop', () => {
       { role: 'user', content: '¿qué es el ISR?' },
       { role: 'assistant', content: 'Claro que sí.' },
     ]);
-
-    // buildAgentSystemPrompt es privada: se verifica por lo que recibe el LLM.
-    const [mensajes] = sendMessageWithTools.mock.calls[0];
-    expect(mensajes[0].role).toBe('system');
-    // K: el RFC que ve el asistente es el del CLIENTE ACTIVO, no el del despacho.
-    expect(mensajes[0].content).toContain('TNO010101AB1');
-    expect(mensajes[0].content).toContain('Taller Nogal');
+    // El prompt lo arma el SERVIDOR con lo que dice su base del cliente: aquí sólo viaja
+    // la clave del cliente activo, y ningún mensaje `system`.
+    const [peticion] = turnoAsistente.mock.calls[0];
+    expect(peticion.cliente).toBe('taller');
+    expect(peticion.contador).toBe('Contadora Demo');
+    expect(peticion.historial).toEqual([{ role: 'user', content: '¿qué es el ISR?' }]);
+    expect(peticion).not.toHaveProperty('tools');
   });
 
-  /**
-   * E-07: un DESPACHO no tiene RFC ni régimen propios —E-05 dejó de pedírselos—
-   * y el prompt no se los puede pedir: no hay dónde capturarlos.
-   */
-  it('a un despacho no le pide RFC ni régimen propios en el system prompt', async () => {
-    sendMessageWithTools.mockResolvedValue({ type: 'text', text: 'ok' });
-
+  it('sin cliente activo manda cliente null', async () => {
+    turnoAsistente.mockResolvedValue(texto('ok'));
     await correr('hola', null);
-
-    const [mensajes] = sendMessageWithTools.mock.calls[0];
-    const prompt = mensajes[0].content as string;
-    expect(prompt).toContain('DESPACHO CONTABLE');
-    expect(prompt).toContain('Despacho Demo');
-    expect(prompt).toContain('nunca se los pidas');
-    expect(prompt).toContain('No hay cliente activo');
-    expect(prompt).not.toContain('RFC: No proporcionado');
+    expect(turnoAsistente.mock.calls[0][0].cliente).toBeNull();
   });
 
-  it('reporta una tool desconocida al LLM y sigue el loop', async () => {
-    sendMessageWithTools
+  it('agrega los mensajes del servidor (firmados) antes del resultado del navegador', async () => {
+    const firmado = { role: 'tool', tool_call_id: 'srv_1', content: '{"ok":true}', firma: 'f' };
+    turnoAsistente
+      .mockResolvedValueOnce(toolCall('navegar', { ruta: '/app/nomina' }, [firmado]))
+      .mockResolvedValueOnce(texto('Listo.'));
+
+    const res = await correr('llévame a nómina');
+
+    expect(res.reply).toBe('Listo.');
+    expect(navigateFn).toHaveBeenCalledWith('/app/nomina');
+    const historial = turnoAsistente.mock.calls[1][0].historial;
+    expect(historial.map((m: { role: string }) => m.role)).toEqual(
+      ['user', 'assistant', 'tool', 'tool']);
+    expect(historial[2]).toEqual(firmado); // la firma vuelve intacta
+    expect(historial[3].tool_call_id).toBe('call_1');
+  });
+
+  it('traduce anio → año para los ejecutores del navegador', () => {
+    expect(argumentosParaEjecutor({ anio: 2026, mes: 3 })).toEqual({ anio: 2026, año: 2026, mes: 3 });
+    expect(argumentosParaEjecutor({ ruta: '/app' })).toEqual({ ruta: '/app' });
+  });
+
+  it('reporta una tool desconocida al servidor y sigue el loop', async () => {
+    turnoAsistente
       .mockResolvedValueOnce(toolCall('tool_inventada', {}))
-      .mockResolvedValueOnce({ type: 'text', text: 'Perdón, me equivoqué.' });
+      .mockResolvedValueOnce(texto('Perdón, me equivoqué.'));
 
     const res = await correr();
 
@@ -124,21 +153,19 @@ describe('runAgentLoop', () => {
       }),
     );
 
-    // El error viaja de vuelta al LLM como mensaje role:'tool'.
-    const [mensajesSegundaVuelta] = sendMessageWithTools.mock.calls[1];
-    const mensajeTool = mensajesSegundaVuelta.find(
-      (m: { role: string }) => m.role === 'tool',
-    );
+    // El error viaja de vuelta como mensaje role:'tool'.
+    const historial = turnoAsistente.mock.calls[1][0].historial;
+    const mensajeTool = historial.find((m: { role: string }) => m.role === 'tool');
     expect(mensajeTool.content).toContain('no está registrada');
   });
 
   it('corta a las 8 iteraciones y responde con el fallback', async () => {
     // Ruta inválida: la tool falla sin efectos y el LLM nunca emite texto.
-    sendMessageWithTools.mockResolvedValue(toolCall('navegar', { ruta: '/no-existe' }));
+    turnoAsistente.mockResolvedValue(toolCall('navegar', { ruta: '/no-existe' }));
 
     const res = await correr();
 
-    expect(sendMessageWithTools).toHaveBeenCalledTimes(8);
+    expect(turnoAsistente).toHaveBeenCalledTimes(8);
     expect(res.executedTools).toHaveLength(8);
     expect(res.reply).toMatch(/no logré cerrar la respuesta/i);
     expect(res.newHistory[res.newHistory.length - 1]).toEqual({

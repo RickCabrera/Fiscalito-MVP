@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { MARCA_LOGO } from '../services/marca';
 
@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  // P5-01: `?volver=/aceptar-invitacion?token=...` regresa a donde se pidió iniciar sesión.
+  // Sólo rutas internas (empiezan con una sola `/`): nada de redirigir a otro sitio.
+  const [params] = useSearchParams();
+  const volver = params.get('volver') ?? '';
+  const destino = volver.startsWith('/') && !volver.startsWith('//') ? volver : '/app';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +27,7 @@ export default function LoginPage() {
       } else {
         await signIn(email, password);
       }
-      navigate('/app');
+      navigate(destino);
     } catch (err: unknown) {
       const code = (err instanceof Object && 'code' in err) ? (err as { code: string }).code : '';
       if (code === 'auth/user-not-found') setError('No existe una cuenta con ese correo.');
@@ -41,7 +46,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate('/app');
+      navigate(destino);
     } catch {
       setError('Error con Google. Intenta de nuevo.');
     } finally {

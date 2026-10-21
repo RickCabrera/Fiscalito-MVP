@@ -44,7 +44,7 @@ vi.mock('../context/carteraStore', async () => {
     useCartera: () =>
       carteraDePrueba({
         clientes: enCartera.clientes as never,
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         clientePorId: (id: string) =>
           (enCartera.clientes.find((c) => c.id === id) as never) ?? null,
@@ -122,6 +122,37 @@ vi.mock('../services/despachoApi', async () => {
     }),
   };
 });
+
+// P0-05: la sección de credenciales de la ficha habla con la bóveda vía `api.ts`, que
+// importa `./firebase` (y eso revienta sin llaves en CI). Esta pantalla se prueba sin ella;
+// la sección tiene sus propios tests en `components/cartera/CredencialesCliente.test.tsx`.
+vi.mock('../services/credencialesApi', async () => {
+  const real = await vi.importActual<typeof import('../services/credencialesApi')>(
+    '../services/credencialesApi',
+  );
+  return { ...real, listarCredenciales: vi.fn(async () => []) };
+});
+vi.mock('../services/api', () => ({ apiFetch: vi.fn(), apiArchivo: vi.fn() }));
+// P0-04: la ficha monta "Procesos en segundo plano", que habla con `/trabajos` por
+// `services/api.ts` → `services/firebase.ts`, y ese archivo lanza sin llaves (ver
+// `sinLlavesDeFirebase.test.ts`). Lo que esta suite mide es la ficha, no la cola.
+vi.mock('../services/trabajosApi', async () => {
+  const real = await vi.importActual<typeof import('../services/trabajosApi')>(
+    '../services/trabajosApi',
+  );
+  return {
+    ...real,
+    listarTrabajos: vi.fn(async () => []),
+    encolarDiagnostico: vi.fn(),
+    reintentarTrabajo: vi.fn(),
+  };
+});
+vi.mock('../services/firebase', () => ({ auth: {}, db: {}, default: {} }));
+// P1-05: la ficha monta "Cumplimiento ante el SAT"; tiene sus propios tests en
+// `components/cartera/CumplimientoCliente.test.tsx`. Aquí se mide la ficha.
+vi.mock('../components/cartera/CumplimientoCliente', () => ({ default: () => null }));
+// P3-09: igual con la sección de alertas fiscales (`components/alertas/alertas.test.tsx`).
+vi.mock('../components/alertas/AlertasCliente', () => ({ default: () => null }));
 
 const { default: ClienteDetallePage } = await import('./ClienteDetallePage');
 

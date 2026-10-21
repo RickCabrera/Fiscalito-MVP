@@ -78,15 +78,21 @@ from app.exceptions import FiscalValidationError
 DURACION_ESPERADA: dict[str, tuple[int, int]] = {
     "01": (1, 1),
     "02": (7, 7),
+    # P4-03: catorcenal (tarifa DERIVADA, §D10) y decenal (Anexo 8). La decena
+    # de calendario mide 10, salvo la tercera: 8 o 9 en febrero, 11 en meses de 31.
+    "03": (14, 14),
     "04": (13, 16),
     "05": (28, 31),
+    "10": (8, 11),
 }
 
 NOMBRE_PERIODICIDAD: dict[str, str] = {
     "01": "diaria",
     "02": "semanal",
+    "03": "catorcenal",
     "04": "quincenal",
     "05": "mensual",
+    "10": "decenal",
 }
 
 
@@ -126,7 +132,7 @@ def validar_duracion_periodo(clave_periodicidad: str, dias_periodo: int) -> None
         f"sería incorrecto sin avisar. "
         f"Corrige la periodicidad de la empresa, o las fechas del periodo. "
         f"Si lo que quieres es un periodo PARCIAL —un alta o una baja a mitad de "
-        f"periodo— eso todavía no se puede calcular aquí: está pendiente de definir con "
-        f"la contadora si va tabla del Art. 96 sobre base parcial o prorrateo "
-        f"(docs/decisiones-nomina.md §D26)."
+        f"periodo— no acortes el periodo: captura la fecha de alta o de baja en la ficha "
+        f"del empleado y calcula el periodo completo; el ISR de esos días sigue el "
+        f"criterio de periodos parciales del cliente (docs/decisiones-nomina.md §D26)."
     )

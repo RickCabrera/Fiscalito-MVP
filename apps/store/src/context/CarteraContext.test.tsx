@@ -58,14 +58,12 @@ const GUARDADOS = [
 ];
 
 /**
- * R-07: `CarteraContext` importa el DESPACHADOR (`services/cartera`), no
- * `carteraFirestore` directo — quién es el dueño del dato lo decide un solo
- * archivo. Doblar el módulo viejo dejaba pasar el real, que arrastra
- * `carteraBackend` -> `services/firebase` -> `getAuth()`, y eso **lanza sin las
- * llaves de Firebase**: local verde, CI rojo.
+ * `CarteraContext` importa `services/cartera` (la API, P0-01). Se dobla entero:
+ * el real arrastra `services/api` -> `services/firebase` -> `getAuth()`, y eso
+ * **lanza sin las llaves de Firebase**: local verde, CI rojo.
  */
 vi.mock('../services/cartera', () => ({
-  cargarCartera: async () => ({ clientes: GUARDADOS, origen: 'firestore', error: null }),
+  cargarCartera: async () => ({ clientes: GUARDADOS, origen: 'propia', error: null }),
   guardarCliente: vi.fn(), borrarCliente: vi.fn(),
   guardarEmpleado: vi.fn(), borrarEmpleado: vi.fn(), sembrarDemo: vi.fn(),
 }));
@@ -135,7 +133,8 @@ describe('CarteraProvider · el periodo del cliente nuevo', () => {
     screen.getByRole('button', { name: 'alta' }).click();
 
     await waitFor(() => expect(guardarCliente).toHaveBeenCalled());
-    const guardado = vi.mocked(guardarCliente).mock.calls[0][1];
+    // P0-01: el uid ya no viaja; el cliente es el único argumento.
+    const guardado = vi.mocked(guardarCliente).mock.calls[0][0];
     // El único visible en una cuenta normal es `mio`, y su periodo es PERIODO.
     expect(guardado.periodo_sugerido.inicio).toBe('2026-08-16');
   });
@@ -149,7 +148,7 @@ describe('CarteraProvider · quién ve los clientes de demostración', () => {
     );
   });
 
-  it('una cuenta NORMAL no ve ninguno, aunque estén en su Firestore', async () => {
+  it('una cuenta NORMAL no ve ninguno, aunque estén en su cartera', async () => {
     // El caso que importa: la siembra ya escrita de G-03 o de la demo.
     vi.stubEnv('DEV', false);
     montar();
