@@ -22,6 +22,7 @@ from sqlalchemy import JSON, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, ConMarcasDeTiempo
+from app.db.cifrado_columnas import CAMPOS_EMPLEADO_CIFRADOS, JSONConCamposCifrados
 
 
 class Despacho(ConMarcasDeTiempo, Base):
@@ -66,7 +67,11 @@ class Cliente(ConMarcasDeTiempo, Base):
 
 
 class Empleado(ConMarcasDeTiempo, Base):
-    """Trabajador de un cliente. `datos` es un EmpleadoCarteraSchema serializado."""
+    """Trabajador de un cliente. `datos` es un EmpleadoCarteraSchema serializado.
+
+    P6-01: la CLABE y el número de cuenta viajan cifrados dentro del JSON (ver
+    `app/db/cifrado_columnas.py`); el ORM los descifra al leer.
+    """
 
     __tablename__ = "empleados"
     __table_args__ = (UniqueConstraint("cliente_id", "empleado_no"),)
@@ -74,7 +79,9 @@ class Empleado(ConMarcasDeTiempo, Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id", ondelete="CASCADE"))
     empleado_no: Mapped[str] = mapped_column(String(60))
-    datos: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    datos: Mapped[dict[str, Any]] = mapped_column(
+        JSONConCamposCifrados(CAMPOS_EMPLEADO_CIFRADOS), default=dict
+    )
 
 
 class Dispositivo(ConMarcasDeTiempo, Base):

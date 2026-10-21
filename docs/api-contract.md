@@ -2462,3 +2462,38 @@ Públicas (`RUTAS_PUBLICAS`, cada una con su verificación):
   `facturas.zip` (XML no cancelados del mes) entregado en ese mensaje. Enlace firmado
   (HMAC con `FISCALITO_ENLACES_SECRETO`, prefijo propio) con vigencia de 7 días; inválido o
   vencido → 404.
+
+---
+
+## Cuenta del despacho y salud (P6-01, P6-02)
+
+### `GET /health` (P6-02)
+Pública. Siempre 200 (el healthcheck de Railway mide que la API viva). Cuerpo:
+`{status: "ok"|"degradado", service, version, base_datos: "ok"|"error", procesos: {worker:
+{ultimo_latido, vivo}, programador: {ultimo_latido, vivo}, trabajos: {corriendo_sin_terminar,
+pendientes_sin_tomar, fallidos, atorados}, sano}}`. `degradado` = la base no contesta, el
+worker o el programador no han latido en 5 min, o hay trabajos atorados (corriendo > 15 min o
+pendiente vencido > 15 min). Toda respuesta lleva `X-Request-ID` (el que mandó el cliente o uno
+nuevo); el mismo id va en cada línea de log del request y en el reporte al monitoreo.
+
+### `POST /api/v1/despacho/exportar` (P6-01, sólo `dueno`)
+Encola `despacho.exportar` y responde `{exito, trabajo: {id, estado, error, creado_en, bytes,
+tablas, archivos, url, vence_en}}`. Con una exportación viva devuelve ésa. 403 si no es dueño.
+No lo bloquea una suscripción vencida (derecho ARCO).
+
+### `GET /api/v1/despacho/exportar/{trabajo_id}` (sólo `dueno`)
+Estado de la exportación. Con `estado: "hecho"`, `url` es el enlace firmado (7 días) al ZIP:
+`manifiesto.json`, `tablas/<tabla>.json` (todas las del despacho; CLABE y cuentas en claro,
+credenciales cifradas con la llave maestra) y `archivos/<ruta>` (XML de la bóveda, PDF,
+acuses). 404 si es de otro despacho.
+
+### `GET /api/v1/despacho/exportaciones/{trabajo_id}/descarga?vence=&firma=` (pública)
+Firma HMAC (`FISCALITO_ENLACES_SECRETO`, prefijo `exportacion:`). Firma mala, vencida o ZIP ya
+purgado → 404 sin distinguir. `application/zip`.
+
+### `POST /api/v1/despacho/borrar` (sólo `dueno`)
+Cuerpo `{confirmacion: "BORRAR MI DESPACHO"}` (literal; otra cosa → 422). Borra todas las
+tablas del despacho (alcance derivado del esquema: `app/despacho/alcance.py`), sus archivos del
+almacén, sus exportaciones y sus respaldos; deja una constancia sin datos personales en
+`bajas_despacho`. Responde `{exito, borrado: {<tabla>: renglones, archivos: n}}`. No borra la
+cuenta de Firebase: si el mismo usuario vuelve a entrar, nace un despacho vacío.

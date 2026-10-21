@@ -44,7 +44,8 @@ from app.planes import plan as plan_de
 
 METODOS_DE_LECTURA = frozenset({"GET", "HEAD", "OPTIONS"})
 # Rutas que se pueden usar en solo lectura: las que sacan al despacho del bloqueo.
-RUTAS_EXENTAS = ("/api/v1/suscripcion",)
+# P6-01: exportar y borrar la cuenta son derechos ARCO (LFPDPPP): no se bloquean por pago.
+RUTAS_EXENTAS = ("/api/v1/suscripcion", "/api/v1/despacho/exportar", "/api/v1/despacho/borrar")
 
 
 def ahora() -> datetime:

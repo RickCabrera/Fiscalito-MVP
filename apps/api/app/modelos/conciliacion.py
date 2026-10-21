@@ -41,6 +41,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, ConMarcasDeTiempo
+from app.db.cifrado_columnas import TextoCifrado
 
 DINERO = Numeric(18, 2)
 
@@ -57,8 +58,9 @@ class CuentaBancaria(ConMarcasDeTiempo, Base):
     # Clave del banco en el catálogo c_Banco del SAT (Anexo 24), p. ej. "012" BBVA.
     banco: Mapped[str] = mapped_column(String(3))
     nombre: Mapped[str] = mapped_column(String(120), default="")
-    numero: Mapped[str] = mapped_column(String(30), default="")
-    clabe: Mapped[str] = mapped_column(String(18), default="")
+    # P6-01: cifradas en reposo (`app/db/cifrado_columnas.py`); no se filtran en SQL.
+    numero: Mapped[str] = mapped_column(TextoCifrado(), default="")
+    clabe: Mapped[str] = mapped_column(TextoCifrado(), default="")
     moneda: Mapped[str] = mapped_column(String(3), default="MXN")
     cuenta_contable_id: Mapped[int] = mapped_column(
         ForeignKey("cuentas_contables.id", ondelete="RESTRICT"), index=True

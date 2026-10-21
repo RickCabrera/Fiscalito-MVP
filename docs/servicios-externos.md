@@ -549,3 +549,39 @@ porque el día que haya más de una réplica pasa a serlo (Redis o la base).
 
 **A quién contratar.** Nadie mientras haya un solo proceso. Con varias réplicas: Redis administrado
 (Railway, Upstash) e implementar `Limitador` en `app/acceso/limitador.py`.
+
+---
+
+## Respaldos y cifrado de datos bancarios (P6-01)
+
+**Qué es.** Un respaldo lógico diario por despacho (03:30 CDMX, tarea `respaldos_despachos`):
+el mismo ZIP de la exportación (JSON por tabla + archivos) en
+`respaldos/<despacho>/<AAAA-MM-DD>.zip` del **adaptador de almacenamiento** (S3/R2 en
+producción), con `respaldos/<despacho>/indice.json`. Los ZIP de exportación que pide el dueño
+viven en `exportaciones/<despacho>/` y se purgan a los 7 días (`purgar_exportaciones`, 04:00).
+La CLABE y el número de cuenta del empleado y de las cuentas bancarias se guardan cifrados con
+`FISCALITO_LLAVE_MAESTRA` (`app/db/cifrado_columnas.py`).
+
+**Variables.**
+- `FISCALITO_RESPALDOS_ACTIVOS` — `0` apaga los respaldos (default `1`).
+- `FISCALITO_RESPALDOS_RETENCION_DIAS` — días que se conserva cada respaldo (default 30).
+- `FISCALITO_LLAVE_MAESTRA` — la misma de la bóveda. En producción sin ella, guardar una CLABE
+  responde 503. En desarrollo sin ella la CLABE queda en claro (no se usa llave efímera: se
+  perdería el dato); al poner la llave, corre
+  `PYTHONPATH=. python -m scripts.cifrar_datos_sensibles` (la migración
+  `d7894b991c45` ya lo hace si la llave existe al migrar).
+
+**Cómo se prueba.** `pytest tests/plan_p/test_cuenta_despacho.py`.
+
+**A quién contratar.** A nadie más: usa el bucket de EXT-10. Ojo: el respaldo es lógico y
+**por despacho**; el respaldo físico de Postgres (point-in-time) lo da el plan de Railway.
+
+## Observabilidad (P6-02)
+
+Logs JSON por línea con `proceso` (`api`/`worker`/`programador`), `request_id`,
+`despacho_id`/`uid` (API) y `trabajo_id`/`trabajo_tipo`/`intento` (worker). Todo error de un
+trabajo de fondo, de una tarea programada o no previsto en una ruta va a
+`FISCALITO_MONITOREO` (falso | log | sentry) con ese contexto y la traza. En producción pon
+`FISCALITO_MONITOREO=log` como mínimo (Railway recoge stdout) o `sentry` con
+`FISCALITO_SENTRY_DSN`. `GET /health` da el último latido del worker y del programador y los
+trabajos atorados.

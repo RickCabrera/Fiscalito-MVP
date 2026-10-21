@@ -28,3 +28,4 @@ from app.modelos import suscripciones  # noqa: F401, I001 — P5-08
 from app.modelos import facturacion  # noqa: F401, I001 — P5-04
 from app.modelos import envio_documentos  # noqa: F401, I001 — P5-05
 from app.modelos import whatsapp  # noqa: F401, I001 — P5-06
+from app.modelos import cuenta  # noqa: F401, I001 — P6-01

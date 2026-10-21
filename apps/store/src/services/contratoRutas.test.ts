@@ -85,6 +85,8 @@ import * as conciliacionApi from './conciliacionApi';
 import * as contabilidadElectronicaApi from './contabilidadElectronicaApi';
 // P5-07: asistente IA (chat y voz por el backend). Se registra el día que nace.
 import * as asistenteApi from './asistenteApi';
+// P6-01: exportar y borrar la cuenta del despacho.
+import * as cuentaDespachoApi from './cuentaDespachoApi';
 import type { ClienteDetalle } from './despachoApi';
 
 // ── El contrato ──
@@ -258,6 +260,11 @@ const LLAMADAS: Record<string, Record<string, () => Promise<unknown>>> = {
       ),
     borrarCredencial: () => credencialesApi.borrarCredencial('taller', 7),
   },
+  'cuentaDespachoApi.ts': {
+    solicitarExportacion: () => cuentaDespachoApi.solicitarExportacion(),
+    estadoExportacion: () => cuentaDespachoApi.estadoExportacion(7),
+    borrarDespacho: () => cuentaDespachoApi.borrarDespacho('BORRAR MI DESPACHO'),
+  },
   'trabajosApi.ts': {
     listarTrabajos: () => trabajosApi.listarTrabajos({ cliente: 'demo', estado: 'fallido' }),
     obtenerTrabajo: () => trabajosApi.obtenerTrabajo(7),
@@ -406,6 +413,7 @@ const MODULOS: Record<string, Record<string, unknown>> = {
   'satDescargaApi.ts': satDescargaApi,
   'credencialesApi.ts': credencialesApi,
   'trabajosApi.ts': trabajosApi,
+  'cuentaDespachoApi.ts': cuentaDespachoApi,
   'satVerificacionApi.ts': satVerificacionApi,
   'contabilidadApi.ts': contabilidadApi,
   'impuestosApi.ts': impuestosApi,

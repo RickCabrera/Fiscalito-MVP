@@ -1,0 +1,18 @@
+# Contexto de build del FRONT (apps/store/Dockerfile se construye desde la raíz). La API usa
+# apps/api como contexto y su propio apps/api/.dockerignore.
+**/node_modules
+**/dist
+.git
+.github
+.claude
+**/.env
+**/.env.*
+!**/.env.example
+apps/api
+docs
+scripts
+# Datos personales reales: jamás a una imagen.
+03. CFDI DE NOMINA
+VERIFICACION_NOMINAS.md
+**/*.db
+**/almacen

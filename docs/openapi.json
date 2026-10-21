@@ -12,7 +12,7 @@
     "/health": {
       "get": {
         "summary": "Health",
-        "description": "Retorna el estado del servicio.",
+        "description": "Estado del servicio. `status` es `ok` si la API responde y la base contesta; `degradado`\nsi la base no contesta o el worker/programador no laten (P6-02). Siempre 200: el\nhealthcheck de Railway mide que la API esté viva; lo demás se lee en el cuerpo.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -20199,6 +20199,178 @@
         }
       }
     },
+    "/api/v1/despacho/exportar": {
+      "post": {
+        "tags": [
+          "Cuenta del despacho"
+        ],
+        "summary": "Exportar todos los datos del despacho (ZIP, segundo plano)",
+        "operationId": "exportar_api_v1_despacho_exportar_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Exportar Api V1 Despacho Exportar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/despacho/exportar/{trabajo_id}": {
+      "get": {
+        "tags": [
+          "Cuenta del despacho"
+        ],
+        "summary": "Estado de una exportación y su enlace",
+        "operationId": "estado_exportacion_api_v1_despacho_exportar__trabajo_id__get",
+        "parameters": [
+          {
+            "name": "trabajo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trabajo Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Estado Exportacion Api V1 Despacho Exportar  Trabajo Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/despacho/borrar": {
+      "post": {
+        "tags": [
+          "Cuenta del despacho"
+        ],
+        "summary": "Borrar la cuenta del despacho y todos sus datos",
+        "operationId": "borrar_api_v1_despacho_borrar_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorrarIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Borrar Api V1 Despacho Borrar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/recibos/descarga/{envio_id}/{archivo}": {
       "get": {
         "tags": [
@@ -20614,6 +20786,64 @@
               }
             },
             "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/despacho/exportaciones/{trabajo_id}/descarga": {
+      "get": {
+        "tags": [
+          "Cuenta del despacho"
+        ],
+        "summary": "Descarga del ZIP de exportación (enlace firmado)",
+        "operationId": "descargar_api_v1_despacho_exportaciones__trabajo_id__descarga_get",
+        "parameters": [
+          {
+            "name": "trabajo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Trabajo Id"
+            }
+          },
+          {
+            "name": "vence",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vence"
+            }
+          },
+          {
+            "name": "firma",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Firma"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -21273,6 +21503,20 @@
           "archivo"
         ],
         "title": "Body_subir_pdf_api_v1_sat_clientes__clave__opinion_pdf_post"
+      },
+      "BorrarIn": {
+        "properties": {
+          "confirmacion": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Confirmacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirmacion"
+        ],
+        "title": "BorrarIn"
       },
       "CFDI": {
         "properties": {
@@ -26948,6 +27192,23 @@
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "base_datos": {
+            "type": "string",
+            "title": "Base Datos",
+            "default": "ok"
+          },
+          "procesos": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Procesos"
           }
         },
         "type": "object",

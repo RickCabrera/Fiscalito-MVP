@@ -804,6 +804,12 @@
       ]
     },
     {
+      "path": "/api/v1/despacho/borrar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/api/v1/despacho/calendario",
       "metodos": [
         "GET"
@@ -823,6 +829,24 @@
     },
     {
       "path": "/api/v1/despacho/clientes/{cliente_id}/empleados",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/exportaciones/{trabajo_id}/descarga",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/exportar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/despacho/exportar/{trabajo_id}",
       "metodos": [
         "GET"
       ]
