@@ -30,7 +30,7 @@ import { MARCA_CORTA } from './marca';
 /** Id estable de cada entrada del sidebar. AppLayout lo mapea a su icono. */
 export type NavId =
   | 'fiscalito' | 'contabilito' | 'nomina' | 'perfil'
-  | 'clientes' | 'empleados' | 'dispositivos' | 'calendario';
+  | 'clientes' | 'empleados' | 'dispositivos' | 'boveda' | 'calendario';
 
 export interface SidebarLink {
   id: NavId;
@@ -53,6 +53,9 @@ const LINKS_CONTADOR: SidebarLink[] = [
   // dentro de la ficha. Operan sobre el cliente activo, igual que Nómina.
   { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
   { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
+  // P0-03: la bóveda de CFDI del cliente activo. Va antes de Nómina porque es
+  // de donde todo lo demás leerá sus comprobantes (P1-06).
+  { id: 'boveda', to: '/app/boveda', label: 'Bóveda' },
   { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
   { id: 'calendario', to: '/app/calendario', label: 'Calendario' },
   // T1: el despacho recupera el servicio fiscal, pero **el del CLIENTE ACTIVO**,
@@ -179,6 +182,9 @@ export function rutaInicial(): string {
  */
 const RUTAS_CON_CLIENTE = [
   '/app/clientes', '/app/empleados', '/app/dispositivos',
+  // P0-03: CUMPLE la regla — `BovedaPage` lee `useClienteActivo` y pide la
+  // bóveda de ESE cliente (`/boveda/clientes/{clave}/cfdi`).
+  '/app/boveda',
   // K: `/app/nomina` sin cliente activo pinta "Elige un cliente primero"; con el
   // selector encima se elige ahí mismo y `NominaDelClienteActivo` redirige a la
   // nómina de ese cliente. Con cliente, la nómina vive en

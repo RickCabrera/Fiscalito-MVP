@@ -17,8 +17,11 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import CredencialesCliente from '../components/cartera/CredencialesCliente';
 import DatosFiscalesFicha from '../components/cartera/DatosFiscalesFicha';
 import EmpleadosTab from '../components/cartera/EmpleadosTab';
+// P0-04: procesos en segundo plano del cliente (demo de EstadoTrabajos).
+import ProcesosCliente from '../components/cartera/ProcesosCliente';
 import { useCartera } from '../context/carteraStore';
 import { useAuth } from '../context/AuthContext';
 import { esCuentaDeDesarrollo } from '../services/entorno';
@@ -214,6 +217,8 @@ export default function ClienteDetallePage() {
 
           {/* C-01: RFC, CP y entidad, con la edición del cliente. */}
           {deLaCartera && <DatosFiscalesFicha cliente={deLaCartera} />}
+          {/* P0-05: e.firma y CSD del cliente, contra la bóveda del backend. */}
+          {deLaCartera && <CredencialesCliente clave={deLaCartera.id} />}
 
           <div className="animate-in" style={{ animationDelay: '0.1s' }}>
             <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
@@ -242,6 +247,7 @@ export default function ClienteDetallePage() {
               <div className="card" style={{ padding: 'var(--space-lg)' }}>
                 <EmpleadosTab
                   empleados={empleadosCartera}
+                  ilegibles={deLaCartera?.ilegibles ?? []}
                   soloLectura={cartera.soloLectura}
                   onGuardar={(e) => cartera.guardarEmpleado(id as string, e)}
                   onBorrar={(no) => cartera.borrarEmpleado(id as string, no)}
@@ -378,6 +384,8 @@ export default function ClienteDetallePage() {
             </>
             )}
           </div>
+
+          {id && <ProcesosCliente cliente={id} />}
         </>
       )}
     </div>

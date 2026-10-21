@@ -2,7 +2,7 @@
 
 import type { ContributorType } from './contributorProfiles';
 
-const BASE_URL = import.meta.env.VITE_FISCAL_AGENT_URL || 'http://localhost:8000';
+import { API_URL as BASE_URL, encabezadoAuth } from './api';
 
 // ── Interfaces de request (coinciden con OpenAPI schemas) ──
 
@@ -430,9 +430,12 @@ export interface EstadoCuentaResponse {
 // ── Funciones de API ──
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // P0-02: todo `/api/v1` exige la sesión. `/health` no, y no debe pedir login para
+  // decir si el servidor está vivo.
+  const sesion = endpoint.startsWith('/api/') ? await encabezadoAuth() : {};
   const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: { 'Content-Type': 'application/json', ...sesion },
   });
 
   if (!res.ok) {

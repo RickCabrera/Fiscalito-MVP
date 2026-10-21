@@ -23,6 +23,50 @@
       ]
     },
     {
+      "path": "/api/v1/asistencia/tokens",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/asistencia/tokens/{token_id}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/auditoria",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}",
+      "metodos": [
+        "DELETE"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/cfdi/{uuid}/xml",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/boveda/clientes/{clave}/resumen",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
       "path": "/api/v1/calendario",
       "metodos": [
         "POST"
@@ -42,6 +86,20 @@
       ]
     },
     {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/cartera/clientes/{cliente_id}/dispositivos/{dispositivo_id}",
+      "metodos": [
+        "DELETE",
+        "PUT"
+      ]
+    },
+    {
       "path": "/api/v1/cartera/clientes/{cliente_id}/empleados",
       "metodos": [
         "GET"
@@ -52,6 +110,19 @@
       "metodos": [
         "DELETE",
         "PUT"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales",
+      "metodos": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/clientes/{clave}/credenciales/{credencial_id}",
+      "metodos": [
+        "DELETE"
       ]
     },
     {
@@ -163,7 +234,43 @@
       ]
     },
     {
+      "path": "/api/v1/trabajos",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/clientes/{clave}/diagnostico",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/cancelar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
+      "path": "/api/v1/trabajos/{trabajo_id}/reintentar",
+      "metodos": [
+        "POST"
+      ]
+    },
+    {
       "path": "/health",
+      "metodos": [
+        "GET"
+      ]
+    },
+    {
+      "path": "/health/integraciones",
       "metodos": [
         "GET"
       ]

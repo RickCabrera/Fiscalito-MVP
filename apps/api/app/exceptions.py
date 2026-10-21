@@ -5,6 +5,8 @@ Estas excepciones permiten manejar errores fiscales de forma estructurada
 sin depender directamente de HTTPException en la lógica de negocio.
 """
 
+import math
+
 
 class FiscalAgentError(Exception):
     """Excepción base para el agente fiscal."""
@@ -27,3 +29,16 @@ class FiscalCalculationError(FiscalAgentError):
 
     def __init__(self, message: str) -> None:
         super().__init__(message, status_code=500)
+
+
+class LimiteExcedido(FiscalAgentError):
+    """
+    Demasiadas peticiones o tope de gasto alcanzado (P0-02): 429 con `Retry-After`.
+
+    `reintentar_en` son segundos enteros (hacia arriba, mínimo 1): `Retry-After` no admite
+    fracciones, y un 0 invitaría al cliente a reintentar en un loop.
+    """
+
+    def __init__(self, message: str, reintentar_en: float) -> None:
+        super().__init__(message, status_code=429)
+        self.reintentar_en = max(1, math.ceil(reintentar_en))

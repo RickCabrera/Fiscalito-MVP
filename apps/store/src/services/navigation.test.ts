@@ -23,7 +23,7 @@ import {
 import { MARCA_CORTA } from './marca';
 
 describe('getSidebarLinks', () => {
-  it('el contador ve Clientes / Empleados / Dispositivos / Nómina / Calendario / Fiscalito / Contabilito / Perfil, en ese orden', () => {
+  it('el contador ve Clientes / Empleados / Dispositivos / Bóveda / Nómina / Calendario / Fiscalito / Contabilito / Perfil, en ese orden', () => {
     expect(getSidebarLinks()).toEqual([
       { id: 'clientes', to: '/app/clientes', label: 'Clientes' },
       // R-05: entradas propias. Antes los empleados sólo se alcanzaban entrando
@@ -33,6 +33,8 @@ describe('getSidebarLinks', () => {
       // —plantilla, aparatos, y luego la nómina que sale de los dos—.
       { id: 'empleados', to: '/app/empleados', label: 'Empleados' },
       { id: 'dispositivos', to: '/app/dispositivos', label: 'Dispositivos' },
+      // P0-03: la bóveda de CFDI del cliente activo, entre Dispositivos y Nómina.
+      { id: 'boveda', to: '/app/boveda', label: 'Bóveda' },
       // E-03: el enlace no conoce el id del cliente; `/app/nomina` lo resuelve
       // desde el contexto. Así `getSidebarLinks` sigue siendo pura del perfil.
       { id: 'nomina', to: '/app/nomina', label: 'Nómina' },
@@ -152,7 +154,7 @@ describe('navActivo (E-06)', () => {
 describe('rutaTieneAlcanceDeCliente', () => {
   it('muestra el selector en las pantallas que leen el cliente activo', () => {
     for (const ruta of ['/app/clientes', '/app/clientes/taller', '/app/clientes/taller/nomina',
-      '/app/nomina', '/app/empleados', '/app/dispositivos',
+      '/app/nomina', '/app/empleados', '/app/dispositivos', '/app/boveda',
       '/app/store/fiscalito/use', '/app/store/contabilito/use']) {
       expect(rutaTieneAlcanceDeCliente(ruta), ruta).toBe(true);
     }

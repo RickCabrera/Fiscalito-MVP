@@ -23,6 +23,8 @@ import ServiceDetailPage from './pages/ServiceDetailPage';
 import ProfilePage from './pages/ProfilePage';
 // T8: planes de la cuenta. Se entra desde Perfil, no desde el sidebar.
 import PlanesPage from './pages/PlanesPage';
+// P0-07: bitácora de auditoría. Se entra desde Perfil, no desde el sidebar.
+import AuditoriaPage from './pages/AuditoriaPage';
 import AdminPage from './pages/AdminPage';
 import OnboardingWizard from './pages/OnboardingWizard';
 import FiscalitoServicePage from './pages/FiscalitoServicePage';
@@ -37,6 +39,8 @@ import NominaDelClienteActivo from './pages/NominaDelClienteActivo';
 // R-05: empleados y dispositivos del cliente activo, entradas propias del sidebar.
 import EmpleadosPage from './pages/EmpleadosPage';
 import DispositivosPage from './pages/DispositivosPage';
+// P0-03: bóveda de CFDI del cliente activo.
+import BovedaPage from './pages/BovedaPage';
 // DEMO E-07: calendario patronal de la cartera. Se borra en F2.
 import CalendarioPatronalPage from './pages/CalendarioPatronalPage';
 
@@ -75,6 +79,7 @@ export default function AppRoutes() {
             piden en vez de caer en un default silencioso. */}
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="dispositivos" element={<DispositivosPage />} />
+        <Route path="boveda" element={<BovedaPage />} />
         {/* DEMO E-07: obligaciones patronales de los clientes del despacho. */}
         <Route path="calendario" element={<CalendarioPatronalPage />} />
         <Route path="store" element={<MarketplacePage />} />
@@ -91,6 +96,7 @@ export default function AppRoutes() {
             diaria por una pantalla que se visita una vez. Se llega desde la
             tarjeta de plan del Perfil. */}
         <Route path="planes" element={<PlanesPage />} />
+        <Route path="auditoria" element={<AuditoriaPage />} />
         <Route path="admin" element={<AdminPage />} />
         {/* La ruta de D-07 sobrevive como redirección: el runbook de la demo
             y los enlaces viejos apuntan ahí. */}

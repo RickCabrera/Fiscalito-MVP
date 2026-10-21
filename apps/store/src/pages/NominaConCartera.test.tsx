@@ -82,7 +82,7 @@ vi.mock('../context/carteraStore', async () => {
         clientes:
           EN_CARTERA.cargando || EN_CARTERA.ausente ? [] : ([clienteDeCartera()] as never),
         loading: EN_CARTERA.cargando,
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         clientePorId: (id: string) =>
           !EN_CARTERA.cargando && !EN_CARTERA.ausente && id === CLIENTE

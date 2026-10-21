@@ -50,7 +50,7 @@ vi.mock('../../context/carteraStore', async () => {
       carteraDePrueba({
         loading: estadoCartera.loading,
         clientes: estadoCartera.tieneAlCliente ? [CLIENTE] : [],
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: false,
         clientePorId: () => (estadoCartera.tieneAlCliente ? CLIENTE : null),
       }),

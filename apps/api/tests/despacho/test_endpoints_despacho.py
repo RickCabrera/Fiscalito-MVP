@@ -11,19 +11,13 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-from fastapi.testclient import TestClient
-
 from app.despacho_demo import CLIENTES, FECHA_REFERENCIA_DEMO
-from app.main import app
 
 LISTA = "/api/v1/despacho/clientes"
 FICHA = "/api/v1/despacho/clientes/{}"
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 class TestListaDeClientes:

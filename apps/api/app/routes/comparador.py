@@ -4,8 +4,9 @@ Endpoint de comparacion de regimenes fiscales.
 POST /api/v1/comparar-regimenes → Compara los 5 regimenes de PF entre si
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.acceso.llm import CobradorLLM, cobrador_llm
 from app.fiscal_engine.comparador import calcular_todos_regimenes
 from app.schemas.comparador import CompararRegimenRequest, CompararRegimenResponse
 from app.schemas.declaraciones import ErrorResponse
@@ -22,7 +23,9 @@ router = APIRouter(tags=["Comparador"])
     description="Simula ISR anual en los 5 regimenes (626, 612, 606, 625, 605) "
                 "y los ordena de menor a mayor costo.",
 )
-async def comparar(req: CompararRegimenRequest):
+async def comparar(
+    req: CompararRegimenRequest, cobrador: CobradorLLM = Depends(cobrador_llm)
+):
     if req.ingresos_mensuales_estimados <= 0:
         raise HTTPException(
             status_code=400,
@@ -41,6 +44,7 @@ async def comparar(req: CompararRegimenRequest):
 
     explicacion = None
     if req.incluir_explicacion:
+        cobrador.cobrar()  # P0-02: límite y tope de LLM
         explicacion = await generar_explicacion_comparacion(
             ingresos_mensuales=req.ingresos_mensuales_estimados,
             gastos_mensuales=req.gastos_mensuales_estimados,

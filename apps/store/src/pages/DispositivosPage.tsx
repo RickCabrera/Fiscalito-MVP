@@ -1,26 +1,18 @@
 /**
- * Dispositivos biométricos del cliente activo. (R-04, R-05)
+ * Dispositivos biométricos del cliente activo. (R-04, R-05; por la API desde P0-01)
  *
- * Restaura lo que G-02 recortó. Opera sobre el **cliente activo** del selector
- * superior, con el mismo patrón que `/app/nomina`: sin cliente, la pantalla lo
- * pide en vez de caer en un default silencioso — un default aquí haría que el
- * header afirmara un cliente y la pantalla enseñara los aparatos de otro.
+ * Opera sobre el **cliente activo**: sin cliente, lo pide en vez de caer en un default
+ * que haría al header afirmar un cliente y a la pantalla enseñar los aparatos de otro.
  *
- * LO QUE ESTA PANTALLA NO AFIRMA, Y POR QUÉ
- * ------------------------------------------
  * No dice cuántas checadas mandó cada aparato, porque **no se puede saber**:
- * `EventoChecada` no identifica el dispositivo (`serial_no` es el consecutivo
- * del evento, no la serie del equipo). Lo que sí hace es cruzar contra el
- * endpoint **real** del adaptador —`GET /api/v1/asistencia/eventos`— para decir
- * **quién está checando y quién no**, que es la pregunta que el contador tiene
- * de verdad. La limitación se dice en pantalla en vez de dejar que el lector
- * suponga.
+ * `EventoChecada` no identifica el dispositivo. Cruza contra
+ * `GET /api/v1/asistencia/eventos` para decir **quién está checando y quién no**, y la
+ * limitación se dice en pantalla.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Fingerprint, Loader, Plus } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { useCartera } from '../context/carteraStore';
 import { useClienteActivo } from '../context/clienteActivoStore';
 import {
@@ -31,42 +23,25 @@ import {
   borrarDispositivo,
   guardarDispositivo,
   listarDispositivos,
-} from '../services/dispositivosFirestore';
+} from '../services/dispositivos';
 import { obtenerEventos } from '../services/nominaDemoApi';
 import ModalDispositivo from '../components/dispositivos/ModalDispositivo';
 import TarjetaDispositivo from '../components/dispositivos/TarjetaDispositivo';
+import AvisoDispositivos from '../components/dispositivos/AvisoDispositivos';
+import ConfirmarBajaDispositivo from '../components/dispositivos/ConfirmarBajaDispositivo';
 import ErrorAlert from '../components/common/ErrorAlert';
 import SinClienteActivo from '../components/common/SinClienteActivo';
 
-/** Aviso con el mismo aspecto que los de `EmpleadosTab`. */
-function Aviso({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      role="alert"
-      style={{
-        margin: 0, background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
-        borderRadius: 'var(--radius-sm)', padding: 'var(--space-sm) var(--space-md)',
-        fontSize: '0.88rem', color: 'var(--text-primary)',
-      }}
-    >
-      {children}
-    </p>
-  );
-}
+const Aviso = AvisoDispositivos;
 
 export default function DispositivosPage() {
-  const { user } = useAuth();
   const { clienteId, cliente, loading: cargandoCliente } = useClienteActivo();
   const cartera = useCartera();
 
   /**
-   * La carga guarda **para qué cliente** se hizo, y todo lo demás se DERIVA de
-   * compararlo con el actual. Es el patrón de `ClienteDetallePage`
-   * (`resultado.id === id`) y de `CarteraContext`, y existe por dos razones:
-   * evita llamar a `setState` sincrónicamente dentro del efecto —que dispara
-   * renders en cascada y que la regla `react-hooks/set-state-in-effect`
-   * prohíbe— y, de paso, impide que una respuesta lenta del cliente anterior se
-   * pinte sobre la pantalla del nuevo.
+   * La carga guarda **para qué cliente** se hizo y lo demás se DERIVA de compararlo
+   * con el actual (patrón de `ClienteDetallePage`): evita `setState` síncrono en el
+   * efecto y que una respuesta lenta del cliente anterior se pinte sobre el nuevo.
    */
   const [carga, setCarga] = useState<{
     para: string | null;
@@ -76,18 +51,13 @@ export default function DispositivosPage() {
   const [editando, setEditando] = useState<DispositivoChecador | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [porBorrar, setPorBorrar] = useState<DispositivoChecador | null>(null);
+  const [errorBorrar, setErrorBorrar] = useState<string | null>(null);
   /**
    * `employee_no` con al menos una checada en el almacén del backend.
    *
-   * **`null` = no se pudo preguntar**, y es una distinción que costó un
-   * bloqueo del revisor. Con un `Set` vacío como estado de fallo, una API
-   * caída convertía "no pude preguntar" en "no ha checado" —en ámbar, sobre
-   * gente que sí está checando— y la ventana de carga hacía parpadear la
-   * insignia en todos para desdecirse un segundo después.
-   *
-   * Es el MISMO defecto que se arregló tres líneas más abajo para `huerfanos`,
-   * dejado abierto aquí: un aviso que aparece y desaparece solo enseña a
-   * ignorarlo. Sin la respuesta del adaptador no se afirma nada.
+   * **`null` = no se pudo preguntar.** Con un `Set` vacío como fallo, una API caída
+   * convertía "no pude preguntar" en "no ha checado" —en ámbar, sobre gente que sí
+   * checa—. Sin la respuesta del adaptador no se afirma nada.
    */
   const [cruce, setCruce] = useState<{
     para: string | null;
@@ -95,16 +65,15 @@ export default function DispositivosPage() {
   } | null>(null);
   const [intento, setIntento] = useState(0);
 
-  const uid = user?.uid ?? null;
   const empleados = useMemo(
     () => (clienteId ? cartera.clientePorId(clienteId)?.empleados ?? [] : []),
     [cartera, clienteId],
   );
 
   useEffect(() => {
-    if (!uid || !clienteId) return;
+    if (!clienteId) return;
     let cancelado = false;
-    listarDispositivos(uid, clienteId)
+    listarDispositivos(clienteId)
       .then((d) => {
         if (!cancelado) setCarga({ para: clienteId, dispositivos: d, error: null });
       })
@@ -117,7 +86,7 @@ export default function DispositivosPage() {
         });
       });
     return () => { cancelado = true; };
-  }, [uid, clienteId, intento]);
+  }, [clienteId, intento]);
 
   // Quién está checando, del endpoint REAL del adaptador. Que falle no rompe la
   // pantalla —se sigue pudiendo administrar aparatos— pero **sí se dice**: el
@@ -146,11 +115,11 @@ export default function DispositivosPage() {
 
   const guardar = useCallback(
     async (d: DispositivoChecador) => {
-      if (!uid || !clienteId) throw new Error('Hace falta una sesión y un cliente activo.');
-      await guardarDispositivo(uid, clienteId, d);
+      if (!clienteId) throw new Error('Hace falta un cliente activo.');
+      await guardarDispositivo(clienteId, d);
       recargar();
     },
-    [uid, clienteId, recargar],
+    [clienteId, recargar],
   );
 
   if (!cargandoCliente && !clienteId) {
@@ -170,7 +139,7 @@ export default function DispositivosPage() {
   /**
    * **El cruce lleva su propia compuerta `para`, y es la TERCERA vez que hace
    * falta la misma idea en este archivo.** Los dos efectos corren en paralelo
-   * al cambiar de cliente y Firestore suele contestar antes que la red, así que
+   * al cambiar de cliente y la lista de aparatos suele contestar antes que el checador, así que
    * sin esto las tarjetas del cliente nuevo se pintaban contra el `checando`
    * del **anterior**: ámbar sobre gente que sí está checando, desdiciéndose un
    * segundo después. Cambiar de cliente en el selector superior es literalmente
@@ -203,6 +172,7 @@ export default function DispositivosPage() {
       </div>
 
       {error && <ErrorAlert message={error} />}
+      {errorBorrar && <ErrorAlert message={errorBorrar} />}
 
       {!cartera.soloLectura && (
         <div style={{ marginBottom: 'var(--space-md)' }}>
@@ -291,26 +261,22 @@ export default function DispositivosPage() {
       )}
 
       {porBorrar && (
-        <div style={{ marginTop: 'var(--space-md)' }}>
-          <Aviso>
-            ¿Dar de baja <strong>{porBorrar.nombre}</strong>? Se pierde el registro de quién
-            estaba enrolado en él. No borra a nadie de la plantilla ni del aparato físico.{' '}
-            <button className="btn-secondary" onClick={() => setPorBorrar(null)}>Cancelar</button>{' '}
-            <button
-              className="btn-primary"
-              onClick={async () => {
-                const quien = porBorrar;
-                setPorBorrar(null);
-                if (uid && clienteId) {
-                  await borrarDispositivo(uid, clienteId, quien.id);
-                  recargar();
-                }
-              }}
-            >
-              Sí, dar de baja
-            </button>
-          </Aviso>
-        </div>
+        <ConfirmarBajaDispositivo
+          nombre={porBorrar.nombre}
+          onCancelar={() => setPorBorrar(null)}
+          onConfirmar={async () => {
+            const quien = porBorrar;
+            setPorBorrar(null);
+            setErrorBorrar(null);
+            if (!clienteId) return;
+            try {
+              await borrarDispositivo(clienteId, quien.id);
+            } catch (e: unknown) {
+              setErrorBorrar(e instanceof Error ? e.message : 'No se pudo dar de baja');
+            }
+            recargar();
+          }}
+        />
       )}
 
       {abierto && (

@@ -111,3 +111,127 @@ def nomina_por_semana() -> dict[str, list[Path]]:
         carpeta.name: sorted(carpeta.glob("*.xml"))
         for carpeta in sorted(_FIXTURES_NOMINA.glob("semana-*"))
     }
+
+
+# ============================================================
+# Fixtures — plan P: base de datos y API autenticada
+# ============================================================
+#
+# `db_sesion` da un SQLite en memoria con todas las tablas, aislado por test.
+# `api` da un TestClient cuyo `obtener_db` usa ese SQLite y cuyo usuario autenticado
+# es el que se le pida: `api("uid-a")`. Así se prueba multi-tenant sin Firebase.
+
+from collections.abc import Callable, Iterator  # noqa: E402
+
+from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
+
+
+@pytest.fixture
+def sesionador() -> Iterator[sessionmaker]:
+    """Fábrica de sesiones sobre un SQLite en memoria con el esquema completo."""
+    from sqlalchemy import create_engine
+
+    import app.modelos  # noqa: F401
+    from app.db.base import Base
+    from app.db.session import preparar_sqlite
+
+    motor = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+
+    # Mismas reglas que el motor de la app: llaves foráneas y savepoints que sí se revierten.
+    preparar_sqlite(motor)
+
+    Base.metadata.create_all(motor)
+    yield sessionmaker(bind=motor, autoflush=False, expire_on_commit=False)
+    motor.dispose()
+
+
+@pytest.fixture
+def db_sesion(sesionador: sessionmaker) -> Iterator[Session]:
+    """Una sesión lista para usar en tests de dominio."""
+    sesion = sesionador()
+    try:
+        yield sesion
+    finally:
+        sesion.close()
+
+
+UID_PRUEBA = "uid-prueba"
+
+
+@pytest.fixture(autouse=True)
+def _limitador_limpio() -> Iterator[None]:
+    """
+    P0-02: el limitador es memoria del proceso y su ventana dura 60 s, así que sin
+    vaciarlo entre tests el resultado dependería del orden (y de la velocidad de la suite).
+    """
+    from app.acceso.limitador import reiniciar_limitador
+
+    reiniciar_limitador()
+    yield
+    reiniciar_limitador()
+
+
+@pytest.fixture
+def cliente_http(api) -> object:
+    """
+    TestClient autenticado como `UID_PRUEBA` sobre el SQLite en memoria del test.
+
+    P0-02: todo `/api/v1` exige sesión, así que los tests de ruta que antes usaban
+    `TestClient(app)` pelado usan éste. Un test que quiera medir el 401 crea su propio
+    `TestClient(app)` sin encabezado.
+    """
+    return api(UID_PRUEBA)
+
+
+@pytest.fixture
+def api(sesionador: sessionmaker) -> Iterator[Callable[[str], object]]:
+    """`api("uid")` → TestClient autenticado como ese uid, sobre el SQLite del test."""
+    from fastapi.testclient import TestClient
+
+    from app.auth_firebase import usuario_actual
+    from app.db.session import obtener_db
+    from app.integraciones import registro
+    from app.main import app
+
+    def _db() -> Iterator[Session]:
+        sesion = sesionador()
+        try:
+            yield sesion
+            sesion.commit()
+        except Exception:
+            sesion.rollback()
+            raise
+        finally:
+            sesion.close()
+
+    clientes: dict[str, TestClient] = {}
+
+    def _fabrica(uid: str = "uid-prueba") -> TestClient:
+        if uid not in clientes:
+            sub = TestClient(app)
+            sub.headers.update({"Authorization": f"Bearer {uid}"})
+            clientes[uid] = sub
+        return clientes[uid]
+
+    app.dependency_overrides[obtener_db] = _db
+
+    from fastapi import Header
+
+    def _usuario(authorization: str | None = Header(default=None)) -> str:
+        # Mismas reglas de formato que producción (401 sin encabezado o mal
+        # formado); sólo se salta la verificación criptográfica del token.
+        from app.auth_firebase import token_del_encabezado
+
+        return token_del_encabezado(authorization)
+
+    app.dependency_overrides[usuario_actual] = _usuario
+    registro.limpiar_cache()
+    try:
+        yield _fabrica
+    finally:
+        app.dependency_overrides.pop(obtener_db, None)
+        app.dependency_overrides.pop(usuario_actual, None)
+        registro.limpiar_cache()

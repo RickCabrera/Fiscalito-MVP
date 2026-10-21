@@ -20,11 +20,9 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.asistencia.almacen import almacen
 from app.despacho_demo import cliente_por_id
-from app.main import app
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -50,9 +48,7 @@ def _almacen_limpio():
     almacen.reset()
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 class TestPlantillaDelSimulador:

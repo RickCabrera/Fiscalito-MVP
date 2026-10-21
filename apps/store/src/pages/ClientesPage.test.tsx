@@ -81,7 +81,7 @@ vi.mock('../context/carteraStore', async () => {
         // como "la cartera está vacía — revisa que la API esté corriendo".
         error: estado.error,
         recargar,
-        origen: 'firestore',
+        origen: 'propia',
         soloLectura: estado.soloLectura,
         clientePorId: (id: string) => estado.clientes.find((c) => c.id === id) ?? null,
       }),

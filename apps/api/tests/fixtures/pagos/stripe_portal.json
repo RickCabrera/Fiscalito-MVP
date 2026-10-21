@@ -1,0 +1,5 @@
+{
+  "id": "bps_PRUEBA",
+  "object": "billing_portal.session",
+  "url": "https://billing.stripe.com/p/session/test_PRUEBA"
+}

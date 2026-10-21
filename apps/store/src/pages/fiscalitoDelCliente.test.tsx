@@ -222,7 +222,7 @@ describe('C-02 · contador con cliente activo', () => {
   it('con la cartera escribible, el acceso abre la edición del cliente ahí mismo', () => {
     const completo: ClienteCartera = { ...TALLER, rfc: undefined, empleados: [] } as unknown as ClienteCartera;
     const cartera = {
-      clientes: [completo], loading: false, origen: 'firestore', soloLectura: false, error: null,
+      clientes: [completo], loading: false, origen: 'propia', soloLectura: false, error: null,
       clientePorId: (id: string) => (id === 'taller' ? completo : null),
       guardarCliente: vi.fn(async () => {}),
     } as unknown as CarteraContextType;

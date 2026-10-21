@@ -27,11 +27,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.demo_nomina import quincena
 from app.exceptions import FiscalValidationError
-from app.main import app
 from app.nomina_engine.duracion_periodo import validar_duracion_periodo
 from app.nomina_engine.periodo_sugerido import CLAVES_CON_PERIODO, periodo_sugerido
 
@@ -42,9 +40,7 @@ def dias(periodo) -> int:
     return (periodo.fin - periodo.inicio).days + 1
 
 
-@pytest.fixture
-def cliente_http() -> TestClient:
-    return TestClient(app)
+# `cliente_http` viene de tests/conftest.py: autenticado (P0-02) y sobre SQLite.
 
 
 class TestLaInvarianteQueSostieneElSelector:
@@ -211,7 +207,7 @@ class TestElEndpointVALIDA_loQuePropone:
     def test_un_periodo_fuera_de_rango_NO_se_sirve(self, cliente_http, monkeypatch):
         from datetime import date as _date
 
-        from app.routes import nomina as ruta_nomina
+        from app.routes.nomina import periodo as ruta_nomina
         from app.schemas.asistencia import Periodo
 
         # 20 días con clave quincenal: imposible hoy, y el punto es que si
@@ -233,7 +229,7 @@ class TestElEndpointVALIDA_loQuePropone:
         """El contrapeso: la guarda no rechaza todo."""
         from datetime import date as _date
 
-        from app.routes import nomina as ruta_nomina
+        from app.routes.nomina import periodo as ruta_nomina
         from app.schemas.asistencia import Periodo
 
         monkeypatch.setattr(
