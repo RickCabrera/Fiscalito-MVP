@@ -7,18 +7,17 @@ Autor: Ricardo Cabrera
 """
 
 import logging
-import time
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from app.acceso.dependencias import PROTEGIDO
 from app.auditoria import AuditoriaMiddleware
 from app.config import settings
 from app.exceptions import FiscalAgentError, LimiteExcedido
 from app.logging_config import setup_logging
+from app.observabilidad import ObservabilidadMiddleware, reportar_error
 from app.routes import (
     agenda,
     agente,
@@ -42,6 +41,7 @@ from app.routes import (
     dashboard,
     declaraciones,
     despacho,
+    despacho_cuenta,
     diot,
     diot_cliente,
     envio_documentos,
@@ -72,28 +72,9 @@ from app.routes import (
 )
 
 # Inicializar logging estructurado al arrancar la aplicacion
-setup_logging()
+setup_logging(proceso="api")
 
 logger = logging.getLogger(__name__)
-
-
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware que registra metodo, ruta, status y tiempo de cada request."""
-
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Procesa el request y registra metricas basicas."""
-        start_time = time.perf_counter()
-        response = await call_next(request)
-        process_time_ms = (time.perf_counter() - start_time) * 1000
-
-        logger.info(
-            "HTTP %s %s -> %d (%.1fms)",
-            request.method,
-            request.url.path,
-            response.status_code,
-            process_time_ms,
-        )
-        return response
 
 
 app = FastAPI(
@@ -107,9 +88,11 @@ cors_origins: list[str] = [
     origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()
 ]
 
-app.add_middleware(RequestLoggingMiddleware)
 # P0-07: renglón de auditoría por cada escritura autenticada (red de seguridad).
 app.add_middleware(AuditoriaMiddleware)
+# P6-02: request_id en cada línea de log y en la respuesta (`X-Request-ID`); va por fuera de
+# la auditoría para que el renglón de ésta también lleve el request_id en el log.
+app.add_middleware(ObservabilidadMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -121,7 +104,8 @@ app.add_middleware(
     # P0-02: el checador puede mandar su token en `X-Token-Dispositivo`.
     allow_headers=["Content-Type", "Authorization", "X-Token-Dispositivo"],
     # Que el front pueda leer cuánto esperar tras un 429.
-    expose_headers=["Retry-After"],
+    # P6-02: y el request_id, para que un error en pantalla se pueda buscar en el log.
+    expose_headers=["Retry-After", "X-Request-ID"],
 )
 
 
@@ -135,6 +119,22 @@ async def fiscal_error_handler(request: Request, exc: FiscalAgentError) -> JSONR
         status_code=exc.status_code,
         content={"exito": False, "error": exc.message},
         headers=encabezados,
+    )
+
+
+@app.exception_handler(Exception)
+async def error_inesperado_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    P6-02: 500 uniforme sin la traza. El reporte al monitoreo (con request_id y despacho) ya
+    lo hizo `ObservabilidadMiddleware`, que todavía tiene el contexto; este manejador corre
+    por fuera de todos los middlewares y sólo reporta si aquél no alcanzó a hacerlo.
+    Starlette además lo re-lanza hacia el servidor, que lo deja en el log con `exc_info`.
+    """
+    if not getattr(exc, "_fiscalito_reportado", False):
+        reportar_error(exc, origen="ruta", metodo=request.method, ruta=request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"exito": False, "error": "Error interno del servidor. Ya quedó reportado."},
     )
 
 
@@ -205,6 +205,8 @@ ROUTERS_PROTEGIDOS = (
     # P5-06 bot de WhatsApp (contactos y bitácora) y P5-07 asistente IA (chat y voz).
     whatsapp.router,
     asistente.router,
+    # P6-01: exportar y borrar la cuenta del despacho (sólo dueño).
+    despacho_cuenta.router,
 )
 
 app.include_router(health.router)
@@ -222,6 +224,8 @@ app.include_router(suscripcion.router_publico, prefix="/api/v1")
 app.include_router(envio_documentos.router_publico, prefix="/api/v1")
 # - P5-06: webhook del bot de WhatsApp (firma de Meta/Twilio) y descarga por enlace firmado.
 app.include_router(whatsapp.router_publico, prefix="/api/v1")
+# - P6-01: descarga del ZIP de exportación del despacho por enlace firmado.
+app.include_router(despacho_cuenta.router_publico, prefix="/api/v1")
 
 # Plan P: en desarrollo, crea las tablas que falten (en producción manda Alembic).
 if settings.ENTORNO != "produccion":

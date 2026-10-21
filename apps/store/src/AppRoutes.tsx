@@ -52,6 +52,9 @@ import InicioPage from './pages/InicioPage';
 import EquipoPage from './pages/EquipoPage';
 import CobranzaPage from './pages/CobranzaPage';
 import AceptarInvitacionPage from './pages/AceptarInvitacionPage';
+// P6-01: aviso de privacidad (LFPDPPP) y términos, públicos.
+import AvisoPrivacidadPage from './pages/AvisoPrivacidadPage';
+import TerminosPage from './pages/TerminosPage';
 
 export default function AppRoutes() {
   return (
@@ -61,6 +64,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       {/* P5-01: el enlace del correo de invitación. Pública: pide sesión por dentro. */}
       <Route path="/aceptar-invitacion" element={<AceptarInvitacionPage />} />
+      <Route path="/privacidad" element={<AvisoPrivacidadPage />} />
+      <Route path="/terminos" element={<TerminosPage />} />
 
       {/* Onboarding — protected but no sidebar */}
       <Route path="/app/onboarding" element={

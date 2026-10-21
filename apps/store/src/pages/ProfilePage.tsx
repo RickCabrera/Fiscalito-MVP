@@ -12,11 +12,12 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { useCartera } from '../context/carteraStore';
 import TarjetaPlan from '../components/perfil/TarjetaPlan';
+import CuentaDatos from '../components/perfil/CuentaDatos';
 import { Link } from 'react-router-dom';
 import { ScrollText, UsersRound, Save, User } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { profile, setProfile } = useProfile();
   const cartera = useCartera();
   const [saved, setSaved] = useState(false);
@@ -142,6 +143,9 @@ export default function ProfilePage() {
           </span>
         )}
       </div>
+
+      {/* P6-01: exportar los datos y borrar la cuenta (sólo dueño; el backend lo exige). */}
+      <CuentaDatos alBorrar={() => { void signOut(); }} />
     </div>
   );
 }

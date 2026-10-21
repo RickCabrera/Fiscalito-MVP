@@ -17,6 +17,7 @@ from app.auditoria import anotar_cliente, anotar_contexto
 from app.auth_firebase import usuario_actual
 from app.db.session import obtener_db
 from app.exceptions import FiscalAgentError
+from app.logging_config import anotar as anotar_log
 from app.modelos.nucleo import AsignacionCliente, Cliente, Despacho, Usuario
 from app.suscripciones.vigencia import exigir_escritura
 
@@ -75,6 +76,7 @@ def contexto_actual(
     """
     usuario = asegurar_usuario(db, uid)
     anotar_contexto(uid, usuario.despacho_id, db)  # P0-07: el middleware sabe quién fue
+    anotar_log(despacho_id=usuario.despacho_id, uid=uid)  # P6-02: y el log también
     exigir_escritura(db, usuario.despacho_id, request.method, request.url.path)
     return Contexto(uid=uid, despacho_id=usuario.despacho_id, rol=usuario.rol, db=db)
 

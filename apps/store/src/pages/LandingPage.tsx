@@ -97,6 +97,10 @@ export default function LandingPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             {MARCA} &copy; 2026 — Fiscal, nómina y contabilidad para despachos
           </p>
+          <p style={{ fontSize: '0.8rem', marginTop: 8, display: 'flex', gap: 16, justifyContent: 'center' }}>
+            <Link to="/privacidad">Aviso de privacidad</Link>
+            <Link to="/terminos">Términos y condiciones</Link>
+          </p>
         </footer>
       </div>
     </div>

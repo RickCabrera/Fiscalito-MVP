@@ -105,9 +105,24 @@ def _cobranza(nombre: str) -> Callable[[Session, datetime], object]:
     return encolar_cobranza
 
 
+def _encolar_respaldos(db: Session, ranura: datetime) -> object:
+    from app.despacho.respaldos import encolar_respaldos
+
+    return encolar_respaldos(db, ranura)
+
+
+def _encolar_purga_exportaciones(db: Session, ranura: datetime) -> object:
+    from app.despacho.respaldos import encolar_purga_exportaciones
+
+    return encolar_purga_exportaciones(db, ranura)
+
+
 # La lista que revisa el worker. Cada dominio agrega aquí las suyas.
 TAREAS: list[TareaRecurrente] = [
     TareaRecurrente("purgar_trabajos", _encolar_purga, hora=time(3, 0)),
+    # P6-01: respaldo lógico diario de cada despacho al almacenamiento (retención configurable).
+    TareaRecurrente("respaldos_despachos", _encolar_respaldos, hora=time(3, 30)),
+    TareaRecurrente("purgar_exportaciones", _encolar_purga_exportaciones, hora=time(4, 0)),
     # P1-03: estatus de CFDI — diario los del mes, semanal los del último año.
     TareaRecurrente("sat_estatus_mes", _sat("encolar_estatus_mes"), hora=time(2, 0)),
     TareaRecurrente("sat_estatus_anio", _sat("encolar_estatus_anio"), cada=timedelta(days=7)),
@@ -168,7 +183,11 @@ def revisar_programacion(
                 tarea.encolar(db, ranura)
                 db.commit()
                 encoladas.append(tarea.nombre)
-            except Exception:  # noqa: BLE001 — una tarea rota no detiene a las demás
+            except Exception as exc:  # noqa: BLE001 — una tarea rota no detiene a las demás
                 db.rollback()
                 logger.exception("No se pudo encolar la tarea recurrente '%s'", tarea.nombre)
+                from app.observabilidad import reportar_error
+
+                reportar_error(exc, origen="programador", tarea=tarea.nombre,
+                               ranura=ranura.isoformat())
     return encoladas

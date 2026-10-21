@@ -1,0 +1,133 @@
+# Fiscalito en local, armado igual que en Railway (P6-03): API, worker, programador,
+# Postgres y el front. Guía completa: docs/despliegue.md.
+#
+#   docker compose up --build
+#   front:  http://localhost:8080      API: http://localhost:8000/health
+#
+# SIN REDIS, A PROPÓSITO: la cola de trabajos vive en Postgres (`FOR UPDATE SKIP LOCKED`, ver
+# apps/api/app/modelos/trabajos.py). El código no usa Redis en ningún lado.
+#
+# Secretos: ponlos en un `.env` junto a este archivo (docker compose lo lee solo). Sin
+# FISCALITO_LLAVE_MAESTRA la bóveda y los datos bancarios responden 503 (falla cerrado, igual
+# que producción). Genera una con:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+x-api-entorno: &api-entorno
+  DATABASE_URL: postgresql+psycopg://fiscalito:fiscalito@postgres:5432/fiscalito
+  FISCALITO_ENTORNO: produccion
+  FISCALITO_LLAVE_MAESTRA: ${FISCALITO_LLAVE_MAESTRA:-}
+  FISCALITO_ENLACES_SECRETO: ${FISCALITO_ENLACES_SECRETO:-}
+  FISCALITO_URL_PUBLICA_API: ${FISCALITO_URL_PUBLICA_API:-http://localhost:8000}
+  FISCALITO_URL_APP: ${FISCALITO_URL_APP:-http://localhost:8080}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+  FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-fiscalito-mvp}
+  # Almacén de archivos en un volumen compartido por API y worker (en Railway: s3/R2).
+  FISCALITO_ALMACENAMIENTO: ${FISCALITO_ALMACENAMIENTO:-local}
+  FISCALITO_ALMACEN_DIR: /app/almacen
+  # En producción no hay `falso` implícito: en local se pide explícito.
+  FISCALITO_MONITOREO: ${FISCALITO_MONITOREO:-log}
+  FISCALITO_CORREO: ${FISCALITO_CORREO:-falso}
+  FISCALITO_WHATSAPP: ${FISCALITO_WHATSAPP:-falso}
+  FISCALITO_PAGOS: ${FISCALITO_PAGOS:-falso}
+  FISCALITO_LLM: ${FISCALITO_LLM:-falso}
+  FISCALITO_VOZ: ${FISCALITO_VOZ:-falso}
+  FISCALITO_PAC: ${FISCALITO_PAC:-falso}
+  FISCALITO_SAT_DESCARGA: ${FISCALITO_SAT_DESCARGA:-falso}
+  FISCALITO_SAT_ESTATUS: ${FISCALITO_SAT_ESTATUS:-falso}
+  FISCALITO_SAT_LISTAS: ${FISCALITO_SAT_LISTAS:-falso}
+  FISCALITO_OPINION_CUMPLIMIENTO: ${FISCALITO_OPINION_CUMPLIMIENTO:-falso}
+  FISCALITO_BUZON_SAT: ${FISCALITO_BUZON_SAT:-falso}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fiscalito
+      POSTGRES_PASSWORD: fiscalito
+      POSTGRES_DB: fiscalito
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fiscalito -d fiscalito"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./apps/api
+    image: fiscalito-api
+    command: ["api"]
+    environment: *api-entorno
+    ports:
+      - "8000:8000"
+    volumes:
+      - almacen:/app/almacen
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+
+  worker:
+    build: ./apps/api
+    image: fiscalito-api
+    command: ["worker"]
+    environment: *api-entorno
+    volumes:
+      - almacen:/app/almacen
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/arranque", "salud", "worker"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  programador:
+    build: ./apps/api
+    image: fiscalito-api
+    command: ["programador"]
+    environment: *api-entorno
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/arranque", "salud", "programador"]
+      interval: 60s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  store:
+    build:
+      context: .
+      dockerfile: apps/store/Dockerfile
+      args:
+        VITE_FISCAL_AGENT_URL: ${VITE_FISCAL_AGENT_URL:-http://localhost:8000}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+        VITE_RESPONSABLE_NOMBRE: ${VITE_RESPONSABLE_NOMBRE:-}
+        VITE_RESPONSABLE_DOMICILIO: ${VITE_RESPONSABLE_DOMICILIO:-}
+        VITE_RESPONSABLE_CORREO: ${VITE_RESPONSABLE_CORREO:-}
+        VITE_RESPONSABLE_FECHA_AVISO: ${VITE_RESPONSABLE_FECHA_AVISO:-}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/salud"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres:
+  almacen:

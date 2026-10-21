@@ -126,6 +126,10 @@ export interface Body_subir_pdf_api_v1_sat_clientes__clave__opinion_pdf_post {
   resultado?: "positiva" | "negativa" | "sin_obligaciones" | "desconocido" | null;
 }
 
+export interface BorrarIn {
+  confirmacion: string;
+}
+
 /** Datos de una factura CFDI necesarios para calculos fiscales. */
 export interface CFDI {
   uuid: string;
@@ -1134,6 +1138,8 @@ export interface HealthResponse {
   status: string;
   service: string;
   version: string;
+  base_datos?: string;
+  procesos?: Record<string, unknown> | null;
 }
 
 export interface HerramientaEjecutada {
@@ -2300,10 +2306,14 @@ export type RutaApi =
   | "/api/v1/contabilidad/codigo-agrupador"
   | "/api/v1/dashboard"
   | "/api/v1/deducciones-personales"
+  | "/api/v1/despacho/borrar"
   | "/api/v1/despacho/calendario"
   | "/api/v1/despacho/clientes"
   | "/api/v1/despacho/clientes/{cliente_id}"
   | "/api/v1/despacho/clientes/{cliente_id}/empleados"
+  | "/api/v1/despacho/exportaciones/{trabajo_id}/descarga"
+  | "/api/v1/despacho/exportar"
+  | "/api/v1/despacho/exportar/{trabajo_id}"
   | "/api/v1/despacho/primas-de-riesgo"
   | "/api/v1/diot"
   | "/api/v1/documentos/descarga/{envio_id}/{archivo}"
@@ -3028,6 +3038,10 @@ export interface OperacionesApi {
     cuerpo: DeduccionesPersonalesRequest;
     respuesta: DeduccionesPersonalesResponse;
   };
+  "POST /api/v1/despacho/borrar": {
+    cuerpo: BorrarIn;
+    respuesta: Record<string, unknown>;
+  };
   "GET /api/v1/despacho/calendario": {
     cuerpo: never;
     respuesta: CalendarioPatronalResponse;
@@ -3043,6 +3057,18 @@ export interface OperacionesApi {
   "GET /api/v1/despacho/clientes/{cliente_id}/empleados": {
     cuerpo: never;
     respuesta: EmpleadosClienteResponse;
+  };
+  "GET /api/v1/despacho/exportaciones/{trabajo_id}/descarga": {
+    cuerpo: never;
+    respuesta: unknown;
+  };
+  "POST /api/v1/despacho/exportar": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
+  };
+  "GET /api/v1/despacho/exportar/{trabajo_id}": {
+    cuerpo: never;
+    respuesta: Record<string, unknown>;
   };
   "GET /api/v1/despacho/primas-de-riesgo": {
     cuerpo: never;

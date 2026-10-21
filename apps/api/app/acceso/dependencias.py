@@ -25,6 +25,9 @@ from app.exceptions import LimiteExcedido
 # Un webhook público nuevo (pagos, WhatsApp) se declara aquí, con su verificación propia
 # (firma del proveedor) dentro de la ruta, y se monta SIN `PROTEGIDO`.
 RUTAS_PUBLICAS: dict[tuple[str, str], str] = {
+    ("GET", "/api/v1/despacho/exportaciones/{trabajo_id}/descarga"): (
+        "P6-01: descarga del ZIP de exportación del despacho; enlace firmado con HMAC y vigencia."
+    ),
     ("POST", "/api/v1/asistencia/eventos"): "Push del checador: token de dispositivo.",
     ("GET", "/api/v1/recibos/descarga/{envio_id}/{archivo}"): (
         "P4-13: WhatsApp baja el recibo de aquí; enlace firmado con HMAC y vigencia."

@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.base import ahora as _ahora
 from app.exceptions import FiscalAgentError
+from app.logging_config import con_contexto
 from app.modelos.trabajos import ESTADOS_VIVOS, Trabajo
 
 logger = logging.getLogger(__name__)
@@ -234,18 +235,32 @@ def procesar_siguiente(
             resultado = None
             intentos = max_intentos
         else:
-            try:
-                resultado = funcion(db, trabajo) or {}
-                db.commit()
-                error = None
-            except Exception as exc:  # noqa: BLE001 — cualquier fallo se guarda y se reintenta
-                db.rollback()
-                if isinstance(exc, FiscalAgentError):
-                    error = exc.message
-                else:
-                    error = f"{type(exc).__name__}: {exc}"
-                resultado = None
-                logger.exception("Trabajo %s (%s) falló", trabajo_id, trabajo.tipo)
+            # P6-02: cada línea de log del manejador lleva el trabajo, y el fallo va al
+            # monitoreo con su contexto (trabajo, tipo, despacho, intento, traza).
+            contexto = {
+                "trabajo_id": trabajo_id, "trabajo_tipo": trabajo.tipo,
+                "despacho_id": trabajo.despacho_id, "cliente_id": trabajo.cliente_id,
+                "intento": intentos, "max_intentos": max_intentos,
+            }
+            with con_contexto(**contexto):
+                try:
+                    resultado = funcion(db, trabajo) or {}
+                    db.commit()
+                    error = None
+                except Exception as exc:  # noqa: BLE001 — cualquier fallo se guarda y se reintenta
+                    db.rollback()
+                    if isinstance(exc, FiscalAgentError):
+                        error = exc.message
+                    else:
+                        error = f"{type(exc).__name__}: {exc}"
+                    resultado = None
+                    logger.exception("Trabajo %s (%s) falló", trabajo_id, trabajo.tipo)
+                    from app.observabilidad import reportar_error
+
+                    reportar_error(
+                        exc, origen="trabajo", ultimo_intento=intentos >= max_intentos,
+                        **contexto,
+                    )
 
     fin = _ahora() if ahora is None else momento
     if error is None:
