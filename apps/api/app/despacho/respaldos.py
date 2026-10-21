@@ -102,6 +102,10 @@ def respaldar(
     momento = momento or ahora()
     zip_bytes, manifiesto = exportar_despacho(db, despacho_id, almacen=almacen)
     ruta = ruta_respaldo(despacho_id, momento)
+    # Carrera con `/despacho/borrar` (revisor P6): si el despacho ya no existe, no se escribe
+    # un respaldo póstumo de lo que se acaba de borrar.
+    if db.get(Despacho, despacho_id) is None:
+        return {"omitido": "el despacho ya no existe"}
     almacen.guardar(zip_bytes, ruta)
     indice = [e for e in leer_indice(almacen, despacho_id) if e["ruta"] != ruta]
     indice.append({"ruta": ruta, "fecha": momento.isoformat(), "bytes": len(zip_bytes),

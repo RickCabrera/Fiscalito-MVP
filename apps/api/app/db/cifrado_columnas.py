@@ -125,6 +125,38 @@ class JSONConCamposCifrados(TypeDecorator[dict[str, Any]]):
 CAMPOS_EMPLEADO_CIFRADOS = ("clabe", "numero_cuenta")
 
 
+def _transformar_existentes(
+    conexion: Connection, cambiar: Any, toca: Any
+) -> dict[str, int]:
+    """Re-escribe en sitio CLABE y cuenta de empleados y cuentas bancarias con `cambiar`."""
+    empleados = 0
+    for id_, crudo in conexion.execute(text("SELECT id, datos FROM empleados")).all():
+        datos = json.loads(crudo) if isinstance(crudo, str) else crudo
+        if not isinstance(datos, dict):
+            continue
+        cambia = False
+        for campo in CAMPOS_EMPLEADO_CIFRADOS:
+            v = datos.get(campo)
+            if isinstance(v, str) and v and toca(v):
+                datos[campo], cambia = cambiar(v), True
+        if cambia:
+            # Postgres no convierte solo un texto a JSON; en SQLite un CAST a JSON lo rompería.
+            valor = "CAST(:d AS JSON)" if conexion.dialect.name == "postgresql" else ":d"
+            conexion.execute(text(f"UPDATE empleados SET datos = {valor} WHERE id = :i"),
+                             {"d": json.dumps(datos, ensure_ascii=False), "i": id_})
+            empleados += 1
+    cuentas = 0
+    filas = conexion.execute(text("SELECT id, numero, clabe FROM cuentas_bancarias")).all()
+    for id_, numero, clabe in filas:
+        if (numero and toca(numero)) or (clabe and toca(clabe)):
+            conexion.execute(
+                text("UPDATE cuentas_bancarias SET numero = :n, clabe = :c WHERE id = :i"),
+                {"n": cambiar(numero or "") if numero else "",
+                 "c": cambiar(clabe or "") if clabe else "", "i": id_})
+            cuentas += 1
+    return {"empleados": empleados, "cuentas_bancarias": cuentas}
+
+
 def cifrar_existentes(conexion: Connection) -> dict[str, int]:
     """
     Cifra en sitio lo que quedó en claro (renglones de antes de P6-01, o escritos sin llave).
@@ -137,28 +169,14 @@ def cifrar_existentes(conexion: Connection) -> dict[str, int]:
         logger.warning("Sin FISCALITO_LLAVE_MAESTRA: los datos bancarios quedan en claro. "
                        "Configúrala y corre scripts/cifrar_datos_sensibles.py.")
         return {"empleados": 0, "cuentas_bancarias": 0}
-    empleados = 0
-    for id_, crudo in conexion.execute(text("SELECT id, datos FROM empleados")).all():
-        datos = json.loads(crudo) if isinstance(crudo, str) else crudo
-        if not isinstance(datos, dict):
-            continue
-        cambia = False
-        for campo in CAMPOS_EMPLEADO_CIFRADOS:
-            v = datos.get(campo)
-            if isinstance(v, str) and v and not esta_cifrado(v):
-                datos[campo], cambia = cifrar_texto(v), True
-        if cambia:
-            # Postgres no convierte solo un texto a JSON; en SQLite un CAST a JSON lo rompería.
-            valor = "CAST(:d AS JSON)" if conexion.dialect.name == "postgresql" else ":d"
-            conexion.execute(text(f"UPDATE empleados SET datos = {valor} WHERE id = :i"),
-                             {"d": json.dumps(datos, ensure_ascii=False), "i": id_})
-            empleados += 1
-    cuentas = 0
-    filas = conexion.execute(text("SELECT id, numero, clabe FROM cuentas_bancarias")).all()
-    for id_, numero, clabe in filas:
-        if (numero and not esta_cifrado(numero)) or (clabe and not esta_cifrado(clabe)):
-            conexion.execute(
-                text("UPDATE cuentas_bancarias SET numero = :n, clabe = :c WHERE id = :i"),
-                {"n": cifrar_texto(numero or ""), "c": cifrar_texto(clabe or ""), "i": id_})
-            cuentas += 1
-    return {"empleados": empleados, "cuentas_bancarias": cuentas}
+    return _transformar_existentes(conexion, cifrar_texto, lambda v: not esta_cifrado(v))
+
+
+def descifrar_existentes(conexion: Connection) -> dict[str, int]:
+    """
+    Lo inverso de `cifrar_existentes`, para el `downgrade` de la migración: el esquema anterior
+    tiene CLABE de 18 y cuenta de 30 caracteres y el código anterior leería `enc:...` como si
+    fuera la cuenta. Un token que la llave no descifra lanza 503 y la migración se detiene:
+    mejor no bajar que bajar con datos bancarios ilegibles (revisor P6, B2).
+    """
+    return _transformar_existentes(conexion, descifrar_texto, esta_cifrado)

@@ -21,8 +21,10 @@ FUENTES
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from datetime import date
+from decimal import Decimal
 
 from app.exceptions import FiscalValidationError
 from app.nomina_engine.jornada import (
@@ -32,7 +34,6 @@ from app.nomina_engine.jornada import (
 )
 from app.nomina_engine.periodo_completo_tipos import EmpleadoNomina
 from app.nomina_engine.variables_tipos import VariablesEmpleado
-from app.redondeo import redondear
 
 
 def avisos_consejero(e: EmpleadoNomina) -> list[str]:
@@ -91,7 +92,10 @@ def clasificar_horas_extra(
     para que las horas por tipo cuadren siempre con el importe (revisor P6-07, B1).
     """
     v, avisos = aplicar_tope_diario(v, dias_periodo, fin, no)
-    tope_dobles = redondear(tope_horas_extra_periodo(fin, dias_periodo))
+    # Horas enteras: el CFDI declara HorasExtra/HorasExtra como entero y debe cuadrar con el
+    # importe. Se trunca el tope proporcional (19.29 → 19): lo que sobra va triple, la lectura
+    # conservadora en lo fiscal (revisor P6, B1; decisión abierta §D38.1-1).
+    tope_dobles = Decimal(math.floor(tope_horas_extra_periodo(fin, dias_periodo)))
     if v.horas_dobles > tope_dobles:
         exceso = v.horas_dobles - tope_dobles
         avisos.append(

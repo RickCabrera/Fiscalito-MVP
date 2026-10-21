@@ -50,8 +50,9 @@ class TestB2TopeDeHorasExtra:
 
     def test_lo_que_pasa_del_tope_se_paga_triple_y_gravado(self, api):
         """
-        2026, quincena de 16 días: tope 9 × 16/7 = 20.57 horas. De 30 dobles a $60/h, 20.57
-        quedan dobles ($2,468.40) y 9.43 pasan a triples ($1,697.40), 100 % gravadas.
+        2026, quincena de 16 días: tope 9 × 16/7 = 20.57 horas, truncado a 20 (horas enteras,
+        para que el CFDI cuadre: revisor P6 B1). De 30 dobles a $60/h, 20 quedan dobles
+        ($2,400.00) y 10 pasan a triples ($1,800.00), 100 % gravadas.
         """
         c = api("uid-b2")
         sembrar_cliente(c, "p4", [_emp("A-1", "480.00", "504.00")])
@@ -65,8 +66,8 @@ class TestB2TopeDeHorasExtra:
             },
         ).json()
         he = {p["clave"]: p for p in r["recibos"][0]["percepciones"] if p["tipo"] == "019"}
-        assert D(he["P019D"]["importe"]) == D("2468.40")
-        assert (D(he["P019T"]["importe"]), D(he["P019T"]["exento"])) == (D("1697.40"), D("0"))
+        assert D(he["P019D"]["importe"]) == D("2400.00")
+        assert (D(he["P019T"]["importe"]), D(he["P019T"]["exento"])) == (D("1800.00"), D("0"))
         assert any("Art. 68" in a for a in r["advertencias"])
 
 

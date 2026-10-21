@@ -1230,3 +1230,8 @@ Abiertas para Ricardo y la contadora:
    trae fecha de pago; si se paga en otro año (baja en diciembre, pago en enero), capturar a
    mano los exentos del año correcto.
 5. ObjetoImp 06/07/08 ("no traslado del IVA") no entra en ninguna base del IVA ni en la DIOT.
+
+**§D38.2 (revisor P6, B1):** el tope proporcional del periodo se **trunca a horas enteras**
+(quincena de 16 días: 20.57 → 20; de 15: 19.29 → 19) y lo que sobra va triple. El CFDI declara
+`HorasExtra` entero y ahora cuadra con el importe; antes redondeaba hacia arriba y declaraba una
+hora más. Va con la decisión abierta §D38.1-1.

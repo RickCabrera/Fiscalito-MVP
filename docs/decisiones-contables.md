@@ -98,3 +98,22 @@ Para Ricardo y la contadora:
 6. Pendientes menores: firmar también los argumentos de herramientas del asistente; ObjetoImp 03
    en el pago para conceptos "sí objeto, no obligado al desglose"; citar el apartado de límites
    de la Guía del Anexo 20; partir los servicios de P5 que rebasan 300 líneas.
+
+## P6 — abiertas tras el revisor (2026-10-21)
+
+Corregido: el tope proporcional de horas extra se trunca a horas enteras (el CFDI declara lo
+mismo que paga; §D38.1); la migración `d7894b991c45` descifra antes de bajar; se quitó el
+módulo duplicado `impuestos/pm_datos.py`; un respaldo en curso no se escribe si el despacho ya se
+borró.
+
+Para Ricardo:
+1. `bajas_despacho` retiene uid y nombre del despacho como evidencia de la cancelación: ¿cuánto
+   tiempo?
+2. Los respaldos y exportaciones llevan la CLABE en claro dentro del ZIP: ¿cifrar el ZIP con la
+   llave maestra?
+3. Los RFC reales retirados del árbol siguen en el historial de git: el merge debe ser squash; si
+   además se limpia el historial (filter-repo + force push) es decisión tuya.
+4. `/despacho/borrar` es síncrono: con un despacho grande puede exceder el tiempo; pasarlo a
+   trabajo de fondo si hace falta.
+5. Nodo `HorasExtra/Dias` = horas ÷ 3 redondeado; con desglose diario se podrían contar días
+   reales.

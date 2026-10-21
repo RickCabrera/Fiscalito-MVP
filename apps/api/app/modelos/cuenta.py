@@ -3,7 +3,10 @@ Cuenta del despacho (P6-01): el rastro que sobrevive al borrado.
 
 `bajas_despacho` NO tiene llave foránea a `despachos` a propósito: es la lápida que queda
 cuando el despacho (y su bitácora, que cuelga de él) ya no existen. Guarda quién pidió el
-borrado, cuándo y cuántos renglones se fueron por tabla; ningún dato personal.
+borrado (uid y nombre del despacho, que en una persona física es un dato personal), cuándo y
+cuántos renglones se fueron por tabla. Se retiene como evidencia del ejercicio del derecho de
+cancelación (LFPDPPP); plazo de retención: decisión pendiente de Ricardo (§P6 en
+`docs/decisiones-contables.md`).
 """
 
 from datetime import datetime

@@ -2494,6 +2494,6 @@ purgado → 404 sin distinguir. `application/zip`.
 ### `POST /api/v1/despacho/borrar` (sólo `dueno`)
 Cuerpo `{confirmacion: "BORRAR MI DESPACHO"}` (literal; otra cosa → 422). Borra todas las
 tablas del despacho (alcance derivado del esquema: `app/despacho/alcance.py`), sus archivos del
-almacén, sus exportaciones y sus respaldos; deja una constancia sin datos personales en
+almacén, sus exportaciones y sus respaldos; deja una constancia (uid, nombre del despacho, conteos por tabla) en
 `bajas_despacho`. Responde `{exito, borrado: {<tabla>: renglones, archivos: n}}`. No borra la
 cuenta de Firebase: si el mismo usuario vuelve a entrar, nace un despacho vacío.

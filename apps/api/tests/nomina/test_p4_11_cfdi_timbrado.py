@@ -283,6 +283,14 @@ class TestTimbradoNomina:
         xml = http.get(f"{BASE}/periodos/{pid}/cfdi/{e1['id']}/xml").content
         assert errores_de_validacion(xml) == []
         assert b'TipoHoras="02"' in xml and b'TipoHoras="01"' in xml
+        # Revisor P6 B1: las horas declaradas suman las trabajadas y cuadran con el importe.
+        nodos = etree.fromstring(xml).iter("{http://www.sat.gob.mx/nomina12}HorasExtra")
+        por_tipo = {n.get("TipoHoras"): (int(n.get("HorasExtra")), D(n.get("ImportePagado")))
+                    for n in nodos}
+        assert por_tipo["01"][0] + por_tipo["02"][0] == 21
+        hora_doble = por_tipo["01"][1] / por_tipo["01"][0]
+        hora_triple = por_tipo["02"][1] / por_tipo["02"][0]
+        assert abs(hora_triple - hora_doble * D("1.5")) <= D("0.01")
 
     def test_no_timbra_una_nomina_abierta(self, entorno):
         r = entorno.post("/api/v1/nomina/calcular-periodo", json={
