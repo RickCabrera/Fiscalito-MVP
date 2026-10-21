@@ -70,10 +70,16 @@ class TestConsejero:
         assert isr == D("2272.26")
         assert any("además es trabajador" in a and "quinto párrafo" in a for a in avisos)
 
-    def test_el_regimen_07_solo_no_basta(self, api):
+    def test_el_regimen_07_sin_marca_lleva_la_minima_por_default(self, api):
+        # Decisión provisional conservadora: el 07 es "miembros de consejos".
         isr, avisos = self._isr(api("uid-p607-2"), tipo_regimen="07")
+        assert isr == D("5250.00")
+        assert any("régimen 07 sin marcar" in a for a in avisos)
+
+    def test_el_regimen_07_que_ademas_es_trabajador_usa_tarifa(self, api):
+        isr, _ = self._isr(api("uid-p607-2b"), tipo_regimen="07",
+                           consejero_es_trabajador=True)
         assert isr == D("2272.26")
-        assert any("sin marcar como consejero" in a for a in avisos)
 
     def test_administrador_en_honorarios_09_marcado_lleva_la_minima(self, api):
         isr, avisos = self._isr(api("uid-p607-3"), tipo_regimen="09", es_consejero=True)

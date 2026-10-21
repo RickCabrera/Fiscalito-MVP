@@ -54,7 +54,10 @@ class EmpleadoNomina:
     @property
     def aplica_retencion_minima_consejero(self) -> bool:
         """Art. 96 quinto párrafo: consejero sin relación de trabajo con el retenedor."""
-        return self.es_asimilado and self.es_consejero and not self.consejero_es_trabajador
+        # DECISIÓN PROVISIONAL (conservadora): el c_TipoRegimen 07 ES "miembros de consejos",
+        # así que sin marca se aplica la mínima; sólo `consejero_es_trabajador` la quita.
+        consejero = self.es_consejero or self.tipo_regimen == "07"
+        return self.es_asimilado and consejero and not self.consejero_es_trabajador
 
 
 @dataclass(frozen=True)

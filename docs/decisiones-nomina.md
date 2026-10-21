@@ -1189,11 +1189,12 @@ Quedan para Ricardo y la contadora:
 Cada punto con su test en `apps/api/tests/nomina/test_p6_07_revisor.py`.
 
 - **Consejeros (Art. 96 LISR, quinto párrafo).** La retención mínima a la tasa máxima del
-  Art. 152 ya **no se supone por el régimen 07**: aplica al asimilado marcado `es_consejero` en
-  la ficha (consejeros, administradores, comisarios y gerentes generales, sea cual sea su
-  c_TipoRegimen) y **no** al que además está marcado `consejero_es_trabajador` ("salvo que
-  exista, además, relación de trabajo con el retenedor": tarifa del segundo párrafo). Un 07 sin
-  marcar se calcula con tarifa y se advierte. Sustituye a lo dicho en §D33.8 y §D34.
+  Art. 152 aplica al asimilado marcado `es_consejero` en la ficha (consejeros, administradores,
+  comisarios y gerentes generales, sea cual sea su c_TipoRegimen) y **no** al que además está
+  marcado `consejero_es_trabajador` ("salvo que exista, además, relación de trabajo con el
+  retenedor": tarifa del segundo párrafo). **DECISIÓN PROVISIONAL (conservadora):** un 07 sin
+  marcar SÍ lleva la mínima —el c_TipoRegimen 07 es "miembros de consejos"— y se advierte; sólo
+  `consejero_es_trabajador` la quita. Confirmar con la contadora. Sustituye a §D33.8 y §D34.
 - **Citas de párrafo:** Art. 9 LISR cuarto (sin PTU ni pérdidas) y **quinto** (no deducibles
   del 28 fr. XXX) para la renta gravable de PTU; Art. 97 segundo (impuesto local), **tercero**
   (saldo a cargo / a favor) y quinto (fr. I-III, quién no entra); Art. 96 **quinto** (consejeros).

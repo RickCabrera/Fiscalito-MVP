@@ -39,9 +39,9 @@ def avisos_consejero(e: EmpleadoNomina) -> list[str]:
         ]
     if e.tipo_regimen == "07" and not e.es_consejero:
         return [
-            f"{e.empleado_no}: régimen 07 sin marcar como consejero en la ficha: NO se aplica la "
-            "retención mínima del Art. 96 LISR, quinto párrafo. Márcalo si cobra honorarios "
-            "de consejo, administración, comisaría o gerencia general."
+            f"{e.empleado_no}: régimen 07 sin marcar en la ficha: se aplica la retención mínima "
+            "del Art. 96 LISR, quinto párrafo (lectura conservadora). Si además tiene relación "
+            "de trabajo con el retenedor, márcalo y se usará la tarifa."
         ]
     return []
 
