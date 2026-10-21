@@ -138,12 +138,12 @@ def _horas_extra(p: Percepcion, ctx: ContextoExencion) -> PercepcionGravada:
     Al de salario minimo se le exenta el 100 % dentro de los limites de la LFT;
     a los demas, el 50 % sin exceder **5 UMA por semana** de servicios.
 
-    LIMITE CONOCIDO, no implementado: el Art. 66 LFT acota el tiempo extra a
-    3 horas diarias y 3 veces por semana, y lo que excede se paga al triple y
-    es 100 % gravado. Este modulo no recibe las horas, asi que no lo verifica.
-    Ojo con la direccion del error: aqui va **a favor del trabajador y en
-    contra del fisco**, la contraria a la que el resto del modulo cuida. Por
-    eso el fundamento devuelto no afirma que el limite se haya cumplido.
+    El Art. 66 LFT acota el tiempo extra (3 horas diarias, veces y tope semanal)
+    y lo que excede se paga al triple (Art. 68 segundo parrafo) y es 100 %
+    gravado. Este modulo no recibe las horas: el tope lo aplica antes
+    `jornada.py` (P6-07, diario con las horas capturadas por dia; semanal
+    siempre), y aqui solo llegan las dobles. Por eso el fundamento devuelto no
+    afirma que el limite se haya cumplido.
     """
     if ctx.es_trabajador_de_salario_minimo:
         return _exenta_todo(

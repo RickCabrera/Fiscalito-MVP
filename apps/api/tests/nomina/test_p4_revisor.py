@@ -89,9 +89,14 @@ class TestB5FiniquitoConIngresoDelMes:
 
 class TestO2Consejeros:
     def test_retencion_a_la_tasa_maxima_sobre_todo_el_monto(self, api):
-        """15,000 de honorarios de consejero × 35 % = 5,250.00 (tarifa daría 2,272.26)."""
+        """
+        15,000 de honorarios de consejero × 35 % = 5,250.00 (tarifa daría 2,272.26).
+        P6-07: la ficha lo marca como consejero (antes se suponía por el régimen 07).
+        """
         c = api("uid-o2")
-        sembrar_cliente(c, "p4", [_emp("C-1", "1000.00", "1000.00", tipo_regimen="07")])
+        sembrar_cliente(
+            c, "p4", [_emp("C-1", "1000.00", "1000.00", tipo_regimen="07", es_consejero=True)]
+        )
         r = c.post(
             CALC,
             json={"cliente": "p4", "periodo": QUINCENA, "incidencias": [], "tipo": "asimilados"},

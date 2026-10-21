@@ -5,8 +5,8 @@ Cada caso trae su cálculo a mano y su fundamento:
 
 - B1 — Código Financiero de Veracruz art. 103 fr. I inciso n): sólo exenta los premios de
   asistencia y puntualidad ANUALES; los del periodo gravan (3 % + 15 % adicional).
-- B3 — LISR art. 9 cuarto párrafo: la renta gravable de PTU disminuye de los ingresos
-  acumulables las cantidades no deducibles del art. 28 fr. XXX (sólo ahí).
+- B3 — LISR art. 9 párrafos cuarto y quinto (P6-07): la renta gravable de PTU disminuye de
+  los ingresos acumulables las cantidades no deducibles del art. 28 fr. XXX (sólo ahí).
 - B4 — LIVA art. 5o. fr. V inciso c) (reforma 2022) y art. 4o.-A: los actos no objeto entran
   al denominador de la proporción; el art. 5o.-C excluye conceptos (dividendos, ...).
 - O12 — un INPC sin cotejar con el boletín del INEGI o una tasa de recargos de fuente

@@ -31,8 +31,8 @@ from pydantic import ValidationError
 from app import almacen_cartera as almacen
 from app.exceptions import FiscalAgentError
 from app.nomina_imss.historial import registrar_desde_ficha
-from app.schemas.cartera import (
-    ClienteCarteraSchema,
+from app.schemas.cartera import ClienteCarteraSchema
+from app.schemas.cartera_respuestas import (
     ClientesCarteraResponse,
     EmpleadoIlegible,
     EmpleadosCarteraResponse,

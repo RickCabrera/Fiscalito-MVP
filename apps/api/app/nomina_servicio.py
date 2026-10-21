@@ -86,6 +86,8 @@ def a_empleado_nomina(f: EmpleadoCarteraSchema) -> EmpleadoNomina:
         fecha_alta=f.fecha_alta,
         fecha_baja=f.fecha_baja,
         tipo_regimen=f.tipo_regimen,
+        es_consejero=f.es_consejero,
+        consejero_es_trabajador=f.consejero_es_trabajador,
     )
 
 

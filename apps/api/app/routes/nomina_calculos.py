@@ -16,6 +16,8 @@ from fastapi import APIRouter, Depends
 
 from app import nomina_servicio as srv
 from app.exceptions import FiscalValidationError
+from app.modelos.nucleo import Cliente
+from app.nomina_acumulados import exento_en_el_anio
 from app.nomina_engine.aguinaldo import calcular_aguinaldo, dias_trabajados_en_el_anio
 from app.nomina_engine.criterios import prestacion_efectiva
 from app.nomina_engine.finiquito import DatosSeparacion, calcular_finiquito
@@ -115,6 +117,23 @@ def aguinaldo(
     )
 
 
+def _exentos_previos(ctx: Contexto, cliente: Cliente, req: FiniquitoRequest) -> dict[str, Decimal]:
+    """
+    P6-07: aguinaldo (002) y prima vacacional (021) ya exentos en el año de la baja, del
+    historial guardado (sin el propio finiquito que se recalcula) más lo capturado.
+    """
+    excluir = ("finiquito", req.fecha_baja, req.fecha_baja)
+    anio = req.fecha_baja.year
+
+    def previo(clave: str) -> Decimal:
+        return exento_en_el_anio(ctx.db, cliente, anio, clave, excluir).get(req.empleado_no, CERO)
+
+    return {
+        "aguinaldo_exento_previo": previo("002") + req.aguinaldo_exento_previo,
+        "prima_vacacional_exenta_previa": previo("021") + req.prima_vacacional_exenta_previa,
+    }
+
+
 @router.post(
     "/nomina/clientes/{cliente_id}/finiquito",
     response_model=CalculoResponse,
@@ -159,6 +178,7 @@ def finiquito(
         dias_salario_pendientes=req.dias_salario_pendientes,
         aguinaldo_ya_pagado=req.aguinaldo_ya_pagado,
         incluir_20_dias=req.incluir_20_dias,
+        **_exentos_previos(ctx, cliente, req),
     )
     # B5: lo gravado ordinario se apila sobre el ingreso del mes (Art. 96 LISR). Default
     # conservador: salario diario × 30.4, igual que aguinaldo y PTU.

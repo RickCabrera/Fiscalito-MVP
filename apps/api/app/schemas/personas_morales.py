@@ -77,7 +77,7 @@ class DatosAnualesPMSchema(BaseModel):
       trabajador cuando la deducción sale de la bóveda (Art. 28 fr. XXX: 47 % o 53 %).
     - `aai_en_resico` (default no): calcular ajuste anual por inflación en RESICO PM.
     - `no_deducibles_art28_xxx`: parte no deducible de los pagos exentos al trabajador (Art. 28
-      fr. XXX) que el Art. 9 cuarto párrafo resta de los ingresos para la renta gravable de PTU
+      fr. XXX) que el Art. 9 quinto párrafo resta de los ingresos para la renta gravable de PTU
       (sólo ahí). Vacío = se deriva: con contabilidad, de `cuentas_art28_xxx` (las cuentas
       donde el despacho registra ese no deducible; también se tratan como no deducibles); con
       bóveda, (1 − `factor_exentos_nomina`) × exentos de la nómina emitida. Con contabilidad y

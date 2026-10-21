@@ -7,7 +7,7 @@ implementación aquí:
 - isr-sueldos → `nomina_engine.isr_nomina.isr_retenido` (tarifa Art. 96 + subsidio).
 - isr-resico → `fiscal_engine.calculadora.calcular_isr_resico` (Art. 113-E LISR).
 - actualizacion-recargos → `fiscal_engine.actualizacion` (Arts. 17-A y 21 CFF).
-- isn → `fiscal_engine.isn` (con cliente, vía `app.impuestos.servicio`, igual que el módulo).
+- isn → `fiscal_engine.isn` (con cliente, vía `app.impuestos.isn_cliente`, igual que el módulo).
 - aguinaldo / ptu / finiquito → `routes/calculadoras_laborales.py`, sobre el motor de
   nómina de P4 (O1 del revisor de motor: la versión mínima de `fiscal_engine` se retiró).
 
@@ -37,7 +37,7 @@ from app.fiscal_engine.isn import (
     catalogo_isn,
     resultado_isn_dict,
 )
-from app.impuestos import servicio
+from app.impuestos import isn_cliente
 from app.nomina_engine.isr_nomina import isr_retenido
 from app.redondeo import redondear
 from app.schemas.impuestos import (
@@ -143,7 +143,7 @@ def isn(req: IsnRequest, ctx: Contexto = Depends(contexto_actual)) -> dict[str, 
         if req.anio is None or req.mes is None:
             raise FiscalAgentError("Con cliente hacen falta 'anio' y 'mes'.", 422)
         cliente = cliente_o_404(ctx, req.cliente)
-        r, n = servicio.isn_del_cliente(
+        r, n = isn_cliente.isn_del_cliente(
             ctx.db, cliente, req.anio, req.mes, req.aplicar_adicional, req.claves_excluidas
         )
         return {"exito": True, "nominas": n, **resultado_isn_dict(r)}

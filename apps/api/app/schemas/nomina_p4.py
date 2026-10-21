@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -68,6 +68,12 @@ class VariablesEmpleadoSchema(BaseModel):
         default=CERO,
         ge=0,
         description="Prima vacacional ya exenta en el año fuera del historial (15 UMA anuales).",
+    )
+    horas_extra_por_dia: tuple[Annotated[Decimal, Field(ge=0)], ...] = Field(
+        default=(),
+        description="P6-07: horas extra de cada día natural del periodo, desde el inicio. Con "
+        "ellas se aplica el tope diario del Art. 66 LFT (3 h); lo que excede va triple "
+        "(Art. 68). Sustituye a `horas_dobles` (no se mandan los dos).",
     )
 
 
@@ -170,6 +176,18 @@ class FiniquitoRequest(BaseModel):
         default=False,
         description="20 días por año (Art. 50 fr. II LFT): sólo si el patrón se niega a "
         "reinstalar (Art. 49) o el trabajador rescinde (Art. 52).",
+    )
+    aguinaldo_exento_previo: Decimal = Field(
+        default=CERO,
+        ge=0,
+        description="P6-07: aguinaldo ya exento en el año FUERA del historial; se suma al del "
+        "historial y se resta de las 30 UMA (Art. 93 fr. XIV, por año de calendario).",
+    )
+    prima_vacacional_exenta_previa: Decimal = Field(
+        default=CERO,
+        ge=0,
+        description="P6-07: prima vacacional ya exenta en el año FUERA del historial; se suma "
+        "a la del historial y se resta de las 15 UMA (Art. 93 fr. XIV).",
     )
     guardar: bool = True
 

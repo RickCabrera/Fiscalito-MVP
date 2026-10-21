@@ -41,6 +41,7 @@ from app.nomina_engine.cfdi_nomina_xml import (
     IncapacidadCfdi,
     SeparacionCfdi,
 )
+from app.nomina_engine.jornada import clasificar_horas_por_dia
 from app.nomina_engine.periodo_completo_tipos import REGIMENES_ASIMILADOS
 from app.nomina_engine.recibo import (
     CLAVES_SEPARACION,
@@ -137,12 +138,17 @@ def _extras(
     periodo: NominaPeriodo, rec: ReciboNomina, recibo: Recibo, separacion: bool
 ) -> ExtrasNomina:
     var = _variables(periodo, rec.empleado_no)
+    dobles, triples = var.get("horas_dobles"), var.get("horas_triples")
+    if var.get("horas_extra_por_dia"):
+        # P6-07: capturadas por día; se clasifican igual que en el cálculo (Art. 66 LFT).
+        c = clasificar_horas_por_dia(
+            [Decimal(str(h)) for h in var["horas_extra_por_dia"]], periodo.fin)
+        dobles, triples = c.dobles, Decimal(str(triples or 0)) + c.triples
     horas = []
     for p in recibo.percepciones:
         if p.tipo != "019":
             continue
-        tipo, cantidad = ("02", var.get("horas_triples")) if p.clave.endswith("T") else (
-            "01", var.get("horas_dobles"))
+        tipo, cantidad = ("02", triples) if p.clave.endswith("T") else ("01", dobles)
         if not cantidad or Decimal(str(cantidad)) <= 0:
             # Sin horas capturadas no se declara una hora inventada (revisor P4, obs. 6).
             raise FiscalAgentError(

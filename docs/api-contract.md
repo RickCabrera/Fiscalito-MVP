@@ -803,6 +803,14 @@ después no se puede hacer.
 >   criterio §D26 del cliente. Febrero y meses de 31 siguen §D27. Catorcenal (03) y decenal (10)
 >   calculan; la catorcenal advierte que su tarifa es **derivada** (§D10).
 > - Un periodo `cerrada` responde **409** al recalcularlo.
+>
+> **P6-07 (2026-10-21).** `variables[].horas_extra_por_dia` (opcional, lista de horas por día
+> natural desde el inicio del periodo): con ella se aplica el tope diario del Art. 66 LFT
+> (3 h/día, veces por semana y tope semanal) y lo que excede va **triple** (Art. 68 segundo
+> párrafo) con advertencia. Sustituye a `horas_dobles` (mandar los dos = **422**; más días que
+> el periodo = **422**). Con sólo `horas_dobles` se advierte que el tope diario no se verificó.
+> La retención mínima de consejeros (Art. 96 LISR quinto párrafo) ya **no se supone por el
+> régimen 07**: sale de `es_consejero` y `consejero_es_trabajador` de la ficha (ver Cartera).
 
 Calcula la nómina completa de un periodo: recibo por empleado y cuotas por ramo.
 **Es un orquestador, no un motor**: llama a `armado.py`, `cuotas.py` e
@@ -1109,7 +1117,9 @@ Todas autenticadas (`contexto_actual` + `cliente_o_404`; otro despacho = 404). R
 
 Viven en la ficha: `ClienteCarteraSchema.criterios_nomina` (`PUT /cartera/clientes/{id}`), con
 default completo. Los empleados ganan `fecha_baja` y `tipo_regimen` (`02` sueldos; `05`-`11`
-asimilados).
+asimilados). P6-07: y `es_consejero` / `consejero_es_trabajador` (bool, default `false`): la
+retención mínima a la tasa máxima del Art. 152 aplica a un asimilado con `es_consejero` y sin
+`consejero_es_trabajador` (Art. 96 LISR quinto párrafo).
 
 | Criterio | Opciones (default primero) |
 |---|---|
@@ -1152,8 +1162,12 @@ diaria o promedio de 3 años, el mayor), 15 UMA exentas, `remanente`.
 ### `POST /api/v1/nomina/clientes/{cliente_id}/finiquito`
 `{empleado_no, fecha_baja, causa: renuncia|despido_justificado|despido_injustificado|muerte|
 termino_contrato, dias_salario_pendientes, dias_vacaciones_pendientes, aguinaldo_ya_pagado,
-incluir_20_dias, guardar}` → conceptos con exento/gravado y fundamento, ISR ordinario (Art. 96)
-e ISR de separación (Arts. 95 y 96), neto. Requiere `fecha_alta` en la ficha.
+incluir_20_dias, aguinaldo_exento_previo, prima_vacacional_exenta_previa, guardar}` → conceptos
+con exento/gravado y fundamento, ISR ordinario (Art. 96) e ISR de separación (Arts. 95 y 96),
+neto. Requiere `fecha_alta` en la ficha. P6-07: las exenciones de aguinaldo (30 UMA) y prima
+vacacional (15 UMA) son por año de calendario (Art. 93 fr. XIV): se resta lo ya exentado en el
+año de la baja según el historial (claves 002 y 021, sin el propio finiquito) más lo capturado
+en `*_exento_previo` (default 0, para lo pagado fuera del sistema).
 
 ### `POST /api/v1/nomina/clientes/{cliente_id}/ajuste-anual`
 `{ejercicio, trabajadores?: [{empleado_no, ingresos_gravados, ingresos_exentos, isr_retenido,
@@ -1847,7 +1861,9 @@ Body `{"anio", "meses": [1..12], "saldo_favor_inicial"?, "opciones_saldo": {mes:
 (PUE en su mes, PPD por complemento de pago). Devuelve `{"meses": [ResultadoIVAMes]}` con
 valor de actos por tasa, `valor_no_objeto` y `valor_no_objeto_en_proporcion` (actos del Art.
 4o.-A que entran al denominador), proporción (Art. 5o. fr. V c), acreditable, saldo a favor anterior /
-aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`.
+aplicado / siguiente (Art. 6o.), IVA retenido a terceros y `notas`. P6-07: el valor no objeto es
+la suma de los conceptos con `ObjetoImp == "01"` (Importe − Descuento); sólo un CFDI sin
+`ObjetoImp` en sus conceptos (3.3) se estima por residuo, y `notas` lo dice con sus UUID.
 
 ### `GET /api/v1/impuestos/clientes/{clave}/isn?anio&mes`
 

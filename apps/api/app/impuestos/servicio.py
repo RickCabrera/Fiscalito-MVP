@@ -3,22 +3,17 @@ Impuestos del cliente desde la bóveda (P3-02, P3-03, P3-07).
 
 Lee los CFDI vigentes del cliente, los lleva a flujo de efectivo (`flujo.py`) y llama a los
 motores existentes — `calculadora.calcular_declaracion` / `multi_periodo` para el ISR propio,
-`iva.py` para el IVA, `isn.py` para el ISN—. No calcula nada por su cuenta: sólo arma la
-entrada de cada motor y junta las salidas.
+`iva.py` para el IVA; el ISN vive en `isn_cliente.py` (P6-07, tope de 300 líneas)—. No
+calcula nada por su cuenta: sólo arma la entrada de cada motor y junta las salidas.
 """
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.boveda_cfdi.parser import NS_NOMINA12, leer_xml
-from app.boveda_cfdi.servicio import leer_xml_original
-from app.exceptions import FiscalAgentError
-from app.fiscal_engine import isn as motor_isn
 from app.fiscal_engine import iva as motor_iva
 from app.fiscal_engine.calculadora import calcular_declaracion
 from app.fiscal_engine.multi_periodo import calcular_multi_periodo
@@ -103,7 +98,7 @@ def movimiento_iva(e: Efectivo) -> motor_iva.MovimientoIVA:
     if not traslados and c.iva_trasladado:
         # CFDI sin desglose por tasa: se supone 16 % sobre el subtotal (se avisa en notas).
         b16, i16 = c.subtotal - c.descuento, c.iva_trasladado
-    no_objeto = max(c.subtotal - c.descuento - b16 - b8 - b0 - bex, Decimal("0"))
+    no_objeto, por_residuo = base_no_objeto(c, b16 + b8 + b0 + bex)
     uso = (c.uso_cfdi or "").upper()
     return motor_iva.MovimientoIVA(
         uuid=c.uuid, direccion="emitido" if c.direccion == "emitido" else "recibido",
@@ -111,7 +106,27 @@ def movimiento_iva(e: Efectivo) -> motor_iva.MovimientoIVA:
         base_exento=bex * k, base_no_objeto=no_objeto * k, iva_retenido=c.iva_retenido * k,
         signo=-1 if c.tipo == "E" else 1, origen=e.origen,
         deducible=not (c.direccion == "recibido" and uso in USOS_NO_ACREDITABLES),
+        no_objeto_por_residuo=por_residuo,
     )
+
+
+def base_no_objeto(c: Comprobante, bases_con_traslado: Decimal) -> tuple[Decimal, bool]:
+    """
+    Valor no objeto de IVA del CFDI y si salió por residuo. (P6-07)
+
+    CFDI 4.0: suma de Importe − Descuento de los conceptos con `ObjetoImp == "01"` (c_ObjetoImp,
+    Anexo 20 v4.0). Los demás valores (02 a 08) sí son objeto y no entran aquí aunque no
+    desglosen traslado. Respaldo, sólo si algún concepto no trae `ObjetoImp` (CFDI 3.3):
+    subtotal − descuento − bases con traslado; el motor lo avisa en notas.
+    """
+    conceptos = (c.datos or {}).get("conceptos") or []
+    if conceptos and all(x.get("ObjetoImp") for x in conceptos):
+        return sum(
+            (_dec(x.get("Importe")) - _dec(x.get("Descuento"))
+             for x in conceptos if x.get("ObjetoImp") == "01"),
+            Decimal("0"),
+        ), False
+    return max(c.subtotal - c.descuento - bases_con_traslado, Decimal("0")), True
 
 
 def config_iva(cfg: ConfigImpuestosSchema) -> motor_iva.ConfigIVA:
@@ -246,56 +261,6 @@ def importes_del_periodo(
                                    "Art. 1o.-A LIVA: IVA retenido a terceros por enterar."))
     notas += iva.notas
     return importes, notas
-
-
-# ── ISN ──
-
-
-def percepciones_de_nomina(comp: Comprobante) -> list[motor_isn.PercepcionISN]:
-    """Percepciones por clave de un CFDI de nómina (del XML original; si falla, totales)."""
-    try:
-        raiz = leer_xml(leer_xml_original(comp))
-        salida = [
-            motor_isn.PercepcionISN(
-                p.get("TipoPercepcion", "038"),
-                _dec(p.get("ImporteGravado")) + _dec(p.get("ImporteExento")),
-                p.get("Concepto", ""),
-            )
-            for p in raiz.iter(f"{{{NS_NOMINA12}}}Percepcion")
-        ]
-        otros = sum((_dec(o.get("Importe")) for o in raiz.iter(f"{{{NS_NOMINA12}}}OtroPago")),
-                    Decimal("0"))
-        if otros:
-            salida.append(motor_isn.PercepcionISN("OTP", otros, "Otros pagos (no percepción)"))
-        return salida
-    except (FiscalAgentError, ValueError):
-        tot = (comp.datos or {}).get("nomina", {}).get("percepciones", {})
-        total = _dec(tot.get("TotalGravado")) + _dec(tot.get("TotalExento"))
-        return [motor_isn.PercepcionISN("038", total, "Total de percepciones (sin desglose)")]
-
-
-def isn_del_cliente(
-    db: Session, cliente: Cliente, anio: int, mes: int, aplicar_adicional: bool | None = None,
-    claves_excluidas: list[str] | None = None,
-) -> tuple[motor_isn.ResultadoISN, int]:
-    """ISN del mes con los CFDI de nómina del cliente y su entidad (`clave_entidad`)."""
-    entidad = entidad_de(cliente)
-    if not entidad:
-        raise FiscalAgentError(
-            "El cliente no tiene entidad federativa (clave_entidad) en su ficha; captúrala "
-            "para calcular su ISN.", 422)
-    cfg = config_de(db, cliente)
-    nominas = nominas_del_mes(db, cliente, anio, mes)
-    percepciones = [
-        p for n in nominas for p in percepciones_de_nomina(n) if p.clave != "OTP"
-    ]
-    conf = motor_isn.ConfigISN(
-        aplicar_adicional=cfg.isn_aplicar_adicional if aplicar_adicional is None
-        else aplicar_adicional,
-        claves_excluidas_extra=frozenset(cfg.isn_claves_excluidas + (claves_excluidas or [])),
-        claves_incluidas_forzadas=frozenset(cfg.isn_claves_incluidas),
-    )
-    return motor_isn.calcular_isn(entidad, date(anio, mes, 1), percepciones, conf), len(nominas)
 
 
 def resumen_iva_json(r: motor_iva.ResultadoIVAMes) -> dict[str, Any]:

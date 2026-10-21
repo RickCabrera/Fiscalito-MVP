@@ -836,6 +836,8 @@ export interface EmpleadoCarteraSchemaInput {
   fecha_alta?: string | null;
   fecha_baja?: string | null;
   tipo_regimen?: string;
+  es_consejero?: boolean;
+  consejero_es_trabajador?: boolean;
   causa_baja?: string;
   tipo_salario?: string;
   tipo_trabajador?: string;
@@ -874,6 +876,8 @@ export interface EmpleadoCarteraSchemaOutput {
   fecha_alta?: string | null;
   fecha_baja?: string | null;
   tipo_regimen?: string;
+  es_consejero?: boolean;
+  consejero_es_trabajador?: boolean;
   causa_baja?: string;
   tipo_salario?: string;
   tipo_trabajador?: string;
@@ -2058,6 +2062,7 @@ export interface VariablesEmpleadoSchema {
   pension?: PensionSchema | null;
   viaticos_comprobados?: number | string;
   prima_vacacional_exenta_previa?: number | string;
+  horas_extra_por_dia?: (number | string)[];
 }
 
 /** Zona geografica que determina el salario minimo aplicable. */
@@ -2166,6 +2171,8 @@ export interface app__schemas__nomina_p4__FiniquitoRequest {
   dias_vacaciones_pendientes?: number | string;
   aguinaldo_ya_pagado?: number | string;
   incluir_20_dias?: boolean;
+  aguinaldo_exento_previo?: number | string;
+  prima_vacacional_exenta_previa?: number | string;
   guardar?: boolean;
 }
 

@@ -1183,3 +1183,29 @@ Quedan para Ricardo y la contadora:
 5. **P4-13:** posible reenvío duplicado si el worker cae entre la aceptación del proveedor y el
    guardado del estado; un enlace firmado sigue vigente aunque se cancele después el CFDI.
 6. **XSLT de la cadena original:** tomado de `satcfdi` (minificado); verificar contra el del SAT.
+
+## §D38 · Segunda pasada del revisor de motor (P6-07, 2026-10-21)
+
+Cada punto con su test en `apps/api/tests/nomina/test_p6_07_revisor.py`.
+
+- **Consejeros (Art. 96 LISR, quinto párrafo).** La retención mínima a la tasa máxima del
+  Art. 152 ya **no se supone por el régimen 07**: aplica al asimilado marcado `es_consejero` en
+  la ficha (consejeros, administradores, comisarios y gerentes generales, sea cual sea su
+  c_TipoRegimen) y **no** al que además está marcado `consejero_es_trabajador` ("salvo que
+  exista, además, relación de trabajo con el retenedor": tarifa del segundo párrafo). Un 07 sin
+  marcar se calcula con tarifa y se advierte. Sustituye a lo dicho en §D33.8 y §D34.
+- **Citas de párrafo:** Art. 9 LISR cuarto (sin PTU ni pérdidas) y **quinto** (no deducibles
+  del 28 fr. XXX) para la renta gravable de PTU; Art. 97 segundo (impuesto local), **tercero**
+  (saldo a cargo / a favor) y quinto (fr. I-III, quién no entra); Art. 96 **quinto** (consejeros).
+- **IVA no objeto:** por `ObjetoImp == "01"` de cada concepto (Importe − Descuento). Residuo
+  sólo para CFDI sin `ObjetoImp` (3.3), con nota y UUID.
+- **Tope diario de horas extra (Art. 66 LFT; Art. 68 segundo párrafo):** con las horas por día
+  capturadas, 3 h diarias dobles, días más allá de las veces por semana y lo que pasa del tope
+  semanal → triples, con aviso. Sin desglose diario se avisa que el diario no se verificó.
+  **FUENTE POR CONFIRMAR:** el texto reformado del Art. 66 (DOF 01-05-2026) sobre el límite
+  diario y las veces por semana. Se conserva 3 h diarias para toda fecha y 3 veces por semana
+  mientras el tope es 9; desde 2028, las veces necesarias para llegar al tope con 3 h (4).
+  Conservador: clasifica triples de más, nunca de menos.
+- **Finiquito y exentos del año (Art. 93 fr. XIV):** aguinaldo (30 UMA) y prima vacacional
+  (15 UMA) son por año de calendario; el finiquito resta lo ya exentado en el año según el
+  historial (claves 002 y 021) más lo capturado fuera del sistema.

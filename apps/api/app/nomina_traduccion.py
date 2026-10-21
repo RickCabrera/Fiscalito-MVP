@@ -51,6 +51,7 @@ def variables_del_schema(v: VariablesEmpleadoSchema) -> var.VariablesEmpleado:
         else None,
         viaticos_comprobados=v.viaticos_comprobados,
         prima_vacacional_exenta_previa=v.prima_vacacional_exenta_previa,
+        horas_extra_por_dia=tuple(v.horas_extra_por_dia),
     )
 
 
